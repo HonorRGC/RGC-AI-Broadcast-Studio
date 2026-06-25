@@ -3,9 +3,11 @@ from dataclasses import dataclass
 
 @dataclass
 class Driver:
+
     car_idx: int
 
     name: str = "Unknown"
+
     number: str = "?"
 
     current_position: int = 0
@@ -21,8 +23,13 @@ class Driver:
     fastest_lap: float = 9999.0
     last_lap: float = 0.0
 
+    average_lap: float = 0.0
+    total_lap_time: float = 0.0
+
     passes_made: int = 0
     passes_lost: int = 0
+
+    laps_led: int = 0
 
     incidents: int = 0
 
@@ -31,3 +38,5 @@ class Driver:
     retired: bool = False
 
     story: str = ""
+
+    momentum: str = "Stable"
