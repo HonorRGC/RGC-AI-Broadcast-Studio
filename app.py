@@ -1,44 +1,29 @@
-import irsdk
 import time
 
-ir = irsdk.IRSDK()
-last_positions = {}
+from broadcaster.telemetry import IRacingTelemetry
+from broadcaster.race_brain import RaceBrain
 
-def driver_name(car_idx):
-    if car_idx == 0:
-        return "Tim Lee"
-    return f"AI Driver {car_idx}"
+
+telemetry = IRacingTelemetry()
+race_brain = RaceBrain()
 
 print("=" * 60)
-print("RGC AI Broadcaster - Pass Detector")
+print("RGC AI Broadcast Studio - v0.2")
 print("=" * 60)
 
 while True:
-    if ir.startup():
+    if telemetry.startup():
         print("\nConnected to iRacing!")
 
-        while ir.is_initialized and ir.is_connected:
-            session_info = ir["SessionInfo"]
-            current_session = session_info["CurrentSessionNum"]
-            session = session_info["Sessions"][current_session]
-            results = session.get("ResultsPositions") or []
+        while telemetry.is_connected():
+            results = telemetry.get_results()
+            events = race_brain.analyze(results)
 
-            current_positions = {}
-
-            for car in results:
-                car_idx = car.get("CarIdx")
-                position = car.get("Position")
-                current_positions[car_idx] = position
-
-                old_position = last_positions.get(car_idx)
-
-                if old_position is not None and position < old_position:
-                    print(
-                        f"PASS DETECTED: {driver_name(car_idx)} moved "
-                        f"from P{old_position} to P{position}"
-                    )
-
-            last_positions = current_positions
+            for event in events:
+                print(
+                    f"{event.event_type}: {event.message} "
+                    f"| Importance {event.importance}/10"
+                )
 
             time.sleep(2)
 
