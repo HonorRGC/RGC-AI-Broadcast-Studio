@@ -2,13 +2,15 @@ import time
 
 from broadcaster.telemetry import IRacingTelemetry
 from broadcaster.race_brain import RaceBrain
+from broadcaster.producer import Producer
 
 
 telemetry = IRacingTelemetry()
 race_brain = RaceBrain()
+producer = Producer()
 
 print("=" * 60)
-print("RGC AI Broadcast Studio - v0.2")
+print("RGC AI Broadcast Studio - v0.3")
 print("=" * 60)
 
 while True:
@@ -20,10 +22,16 @@ while True:
             events = race_brain.analyze(results)
 
             for event in events:
-                print(
-                    f"{event.event_type}: {event.message} "
-                    f"| Importance {event.importance}/10"
-                )
+                if producer.should_broadcast(event):
+                    print(
+                        f"BROADCAST EVENT: {event.message} "
+                        f"| Importance {event.importance}/10"
+                    )
+                else:
+                    print(
+                        f"Skipped low-priority event: {event.message} "
+                        f"| Importance {event.importance}/10"
+                    )
 
             time.sleep(2)
 
