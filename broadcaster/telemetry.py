@@ -11,8 +11,14 @@ class IRacingTelemetry:
     def is_connected(self):
         return self.ir.is_initialized and self.ir.is_connected
 
+    def get_session_info(self):
+        return self.ir["SessionInfo"]
+
+    def get_driver_info(self):
+        return self.ir["DriverInfo"]
+
     def get_results(self):
-        session_info = self.ir["SessionInfo"]
+        session_info = self.get_session_info()
 
         if not session_info:
             return []
@@ -25,3 +31,25 @@ class IRacingTelemetry:
 
         session = sessions[current_session]
         return session.get("ResultsPositions") or []
+
+    def get_driver_lookup(self):
+        driver_info = self.get_driver_info()
+
+        if not driver_info:
+            return {}
+
+        drivers = driver_info.get("Drivers", [])
+
+        lookup = {}
+
+        for driver in drivers:
+            car_idx = driver.get("CarIdx")
+            name = driver.get("UserName", f"CarIdx {car_idx}")
+            number = driver.get("CarNumber", "?")
+
+            lookup[car_idx] = {
+                "name": name,
+                "number": number,
+            }
+
+        return lookup

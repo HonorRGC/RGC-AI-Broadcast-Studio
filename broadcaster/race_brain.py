@@ -13,8 +13,11 @@ class RaceBrain:
             return "TJ Lee"
         return f"AI Driver {car_idx}"
 
-    def analyze(self, results):
+    def analyze(self, results, driver_lookup=None):
         events = []
+
+        if driver_lookup is None:
+            driver_lookup = {}
 
         for car in results:
             car_idx = car.get("CarIdx")
@@ -25,7 +28,10 @@ class RaceBrain:
 
             driver = self.driver_manager.get_driver(car_idx)
 
-            driver.name = self.driver_name(car_idx)
+            driver_info = driver_lookup.get(car_idx, {})
+            driver.name = driver_info.get("name", self.driver_name(car_idx))
+            driver.number = driver_info.get("number", "?")
+
             driver.previous_position = driver.current_position
             driver.current_position = position
 
@@ -59,8 +65,8 @@ class RaceBrain:
                         f"{driver.name} moved from P{driver.previous_position} "
                         f"to P{position}. "
                         f"Started P{driver.starting_position}. "
-                        f"{driver.story}."
-                    )
+                        f"Story: {driver.story}."
+                    ),
                 )
 
                 events.append(event)
