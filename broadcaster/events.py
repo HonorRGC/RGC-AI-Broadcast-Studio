@@ -9,3 +9,4 @@ class RaceEvent:
     new_position: int
     importance: int
     message: str
+    driver: object = None

@@ -14,9 +14,9 @@ class Commentator:
         else:
             self.ai_client = None
 
-    def speak(self, event):
-        if self.ai_client:
-            prompt = self.prompt_builder.build(event)
+    def speak(self, event, driver=None):
+        if self.ai_client and driver:
+            prompt = self.prompt_builder.build(event, driver)
             return self.ai_client.generate(prompt)
 
         return self.generator.generate(event)

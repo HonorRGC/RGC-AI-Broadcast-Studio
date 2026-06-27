@@ -17,6 +17,9 @@ class IRacingTelemetry:
     def get_driver_info(self):
         return self.ir["DriverInfo"]
 
+    def get_session_flags(self):
+        return self.ir["SessionFlags"]
+
     def get_results(self):
         session_info = self.get_session_info()
 
@@ -39,17 +42,21 @@ class IRacingTelemetry:
             return {}
 
         drivers = driver_info.get("Drivers", [])
-
         lookup = {}
 
         for driver in drivers:
             car_idx = driver.get("CarIdx")
-            name = driver.get("UserName", f"CarIdx {car_idx}")
-            number = driver.get("CarNumber", "?")
 
             lookup[car_idx] = {
-                "name": name,
-                "number": number,
+                "name": driver.get("UserName", f"CarIdx {car_idx}"),
+                "number": driver.get("CarNumber", "?"),
+                "team": driver.get("TeamName", ""),
+                "car": driver.get("CarScreenName", ""),
+                "irating": driver.get("IRating", 0),
+                "license": driver.get("LicString", ""),
+                "club": driver.get("ClubName", ""),
+                "division": driver.get("DivisionName", ""),
+                "country": driver.get("FlairName", ""),
             }
 
         return lookup

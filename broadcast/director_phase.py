@@ -1,0 +1,31 @@
+from enum import Enum
+
+
+class DirectorPhase(Enum):
+    PRE_RACE = "PRE_RACE"
+
+    FORMATION = "FORMATION"
+
+    GREEN_FLAG = "GREEN_FLAG"
+
+    LONG_GREEN = "LONG_GREEN"
+
+    LEAD_BATTLE = "LEAD_BATTLE"
+
+    INCIDENT = "INCIDENT"
+
+    CAUTION = "CAUTION"
+
+    REPLAY = "REPLAY"
+
+    CAUTION_ANALYSIS = "CAUTION_ANALYSIS"
+
+    FIELD_RUNDOWN = "FIELD_RUNDOWN"
+
+    ONE_TO_GREEN = "ONE_TO_GREEN"
+
+    RESTART = "RESTART"
+
+    CHECKERED = "CHECKERED"
+
+    POST_RACE = "POST_RACE"

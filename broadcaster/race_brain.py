@@ -11,7 +11,7 @@ class RaceBrain:
     def driver_name(self, car_idx):
         if car_idx == 0:
             return "TJ Lee"
-        return f"AI Driver {car_idx}"
+        return f"Car {car_idx}"
 
     def analyze(self, results, driver_lookup=None):
         events = []
@@ -29,8 +29,14 @@ class RaceBrain:
             driver = self.driver_manager.get_driver(car_idx)
 
             driver_info = driver_lookup.get(car_idx, {})
+
             driver.name = driver_info.get("name", self.driver_name(car_idx))
             driver.number = driver_info.get("number", "?")
+            driver.team = driver_info.get("team", "")
+            driver.car = driver_info.get("car", "")
+            driver.irating = driver_info.get("irating", 0)
+            driver.license = driver_info.get("license", "")
+            driver.country = driver_info.get("country", "")
 
             driver.previous_position = driver.current_position
             driver.current_position = position
@@ -51,6 +57,7 @@ class RaceBrain:
             driver.incidents = car.get("Incidents", 0)
 
             self.story_engine.update_story(driver)
+            driver.story_score = self.calculate_story_score(driver)
 
             if driver.previous_position != 0 and position < driver.previous_position:
                 driver.passes_made += driver.previous_position - position
@@ -65,8 +72,10 @@ class RaceBrain:
                         f"{driver.name} moved from P{driver.previous_position} "
                         f"to P{position}. "
                         f"Started P{driver.starting_position}. "
+                        f"Positions gained: {driver.positions_gained()}. "
                         f"Story: {driver.story}."
                     ),
+                    driver=driver,
                 )
 
                 events.append(event)
@@ -84,3 +93,26 @@ class RaceBrain:
         if new_position <= 10:
             return 6
         return 4
+
+    def calculate_story_score(self, driver):
+        score = 0
+
+        gained = driver.positions_gained()
+
+        if gained >= 10:
+            score += 5
+        elif gained >= 5:
+            score += 3
+
+        if driver.current_position <= 5:
+            score += 3
+        elif driver.current_position <= 10:
+            score += 2
+
+        if driver.incidents == 0:
+            score += 1
+
+        if driver.irating >= 5000:
+            score += 2
+
+        return score
