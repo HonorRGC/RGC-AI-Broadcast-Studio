@@ -18,7 +18,36 @@ class IRacingTelemetry:
         return self.ir["DriverInfo"]
 
     def get_session_flags(self):
-        return self.ir["SessionFlags"]
+        try:
+            return self.ir["SessionFlags"] or 0
+        except Exception:
+            return 0
+
+    def get_lap(self):
+        try:
+            return int(self.ir["Lap"] or 0)
+        except Exception:
+            return 0
+
+    def get_total_laps(self):
+        session_info = self.get_session_info()
+
+        if not session_info:
+            return 0
+
+        current_session = session_info.get("CurrentSessionNum", 0)
+        sessions = session_info.get("Sessions", [])
+
+        if current_session >= len(sessions):
+            return 0
+
+        session = sessions[current_session]
+        session_laps = session.get("SessionLaps", 0)
+
+        try:
+            return int(session_laps)
+        except Exception:
+            return 0
 
     def get_results(self):
         session_info = self.get_session_info()
@@ -46,17 +75,12 @@ class IRacingTelemetry:
 
         for driver in drivers:
             car_idx = driver.get("CarIdx")
+            name = driver.get("UserName", f"CarIdx {car_idx}")
+            number = driver.get("CarNumber", "?")
 
             lookup[car_idx] = {
-                "name": driver.get("UserName", f"CarIdx {car_idx}"),
-                "number": driver.get("CarNumber", "?"),
-                "team": driver.get("TeamName", ""),
-                "car": driver.get("CarScreenName", ""),
-                "irating": driver.get("IRating", 0),
-                "license": driver.get("LicString", ""),
-                "club": driver.get("ClubName", ""),
-                "division": driver.get("DivisionName", ""),
-                "country": driver.get("FlairName", ""),
+                "name": name,
+                "number": number,
             }
 
         return lookup
