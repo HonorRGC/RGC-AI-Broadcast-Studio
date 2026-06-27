@@ -31,6 +31,8 @@ class RaceDirector:
         self.previous_phase = RacePhase.UNKNOWN
 
         self.formation_announced = False
+        self.track_report_announced = False
+        self.pre_race_rundown_announced = False
         self.yellow_announced = False
         self.one_to_green_announced = False
 
@@ -43,6 +45,7 @@ class RaceDirector:
         session_flags = telemetry.get_session_flags()
         total_laps = telemetry.get_total_laps()
         current_lap = self.get_best_race_lap(telemetry.get_lap(), results)
+        track_info = telemetry.get_track_info()
 
         new_phase = self.detect_phase(session_flags, results, current_lap, total_laps)
 
@@ -53,6 +56,10 @@ class RaceDirector:
             self.previous_phase = self.phase
             self.phase = new_phase
             self.handle_phase_change(results, driver_lookup, scheduler)
+
+        if self.phase == RacePhase.FORMATION:
+            self.handle_pre_race_track_report(track_info, scheduler)
+            self.handle_pre_race_rundown(results, driver_lookup, scheduler)
 
     def is_race_over(self):
         return self.phase == RacePhase.CHECKERED
@@ -78,6 +85,9 @@ class RaceDirector:
 
         if self.has_flag(session_flags, self.GREEN_FLAG) or self.has_flag(session_flags, self.START_GO):
             return RacePhase.GREEN
+
+        if results and current_lap <= 0:
+            return RacePhase.FORMATION
 
         if results:
             return RacePhase.GREEN
@@ -139,11 +149,76 @@ class RaceDirector:
 
         scheduler.add(
             "The field is forming up. Drivers are getting ready for the start.",
-            priority=9,
+            priority=10,
             category="race_control",
             protected=True,
         )
         self.formation_announced = True
+
+    def handle_pre_race_track_report(self, track_info, scheduler):
+        if self.track_report_announced:
+            return
+
+        if not track_info:
+            return
+
+        track_name = track_info.get("track_name", "the speedway")
+        track_city = track_info.get("track_city", "")
+        track_country = track_info.get("track_country", "")
+        weather = track_info.get("weather", "unknown")
+        skies = track_info.get("skies", "unknown")
+        air_temp = track_info.get("air_temp")
+        track_temp = track_info.get("track_temp")
+        wind_speed = track_info.get("wind_speed")
+
+        location = ""
+        if track_city and track_country:
+            location = f" in {track_city}, {track_country}"
+        elif track_city:
+            location = f" in {track_city}"
+
+        parts = [f"Tonight we are racing at {track_name}{location}."]
+
+        if air_temp is not None:
+            parts.append(f"Air temperature is {self.format_temperature(air_temp)}.")
+
+        if track_temp is not None:
+            parts.append(f"Track temperature is {self.format_temperature(track_temp)}.")
+
+        if weather != "unknown" or skies != "unknown":
+            parts.append(f"Weather is {weather}, with {skies} skies.")
+
+        if wind_speed is not None:
+            parts.append(f"Wind speed is {self.format_speed(wind_speed)}.")
+
+        parts.append(
+            "Track position, tire management, and clean restarts could all be important tonight."
+        )
+
+        scheduler.add(
+            " ".join(parts),
+            priority=10,
+            category="pre_race_track_report",
+            protected=True,
+        )
+
+        self.track_report_announced = True
+
+    def handle_pre_race_rundown(self, results, driver_lookup, scheduler):
+        if self.pre_race_rundown_announced:
+            return
+
+        if not results:
+            return
+
+        scheduler.add(
+            self.build_pre_race_rundown(results, driver_lookup, max_cars=20),
+            priority=9,
+            category="pre_race_rundown",
+            protected=True,
+        )
+
+        self.pre_race_rundown_announced = True
 
     def handle_green_flag(self, scheduler):
         if self.previous_phase in [RacePhase.CAUTION, RacePhase.ONE_TO_GREEN]:
@@ -211,6 +286,14 @@ class RaceDirector:
         )
 
         self.checkered_announced = True
+
+    def build_pre_race_rundown(self, results, driver_lookup, max_cars=20):
+        lines = ["Here is your starting lineup through the top twenty."]
+
+        for car in self.sort_results(results)[:max_cars]:
+            lines.append(self.format_driver_position(car, driver_lookup))
+
+        return " ".join(lines)
 
     def build_field_rundown(self, results, driver_lookup, max_cars=20):
         if not results:
@@ -304,6 +387,18 @@ class RaceDirector:
 
         return position
 
+    def format_temperature(self, value):
+        try:
+            return f"{round(float(value))} degrees"
+        except Exception:
+            return str(value)
+
+    def format_speed(self, value):
+        try:
+            return f"{round(float(value))} miles per hour"
+        except Exception:
+            return str(value)
+
     def has_flag(self, session_flags, flag):
         try:
             return int(session_flags) & flag != 0
@@ -318,6 +413,7 @@ class RaceDirector:
             RacePhase.CAUTION,
             RacePhase.ONE_TO_GREEN,
             RacePhase.CHECKERED,
+            RacePhase.FORMATION,
         ]:
             return None
 

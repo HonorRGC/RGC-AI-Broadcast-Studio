@@ -1,17 +1,22 @@
 class EventQueue:
     def __init__(self):
-        self.queue = []
+        self.events = []
 
     def add(self, event):
-        self.queue.append(event)
-
-    def clear(self):
-        self.queue = []
-
-    def has_events(self):
-        return len(self.queue) > 0
+        if event:
+            self.events.append(event)
+            self.events.sort(key=lambda e: e.importance, reverse=True)
 
     def next_event(self):
-        if self.queue:
-            return self.queue.pop(0)
+        if self.events:
+            return self.events.pop(0)
         return None
+
+    def get_next(self):
+        return self.next_event()
+
+    def has_events(self):
+        return len(self.events) > 0
+
+    def clear(self):
+        self.events = []

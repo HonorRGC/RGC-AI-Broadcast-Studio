@@ -84,3 +84,44 @@ class IRacingTelemetry:
             }
 
         return lookup
+
+    def get_track_info(self):
+        session_info = self.get_session_info()
+
+        track_name = "the speedway"
+        track_city = ""
+        track_country = ""
+        weather = "unknown"
+        skies = "unknown"
+
+        if session_info:
+            weekend_info = session_info.get("WeekendInfo", {})
+
+            track_name = weekend_info.get("TrackName", track_name)
+            track_city = weekend_info.get("TrackCity", "")
+            track_country = weekend_info.get("TrackCountry", "")
+            weather = weekend_info.get("WeatherType", weather)
+            skies = weekend_info.get("Skies", skies)
+
+        return {
+            "track_name": track_name,
+            "track_city": track_city,
+            "track_country": track_country,
+            "weather": weather,
+            "skies": skies,
+            "air_temp": self.safe_read("AirTemp"),
+            "track_temp": self.safe_read("TrackTempCrew"),
+            "track_wetness": self.safe_read("TrackWetness"),
+            "wind_speed": self.safe_read("WindVel"),
+        }
+
+    def safe_read(self, key):
+        try:
+            value = self.ir[key]
+
+            if value is None:
+                return None
+
+            return value
+        except Exception:
+            return None
