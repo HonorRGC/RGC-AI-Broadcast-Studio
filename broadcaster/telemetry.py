@@ -92,13 +92,31 @@ class IRacingTelemetry:
             return name
 
         cleaned = str(name).strip()
-
-        # Removes iRacing-style duplicate/account suffixes like:
-        # Jason Johnson5 -> Jason Johnson
-        # Tim Lee12 -> Tim Lee
         cleaned = re.sub(r"(?<=[A-Za-z])\d+$", "", cleaned).strip()
 
         return cleaned
+
+    def get_player_car_idx(self):
+        try:
+            return int(self.ir["PlayerCarIdx"])
+        except Exception:
+            return None
+
+    def get_player_incident_count(self):
+        for key in [
+            "PlayerCarMyIncidentCount",
+            "PlayerCarDriverIncidentCount",
+            "PlayerIncidents",
+            "PlayerCarTeamIncidentCount",
+        ]:
+            try:
+                value = self.ir[key]
+                if value is not None:
+                    return int(value)
+            except Exception:
+                pass
+
+        return 0
 
     def get_car_idx_on_pit_road(self):
         try:
@@ -108,6 +126,18 @@ class IRacingTelemetry:
             return list(data)
         except Exception:
             return []
+
+    def get_car_idx_track_surface(self):
+        return self.safe_array_read("CarIdxTrackSurface")
+
+    def get_car_idx_track_surface_material(self):
+        return self.safe_array_read("CarIdxTrackSurfaceMaterial")
+
+    def get_car_idx_lap_dist_pct(self):
+        return self.safe_array_read("CarIdxLapDistPct")
+
+    def get_car_idx_est_time(self):
+        return self.safe_array_read("CarIdxEstTime")
 
     def get_track_info(self):
         weekend_info = self.get_weekend_info()
@@ -156,3 +186,12 @@ class IRacingTelemetry:
             return self.ir[key]
         except Exception:
             return None
+
+    def safe_array_read(self, key):
+        try:
+            data = self.ir[key]
+            if data is None:
+                return []
+            return list(data)
+        except Exception:
+            return []

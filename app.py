@@ -9,6 +9,7 @@ from broadcaster.race_director import RaceDirector, RacePhase
 from production.broadcast_producer import BroadcastProducer
 from production.editorial_producer import EditorialProducer
 from production.pit_strategy_detector import PitStrategyDetector
+from production.incident_detector import IncidentDetector
 
 from broadcast.commentator import Commentator
 from broadcast.booth import BroadcastBooth
@@ -26,6 +27,7 @@ race_director = RaceDirector()
 broadcast_producer = BroadcastProducer()
 editorial_producer = EditorialProducer()
 pit_strategy_detector = PitStrategyDetector()
+incident_detector = IncidentDetector()
 
 commentator = Commentator()
 jeff = Jeff()
@@ -36,7 +38,7 @@ broadcast_queue = BroadcastQueue()
 
 
 print("=" * 60)
-print("RGC AI Broadcast Studio - v0.16 Editorial Producer")
+print("RGC AI Broadcast Studio - v0.17 Trouble Detector")
 print("=" * 60)
 
 
@@ -63,6 +65,28 @@ while True:
                 RacePhase.CHECKERED,
             ]:
                 event_queue.clear()
+
+            incident_events = incident_detector.analyze(
+                results=results,
+                driver_lookup=driver_lookup,
+                current_lap=current_lap,
+                track_surface_status=telemetry.get_car_idx_track_surface(),
+                track_surface_material_status=telemetry.get_car_idx_track_surface_material(),
+                lap_dist_pct_status=telemetry.get_car_idx_lap_dist_pct(),
+                est_time_status=telemetry.get_car_idx_est_time(),
+                pit_road_status=pit_road_status,
+            )
+
+            for incident_event in incident_events:
+                event_queue.clear()
+
+                broadcast_queue.add(
+                    incident_event.message,
+                    priority=incident_event.importance,
+                    category="incident",
+                    protected=True,
+                    speaker="lead",
+                )
 
             pit_events = pit_strategy_detector.analyze(
                 results=results,
