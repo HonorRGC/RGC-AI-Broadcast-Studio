@@ -1,39 +1,90 @@
 # RGC AI Broadcast Studio
 
-> AI-powered race broadcasting for iRacing.
+> Professional AI race production for iRacing.
 
-## Overview
+RGC AI Broadcast Studio is an AI-powered race broadcast system designed to make iRacing events feel like professionally produced motorsports broadcasts.
 
-RGC AI Broadcast Studio is an intelligent race broadcasting system designed to automatically produce professional-quality race commentary for iRacing events.
-
-Instead of simply reading telemetry, the software analyzes the race, builds storylines, detects important moments, and generates natural commentary using AI voices.
-
-## Current Features
-
-- Live iRacing telemetry
-- RaceBrain event detection
-- Pass detection
-- Driver tracking
-- Story Engine
-- Producer filtering
-
-## Planned Features
-
-- OpenAI commentary generation
-- ElevenLabs voices
-- Automatic camera director
-- OBS integration
-- Driver storylines
-- Replay detection
-- Broadcast overlays
-- Two AI commentators
-
-## Project Status
-
-Currently under active development.
-
-Version: **0.3 Alpha**
+This project is not just an AI commentator. It is being built as a full AI production crew with race control, story detection, editorial decision-making, booth personalities, pit reporting, voice direction, and future camera/replay control.
 
 ---
 
-Built by **TJ Lee** and **Realistic Gaming Crew (RGC)**.
+## Vision
+
+The goal is simple:
+
+**Build an AI broadcast that racing fans can watch without feeling like they are listening to AI.**
+
+The system should not talk about everything. It should notice what matters, choose the right story, and deliver it with the timing and tone of a real broadcast team.
+
+---
+
+## Current Capabilities
+
+- Live iRacing SDK connection
+- Race phase detection
+  - Formation
+  - Green flag
+  - Caution
+  - One to green
+  - White flag
+  - Checkered flag
+- Pre-race track report
+- Starting lineup rundown
+- Restart rundown
+- Finish rundown
+- Lap milestone calls
+  - 10 to go
+  - 5 to go
+  - White flag
+- RaceBrain event detection
+- Broadcast Producer filtering
+- Broadcast Context driver memory
+- Story Detector
+- Editorial Producer
+- Voice Director
+- Lead Announcer
+- Jeff, Color Analyst
+- Sarah, Pit Reporter
+- ElevenLabs voice routing
+- OpenAI commentary generation
+- Pit strategy detection
+- Driver name cleanup
+- SDK inspection tools
+
+---
+
+## In Development
+
+- Incident Director
+- Trouble detection
+- Replay/test harness
+- Broadcast memory
+- Personality engine
+- Camera Director
+- Replay Director
+- OpenAI Broadcast Brain
+
+---
+
+## Broadcast Architecture
+
+```text
+iRacing SDK
+    ↓
+Race Director
+    ↓
+Broadcast Context
+    ↓
+Story Detector
+    ↓
+Editorial Producer
+    ↓
+Broadcast Producer
+    ↓
+Voice Director
+    ↓
+Lead / Jeff / Sarah
+    ↓
+Broadcast Queue
+    ↓
+ElevenLabs / Console Output
