@@ -29,10 +29,13 @@ class RaceDirector:
     def __init__(self):
         self.phase = RacePhase.UNKNOWN
         self.previous_phase = RacePhase.UNKNOWN
+        self.race_started = False
 
         self.formation_announced = False
         self.track_report_announced = False
         self.pre_race_rundown_announced = False
+        self.mid_race_intro_announced = False
+
         self.yellow_announced = False
         self.one_to_green_announced = False
 
@@ -49,6 +52,9 @@ class RaceDirector:
 
         new_phase = self.detect_phase(session_flags, results, current_lap, total_laps)
 
+        if new_phase == RacePhase.GREEN:
+            self.race_started = True
+
         if new_phase != RacePhase.CHECKERED:
             self.handle_lap_calls(current_lap, total_laps, scheduler)
 
@@ -61,6 +67,16 @@ class RaceDirector:
             self.handle_pre_race_track_report(track_info, scheduler)
             self.handle_pre_race_rundown(results, driver_lookup, scheduler)
 
+        if self.phase == RacePhase.GREEN and current_lap > 0:
+            self.handle_mid_race_intro(
+                current_lap,
+                total_laps,
+                track_info,
+                results,
+                driver_lookup,
+                scheduler,
+            )
+
     def is_race_over(self):
         return self.phase == RacePhase.CHECKERED
 
@@ -71,6 +87,9 @@ class RaceDirector:
         if total_laps > 0 and current_lap >= total_laps:
             return RacePhase.CHECKERED
 
+        if current_lap > 0:
+            return RacePhase.GREEN
+
         if self.has_flag(session_flags, self.ONE_LAP_TO_GREEN):
             return RacePhase.ONE_TO_GREEN
 
@@ -80,19 +99,51 @@ class RaceDirector:
         if self.has_flag(session_flags, self.YELLOW_FLAG) or self.has_flag(session_flags, self.YELLOW_WAVING):
             return RacePhase.CAUTION
 
-        if self.has_flag(session_flags, self.START_READY) or self.has_flag(session_flags, self.START_SET):
-            return RacePhase.FORMATION
-
         if self.has_flag(session_flags, self.GREEN_FLAG) or self.has_flag(session_flags, self.START_GO):
             return RacePhase.GREEN
 
-        if results and current_lap <= 0:
+        if self.race_started:
+            return RacePhase.GREEN
+
+        if self.has_flag(session_flags, self.START_READY) or self.has_flag(session_flags, self.START_SET):
             return RacePhase.FORMATION
 
         if results:
-            return RacePhase.GREEN
+            return RacePhase.FORMATION
 
         return RacePhase.UNKNOWN
+
+    def handle_mid_race_intro(self, current_lap, total_laps, track_info, results, driver_lookup, scheduler):
+        if self.mid_race_intro_announced:
+            return
+
+        track_name = track_info.get("track_name", "the speedway") if track_info else "the speedway"
+
+        if total_laps > 0:
+            message = f"We pick up this race at {track_name} on lap {current_lap} of {total_laps}."
+        else:
+            message = f"We pick up this race at {track_name}, already under green flag conditions."
+
+        scheduler.add(
+            message,
+            priority=10,
+            category="mid_race_intro",
+            protected=True,
+        )
+
+        self.handle_pre_race_track_report(track_info, scheduler)
+
+        if results:
+            scheduler.add(
+                self.build_running_order_rundown(results, driver_lookup, max_cars=20),
+                priority=9,
+                category="mid_race_rundown",
+                protected=True,
+            )
+
+        self.mid_race_intro_announced = True
+        self.pre_race_rundown_announced = True
+        self.formation_announced = True
 
     def handle_lap_calls(self, current_lap, total_laps, scheduler):
         if total_laps <= 0 or current_lap <= 0:
@@ -148,7 +199,7 @@ class RaceDirector:
             return
 
         scheduler.add(
-            "The field is forming up. Drivers are getting ready for the start.",
+            "The field is rolling away for the parade lap. We are getting set for the start.",
             priority=10,
             category="race_control",
             protected=True,
@@ -156,13 +207,11 @@ class RaceDirector:
         self.formation_announced = True
 
     def handle_pre_race_track_report(self, track_info, scheduler):
-        if self.track_report_announced:
-            return
-
-        if not track_info:
+        if self.track_report_announced or not track_info:
             return
 
         track_name = track_info.get("track_name", "the speedway")
+        track_config = track_info.get("track_config", "")
         track_city = track_info.get("track_city", "")
         track_country = track_info.get("track_country", "")
         weather = track_info.get("weather", "unknown")
@@ -177,23 +226,30 @@ class RaceDirector:
         elif track_city:
             location = f" in {track_city}"
 
-        parts = [f"Tonight we are racing at {track_name}{location}."]
+        if track_config and track_config.lower() not in track_name.lower():
+            track_title = f"{track_name}, {track_config}"
+        else:
+            track_title = track_name
 
-        if air_temp is not None:
-            parts.append(f"Air temperature is {self.format_temperature(air_temp)}.")
+        parts = [f"Tonight we are racing at {track_title}{location}."]
 
-        if track_temp is not None:
-            parts.append(f"Track temperature is {self.format_temperature(track_temp)}.")
+        air_f = self.format_temperature_fahrenheit(air_temp)
+        track_f = self.format_temperature_fahrenheit(track_temp)
+
+        if air_f:
+            parts.append(f"Air temperature is {air_f}.")
+
+        if track_f:
+            parts.append(f"Track temperature is {track_f}.")
 
         if weather != "unknown" or skies != "unknown":
             parts.append(f"Weather is {weather}, with {skies} skies.")
 
-        if wind_speed is not None:
-            parts.append(f"Wind speed is {self.format_speed(wind_speed)}.")
+        wind = self.format_speed_mph(wind_speed)
+        if wind:
+            parts.append(f"Wind speed is {wind}.")
 
-        parts.append(
-            "Track position, tire management, and clean restarts could all be important tonight."
-        )
+        parts.append(self.track_note(track_name))
 
         scheduler.add(
             " ".join(parts),
@@ -203,6 +259,29 @@ class RaceDirector:
         )
 
         self.track_report_announced = True
+
+    def track_note(self, track_name):
+        name = track_name.lower()
+
+        if "daytona" in name:
+            return "Daytona is all about drafting help, timing, and making the right move at the right moment."
+
+        if "talladega" in name:
+            return "Talladega is one of the biggest drafting tracks in the world, where patience matters until it is time to make a move."
+
+        if "bristol" in name:
+            return "Bristol is short-track racing at high speed, with traffic, rhythm, and patience all playing a major role."
+
+        if "martinsville" in name:
+            return "Martinsville rewards braking discipline, clean corner exit, and keeping the car underneath you all night."
+
+        if "charlotte" in name:
+            return "Charlotte is a classic mile-and-a-half where momentum, tire falloff, and clean air can shape the race."
+
+        if "oxford" in name:
+            return "Oxford Plains is a tight short track where track position, patience, and getting off the corner clean can make the difference."
+
+        return "Track position, tire management, and clean restarts could all be important tonight."
 
     def handle_pre_race_rundown(self, results, driver_lookup, scheduler):
         if self.pre_race_rundown_announced:
@@ -217,10 +296,12 @@ class RaceDirector:
             category="pre_race_rundown",
             protected=True,
         )
-
         self.pre_race_rundown_announced = True
 
     def handle_green_flag(self, scheduler):
+        if self.mid_race_intro_announced and self.previous_phase == RacePhase.UNKNOWN:
+            return
+
         if self.previous_phase in [RacePhase.CAUTION, RacePhase.ONE_TO_GREEN]:
             message = "Green flag is back in the air. We are racing again."
         else:
@@ -295,6 +376,14 @@ class RaceDirector:
 
         return " ".join(lines)
 
+    def build_running_order_rundown(self, results, driver_lookup, max_cars=20):
+        lines = ["Here is the current running order through the top twenty."]
+
+        for car in self.sort_results(results)[:max_cars]:
+            lines.append(self.format_driver_position(car, driver_lookup))
+
+        return " ".join(lines)
+
     def build_field_rundown(self, results, driver_lookup, max_cars=20):
         if not results:
             return "One lap to green. The field is doubling up for the restart."
@@ -340,11 +429,8 @@ class RaceDirector:
 
     def get_display_position(self, car):
         raw_position = car.get("Position", 999)
-        zero_based_positions = False
-
         try:
-            position = int(raw_position)
-            return position + 1 if zero_based_positions and position == 0 else position
+            return int(raw_position)
         except Exception:
             return raw_position
 
@@ -367,14 +453,7 @@ class RaceDirector:
         return max(laps) if laps else 0
 
     def results_are_zero_based(self, results):
-        positions = []
-
-        for car in results:
-            position = car.get("Position")
-            if position is not None:
-                positions.append(position)
-
-        return 0 in positions
+        return any(car.get("Position") == 0 for car in results)
 
     def display_position(self, raw_position, zero_based_positions):
         try:
@@ -387,17 +466,27 @@ class RaceDirector:
 
         return position
 
-    def format_temperature(self, value):
-        try:
-            return f"{round(float(value))} degrees"
-        except Exception:
-            return str(value)
+    def format_temperature_fahrenheit(self, value):
+        if value is None:
+            return None
 
-    def format_speed(self, value):
         try:
-            return f"{round(float(value))} miles per hour"
+            celsius = float(value)
+            fahrenheit = (celsius * 9 / 5) + 32
+            return f"{round(fahrenheit)} degrees Fahrenheit"
         except Exception:
-            return str(value)
+            return None
+
+    def format_speed_mph(self, value):
+        if value is None:
+            return None
+
+        try:
+            meters_per_second = float(value)
+            mph = meters_per_second * 2.23694
+            return f"{round(mph)} miles per hour"
+        except Exception:
+            return None
 
     def has_flag(self, session_flags, flag):
         try:

@@ -7,6 +7,8 @@ from broadcaster.event_queue import EventQueue
 from broadcaster.race_director import RaceDirector, RacePhase
 
 from production.broadcast_producer import BroadcastProducer
+from production.editorial_producer import EditorialProducer
+from production.pit_strategy_detector import PitStrategyDetector
 
 from broadcast.commentator import Commentator
 from broadcast.booth import BroadcastBooth
@@ -22,6 +24,8 @@ producer = Producer()
 event_queue = EventQueue()
 race_director = RaceDirector()
 broadcast_producer = BroadcastProducer()
+editorial_producer = EditorialProducer()
+pit_strategy_detector = PitStrategyDetector()
 
 commentator = Commentator()
 jeff = Jeff()
@@ -32,7 +36,7 @@ broadcast_queue = BroadcastQueue()
 
 
 print("=" * 60)
-print("RGC AI Broadcast Studio - v0.14 Voice Director")
+print("RGC AI Broadcast Studio - v0.16 Editorial Producer")
 print("=" * 60)
 
 
@@ -43,6 +47,8 @@ while True:
         while telemetry.is_connected():
             results = telemetry.get_results()
             driver_lookup = telemetry.get_driver_lookup()
+            current_lap = telemetry.get_lap()
+            pit_road_status = telemetry.get_car_idx_on_pit_road()
 
             race_director.update(
                 telemetry=telemetry,
@@ -58,6 +64,28 @@ while True:
             ]:
                 event_queue.clear()
 
+            pit_events = pit_strategy_detector.analyze(
+                results=results,
+                driver_lookup=driver_lookup,
+                pit_road_status=pit_road_status,
+                current_lap=current_lap,
+                under_caution=race_director.phase in [
+                    RacePhase.CAUTION,
+                    RacePhase.ONE_TO_GREEN,
+                ],
+            )
+
+            for pit_event in pit_events:
+                editorial_producer.submit_pit_event(pit_event)
+
+                broadcast_queue.add(
+                    pit_event.message,
+                    priority=pit_event.importance,
+                    category="pit_strategy",
+                    protected=True,
+                    speaker="sarah",
+                )
+
             if race_director.phase == RacePhase.GREEN:
                 events = race_brain.analyze(results, driver_lookup)
 
@@ -68,6 +96,16 @@ while True:
                         produced_event = broadcast_producer.review_event(directed_event)
 
                         if produced_event:
+                            editorial_producer.submit_story(
+                                story_type=getattr(produced_event, "event_type", "race_event"),
+                                headline=getattr(produced_event, "message", ""),
+                                summary=getattr(produced_event, "story", ""),
+                                priority=getattr(produced_event, "importance", 5),
+                                source="broadcast_producer",
+                                driver_name=getattr(produced_event, "driver_name", ""),
+                                car_number=getattr(produced_event, "car_number", ""),
+                            )
+
                             event_queue.add(produced_event)
 
                 event = producer.choose_event(event_queue)

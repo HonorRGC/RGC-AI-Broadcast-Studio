@@ -5,6 +5,7 @@ from config import (
     ELEVENLABS_API_KEY,
     LEAD_VOICE_ID,
     COLOR_VOICE_ID,
+    PIT_VOICE_ID,
 )
 
 from voice.elevenlabs_client import ElevenLabsClient
@@ -24,7 +25,6 @@ class BroadcastBooth:
             return
 
         self.last_comment = commentary
-
         speaker_label = self.get_speaker_label(speaker)
 
         print()
@@ -52,5 +52,8 @@ class BroadcastBooth:
     def get_voice_id(self, speaker):
         if speaker == "jeff":
             return COLOR_VOICE_ID or LEAD_VOICE_ID
+
+        if speaker == "sarah":
+            return PIT_VOICE_ID or LEAD_VOICE_ID
 
         return LEAD_VOICE_ID
