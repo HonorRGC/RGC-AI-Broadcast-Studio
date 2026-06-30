@@ -24,6 +24,17 @@ def format_driver_summary(summary):
     )
 
 
+def format_momentum(profile):
+    return (
+        f"#{profile.car_number} {profile.driver_name} | "
+        f"Position {profile.current_position} | "
+        f"Momentum {profile.momentum_score:.1f} | "
+        f"Trend {profile.trend} | "
+        f"Status {profile.status} | "
+        f"Recent Change {profile.recent_position_change}"
+    )
+
+
 def main():
     if len(sys.argv) < 2:
         print("Usage:")
@@ -54,19 +65,38 @@ def main():
         results = telemetry.get_results()
         driver_lookup = telemetry.get_driver_lookup()
         current_lap = telemetry.get_lap()
+        total_laps = telemetry.get_total_laps()
+        session_flags = telemetry.get_session_flags()
+        pit_road_status = telemetry.get_car_idx_on_pit_road()
 
         intelligence.update(
             results=results,
             driver_lookup=driver_lookup,
             current_lap=current_lap,
+            total_laps=total_laps,
+            session_flags=session_flags,
+            pit_road_status=pit_road_status,
         )
 
         if snapshot_number % PRINT_EVERY_SNAPSHOTS == 0:
+            race_state = intelligence.get_race_state()
+
             print()
             print("-" * 70)
-            print(f"Snapshot {snapshot_number}/{telemetry.snapshot_count()} | Lap {current_lap}")
+            print(f"Snapshot {snapshot_number}/{telemetry.snapshot_count()} | Lap {current_lap}/{total_laps}")
             print("-" * 70)
 
+            print("RACE STATE")
+            print(
+                f"Moment: {race_state.moment.value} | "
+                f"Remaining: {race_state.laps_remaining} | "
+                f"Cautions: {race_state.caution_count} | "
+                f"Restarts: {race_state.restart_count} | "
+                f"Green Run: {race_state.green_lap_count} | "
+                f"Overtime: {race_state.is_overtime}"
+            )
+
+            print()
             top_story = intelligence.top_story()
 
             if top_story:
@@ -82,6 +112,27 @@ def main():
             else:
                 print("TOP STORY")
                 print("None yet.")
+
+            print()
+            best_battle = intelligence.get_best_battle()
+
+            if best_battle:
+                print("BEST BATTLE")
+                print(best_battle.headline)
+                print(best_battle.summary)
+                print(
+                    f"Type: {best_battle.story_type} | "
+                    f"Importance: {best_battle.importance} | "
+                    f"Gap: {best_battle.gap:.2f}"
+                )
+            else:
+                print("BEST BATTLE")
+                print("None.")
+
+            print()
+            print("HOTTEST DRIVERS")
+            for profile in intelligence.get_hottest_drivers(limit=5):
+                print(format_momentum(profile))
 
             print()
             print("BIGGEST MOVERS")

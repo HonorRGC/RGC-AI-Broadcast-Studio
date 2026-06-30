@@ -6,6 +6,7 @@ from production.story_manager import StoryManager, ManagedStory
 from production.battle_detector import BattleDetector, BattleStory
 from production.driver_memory import DriverMemory
 from production.momentum_tracker import MomentumTracker, MomentumProfile
+from production.race_state_tracker import RaceStateTracker, RaceState
 
 
 @dataclass
@@ -29,31 +30,13 @@ class DriverIntelligence:
 
 
 class RaceIntelligence:
-    """
-    Central race intelligence layer.
-
-    Owns:
-    - Driver summaries
-    - Driver memory
-    - Story detection
-    - Story lifecycle
-    - Battle detection
-    - Momentum profiles
-
-    This class should become the main race knowledge source for:
-    - Editorial Producer
-    - Jeff
-    - Sarah
-    - OpenAI Broadcast Brain
-    - Camera Director
-    """
-
     def __init__(self):
         self.story_engine = StoryEngine()
         self.story_manager = StoryManager()
         self.battle_detector = BattleDetector()
         self.driver_memory = DriverMemory()
         self.momentum_tracker = MomentumTracker()
+        self.race_state_tracker = RaceStateTracker()
 
         self.driver_summaries: Dict[int, DriverIntelligence] = {}
 
@@ -61,10 +44,26 @@ class RaceIntelligence:
         self.managed_stories: List[ManagedStory] = []
         self.active_battles: List[BattleStory] = []
 
+        self.race_state: RaceState = self.race_state_tracker.get_state()
+
         self.current_lap = 0
 
-    def update(self, results, driver_lookup, current_lap=0, pit_road_status=None):
+    def update(
+        self,
+        results,
+        driver_lookup,
+        current_lap=0,
+        total_laps=0,
+        session_flags=0,
+        pit_road_status=None,
+    ):
         self.current_lap = current_lap
+
+        self.race_state = self.race_state_tracker.update(
+            current_lap=current_lap,
+            total_laps=total_laps,
+            session_flags=session_flags,
+        )
 
         self.update_driver_summaries(
             results=results,
@@ -187,15 +186,20 @@ class RaceIntelligence:
     def get_race_knowledge(self):
         return {
             "current_lap": self.current_lap,
+            "race_state": self.race_state,
             "top_story": self.top_story(),
             "active_stories": self.get_active_stories(),
             "active_battles": self.get_active_battles(),
+            "best_battle": self.get_best_battle(),
             "biggest_movers": self.get_biggest_movers(),
             "fading_drivers": self.get_fading_drivers(),
             "hottest_drivers": self.get_hottest_drivers(),
             "coldest_drivers": self.get_coldest_drivers(),
             "top_five": self.get_top_five(),
         }
+
+    def get_race_state(self):
+        return self.race_state
 
     def get_active_stories(self):
         return self.story_manager.get_active_stories()
@@ -265,6 +269,8 @@ class RaceIntelligence:
         self.driver_memory.clear()
 
         self.momentum_tracker = MomentumTracker()
+        self.race_state_tracker = RaceStateTracker()
+        self.race_state = self.race_state_tracker.get_state()
 
         self.current_lap = 0
 

@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 from enum import Enum
-from typing import List
 
 
 class OpeningStage(Enum):
@@ -21,21 +20,6 @@ class OpeningSegment:
 
 
 class OpeningDirector:
-    """
-    Controls the opening sequence of the broadcast.
-
-    The purpose of this class is to prevent random race chatter,
-    incident calls, or position-change calls from interrupting the
-    beginning of the show.
-
-    Later this will include:
-    - practice storylines
-    - qualifying storylines
-    - drivers to watch
-    - championship context
-    - track history
-    """
-
     def __init__(self):
         self.stage = OpeningStage.NOT_STARTED
         self.completed = False
@@ -65,10 +49,13 @@ class OpeningDirector:
             self.stage = OpeningStage.TRACK_INFO
             return segments
 
-        if not self.field_rundown_done and results:
-            segments.append(self.build_field_rundown(results, driver_lookup))
-            self.field_rundown_done = True
-            self.stage = OpeningStage.FIELD_RUNDOWN
+        if not self.field_rundown_done:
+            if self.has_valid_lineup(results):
+                segments.append(self.build_field_rundown(results, driver_lookup))
+                self.field_rundown_done = True
+                self.stage = OpeningStage.FIELD_RUNDOWN
+                return segments
+
             return segments
 
         if not self.ready_for_green_done:
@@ -84,11 +71,24 @@ class OpeningDirector:
             self.stage = OpeningStage.READY_FOR_GREEN
             return segments
 
-        if current_lap >= 1:
-            self.completed = True
-            self.stage = OpeningStage.COMPLETE
-
+        self.completed = True
+        self.stage = OpeningStage.COMPLETE
         return segments
+
+    def has_valid_lineup(self, results):
+        if not results:
+            return False
+
+        valid = 0
+
+        for car in results:
+            position = self.safe_int(car.get("Position", 0))
+            car_idx = car.get("CarIdx")
+
+            if car_idx is not None and position > 0:
+                valid += 1
+
+        return valid >= 5
 
     def is_complete(self):
         return self.completed
@@ -104,19 +104,17 @@ class OpeningDirector:
 
         location = self.format_location(city, state, country)
 
-        message = f"Welcome to {track_name}{location}. The field is getting ready for tonight's race."
-
-        return OpeningSegment(
-            message=message,
-            priority=10,
-            speaker="lead",
-            category="opening_welcome",
+        message = (
+            f"Welcome to {track_name}{location}. "
+            f"The field is getting ready for tonight's race."
         )
+
+        return OpeningSegment(message=message, priority=10, speaker="lead", category="opening_welcome")
 
     def build_track_info(self, track_info):
         track_name = track_info.get("track_name", "the speedway")
         track_type = track_info.get("track_type", "")
-        track_length = track_info.get("track_length", "")
+        track_length = self.format_track_length(track_info.get("track_length"))
         weather = track_info.get("weather", "unknown")
         skies = track_info.get("skies", "unknown")
         air_temp = self.format_temperature(track_info.get("air_temp"))
@@ -161,13 +159,14 @@ class OpeningDirector:
             car_idx = car.get("CarIdx")
             position = self.safe_int(car.get("Position", 0))
 
+            if position <= 0:
+                continue
+
             driver_info = driver_lookup.get(car_idx, {})
             name = driver_info.get("name", f"Car {car_idx}")
             number = driver_info.get("number", "?")
 
-            lines.append(
-                f"{self.ordinal(position)}, the {number} of {name}."
-            )
+            lines.append(f"{self.ordinal(position)}, the {number} of {name}.")
 
         return OpeningSegment(
             message=" ".join(lines),
@@ -184,6 +183,27 @@ class OpeningDirector:
         if city:
             return f" in {city}"
         return ""
+
+    def format_track_length(self, value):
+        if not value:
+            return ""
+
+        text = str(value).strip()
+
+        try:
+            number = float(text.split()[0])
+
+            if "km" in text.lower():
+                miles = number * 0.621371
+                return f"{miles:.2f}-mile"
+
+            if "mi" in text.lower():
+                return f"{number:.2f}-mile"
+
+        except Exception:
+            return text
+
+        return text
 
     def format_temperature(self, value):
         if value is None:
