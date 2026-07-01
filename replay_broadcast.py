@@ -21,6 +21,7 @@ from production.incident_detector import IncidentDetector
 from production.race_intelligence import RaceIntelligence
 from production.opening_director import OpeningDirector
 from production.commentary_cleaner import CommentaryCleaner
+from production.openai_director import OpenAIDirector
 
 from broadcast.commentator import Commentator
 from broadcast.booth import BroadcastBooth
@@ -72,6 +73,7 @@ def main():
     race_intelligence = RaceIntelligence()
     opening_director = OpeningDirector()
     commentary_cleaner = CommentaryCleaner()
+    openai_director = OpenAIDirector()
 
     commentator = Commentator()
     jeff = Jeff()
@@ -85,6 +87,7 @@ def main():
     print("=" * 60)
     print(f"Recording: {recording_file}")
     print(f"Snapshots: {telemetry.snapshot_count()}")
+    print(f"OpenAI    : {'ON' if openai_director.is_enabled() else 'OFF'}")
     print("=" * 60)
 
     if not telemetry.startup():
@@ -157,10 +160,23 @@ def main():
                 and editorial_decision.item
             ):
                 item = editorial_decision.item
-                cleaned_summary = commentary_cleaner.clean(item.summary)
+                fallback_summary = commentary_cleaner.clean(item.summary)
+
+                if item.speaker == "lead":
+                    final_summary = openai_director.generate_commentary(
+                        speaker="lead",
+                        assignment=item,
+                        race_state=race_state,
+                        race_knowledge=race_knowledge,
+                        fallback_text=fallback_summary,
+                    )
+                else:
+                    final_summary = fallback_summary
+
+                final_summary = commentary_cleaner.clean(final_summary)
 
                 broadcast_queue.add(
-                    cleaned_summary,
+                    final_summary,
                     priority=item.priority,
                     category=item.category,
                     protected=False,
@@ -239,7 +255,17 @@ def main():
                 event = producer.choose_event(event_queue)
 
                 if event:
-                    commentary = commentary_cleaner.clean(commentator.speak(event))
+                    fallback_commentary = commentary_cleaner.clean(commentator.speak(event))
+
+                    openai_commentary = openai_director.generate_commentary(
+                        speaker="lead",
+                        assignment=event,
+                        race_state=race_state,
+                        race_knowledge=race_knowledge,
+                        fallback_text=fallback_commentary,
+                    )
+
+                    commentary = commentary_cleaner.clean(openai_commentary)
 
                     broadcast_queue.add(
                         commentary,

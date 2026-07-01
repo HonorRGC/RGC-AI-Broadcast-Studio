@@ -4,6 +4,7 @@ from typing import Dict, List, Optional
 import time
 
 from production.editorial_timeline import EditorialTimeline, TimelineStory
+from production.assignment_engine import AssignmentEngine, AssignmentTarget
 
 
 class EditorialDecisionType(Enum):
@@ -45,9 +46,14 @@ class EditorialProducer:
         self.recent_headlines: Dict[str, float] = {}
 
         self.timeline = EditorialTimeline()
+        self.assignment_engine = AssignmentEngine()
 
         self.minimum_repeat_seconds = 45
         self.max_items = 50
+
+    # ---------------------------------------------------------
+    # Story Intake
+    # ---------------------------------------------------------
 
     def submit_story(
         self,
@@ -133,10 +139,12 @@ class EditorialProducer:
 
         return created_items
 
+    # ---------------------------------------------------------
+    # Editorial Timeline
+    # ---------------------------------------------------------
+
     def submit_to_timeline(self, item):
         story_id = self.build_story_id(item)
-
-        delay_seconds = self.choose_delay(item)
 
         timeline_story = TimelineStory(
             id=story_id,
@@ -144,12 +152,77 @@ class EditorialProducer:
             category=item.category,
             priority=item.priority,
             speaker=item.speaker,
-            delay_seconds=delay_seconds,
+            delay_seconds=self.choose_delay(item),
             follow_up_after=30,
             expire_after=120,
         )
 
         self.timeline.submit(timeline_story)
+
+    # ---------------------------------------------------------
+    # Assignment Creation
+    # ---------------------------------------------------------
+
+    def create_assignment_from_item(self, item):
+        target = self.choose_assignment_target(item)
+
+        self.assignment_engine.submit(
+            assignment_id=self.build_story_id(item),
+            target=target,
+            headline=item.headline,
+            summary=item.summary,
+            priority=item.priority,
+            expires_after=45,
+        )
+
+    def choose_assignment_target(self, item):
+        if item.speaker == "jeff":
+            return AssignmentTarget.JEFF
+
+        if item.speaker == "sarah":
+            return AssignmentTarget.SARAH
+
+        return AssignmentTarget.LEAD
+
+    # ---------------------------------------------------------
+    # Assignment Dispatch
+    # ---------------------------------------------------------
+
+    def get_next_assignment(self, speaker):
+        target = self.speaker_to_assignment_target(speaker)
+
+        if not target:
+            return None
+
+        return self.assignment_engine.next_assignment(target)
+
+    def complete_assignment(self, assignment):
+        if assignment:
+            self.assignment_engine.complete(assignment)
+
+    def speaker_to_assignment_target(self, speaker):
+        speaker = str(speaker or "").lower()
+
+        if speaker == "lead":
+            return AssignmentTarget.LEAD
+
+        if speaker == "jeff":
+            return AssignmentTarget.JEFF
+
+        if speaker == "sarah":
+            return AssignmentTarget.SARAH
+
+        if speaker == "openai":
+            return AssignmentTarget.OPENAI
+
+        if speaker == "camera":
+            return AssignmentTarget.CAMERA
+
+        return None
+
+    # ---------------------------------------------------------
+    # Decision Layer
+    # ---------------------------------------------------------
 
     def choose_next_item(self, race_state=None) -> EditorialDecision:
         timeline_story = self.timeline.next_story()
@@ -174,15 +247,31 @@ class EditorialProducer:
                 reason="Item was recently aired.",
             )
 
+        self.create_assignment_from_item(matching_item)
+
+        assignment = self.get_next_assignment(matching_item.speaker)
+
+        if not assignment:
+            return EditorialDecision(
+                decision_type=EditorialDecisionType.HOLD,
+                reason="Assignment was not ready.",
+            )
+
         matching_item.aired_count += 1
         matching_item.last_aired_at = time.time()
         self.recent_headlines[matching_item.headline] = time.time()
 
+        self.complete_assignment(assignment)
+
         return EditorialDecision(
             decision_type=EditorialDecisionType.AIR_NOW,
             item=matching_item,
-            reason="Editorial timeline selected item.",
+            reason=f"Assignment sent to {matching_item.speaker}.",
         )
+
+    # ---------------------------------------------------------
+    # Helpers
+    # ---------------------------------------------------------
 
     def add_item(self, item):
         if not item.headline:
@@ -230,10 +319,6 @@ class EditorialProducer:
             "battle_for_lead",
             "battle_for_top_five",
             "battle_for_top_ten",
-        ]:
-            return 0
-
-        if item.story_type in [
             "race_leader",
             "lead_change",
         ]:
@@ -260,29 +345,6 @@ class EditorialProducer:
 
         return time.time() - last_time >= self.minimum_repeat_seconds
 
-    def adjust_priority_for_race_state(self, item, race_state):
-        priority = item.priority
-
-        if race_state is None:
-            return priority
-
-        moment = getattr(getattr(race_state, "moment", None), "value", "")
-
-        if moment in ["CLOSING_LAPS", "OVERTIME", "WHITE_FLAG"]:
-            if "battle" in item.story_type:
-                priority += 3
-            if "lead" in item.headline.lower():
-                priority += 3
-
-        if moment in ["CAUTION", "RESTART"]:
-            if item.category == "pit_strategy":
-                priority += 2
-
-        if moment in ["PRE_RACE", "PARADE_LAP"]:
-            priority -= 5
-
-        return priority
-
     def choose_speaker(self, story_type):
         if story_type in [
             "biggest_mover",
@@ -308,3 +370,4 @@ class EditorialProducer:
         self.items = []
         self.recent_headlines = {}
         self.timeline = EditorialTimeline()
+        self.assignment_engine = AssignmentEngine()
