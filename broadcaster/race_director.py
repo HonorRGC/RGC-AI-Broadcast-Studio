@@ -16,7 +16,7 @@ class RacePhase(Enum):
 class RaceDirector:
     CHECKERED_FLAG = 0x00000001
     WHITE_FLAG = 0x00000002
-    GREEN_FLAG = 0x00000010
+    GREEN_FLAG = 0x00000004
     YELLOW_FLAG = 0x00000008
     YELLOW_WAVING = 0x00000100
     ONE_LAP_TO_GREEN = 0x00000200
@@ -32,10 +32,6 @@ class RaceDirector:
         self.race_started = False
 
         self.formation_announced = False
-        self.track_report_announced = False
-        self.pre_race_rundown_announced = False
-        self.mid_race_intro_announced = False
-
         self.yellow_announced = False
         self.one_to_green_announced = False
 
@@ -61,21 +57,7 @@ class RaceDirector:
         if new_phase != self.phase:
             self.previous_phase = self.phase
             self.phase = new_phase
-            self.handle_phase_change(results, driver_lookup, scheduler)
-
-        if self.phase == RacePhase.FORMATION:
-            self.handle_pre_race_track_report(track_info, scheduler)
-            self.handle_pre_race_rundown(results, driver_lookup, scheduler)
-
-        if self.phase == RacePhase.GREEN and current_lap > 0:
-            self.handle_mid_race_intro(
-                current_lap,
-                total_laps,
-                track_info,
-                results,
-                driver_lookup,
-                scheduler,
-            )
+            self.handle_phase_change(results, driver_lookup, scheduler, track_info)
 
     def is_race_over(self):
         return self.phase == RacePhase.CHECKERED
@@ -87,19 +69,19 @@ class RaceDirector:
         if total_laps > 0 and current_lap >= total_laps:
             return RacePhase.CHECKERED
 
-        if current_lap > 0:
-            return RacePhase.GREEN
-
-        if self.has_flag(session_flags, self.ONE_LAP_TO_GREEN):
-            return RacePhase.ONE_TO_GREEN
-
         if self.has_flag(session_flags, self.CAUTION) or self.has_flag(session_flags, self.CAUTION_WAVING):
             return RacePhase.CAUTION
 
         if self.has_flag(session_flags, self.YELLOW_FLAG) or self.has_flag(session_flags, self.YELLOW_WAVING):
             return RacePhase.CAUTION
 
+        if self.has_flag(session_flags, self.ONE_LAP_TO_GREEN):
+            return RacePhase.ONE_TO_GREEN
+
         if self.has_flag(session_flags, self.GREEN_FLAG) or self.has_flag(session_flags, self.START_GO):
+            return RacePhase.GREEN
+
+        if current_lap > 0:
             return RacePhase.GREEN
 
         if self.race_started:
@@ -113,37 +95,120 @@ class RaceDirector:
 
         return RacePhase.UNKNOWN
 
-    def handle_mid_race_intro(self, current_lap, total_laps, track_info, results, driver_lookup, scheduler):
-        if self.mid_race_intro_announced:
+    def handle_phase_change(self, results, driver_lookup, scheduler, track_info):
+        if self.phase == RacePhase.FORMATION:
+            self.handle_formation(scheduler)
+
+        elif self.phase == RacePhase.GREEN:
+            self.handle_green_flag(scheduler, track_info)
+
+        elif self.phase == RacePhase.CAUTION:
+            self.handle_caution(scheduler, track_info)
+
+        elif self.phase == RacePhase.ONE_TO_GREEN:
+            self.handle_one_to_green(results, driver_lookup, scheduler, track_info)
+
+        elif self.phase == RacePhase.CHECKERED:
+            self.handle_checkered(results, driver_lookup, scheduler, track_info)
+
+    def handle_formation(self, scheduler):
+        if self.formation_announced:
             return
 
-        track_name = track_info.get("track_name", "the speedway") if track_info else "the speedway"
+        scheduler.add(
+            "The field is rolling away for the parade laps as the drivers get ready for the start.",
+            priority=10,
+            category="race_control",
+            protected=True,
+            speaker="lead",
+        )
+        self.formation_announced = True
 
-        if total_laps > 0:
-            message = f"We pick up this race at {track_name} on lap {current_lap} of {total_laps}."
+    def handle_green_flag(self, scheduler, track_info):
+        track_name = self.get_track_name(track_info)
+
+        if self.previous_phase in [RacePhase.CAUTION, RacePhase.ONE_TO_GREEN]:
+            message = f"Green flag is back in the air! We are racing again at {track_name}!"
         else:
-            message = f"We pick up this race at {track_name}, already under green flag conditions."
+            message = f"Green flag is in the air! We are racing at {track_name}!"
 
         scheduler.add(
             message,
-            priority=10,
-            category="mid_race_intro",
+            priority=12,
+            category="race_control",
             protected=True,
+            speaker="lead",
         )
 
-        self.handle_pre_race_track_report(track_info, scheduler)
+        self.yellow_announced = False
+        self.one_to_green_announced = False
 
-        if results:
-            scheduler.add(
-                self.build_running_order_rundown(results, driver_lookup, max_cars=20),
-                priority=9,
-                category="mid_race_rundown",
-                protected=True,
-            )
+    def handle_caution(self, scheduler, track_info):
+        scheduler.clear_race_chatter()
 
-        self.mid_race_intro_announced = True
-        self.pre_race_rundown_announced = True
-        self.formation_announced = True
+        if self.yellow_announced:
+            return
+
+        track_name = self.get_track_name(track_info)
+
+        scheduler.add(
+            f"Caution is on the speedway here at {track_name}. We'll have to see what brought this yellow flag out.",
+            priority=12,
+            category="race_control",
+            protected=True,
+            speaker="lead",
+        )
+
+        self.yellow_announced = True
+        self.one_to_green_announced = False
+
+    def handle_one_to_green(self, results, driver_lookup, scheduler, track_info):
+        if self.one_to_green_announced:
+            return
+
+        track_name = self.get_track_name(track_info)
+
+        scheduler.add(
+            f"One lap to green here at {track_name}. The field is doubling up for the restart.",
+            priority=11,
+            category="race_control",
+            protected=True,
+            speaker="lead",
+        )
+
+        self.one_to_green_announced = True
+
+    def handle_checkered(self, results, driver_lookup, scheduler, track_info):
+        scheduler.clear_race_chatter()
+
+        if self.checkered_announced:
+            return
+
+        winner = self.get_winner(results, driver_lookup)
+        track_name = self.get_track_name(track_info)
+
+        if winner:
+            message = f"Checkered flag is out! {winner} wins at {track_name}!"
+        else:
+            message = f"Checkered flag is out. This race is complete at {track_name}."
+
+        scheduler.add(
+            message,
+            priority=12,
+            category="race_control",
+            protected=True,
+            speaker="lead",
+        )
+
+        scheduler.add(
+            self.build_finish_rundown(results, driver_lookup, max_cars=10),
+            priority=9,
+            category="post_race",
+            protected=True,
+            speaker="lead",
+        )
+
+        self.checkered_announced = True
 
     def handle_lap_calls(self, current_lap, total_laps, scheduler):
         if total_laps <= 0 or current_lap <= 0:
@@ -157,6 +222,7 @@ class RaceDirector:
                 priority=9,
                 category="race_control",
                 protected=True,
+                speaker="lead",
             )
             self.ten_to_go_announced = True
 
@@ -166,6 +232,7 @@ class RaceDirector:
                 priority=9,
                 category="race_control",
                 protected=True,
+                speaker="lead",
             )
             self.five_to_go_announced = True
 
@@ -175,209 +242,36 @@ class RaceDirector:
                 priority=10,
                 category="race_control",
                 protected=True,
+                speaker="lead",
             )
             self.white_flag_announced = True
 
-    def handle_phase_change(self, results, driver_lookup, scheduler):
-        if self.phase == RacePhase.FORMATION:
-            self.handle_formation(scheduler)
+    def get_track_name(self, track_info):
+        if not track_info:
+            return "the speedway"
+        return track_info.get("track_name", "the speedway") or "the speedway"
 
-        elif self.phase == RacePhase.GREEN:
-            self.handle_green_flag(scheduler)
-
-        elif self.phase == RacePhase.CAUTION:
-            self.handle_caution(scheduler)
-
-        elif self.phase == RacePhase.ONE_TO_GREEN:
-            self.handle_one_to_green(results, driver_lookup, scheduler)
-
-        elif self.phase == RacePhase.CHECKERED:
-            self.handle_checkered(results, driver_lookup, scheduler)
-
-    def handle_formation(self, scheduler):
-        if self.formation_announced:
-            return
-
-        scheduler.add(
-            "The field is rolling away for the parade lap. We are getting set for the start.",
-            priority=10,
-            category="race_control",
-            protected=True,
-        )
-        self.formation_announced = True
-
-    def handle_pre_race_track_report(self, track_info, scheduler):
-        if self.track_report_announced or not track_info:
-            return
-
-        track_name = track_info.get("track_name", "the speedway")
-        track_config = track_info.get("track_config", "")
-        track_city = track_info.get("track_city", "")
-        track_country = track_info.get("track_country", "")
-        weather = track_info.get("weather", "unknown")
-        skies = track_info.get("skies", "unknown")
-        air_temp = track_info.get("air_temp")
-        track_temp = track_info.get("track_temp")
-        wind_speed = track_info.get("wind_speed")
-
-        location = ""
-        if track_city and track_country:
-            location = f" in {track_city}, {track_country}"
-        elif track_city:
-            location = f" in {track_city}"
-
-        if track_config and track_config.lower() not in track_name.lower():
-            track_title = f"{track_name}, {track_config}"
-        else:
-            track_title = track_name
-
-        parts = [f"Tonight we are racing at {track_title}{location}."]
-
-        air_f = self.format_temperature_fahrenheit(air_temp)
-        track_f = self.format_temperature_fahrenheit(track_temp)
-
-        if air_f:
-            parts.append(f"Air temperature is {air_f}.")
-
-        if track_f:
-            parts.append(f"Track temperature is {track_f}.")
-
-        if weather != "unknown" or skies != "unknown":
-            parts.append(f"Weather is {weather}, with {skies} skies.")
-
-        wind = self.format_speed_mph(wind_speed)
-        if wind:
-            parts.append(f"Wind speed is {wind}.")
-
-        parts.append(self.track_note(track_name))
-
-        scheduler.add(
-            " ".join(parts),
-            priority=10,
-            category="pre_race_track_report",
-            protected=True,
-        )
-
-        self.track_report_announced = True
-
-    def track_note(self, track_name):
-        name = track_name.lower()
-
-        if "daytona" in name:
-            return "Daytona is all about drafting help, timing, and making the right move at the right moment."
-
-        if "talladega" in name:
-            return "Talladega is one of the biggest drafting tracks in the world, where patience matters until it is time to make a move."
-
-        if "bristol" in name:
-            return "Bristol is short-track racing at high speed, with traffic, rhythm, and patience all playing a major role."
-
-        if "martinsville" in name:
-            return "Martinsville rewards braking discipline, clean corner exit, and keeping the car underneath you all night."
-
-        if "charlotte" in name:
-            return "Charlotte is a classic mile-and-a-half where momentum, tire falloff, and clean air can shape the race."
-
-        if "oxford" in name:
-            return "Oxford Plains is a tight short track where track position, patience, and getting off the corner clean can make the difference."
-
-        return "Track position, tire management, and clean restarts could all be important tonight."
-
-    def handle_pre_race_rundown(self, results, driver_lookup, scheduler):
-        if self.pre_race_rundown_announced:
-            return
-
+    def get_winner(self, results, driver_lookup):
         if not results:
-            return
+            return ""
 
-        scheduler.add(
-            self.build_pre_race_rundown(results, driver_lookup, max_cars=20),
-            priority=9,
-            category="pre_race_rundown",
-            protected=True,
-        )
-        self.pre_race_rundown_announced = True
+        try:
+            leader = sorted(results, key=lambda car: int(car.get("Position", 999)))[0]
+        except Exception:
+            return ""
 
-    def handle_green_flag(self, scheduler):
-        if self.mid_race_intro_announced and self.previous_phase == RacePhase.UNKNOWN:
-            return
+        car_idx = leader.get("CarIdx")
+        driver_info = driver_lookup.get(car_idx, {})
+        number = driver_info.get("number", "?")
+        name = driver_info.get("name", f"Car {car_idx}")
 
-        if self.previous_phase in [RacePhase.CAUTION, RacePhase.ONE_TO_GREEN]:
-            message = "Green flag is back in the air. We are racing again."
-        else:
-            message = "Green flag is in the air. The race is underway."
+        return f"the {number} of {name}"
 
-        scheduler.add(
-            message,
-            priority=10,
-            category="race_control",
-            protected=True,
-        )
+    def build_finish_rundown(self, results, driver_lookup, max_cars=10):
+        if not results:
+            return "Official finishing results are not available yet."
 
-        self.yellow_announced = False
-        self.one_to_green_announced = False
-
-    def handle_caution(self, scheduler):
-        scheduler.clear_race_chatter()
-
-        if self.yellow_announced:
-            return
-
-        scheduler.add(
-            "Yellow flag is out. The caution is on the speedway.",
-            priority=10,
-            category="race_control",
-            protected=True,
-        )
-
-        self.yellow_announced = True
-        self.one_to_green_announced = False
-
-    def handle_one_to_green(self, results, driver_lookup, scheduler):
-        if self.one_to_green_announced:
-            return
-
-        scheduler.add(
-            self.build_field_rundown(results, driver_lookup, max_cars=20),
-            priority=10,
-            category="restart_rundown",
-            protected=True,
-        )
-
-        self.one_to_green_announced = True
-
-    def handle_checkered(self, results, driver_lookup, scheduler):
-        scheduler.clear_race_chatter()
-
-        if self.checkered_announced:
-            return
-
-        scheduler.add(
-            "Checkered flag is out. This race is complete.",
-            priority=10,
-            category="race_control",
-            protected=True,
-        )
-
-        scheduler.add(
-            self.build_finish_rundown(results, driver_lookup, max_cars=20),
-            priority=9,
-            category="post_race",
-            protected=True,
-        )
-
-        self.checkered_announced = True
-
-    def build_pre_race_rundown(self, results, driver_lookup, max_cars=20):
-        lines = ["Here is your starting lineup through the top twenty."]
-
-        for car in self.sort_results(results)[:max_cars]:
-            lines.append(self.format_driver_position(car, driver_lookup))
-
-        return " ".join(lines)
-
-    def build_running_order_rundown(self, results, driver_lookup, max_cars=20):
-        lines = ["Here is the current running order through the top twenty."]
+        lines = ["Here is how they finished."]
 
         for car in self.sort_results(results)[:max_cars]:
             lines.append(self.format_driver_position(car, driver_lookup))
@@ -386,20 +280,9 @@ class RaceDirector:
 
     def build_field_rundown(self, results, driver_lookup, max_cars=20):
         if not results:
-            return "One lap to green. The field is doubling up for the restart."
+            return "The field is doubling up for the restart."
 
-        lines = ["One lap to green. Here's your restart rundown through the top twenty."]
-
-        for car in self.sort_results(results)[:max_cars]:
-            lines.append(self.format_driver_position(car, driver_lookup))
-
-        return " ".join(lines)
-
-    def build_finish_rundown(self, results, driver_lookup, max_cars=20):
-        if not results:
-            return "The race is over. Official finishing results are not available yet."
-
-        lines = ["Here is how they finished."]
+        lines = ["Here is your restart rundown through the top twenty."]
 
         for car in self.sort_results(results)[:max_cars]:
             lines.append(self.format_driver_position(car, driver_lookup))
@@ -465,28 +348,6 @@ class RaceDirector:
             return position + 1
 
         return position
-
-    def format_temperature_fahrenheit(self, value):
-        if value is None:
-            return None
-
-        try:
-            celsius = float(value)
-            fahrenheit = (celsius * 9 / 5) + 32
-            return f"{round(fahrenheit)} degrees Fahrenheit"
-        except Exception:
-            return None
-
-    def format_speed_mph(self, value):
-        if value is None:
-            return None
-
-        try:
-            meters_per_second = float(value)
-            mph = meters_per_second * 2.23694
-            return f"{round(mph)} miles per hour"
-        except Exception:
-            return None
 
     def has_flag(self, session_flags, flag):
         try:

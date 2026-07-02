@@ -21,8 +21,8 @@ class ScheduledBroadcast:
 class BroadcastQueue:
     def __init__(self):
         self.items: List[ScheduledBroadcast] = []
-        self.last_spoken_time = 0
-        self.minimum_gap_seconds = 9
+        self.busy_until = 0.0
+        self.minimum_gap_seconds = 2.5
 
     def add(
         self,
@@ -51,7 +51,11 @@ class BroadcastQueue:
         return len(self.items) > 0
 
     def can_speak(self):
-        return time.time() - self.last_spoken_time >= self.minimum_gap_seconds
+        return time.time() >= self.busy_until
+
+    def estimate_speech_seconds(self, message):
+        words = len(str(message).split())
+        return max(5.0, min(45.0, words / 2.45))
 
     def next_item(self):
         if not self.items or not self.can_speak():
@@ -63,11 +67,18 @@ class BroadcastQueue:
         if not ready_items:
             return None
 
-        ready_items.sort(key=lambda item: item.priority, reverse=True)
-        selected = ready_items[0]
+        protected_ready = [item for item in ready_items if item.protected]
+
+        if protected_ready:
+            selected = protected_ready[0]
+        else:
+            ready_items.sort(key=lambda item: item.priority, reverse=True)
+            selected = ready_items[0]
 
         self.items.remove(selected)
-        self.last_spoken_time = time.time()
+
+        speech_time = self.estimate_speech_seconds(selected.message)
+        self.busy_until = now + speech_time + self.minimum_gap_seconds
 
         return selected
 
