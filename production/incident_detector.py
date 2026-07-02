@@ -173,7 +173,10 @@ class IncidentDetector:
     ):
         incident_delta = incident_count - state.last_incident_count
         position_loss = position - state.last_position
-        lap_distance_loss = state.last_lap_dist_pct - lap_dist_pct
+        lap_distance_loss = self.calculate_lap_distance_loss(
+            state.last_lap_dist_pct,
+            lap_dist_pct,
+        )
         est_time_loss = est_time - state.last_est_time
 
         if incident_delta >= 4:
@@ -243,6 +246,13 @@ class IncidentDetector:
             )
 
         return None
+
+    def calculate_lap_distance_loss(self, previous, current):
+        """Return backward movement while ignoring the normal 1.0 -> 0.0 lap wrap."""
+        loss = previous - current
+        if loss > 0.5:
+            return 0.0
+        return max(loss, 0.0)
 
     def build_event(
         self,

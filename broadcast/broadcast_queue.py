@@ -11,11 +11,16 @@ class ScheduledBroadcast:
     protected: bool = False
     speaker: str = "lead"
     delay_seconds: float = 0.0
+    expires_after: float = 90.0
+    dedupe_key: str = ""
     created_at: float = field(default_factory=time.time)
 
     @property
     def ready_at(self):
         return self.created_at + self.delay_seconds
+
+    def is_expired(self, now):
+        return self.expires_after > 0 and now > self.created_at + self.expires_after
 
 
 class BroadcastQueue:
@@ -32,8 +37,14 @@ class BroadcastQueue:
         protected=False,
         speaker="lead",
         delay_seconds=0.0,
+        expires_after=90.0,
+        dedupe_key="",
     ):
         if not commentary:
+            return
+
+        key = dedupe_key or f"{category}:{speaker}:{commentary.strip().lower()}"
+        if any(item.dedupe_key == key for item in self.items):
             return
 
         self.items.append(
@@ -44,36 +55,35 @@ class BroadcastQueue:
                 protected=protected,
                 speaker=speaker,
                 delay_seconds=delay_seconds,
+                expires_after=expires_after,
+                dedupe_key=key,
             )
         )
 
-    def has_items(self):
-        return len(self.items) > 0
-
-    def can_speak(self):
-        return time.time() >= self.busy_until
+    def can_speak(self, now=None):
+        now = time.time() if now is None else now
+        return now >= self.busy_until
 
     def estimate_speech_seconds(self, message):
         words = len(str(message).split())
         return max(5.0, min(45.0, words / 2.45))
 
-    def next_item(self):
-        if not self.items or not self.can_speak():
+    def next_item(self, now=None):
+        now = time.time() if now is None else now
+        if not self.items or not self.can_speak(now):
             return None
 
-        now = time.time()
+        self.items = [item for item in self.items if not item.is_expired(now)]
         ready_items = [item for item in self.items if item.ready_at <= now]
 
         if not ready_items:
             return None
 
-        protected_ready = [item for item in ready_items if item.protected]
-
-        if protected_ready:
-            selected = protected_ready[0]
-        else:
-            ready_items.sort(key=lambda item: item.priority, reverse=True)
-            selected = ready_items[0]
+        ready_items.sort(
+            key=lambda item: (item.protected, item.priority, -item.created_at),
+            reverse=True,
+        )
+        selected = ready_items[0]
 
         self.items.remove(selected)
 
@@ -82,21 +92,5 @@ class BroadcastQueue:
 
         return selected
 
-    def next_commentary(self):
-        item = self.next_item()
-        if item:
-            return item.message
-        return None
-
-    def clear_unprotected(self):
-        self.items = [item for item in self.items if item.protected]
-
-    def clear_category(self, category):
-        self.items = [
-            item for item in self.items
-            if item.category != category or item.protected
-        ]
-
-    def clear_race_chatter(self):
-        self.clear_category("race_commentary")
-        self.clear_category("color_commentary")
+    def clear_for_race_control(self):
+        self.items = []

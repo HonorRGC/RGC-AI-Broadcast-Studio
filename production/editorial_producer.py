@@ -4,7 +4,6 @@ from typing import Dict, List, Optional
 import time
 
 from production.editorial_timeline import EditorialTimeline, TimelineStory
-from production.assignment_engine import AssignmentEngine, AssignmentTarget
 
 
 class EditorialDecisionType(Enum):
@@ -46,8 +45,6 @@ class EditorialProducer:
         self.recent_headlines: Dict[str, float] = {}
 
         self.timeline = EditorialTimeline()
-        self.assignment_engine = AssignmentEngine()
-
         self.minimum_repeat_seconds = 45
         self.max_items = 50
 
@@ -64,6 +61,7 @@ class EditorialProducer:
         source="unknown",
         driver_name="",
         car_number="",
+        speaker="",
     ):
         if not headline:
             return None
@@ -76,7 +74,7 @@ class EditorialProducer:
             source=source,
             driver_name=driver_name,
             car_number=car_number,
-            speaker=self.choose_speaker(story_type),
+            speaker=speaker or self.choose_speaker(story_type),
             category="race_story",
         )
 
@@ -160,67 +158,6 @@ class EditorialProducer:
         self.timeline.submit(timeline_story)
 
     # ---------------------------------------------------------
-    # Assignment Creation
-    # ---------------------------------------------------------
-
-    def create_assignment_from_item(self, item):
-        target = self.choose_assignment_target(item)
-
-        self.assignment_engine.submit(
-            assignment_id=self.build_story_id(item),
-            target=target,
-            headline=item.headline,
-            summary=item.summary,
-            priority=item.priority,
-            expires_after=45,
-        )
-
-    def choose_assignment_target(self, item):
-        if item.speaker == "jeff":
-            return AssignmentTarget.JEFF
-
-        if item.speaker == "sarah":
-            return AssignmentTarget.SARAH
-
-        return AssignmentTarget.LEAD
-
-    # ---------------------------------------------------------
-    # Assignment Dispatch
-    # ---------------------------------------------------------
-
-    def get_next_assignment(self, speaker):
-        target = self.speaker_to_assignment_target(speaker)
-
-        if not target:
-            return None
-
-        return self.assignment_engine.next_assignment(target)
-
-    def complete_assignment(self, assignment):
-        if assignment:
-            self.assignment_engine.complete(assignment)
-
-    def speaker_to_assignment_target(self, speaker):
-        speaker = str(speaker or "").lower()
-
-        if speaker == "lead":
-            return AssignmentTarget.LEAD
-
-        if speaker == "jeff":
-            return AssignmentTarget.JEFF
-
-        if speaker == "sarah":
-            return AssignmentTarget.SARAH
-
-        if speaker == "openai":
-            return AssignmentTarget.OPENAI
-
-        if speaker == "camera":
-            return AssignmentTarget.CAMERA
-
-        return None
-
-    # ---------------------------------------------------------
     # Decision Layer
     # ---------------------------------------------------------
 
@@ -247,26 +184,14 @@ class EditorialProducer:
                 reason="Item was recently aired.",
             )
 
-        self.create_assignment_from_item(matching_item)
-
-        assignment = self.get_next_assignment(matching_item.speaker)
-
-        if not assignment:
-            return EditorialDecision(
-                decision_type=EditorialDecisionType.HOLD,
-                reason="Assignment was not ready.",
-            )
-
         matching_item.aired_count += 1
         matching_item.last_aired_at = time.time()
         self.recent_headlines[matching_item.headline] = time.time()
 
-        self.complete_assignment(assignment)
-
         return EditorialDecision(
             decision_type=EditorialDecisionType.AIR_NOW,
             item=matching_item,
-            reason=f"Assignment sent to {matching_item.speaker}.",
+            reason=f"Story assigned to {matching_item.speaker}.",
         )
 
     # ---------------------------------------------------------
@@ -370,4 +295,3 @@ class EditorialProducer:
         self.items = []
         self.recent_headlines = {}
         self.timeline = EditorialTimeline()
-        self.assignment_engine = AssignmentEngine()

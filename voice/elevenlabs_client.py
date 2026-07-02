@@ -23,13 +23,14 @@ class ElevenLabsClient:
                 text=text,
             )
 
-            output_path = Path("temp_voice.mp3")
+            output_path = Path(".runtime") / "latest_voice.mp3"
+            output_path.parent.mkdir(parents=True, exist_ok=True)
 
             with open(output_path, "wb") as file:
                 for chunk in audio:
                     file.write(chunk)
 
-            os.startfile(output_path)
+            os.startfile(output_path.resolve())
 
         except Exception as error:
             print("ElevenLabs voice error:")

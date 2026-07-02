@@ -1,6 +1,5 @@
 from enum import Enum
 
-from broadcaster.events import RaceEvent
 from helpers.position_formatter import PositionFormatter
 
 
@@ -27,6 +26,9 @@ class RaceDirector:
     START_GO = 0x80000000
 
     def __init__(self):
+        self.reset()
+
+    def reset(self):
         self.phase = RacePhase.UNKNOWN
         self.previous_phase = RacePhase.UNKNOWN
         self.race_started = False
@@ -59,9 +61,6 @@ class RaceDirector:
             self.phase = new_phase
             self.handle_phase_change(results, driver_lookup, scheduler, track_info)
 
-    def is_race_over(self):
-        return self.phase == RacePhase.CHECKERED
-
     def detect_phase(self, session_flags, results, current_lap, total_laps):
         if self.has_flag(session_flags, self.CHECKERED_FLAG):
             return RacePhase.CHECKERED
@@ -69,14 +68,14 @@ class RaceDirector:
         if total_laps > 0 and current_lap >= total_laps:
             return RacePhase.CHECKERED
 
+        if self.has_flag(session_flags, self.ONE_LAP_TO_GREEN):
+            return RacePhase.ONE_TO_GREEN
+
         if self.has_flag(session_flags, self.CAUTION) or self.has_flag(session_flags, self.CAUTION_WAVING):
             return RacePhase.CAUTION
 
         if self.has_flag(session_flags, self.YELLOW_FLAG) or self.has_flag(session_flags, self.YELLOW_WAVING):
             return RacePhase.CAUTION
-
-        if self.has_flag(session_flags, self.ONE_LAP_TO_GREEN):
-            return RacePhase.ONE_TO_GREEN
 
         if self.has_flag(session_flags, self.GREEN_FLAG) or self.has_flag(session_flags, self.START_GO):
             return RacePhase.GREEN
@@ -119,12 +118,15 @@ class RaceDirector:
             "The field is rolling away for the parade laps as the drivers get ready for the start.",
             priority=10,
             category="race_control",
-            protected=True,
+            protected=False,
             speaker="lead",
+            expires_after=45,
+            dedupe_key="race_control:formation",
         )
         self.formation_announced = True
 
     def handle_green_flag(self, scheduler, track_info):
+        scheduler.clear_for_race_control()
         track_name = self.get_track_name(track_info)
 
         if self.previous_phase in [RacePhase.CAUTION, RacePhase.ONE_TO_GREEN]:
@@ -138,13 +140,15 @@ class RaceDirector:
             category="race_control",
             protected=True,
             speaker="lead",
+            expires_after=30,
+            dedupe_key=f"race_control:green:{self.previous_phase.value}",
         )
 
         self.yellow_announced = False
         self.one_to_green_announced = False
 
     def handle_caution(self, scheduler, track_info):
-        scheduler.clear_race_chatter()
+        scheduler.clear_for_race_control()
 
         if self.yellow_announced:
             return
@@ -157,6 +161,8 @@ class RaceDirector:
             category="race_control",
             protected=True,
             speaker="lead",
+            expires_after=30,
+            dedupe_key="race_control:caution",
         )
 
         self.yellow_announced = True
@@ -166,6 +172,7 @@ class RaceDirector:
         if self.one_to_green_announced:
             return
 
+        scheduler.clear_for_race_control()
         track_name = self.get_track_name(track_info)
 
         scheduler.add(
@@ -174,12 +181,14 @@ class RaceDirector:
             category="race_control",
             protected=True,
             speaker="lead",
+            expires_after=45,
+            dedupe_key="race_control:one_to_green",
         )
 
         self.one_to_green_announced = True
 
     def handle_checkered(self, results, driver_lookup, scheduler, track_info):
-        scheduler.clear_race_chatter()
+        scheduler.clear_for_race_control()
 
         if self.checkered_announced:
             return
@@ -198,6 +207,8 @@ class RaceDirector:
             category="race_control",
             protected=True,
             speaker="lead",
+            expires_after=60,
+            dedupe_key="race_control:checkered",
         )
 
         scheduler.add(
@@ -206,6 +217,8 @@ class RaceDirector:
             category="post_race",
             protected=True,
             speaker="lead",
+            expires_after=180,
+            dedupe_key="post_race:finish_rundown",
         )
 
         self.checkered_announced = True
@@ -278,17 +291,6 @@ class RaceDirector:
 
         return " ".join(lines)
 
-    def build_field_rundown(self, results, driver_lookup, max_cars=20):
-        if not results:
-            return "The field is doubling up for the restart."
-
-        lines = ["Here is your restart rundown through the top twenty."]
-
-        for car in self.sort_results(results)[:max_cars]:
-            lines.append(self.format_driver_position(car, driver_lookup))
-
-        return " ".join(lines)
-
     def format_driver_position(self, car, driver_lookup):
         car_idx = car.get("CarIdx")
         position = self.get_display_position(car)
@@ -354,17 +356,3 @@ class RaceDirector:
             return int(session_flags) & flag != 0
         except Exception:
             return False
-
-    def package_event(self, event):
-        if not isinstance(event, RaceEvent):
-            return None
-
-        if self.phase in [
-            RacePhase.CAUTION,
-            RacePhase.ONE_TO_GREEN,
-            RacePhase.CHECKERED,
-            RacePhase.FORMATION,
-        ]:
-            return None
-
-        return event

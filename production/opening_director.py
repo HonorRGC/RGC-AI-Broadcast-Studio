@@ -88,13 +88,13 @@ class OpeningDirector:
             category="opening_track_info",
         )
 
-    def build_field_rundown(self, results, driver_lookup, max_cars=20):
+    def build_field_rundown(self, results, driver_lookup, max_cars=10):
         sorted_results = sorted(
             results,
             key=lambda car: self.safe_int(car.get("Position", 999)),
         )
 
-        lines = ["Here is your starting lineup through the top twenty."]
+        lines = ["Here is your starting lineup through the top ten."]
 
         for car in sorted_results[:max_cars]:
             car_idx = car.get("CarIdx")

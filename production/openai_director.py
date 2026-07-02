@@ -1,11 +1,11 @@
 from openai import OpenAI
 
-from config import OPENAI_API_KEY, USE_OPENAI
+from config import OPENAI_API_KEY, OPENAI_MODEL, USE_OPENAI
 from production.prompt_builder import PromptBuilder
 
 
 class OpenAIDirector:
-    def __init__(self, model="gpt-5.5"):
+    def __init__(self, model=OPENAI_MODEL):
         self.model = model
         self.prompt_builder = PromptBuilder()
 

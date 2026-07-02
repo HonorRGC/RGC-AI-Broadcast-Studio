@@ -66,8 +66,8 @@ class RaceStateTracker:
             self.state.restart_count += 1
             self.state.green_lap_count = 0
 
-        if is_green:
-            self.state.green_lap_count += 1
+        if is_green and current_lap > self.last_lap:
+            self.state.green_lap_count += current_lap - self.last_lap
 
         self.state.moment = self.determine_moment(
             current_lap,

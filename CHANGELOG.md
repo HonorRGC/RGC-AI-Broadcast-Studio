@@ -1,5 +1,26 @@
 # Changelog
 
+## Version 0.18 - Platform Foundation
+
+### Added
+- One orchestration engine shared by live and replay telemetry
+- JSONL replay reader and telemetry adapter
+- Automated race-control, scheduler, incident, replay, and session tests
+- Dependency metadata and environment template
+- Architecture and development documentation
+
+### Changed
+- Routed pass, pit, and intelligence stories through one editorial path
+- Allowed OpenAI rendering for every assigned booth role
+- Added queue expiration, deduplication, and race-control preemption
+- Reset all production state between sessions
+- Corrected one-to-green flag priority and lap-based green-run counting
+
+### Removed
+- Generated audio and compiled bytecode
+- Duplicate race director, prompt, story, commentary, profile, and queue implementations
+- Empty placeholders and unused legacy modules
+
 ## Version 0.7 - Voice Integration
 
 ### Added

@@ -1,5 +1,3 @@
-import time
-
 from config import (
     USE_ELEVENLABS,
     ELEVENLABS_API_KEY,
@@ -12,10 +10,10 @@ from voice.elevenlabs_client import ElevenLabsClient
 
 
 class BroadcastBooth:
-    def __init__(self):
+    def __init__(self, enable_voice=True):
         self.last_comment = ""
 
-        if USE_ELEVENLABS and ELEVENLABS_API_KEY:
+        if enable_voice and USE_ELEVENLABS and ELEVENLABS_API_KEY:
             self.voice_client = ElevenLabsClient(ELEVENLABS_API_KEY)
         else:
             self.voice_client = None
@@ -37,8 +35,6 @@ class BroadcastBooth:
 
         if self.voice_client and voice_id:
             self.voice_client.speak(commentary, voice_id)
-
-        time.sleep(6)
 
     def get_speaker_label(self, speaker):
         if speaker == "jeff":

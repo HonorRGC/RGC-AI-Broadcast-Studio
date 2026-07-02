@@ -1,12 +1,10 @@
 from broadcaster.events import RaceEvent
 from broadcaster.driver_manager import DriverManager
-from broadcaster.story_engine import StoryEngine
 
 
 class RaceBrain:
     def __init__(self):
         self.driver_manager = DriverManager()
-        self.story_engine = StoryEngine()
 
     def driver_name(self, car_idx):
         if car_idx == 0:
@@ -57,8 +55,6 @@ class RaceBrain:
             driver.last_lap = car.get("LastTime", 0.0)
             driver.incidents = car.get("Incidents", 0)
 
-            self.story_engine.update_story(driver)
-
             if driver.previous_position != 0 and position < driver.previous_position:
                 positions_gained = driver.previous_position - position
                 driver.passes_made += positions_gained
@@ -73,7 +69,7 @@ class RaceBrain:
                     positions_gained_from_start=driver.starting_position - position,
                     passes_made=driver.passes_made,
                     passes_lost=driver.passes_lost,
-                    story=driver.story,
+                    story=self.build_pass_story(driver, positions_gained),
                     lap=driver.laps_completed,
                     importance=self.calculate_importance(
                         driver.previous_position,
@@ -114,10 +110,8 @@ class RaceBrain:
     def build_pass_story(self, driver, positions_gained):
         if driver.current_position == 1:
             return (
-                f"{driver.name} has taken the race lead. "
-                f"Started {driver.starting_position}. "
-                f"Total passes made: {driver.passes_made}. "
-                f"Story: {driver.story}."
+                f"{driver.name} has taken the race lead after starting "
+                f"{driver.starting_position}."
             )
 
         if driver.current_position <= 5:
@@ -125,8 +119,7 @@ class RaceBrain:
                 f"{driver.name} has moved into the top five. "
                 f"Started {driver.starting_position}. "
                 f"Now running {driver.current_position}. "
-                f"Total passes made: {driver.passes_made}. "
-                f"Story: {driver.story}."
+                f"That is {driver.passes_made} positions gained during the race."
             )
 
         if driver.current_position <= 10:
@@ -134,16 +127,14 @@ class RaceBrain:
                 f"{driver.name} has gained a spot inside the top ten. "
                 f"Moved from {driver.previous_position} to {driver.current_position}. "
                 f"Started {driver.starting_position}. "
-                f"Total passes made: {driver.passes_made}. "
-                f"Story: {driver.story}."
+                f"That is {driver.passes_made} positions gained during the race."
             )
 
         return (
             f"{driver.name} gained {positions_gained} position. "
             f"Moved from {driver.previous_position} to {driver.current_position}. "
             f"Started {driver.starting_position}. "
-            f"Total passes made: {driver.passes_made}. "
-            f"Story: {driver.story}."
+            f"That is {driver.passes_made} positions gained during the race."
         )
 
     def calculate_importance(self, old_position, new_position, positions_gained=1):
