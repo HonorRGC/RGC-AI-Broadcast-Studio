@@ -113,9 +113,13 @@ def test_initial_one_to_green_keeps_the_opening_package_available():
 
     emitted = engine.tick(SnapshotSource(snapshot))
 
-    assert emitted.dedupe_key == "race_control:one_to_green:initial"
+    assert emitted.category == "opening_welcome"
     assert any(
-        item.category == "opening_welcome" for item in engine.broadcast_queue.items
+        item.dedupe_key == "race_control:one_to_green:initial"
+        for item in engine.broadcast_queue.items
+    )
+    assert any(
+        item.category == "opening_track_info" for item in engine.broadcast_queue.items
     )
     assert any(
         item.category.startswith("opening_field_rundown")

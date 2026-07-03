@@ -1,5 +1,6 @@
 from broadcaster.events import RaceEvent
 from broadcaster.driver_manager import DriverManager
+from helpers.position_formatter import PositionFormatter
 
 
 class RaceBrain:
@@ -108,34 +109,48 @@ class RaceBrain:
         return position
 
     def build_pass_story(self, driver, positions_gained):
+        starting_position = PositionFormatter.ordinal(driver.starting_position)
+        previous_position = PositionFormatter.ordinal(driver.previous_position)
+        current_position = PositionFormatter.ordinal(driver.current_position)
+        gain_wording = self.position_gain_wording(driver.passes_made)
+
         if driver.current_position == 1:
             return (
                 f"{driver.name} has taken the race lead after starting "
-                f"{driver.starting_position}."
+                f"{starting_position}."
             )
 
         if driver.current_position <= 5:
             return (
                 f"{driver.name} has moved into the top five. "
-                f"Started {driver.starting_position}. "
-                f"Now running {driver.current_position}. "
-                f"That is {driver.passes_made} positions gained during the race."
+                f"The {driver.number} started {starting_position} and is now running "
+                f"{current_position}, {gain_wording}."
             )
 
         if driver.current_position <= 10:
             return (
                 f"{driver.name} has gained a spot inside the top ten. "
-                f"Moved from {driver.previous_position} to {driver.current_position}. "
-                f"Started {driver.starting_position}. "
-                f"That is {driver.passes_made} positions gained during the race."
+                f"The {driver.number} moves from {previous_position} to "
+                f"{current_position} after starting {starting_position}, {gain_wording}."
             )
 
         return (
-            f"{driver.name} gained {positions_gained} position. "
-            f"Moved from {driver.previous_position} to {driver.current_position}. "
-            f"Started {driver.starting_position}. "
-            f"That is {driver.passes_made} positions gained during the race."
+            f"{driver.name} gains {self.position_count(positions_gained)}, moving "
+            f"from {previous_position} to {current_position}. The {driver.number} "
+            f"started {starting_position} and has {gain_wording}."
         )
+
+    def position_gain_wording(self, count):
+        return f"a gain of {self.position_count(count)}"
+
+    def position_count(self, count):
+        try:
+            count = int(count)
+        except (TypeError, ValueError):
+            return f"{count} positions"
+        if count == 1:
+            return "one position"
+        return f"{count} positions"
 
     def calculate_importance(self, old_position, new_position, positions_gained=1):
         if new_position == 1:

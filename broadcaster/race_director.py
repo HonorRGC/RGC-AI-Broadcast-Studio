@@ -181,18 +181,22 @@ class RaceDirector:
                 "The field is doubling up for the restart."
             )
             dedupe_key = "race_control:one_to_green:restart"
+            priority = 11
+            protected = True
         else:
             message = (
                 f"One pace lap remains before the green flag here at {track_name}. "
                 "The field is getting set for the start."
             )
             dedupe_key = "race_control:one_to_green:initial"
+            priority = 8
+            protected = False
 
         scheduler.add(
             message,
-            priority=11,
+            priority=priority,
             category="race_control",
-            protected=True,
+            protected=protected,
             speaker="lead",
             expires_after=45,
             dedupe_key=dedupe_key,

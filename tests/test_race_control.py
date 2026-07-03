@@ -74,6 +74,21 @@ def test_initial_one_to_green_is_not_called_a_restart():
     assert any(item.category == "opening_welcome" for item in queue.items)
 
 
+def test_initial_one_to_green_does_not_jump_ahead_of_welcome():
+    director = RaceDirector()
+    queue = BroadcastQueue()
+    queue.add(
+        "Welcome to Nashville.",
+        priority=10,
+        category="opening_welcome",
+    )
+
+    director.handle_one_to_green([], {}, queue, {"track_name": "Nashville"})
+
+    first = queue.next_item()
+    assert first.category == "opening_welcome"
+
+
 def test_initial_green_is_not_called_a_restart():
     director = RaceDirector()
     queue = BroadcastQueue()
