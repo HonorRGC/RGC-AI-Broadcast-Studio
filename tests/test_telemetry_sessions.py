@@ -98,3 +98,29 @@ def test_live_telemetry_detects_replay_delay_and_returns_to_live_edge():
     assert telemetry.ir.replay_commands[-1] == ("speed", 1)
     assert telemetry.seek_replay_session_time(2, 45.5) is True
     assert ("session_time", 2, 45500) in telemetry.ir.replay_commands
+
+
+def test_live_results_include_the_player_incident_total():
+    telemetry = IRacingTelemetry.__new__(IRacingTelemetry)
+    telemetry.ir = {
+        "SessionNum": 1,
+        "PlayerCarIdx": 3,
+        "PlayerCarMyIncidentCount": 4,
+        "SessionInfo": {
+            "Sessions": [
+                {
+                    "SessionNum": 1,
+                    "SessionType": "Race",
+                    "ResultsPositions": [
+                        {"CarIdx": 3, "Position": 1},
+                        {"CarIdx": 7, "Position": 2},
+                    ],
+                }
+            ]
+        },
+    }
+
+    results = telemetry.get_results()
+
+    assert results[0]["Incidents"] == 4
+    assert "Incidents" not in results[1]

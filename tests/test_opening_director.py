@@ -2,6 +2,9 @@ from production.opening_director import OpeningDirector
 
 
 class TrackTelemetry:
+    def get_total_laps(self):
+        return 80
+
     def get_track_info(self):
         return {
             "track_name": "Nashville Superspeedway",
@@ -56,6 +59,10 @@ def test_opening_waits_for_lineup_after_welcome_and_weather():
     assert lineup_segments[1].camera_sequence == (10, 11)
     assert lineup_segments[0].speaker == "lead"
     assert lineup_segments[1].speaker == "jeff"
+    assert (
+        "That is your 12-car field for 80 laps at Nashville Superspeedway"
+        in lineup_segments[1].message
+    )
     assert director.is_complete() is True
 
 

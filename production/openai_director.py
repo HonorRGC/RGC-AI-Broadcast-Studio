@@ -48,12 +48,15 @@ class OpenAIDirector:
                         "content": prompt["user"],
                     },
                 ],
-                max_output_tokens=120,
+                max_output_tokens=300,
             )
 
             commentary = response.output_text.strip()
 
             if not commentary:
+                return fallback_text
+
+            if commentary[-1] not in ".!?\"'”’":
                 return fallback_text
 
             return commentary

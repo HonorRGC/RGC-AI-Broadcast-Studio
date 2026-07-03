@@ -44,6 +44,7 @@ class RaceDirector:
         self.five_to_go_announced = False
         self.white_flag_announced = False
         self.checkered_announced = False
+        self.progress_milestones_announced = set()
         self.last_results = []
         self.last_driver_lookup = {}
 
@@ -216,7 +217,9 @@ class RaceDirector:
         track_name = self.get_track_name(track_info)
 
         if self.race_started:
-            scheduler.clear_for_race_control()
+            scheduler.clear_for_race_control(
+                preserve_categories=("caution_pit_summary",)
+            )
             message = (
                 f"One lap to green here at {track_name}. "
                 "The field is doubling up for the restart."
@@ -287,6 +290,13 @@ class RaceDirector:
 
         laps_to_go = total_laps - current_lap
 
+        self.handle_progress_milestone(
+            current_lap,
+            total_laps,
+            laps_to_go,
+            scheduler,
+        )
+
         if (
             total_laps > 10
             and 5 < laps_to_go <= 10
@@ -320,6 +330,54 @@ class RaceDirector:
                 speaker="lead",
             )
             self.white_flag_announced = True
+
+    def handle_progress_milestone(
+        self,
+        current_lap,
+        total_laps,
+        laps_to_go,
+        scheduler,
+    ):
+        if total_laps < 20:
+            return
+
+        milestones = [
+            ("quarter", max(1, round(total_laps * 0.25))),
+            ("halfway", max(1, round(total_laps * 0.50))),
+            ("three_quarter", max(1, round(total_laps * 0.75))),
+        ]
+        reached = [item for item in milestones if current_lap >= item[1]]
+        if not reached:
+            return
+
+        latest_name, _ = reached[-1]
+        if latest_name in self.progress_milestones_announced:
+            return
+        if laps_to_go <= 10:
+            return
+
+        messages = {
+            "quarter": (
+                f"{laps_to_go} laps remain. We are one quarter of the way "
+                "through this race."
+            ),
+            "halfway": (
+                f"Halfway at the stripe. {laps_to_go} laps remain in this race."
+            ),
+            "three_quarter": (
+                f"{laps_to_go} laps to go as we enter the final quarter of the race."
+            ),
+        }
+        scheduler.add(
+            messages[latest_name],
+            priority=8,
+            category="race_progress",
+            protected=False,
+            speaker="lead",
+            expires_after=45,
+            dedupe_key=f"race_progress:{latest_name}",
+        )
+        self.progress_milestones_announced.add(latest_name)
 
     def get_track_name(self, track_info):
         if not track_info:

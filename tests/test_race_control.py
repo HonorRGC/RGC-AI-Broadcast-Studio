@@ -22,6 +22,36 @@ def test_lap_wrap_is_not_reported_as_backward_movement():
     assert detector.calculate_lap_distance_loss(0.50, 0.45) == pytest.approx(0.05)
 
 
+def test_recent_trouble_can_supply_a_cautious_caution_cause_fallback():
+    detector = IncidentDetector()
+    results = [{"CarIdx": 0, "Position": 1, "LapsComplete": 5}]
+    drivers = {0: {"name": "Driver One", "number": "1"}}
+    detector.analyze(
+        results,
+        drivers,
+        current_lap=5,
+        track_surface_status=[3],
+        lap_dist_pct_status=[0.50],
+        est_time_status=[10.0],
+        pit_road_status=[False],
+    )
+    detector.analyze(
+        [{"CarIdx": 0, "Position": 3, "LapsComplete": 5}],
+        drivers,
+        current_lap=5,
+        track_surface_status=[3],
+        lap_dist_pct_status=[0.49],
+        est_time_status=[11.0],
+        pit_road_status=[False],
+    )
+
+    event = detector.build_caution_fallback(current_lap=5)
+
+    assert event.trouble_type == "caution candidate"
+    assert "may have found" in event.message
+    assert event.car_idx == 0
+
+
 def test_green_run_counter_counts_laps_not_update_ticks():
     tracker = RaceStateTracker()
     green = RaceDirector.GREEN_FLAG
@@ -60,6 +90,25 @@ def test_new_race_control_state_replaces_an_unspoken_old_state():
 
     assert len(queue.items) == 1
     assert queue.items[0].dedupe_key == "race_control:one_to_green:restart"
+
+
+def test_one_to_green_preserves_a_pending_caution_pit_summary():
+    director = RaceDirector()
+    director.race_started = True
+    queue = BroadcastQueue()
+    queue.add(
+        "A majority of the field has come to pit road.",
+        category="caution_pit_summary",
+        speaker="sarah",
+    )
+
+    director.handle_one_to_green([], {}, queue, {"track_name": "Daytona"})
+
+    assert any(item.category == "caution_pit_summary" for item in queue.items)
+    assert any(
+        item.dedupe_key == "race_control:one_to_green:restart"
+        for item in queue.items
+    )
 
 
 def test_initial_one_to_green_is_not_called_a_restart():
@@ -124,6 +173,21 @@ def test_short_race_does_not_immediately_call_the_closing_stage():
     director.handle_lap_calls(current_lap=5, total_laps=10, scheduler=queue)
     assert len(queue.items) == 1
     assert queue.items[0].message.startswith("5 laps to go")
+
+
+def test_long_race_reports_quarter_half_and_three_quarter_progress():
+    director = RaceDirector()
+    director.race_started = True
+    queue = BroadcastQueue()
+
+    director.handle_lap_calls(current_lap=20, total_laps=80, scheduler=queue)
+    director.handle_lap_calls(current_lap=40, total_laps=80, scheduler=queue)
+    director.handle_lap_calls(current_lap=60, total_laps=80, scheduler=queue)
+
+    messages = [item.message for item in queue.items]
+    assert any("60 laps remain" in message for message in messages)
+    assert any("Halfway" in message and "40 laps remain" in message for message in messages)
+    assert any("20 laps to go" in message for message in messages)
 
 
 def test_finish_rundown_is_limited_to_top_ten():

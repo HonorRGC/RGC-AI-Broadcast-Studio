@@ -48,8 +48,8 @@ class EditorialProducer:
         self.recent_driver_mentions: Dict[str, float] = {}
 
         self.timeline = EditorialTimeline()
-        self.minimum_repeat_seconds = 45
-        self.minimum_driver_repeat_seconds = 30
+        self.minimum_repeat_seconds = 120
+        self.minimum_driver_repeat_seconds = 90
         self.max_items = 50
 
     # ---------------------------------------------------------

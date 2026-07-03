@@ -33,6 +33,16 @@ class IncidentDriverState:
     initialized: bool = False
 
 
+@dataclass
+class CautionCandidate:
+    driver_name: str
+    car_number: str
+    car_idx: int
+    score: float
+    lap: int
+    observed_at: float
+
+
 class IncidentDetector:
     """
     Detects race trouble, not just official incident points.
@@ -54,6 +64,7 @@ class IncidentDetector:
         self.position_loss_threshold = 4
         self.lap_distance_loss_threshold = 0.025
         self.est_time_loss_threshold = 4.0
+        self.recent_caution_candidates: List[CautionCandidate] = []
 
     def analyze(
         self,
@@ -145,6 +156,16 @@ class IncidentDetector:
                 current_lap=current_lap,
             )
 
+            self.remember_caution_candidate(
+                state=state,
+                incident_count=incident_count,
+                position=position,
+                lap_dist_pct=lap_dist_pct,
+                est_time=est_time,
+                track_surface=track_surface,
+                current_lap=current_lap,
+            )
+
             if event and self.can_report(state):
                 events.append(event)
                 state.last_reported_at = time.time()
@@ -159,6 +180,77 @@ class IncidentDetector:
             )
 
         return events
+
+    def build_caution_fallback(self, current_lap, max_age_seconds=8.0):
+        now = time.time()
+        candidates = [
+            candidate
+            for candidate in self.recent_caution_candidates
+            if now - candidate.observed_at <= max_age_seconds
+            and abs(current_lap - candidate.lap) <= 1
+        ]
+        self.recent_caution_candidates = candidates
+        if not candidates:
+            return None
+
+        candidate = max(candidates, key=lambda item: item.score)
+        if candidate.score < 3.0:
+            return None
+
+        self.recent_caution_candidates = []
+        return IncidentEvent(
+            event_type="INCIDENT",
+            driver_name=candidate.driver_name,
+            car_number=candidate.car_number,
+            car_idx=candidate.car_idx,
+            message=(
+                "We may have found the reason for the caution. "
+                f"{candidate.driver_name} in the number {candidate.car_number} "
+                "showed the clearest sign of trouble as the yellow came out."
+            ),
+            importance=9,
+            lap=current_lap,
+            trouble_type="caution candidate",
+        )
+
+    def remember_caution_candidate(
+        self,
+        state,
+        incident_count,
+        position,
+        lap_dist_pct,
+        est_time,
+        track_surface,
+        current_lap,
+    ):
+        incident_delta = max(0, incident_count - state.last_incident_count)
+        position_loss = max(0, position - state.last_position)
+        lap_distance_loss = self.calculate_lap_distance_loss(
+            state.last_lap_dist_pct,
+            lap_dist_pct,
+        )
+        est_time_loss = max(0.0, est_time - state.last_est_time)
+        score = (
+            incident_delta * 3.0
+            + position_loss
+            + lap_distance_loss * 100.0
+            + est_time_loss
+            + (4.0 if self.is_abnormal_surface(track_surface) else 0.0)
+        )
+        if score < 1.0:
+            return
+
+        self.recent_caution_candidates.append(
+            CautionCandidate(
+                driver_name=state.driver_name,
+                car_number=state.car_number,
+                car_idx=state.car_idx,
+                score=score,
+                lap=current_lap,
+                observed_at=time.time(),
+            )
+        )
+        self.recent_caution_candidates = self.recent_caution_candidates[-30:]
 
     def detect_trouble(
         self,

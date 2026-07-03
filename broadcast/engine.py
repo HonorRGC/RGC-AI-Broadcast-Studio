@@ -2,6 +2,7 @@ from broadcast.broadcast_queue import BroadcastQueue
 from broadcaster.race_brain import RaceBrain
 from broadcaster.race_director import RaceDirector, RacePhase
 from production.commentary_cleaner import CommentaryCleaner
+from production.caution_pit_reporter import CautionPitReporter
 from production.action_detector import ActionDetector
 from production.editorial_producer import EditorialDecisionType, EditorialProducer
 from production.incident_detector import IncidentDetector
@@ -33,6 +34,7 @@ class BroadcastEngine:
         self.action_detector = ActionDetector()
         self.editorial_producer = EditorialProducer()
         self.pit_strategy_detector = PitStrategyDetector()
+        self.caution_pit_reporter = CautionPitReporter()
         self.incident_detector = IncidentDetector()
         self.opening_director = OpeningDirector()
         self.broadcast_queue = BroadcastQueue()
@@ -213,13 +215,42 @@ class BroadcastEngine:
             RacePhase.CAUTION,
             RacePhase.ONE_TO_GREEN,
         )
-        for event in self.pit_strategy_detector.analyze(
+        events = self.pit_strategy_detector.analyze(
             results=results,
             driver_lookup=driver_lookup,
             pit_road_status=pit_road_status,
             current_lap=current_lap,
             under_caution=under_caution,
-        ):
+        )
+        if under_caution:
+            report = self.caution_pit_reporter.update(
+                under_caution=True,
+                results=results,
+                driver_lookup=driver_lookup,
+                pit_road_status=pit_road_status,
+            )
+            if report:
+                primary_car_idx = report.car_indices[0] if report.car_indices else None
+                self.broadcast_queue.add(
+                    report.message,
+                    priority=report.importance,
+                    category="caution_pit_summary",
+                    protected=False,
+                    speaker="sarah",
+                    expires_after=45,
+                    dedupe_key=f"caution_pit_wave:{current_lap}",
+                    camera_target_car_idx=primary_car_idx,
+                    participant_car_indices=report.car_indices,
+                )
+            return
+
+        self.caution_pit_reporter.update(
+            under_caution=False,
+            results=results,
+            driver_lookup=driver_lookup,
+            pit_road_status=pit_road_status,
+        )
+        for event in events:
             self.editorial_producer.submit_pit_event(event)
 
     def _collect_incidents(
@@ -243,6 +274,15 @@ class BroadcastEngine:
             est_time_status=telemetry.get_car_idx_est_time(),
             pit_road_status=pit_road_status,
         )
+        caution_just_started = (
+            self.race_director.phase == RacePhase.CAUTION
+            and self.race_director.phase_changed
+            and self.race_director.previous_phase != RacePhase.CAUTION
+        )
+        if not events and caution_just_started:
+            fallback = self.incident_detector.build_caution_fallback(current_lap)
+            if fallback:
+                events = [fallback]
         if not events:
             return
 
@@ -255,13 +295,11 @@ class BroadcastEngine:
         session_time_reader = getattr(telemetry, "get_session_time", None)
         session_num = session_num_reader() if session_num_reader else 0
         session_time = session_time_reader() if session_time_reader else 0.0
-        caution_just_started = (
-            self.race_director.phase == RacePhase.CAUTION
-            and self.race_director.phase_changed
-            and self.race_director.previous_phase != RacePhase.CAUTION
-        )
         for event in events:
-            replay_eligible = event.incident_delta >= 2
+            replay_eligible = (
+                event.incident_delta >= 2
+                or event.trouble_type == "caution candidate"
+            )
             self.broadcast_queue.add(
                 self.commentary_cleaner.clean(event.message),
                 priority=event.importance,

@@ -31,7 +31,16 @@ class OpeningDirector:
             self.track_info_sent = True
 
         if not self.lineup_sent and self.has_valid_lineup(results):
-            segments.extend(self.build_field_rundown(results, driver_lookup))
+            total_laps_reader = getattr(telemetry, "get_total_laps", None)
+            total_laps = total_laps_reader() if total_laps_reader else 0
+            segments.extend(
+                self.build_field_rundown(
+                    results,
+                    driver_lookup,
+                    track_name=track_info.get("track_name", "the speedway"),
+                    total_laps=total_laps,
+                )
+            )
             self.lineup_sent = True
 
         return segments
@@ -108,7 +117,13 @@ class OpeningDirector:
             sentence = f"{sentence} The racing surface is {wetness}.".strip()
         return sentence
 
-    def build_field_rundown(self, results, driver_lookup):
+    def build_field_rundown(
+        self,
+        results,
+        driver_lookup,
+        track_name="",
+        total_laps=0,
+    ):
         zero_based = self.results_are_zero_based(results)
         sorted_results = sorted(
             results,
@@ -140,9 +155,16 @@ class OpeningDirector:
                 if group_number == 1
                 else "Continuing through the starting field."
             )
+            closing = ""
+            if start + self.LINEUP_GROUP_SIZE >= len(entries) and track_name:
+                lap_text = f" for {total_laps} laps" if total_laps else ""
+                closing = (
+                    f" That is your {len(entries)}-car field{lap_text} "
+                    f"at {track_name}."
+                )
             segments.append(
                 OpeningSegment(
-                    f"{intro} {' '.join(group_messages)}",
+                    f"{intro} {' '.join(group_messages)}{closing}",
                     priority=9,
                     speaker="lead" if group_number % 2 == 1 else "jeff",
                     category=f"opening_field_rundown_{group_number}",

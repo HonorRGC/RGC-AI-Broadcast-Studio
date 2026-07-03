@@ -115,7 +115,18 @@ class IRacingTelemetry:
             return 0
 
     def get_results(self):
-        return self.get_current_session().get("ResultsPositions") or []
+        results = [
+            dict(car)
+            for car in self.get_current_session().get("ResultsPositions") or []
+        ]
+        player_car_idx = self.get_player_car_idx()
+        if player_car_idx is not None:
+            incident_count = self.get_player_incident_count()
+            for car in results:
+                if car.get("CarIdx") == player_car_idx:
+                    car["Incidents"] = incident_count
+                    break
+        return results
 
     def get_starting_grid(self):
         """Return the fullest available race grid before live results populate."""
