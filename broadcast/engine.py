@@ -5,6 +5,7 @@ from production.commentary_cleaner import CommentaryCleaner
 from production.caution_pit_reporter import CautionPitReporter
 from production.action_detector import ActionDetector
 from production.editorial_producer import EditorialDecisionType, EditorialProducer
+from production.field_rundown_director import FieldRundownDirector
 from production.incident_detector import IncidentDetector
 from production.openai_director import OpenAIDirector
 from production.opening_director import OpeningDirector
@@ -18,9 +19,10 @@ class BroadcastEngine:
 
     INCIDENT_DETECTION_AFTER_LAP = 2
 
-    def __init__(self, openai_director=None):
+    def __init__(self, openai_director=None, incident_debug=False):
         self.openai_director = openai_director or OpenAIDirector()
         self.commentary_cleaner = CommentaryCleaner()
+        self.incident_debug = bool(incident_debug)
         self.reset()
 
     def reset(self):
@@ -36,6 +38,8 @@ class BroadcastEngine:
         self.pit_strategy_detector = PitStrategyDetector()
         self.caution_pit_reporter = CautionPitReporter()
         self.incident_detector = IncidentDetector()
+        self.incident_detector.debug = self.incident_debug
+        self.field_rundown_director = FieldRundownDirector()
         self.opening_director = OpeningDirector()
         self.broadcast_queue = BroadcastQueue()
 
@@ -109,6 +113,12 @@ class BroadcastEngine:
             )
 
         if self.race_director.phase == RacePhase.GREEN:
+            self._queue_quarter_field_rundown(
+                results,
+                driver_lookup,
+                current_lap,
+                total_laps,
+            )
             self.editorial_producer.submit_race_knowledge(race_knowledge)
             self._collect_action_stories(
                 telemetry,
@@ -253,6 +263,31 @@ class BroadcastEngine:
         for event in events:
             self.editorial_producer.submit_pit_event(event)
 
+    def _queue_quarter_field_rundown(
+        self,
+        results,
+        driver_lookup,
+        current_lap,
+        total_laps,
+    ):
+        for segment in self.field_rundown_director.update(
+            results=results,
+            driver_lookup=driver_lookup,
+            current_lap=current_lap,
+            total_laps=total_laps,
+            under_green=True,
+        ):
+            self.broadcast_queue.add(
+                segment.message,
+                priority=segment.priority,
+                category=segment.category,
+                protected=False,
+                speaker=segment.speaker,
+                expires_after=180,
+                dedupe_key=segment.category,
+                camera_sequence=segment.camera_sequence,
+            )
+
     def _collect_incidents(
         self,
         telemetry,
@@ -284,6 +319,12 @@ class BroadcastEngine:
             if fallback:
                 events = [fallback]
         if not events:
+            if caution_just_started:
+                self.report_incident_debug(
+                    "caution started but no replay candidate was found",
+                    results,
+                    telemetry,
+                )
             return
 
         if self.race_director.phase not in (
@@ -318,6 +359,34 @@ class BroadcastEngine:
                 replay_incident_delta=event.incident_delta,
                 replay_multi_angle=replay_eligible and caution_just_started,
             )
+
+    def report_incident_debug(self, reason, results, telemetry):
+        if not self.incident_debug:
+            return
+
+        incident_cars = [
+            car for car in results or []
+            if self.safe_int(car.get("Incidents", 0)) > 0
+        ]
+        surfaces = telemetry.get_car_idx_track_surface()
+        abnormal_surface_count = sum(
+            1 for surface in surfaces or []
+            if self.incident_detector.is_abnormal_surface(surface)
+        )
+        counters = "available" if incident_cars else "not changing or unavailable"
+        print(
+            "INCIDENT DEBUG: "
+            f"{reason}; incident counters {counters}; "
+            f"abnormal surface cars={abnormal_surface_count}; "
+            f"recent candidates={len(self.incident_detector.recent_caution_candidates)}."
+        )
+
+    @staticmethod
+    def safe_int(value, default=0):
+        try:
+            return int(value)
+        except Exception:
+            return default
 
     def _queue_editorial_decision(self, race_state, race_knowledge):
         decision = self.editorial_producer.choose_next_item(race_state=race_state)

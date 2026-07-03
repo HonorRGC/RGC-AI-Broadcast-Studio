@@ -119,6 +119,17 @@ class IRacingTelemetry:
             dict(car)
             for car in self.get_current_session().get("ResultsPositions") or []
         ]
+        incident_counts = self.get_car_idx_incident_counts()
+        if incident_counts:
+            for car in results:
+                car_idx = car.get("CarIdx")
+                try:
+                    count = incident_counts[int(car_idx)]
+                except (IndexError, TypeError, ValueError):
+                    continue
+                if count is not None:
+                    car["Incidents"] = int(count)
+
         player_car_idx = self.get_player_car_idx()
         if player_car_idx is not None:
             incident_count = self.get_player_incident_count()
@@ -225,6 +236,18 @@ class IRacingTelemetry:
                 pass
 
         return 0
+
+    def get_car_idx_incident_counts(self):
+        for key in [
+            "CarIdxIncidentCount",
+            "CarIdxIncidents",
+            "CarIdxMyIncidentCount",
+            "CarIdxDriverIncidentCount",
+        ]:
+            values = self.safe_array_read(key)
+            if values:
+                return values
+        return []
 
     def get_car_idx_on_pit_road(self):
         try:

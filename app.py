@@ -52,6 +52,11 @@ def parse_args():
         default=8.0,
         help="Seconds to show each incident replay angle",
     )
+    parser.add_argument(
+        "--incident-debug",
+        action="store_true",
+        help="Print caution incident-detection diagnostics when no replay is queued",
+    )
     return parser.parse_args()
 
 
@@ -117,7 +122,7 @@ def report_camera_decision(decision):
 
 def main():
     args = parse_args()
-    engine = BroadcastEngine()
+    engine = BroadcastEngine(incident_debug=args.incident_debug)
     booth = BroadcastBooth(enable_voice=not args.no_voice)
     camera_director = CameraDirector(
         mode=args.camera_mode,
@@ -149,6 +154,8 @@ def main():
         f"Sarah={'SET' if voice_ids['sarah'] else 'MISSING'}"
     )
     print(f"Incident replay: {args.incident_replay.upper()}")
+    if args.incident_debug:
+        print("Incident debug: ON")
     print(
         f"Camera: {args.camera_mode.upper()} "
         f"(stories: {args.camera_group} | home: {args.camera_home_group})"

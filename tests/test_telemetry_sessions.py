@@ -124,3 +124,29 @@ def test_live_results_include_the_player_incident_total():
 
     assert results[0]["Incidents"] == 4
     assert "Incidents" not in results[1]
+
+
+def test_live_results_include_per_car_incident_counts_when_available():
+    telemetry = IRacingTelemetry.__new__(IRacingTelemetry)
+    telemetry.ir = {
+        "SessionNum": 1,
+        "PlayerCarIdx": 99,
+        "CarIdxIncidentCount": [0, 4, 0, 6],
+        "SessionInfo": {
+            "Sessions": [
+                {
+                    "SessionNum": 1,
+                    "SessionType": "Race",
+                    "ResultsPositions": [
+                        {"CarIdx": 1, "Position": 1},
+                        {"CarIdx": 3, "Position": 2},
+                    ],
+                }
+            ]
+        },
+    }
+
+    results = telemetry.get_results()
+
+    assert results[0]["Incidents"] == 4
+    assert results[1]["Incidents"] == 6

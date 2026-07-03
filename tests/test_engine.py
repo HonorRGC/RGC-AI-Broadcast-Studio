@@ -239,6 +239,41 @@ def test_engine_preserves_camera_target_for_close_action():
     assert action_items[0].participant_car_indices == (0, 1, 2)
 
 
+def test_engine_queues_quarter_field_rundown_under_green():
+    results = [
+        {"CarIdx": index, "Position": index, "LapsComplete": 10}
+        for index in range(12)
+    ]
+    drivers = {
+        index: {"name": f"Driver {index + 1}", "number": str(index + 1)}
+        for index in range(12)
+    }
+    snapshot = TelemetrySnapshot(
+        lap=10,
+        total_laps=40,
+        session_flags=RaceFlags.GREEN,
+        results=results,
+        driver_lookup=drivers,
+        pit_road_status=[False] * 12,
+        track_surface=[3] * 12,
+        track_surface_material=[0] * 12,
+        lap_dist_pct=[0.1] * 12,
+        est_time=[10.0] * 12,
+    )
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    engine.race_director.race_started = True
+
+    engine.tick(SnapshotSource(snapshot))
+
+    rundown = [
+        item for item in engine.broadcast_queue.items
+        if item.category.startswith("quarter_field_rundown")
+    ]
+    assert len(rundown) == 2
+    assert rundown[0].camera_sequence == tuple(range(8))
+    assert "field as they ran when we froze the order" in rundown[0].message
+
+
 def test_pass_story_carries_overtaking_car_as_camera_target():
     engine = BroadcastEngine(openai_director=SilentOpenAI())
     drivers = {

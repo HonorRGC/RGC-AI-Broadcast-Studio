@@ -213,6 +213,12 @@ class EditorialProducer:
                 reason="Item was recently aired.",
             )
 
+        if self.should_hold_for_late_race(matching_item, race_state):
+            return EditorialDecision(
+                decision_type=EditorialDecisionType.HOLD,
+                reason="Late race is focused on the leaders.",
+            )
+
         matching_item.aired_count += 1
         matching_item.last_aired_at = time.time()
         self.recent_headlines[matching_item.headline] = time.time()
@@ -294,6 +300,32 @@ class EditorialProducer:
             return 5
 
         return 8
+
+    def should_hold_for_late_race(self, item, race_state):
+        if not race_state:
+            return False
+
+        laps_remaining = getattr(race_state, "laps_remaining", 999)
+        try:
+            laps_remaining = int(laps_remaining)
+        except Exception:
+            laps_remaining = 999
+
+        if laps_remaining > 5:
+            return False
+
+        leader_story_types = {
+            "battle_for_lead",
+            "lead_change",
+            "race_leader",
+            "side_by_side",
+            "three_car_battle",
+        }
+        if item.story_type in leader_story_types:
+            return False
+        if item.priority >= 10:
+            return False
+        return True
 
     def can_air(self, item):
         if item.driver_name and item.priority < 10:
