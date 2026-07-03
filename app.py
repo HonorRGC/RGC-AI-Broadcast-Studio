@@ -58,7 +58,11 @@ def run_source(source, engine, booth, camera_director, tick_seconds):
 
 
 def report_camera_decision(decision):
-    if decision.status not in ("suggested", "switched", "failed"):
+    if decision.status not in ("suggested", "switched", "failed", "live"):
+        return
+
+    if decision.status == "live":
+        print("CAMERA: replay view returned to live racing.")
         return
 
     if decision.status == "failed":

@@ -88,6 +88,24 @@ class RaceBrain:
 
         return events
 
+    def seed_starting_positions(self, results, driver_lookup=None):
+        driver_lookup = driver_lookup or {}
+        zero_based_positions = self.results_are_zero_based(results or [])
+        for car in results or []:
+            car_idx = car.get("CarIdx")
+            raw_position = car.get("Position")
+            if car_idx is None or raw_position is None:
+                continue
+            position = self.display_position(raw_position, zero_based_positions)
+            driver = self.driver_manager.get_driver(car_idx)
+            driver_info = driver_lookup.get(car_idx, {})
+            driver.name = driver_info.get("name", self.driver_name(car_idx))
+            driver.number = driver_info.get("number", "?")
+            if driver.starting_position == 0:
+                driver.starting_position = position
+                driver.current_position = position
+                driver.previous_position = position
+
     def results_are_zero_based(self, results):
         positions = []
 
@@ -113,7 +131,7 @@ class RaceBrain:
         starting_position = PositionFormatter.ordinal(driver.starting_position)
         previous_position = PositionFormatter.ordinal(driver.previous_position)
         current_position = PositionFormatter.ordinal(driver.current_position)
-        gain_wording = self.position_gain_wording(driver.passes_made)
+        net_change_wording = self.net_position_wording(driver)
 
         if driver.current_position == 1:
             return (
@@ -125,24 +143,30 @@ class RaceBrain:
             return (
                 f"{driver.name} has moved into the top five. "
                 f"The {driver.number} started {starting_position} and is now running "
-                f"{current_position}, {gain_wording}."
+                f"{current_position}, {net_change_wording}."
             )
 
         if driver.current_position <= 10:
             return (
                 f"{driver.name} has gained a spot inside the top ten. "
                 f"The {driver.number} moves from {previous_position} to "
-                f"{current_position} after starting {starting_position}, {gain_wording}."
+                f"{current_position} after starting {starting_position}, "
+                f"{net_change_wording}."
             )
 
         return (
             f"{driver.name} gains {self.position_count(positions_gained)}, moving "
             f"from {previous_position} to {current_position}. The {driver.number} "
-            f"started {starting_position} and has {gain_wording}."
+            f"started {starting_position} and is {net_change_wording}."
         )
 
-    def position_gain_wording(self, count):
-        return f"a gain of {self.position_count(count)}"
+    def net_position_wording(self, driver):
+        net_gain = driver.starting_position - driver.current_position
+        if net_gain > 0:
+            return f"a net gain of {self.position_count(net_gain)}"
+        if net_gain == 0:
+            return "back in the position where it started"
+        return f"{self.position_count(abs(net_gain))} behind its starting spot"
 
     def position_count(self, count):
         try:

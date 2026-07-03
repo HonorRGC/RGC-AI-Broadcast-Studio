@@ -45,9 +45,11 @@ class EditorialProducer:
     def __init__(self):
         self.items: List[EditorialItem] = []
         self.recent_headlines: Dict[str, float] = {}
+        self.recent_driver_mentions: Dict[str, float] = {}
 
         self.timeline = EditorialTimeline()
         self.minimum_repeat_seconds = 45
+        self.minimum_driver_repeat_seconds = 30
         self.max_items = 50
 
     # ---------------------------------------------------------
@@ -214,6 +216,8 @@ class EditorialProducer:
         matching_item.aired_count += 1
         matching_item.last_aired_at = time.time()
         self.recent_headlines[matching_item.headline] = time.time()
+        if matching_item.driver_name:
+            self.recent_driver_mentions[matching_item.driver_name.casefold()] = time.time()
 
         return EditorialDecision(
             decision_type=EditorialDecisionType.AIR_NOW,
@@ -292,6 +296,17 @@ class EditorialProducer:
         return 8
 
     def can_air(self, item):
+        if item.driver_name and item.priority < 10:
+            last_driver_time = self.recent_driver_mentions.get(
+                item.driver_name.casefold()
+            )
+            if (
+                last_driver_time is not None
+                and time.time() - last_driver_time
+                < self.minimum_driver_repeat_seconds
+            ):
+                return False
+
         last_time = self.recent_headlines.get(item.headline)
 
         if last_time is None:
@@ -323,4 +338,5 @@ class EditorialProducer:
     def clear(self):
         self.items = []
         self.recent_headlines = {}
+        self.recent_driver_mentions = {}
         self.timeline = EditorialTimeline()

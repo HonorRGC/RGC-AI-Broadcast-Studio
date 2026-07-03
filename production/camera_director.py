@@ -40,6 +40,8 @@ class CameraDirector:
         self.current_role = ""
         self.last_switch_at = None
         self.return_home_at = None
+        self.live_edge_initialized = False
+        self.last_live_sync_at = None
         self.clear_sequence()
 
     def update(self, telemetry):
@@ -47,6 +49,10 @@ class CameraDirector:
             return CameraDecision("ignored", "Camera direction is inactive.")
 
         now = self.clock()
+        live_decision = self.ensure_live_edge(telemetry, now)
+        if live_decision is not None:
+            return live_decision
+
         if (
             self.sequence
             and self.next_sequence_at is not None
@@ -80,6 +86,37 @@ class CameraDirector:
                 return self.focus_home(telemetry, now, force=True)
 
         return CameraDecision("held", "The current camera shot remains active.")
+
+    def ensure_live_edge(self, telemetry, now):
+        if self.mode != "auto":
+            return None
+
+        checker = getattr(telemetry, "is_replay_at_live_edge", None)
+        at_live_edge = checker() if checker else None
+        if at_live_edge is True:
+            self.live_edge_initialized = True
+            return None
+
+        needs_sync = at_live_edge is False or not self.live_edge_initialized
+        if not needs_sync:
+            return None
+        if (
+            self.last_live_sync_at is not None
+            and now - self.last_live_sync_at < 2.0
+        ):
+            return None
+
+        sync = getattr(telemetry, "return_to_live", None)
+        if sync is None:
+            self.live_edge_initialized = True
+            return None
+
+        self.last_live_sync_at = now
+        if not sync():
+            return CameraDecision("failed", "iRacing did not accept the return-to-live command.")
+
+        self.live_edge_initialized = True
+        return CameraDecision("live", "Replay view returned to the live edge.")
 
     def follow(self, item, telemetry):
         if self.mode == "off":

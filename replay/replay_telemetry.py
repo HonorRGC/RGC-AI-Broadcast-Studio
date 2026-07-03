@@ -69,6 +69,12 @@ class ReplayTelemetry:
     def get_camera_groups(self):
         return []
 
+    def is_replay_at_live_edge(self, frame_tolerance=120):
+        return True
+
+    def return_to_live(self):
+        return False
+
     def get_car_idx_on_pit_road(self):
         return self._snapshot_list("pit_road_status")
 

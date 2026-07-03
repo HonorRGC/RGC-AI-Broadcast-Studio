@@ -144,6 +144,7 @@ class OpeningDirector:
                 OpeningSegment(
                     f"{intro} {' '.join(group_messages)}",
                     priority=9,
+                    speaker="lead" if group_number % 2 == 1 else "jeff",
                     category=f"opening_field_rundown_{group_number}",
                     camera_sequence=group_car_indices,
                 )

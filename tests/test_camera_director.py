@@ -6,6 +6,8 @@ from production.camera_director import CameraDirector
 class CameraTelemetry:
     def __init__(self):
         self.switches = []
+        self.at_live_edge = True
+        self.return_to_live_calls = 0
 
     def get_driver_lookup(self):
         return {
@@ -33,6 +35,14 @@ class CameraTelemetry:
 
     def switch_camera_to_car(self, car_number, group_number, camera_number=0):
         self.switches.append((car_number, group_number, camera_number))
+        return True
+
+    def is_replay_at_live_edge(self):
+        return self.at_live_edge
+
+    def return_to_live(self):
+        self.return_to_live_calls += 1
+        self.at_live_edge = True
         return True
 
 
@@ -158,3 +168,14 @@ def test_incident_camera_can_interrupt_the_minimum_hold():
 
     assert decision.status == "switched"
     assert telemetry.switches[-1] == ("24", 4, 0)
+
+
+def test_auto_mode_returns_a_behind_replay_view_to_live():
+    telemetry = CameraTelemetry()
+    telemetry.at_live_edge = False
+    director = CameraDirector(mode="auto", clock=lambda: 100.0)
+
+    decision = director.update(telemetry)
+
+    assert decision.status == "live"
+    assert telemetry.return_to_live_calls == 1

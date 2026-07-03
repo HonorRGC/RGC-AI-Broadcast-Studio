@@ -43,6 +43,22 @@ class IRacingTelemetry:
         except Exception:
             return 0
 
+    def is_replay_at_live_edge(self, frame_tolerance=120):
+        frame_number = self.safe_read("ReplayFrameNum")
+        frame_end = self.safe_read("ReplayFrameNumEnd")
+        try:
+            return int(frame_end) - int(frame_number) <= int(frame_tolerance)
+        except (TypeError, ValueError):
+            return None
+
+    def return_to_live(self):
+        try:
+            seek_sent = self.ir.replay_search(irsdk.RpySrchMode.to_end)
+            speed_sent = self.ir.replay_set_play_speed(1)
+            return bool(seek_sent and speed_sent)
+        except Exception:
+            return False
+
     def get_current_session_num(self):
         try:
             return int(self.ir["SessionNum"])

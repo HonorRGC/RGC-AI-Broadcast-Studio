@@ -68,3 +68,25 @@ def test_live_telemetry_exposes_camera_groups_and_switches_by_car_number():
     assert telemetry.get_camera_groups()[0]["GroupName"] == "TV1"
     assert telemetry.switch_camera_to_car("14", 4) is True
     assert telemetry.ir.commands == [("14", 4, 0)]
+
+
+def test_live_telemetry_detects_replay_delay_and_returns_to_live_edge():
+    class FakeIR(dict):
+        def __init__(self):
+            super().__init__(ReplayFrameNum=1000, ReplayFrameNumEnd=1600)
+            self.replay_commands = []
+
+        def replay_search(self, mode):
+            self.replay_commands.append(("search", mode))
+            return 1
+
+        def replay_set_play_speed(self, speed):
+            self.replay_commands.append(("speed", speed))
+            return 1
+
+    telemetry = IRacingTelemetry.__new__(IRacingTelemetry)
+    telemetry.ir = FakeIR()
+
+    assert telemetry.is_replay_at_live_edge() is False
+    assert telemetry.return_to_live() is True
+    assert telemetry.ir.replay_commands[-1] == ("speed", 1)

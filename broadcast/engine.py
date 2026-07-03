@@ -70,6 +70,10 @@ class BroadcastEngine:
 
         grid_reader = getattr(telemetry, "get_starting_grid", None)
         starting_grid = grid_reader() if grid_reader else results
+        self.race_brain.seed_starting_positions(
+            starting_grid or results,
+            driver_lookup,
+        )
         self._queue_opening(
             telemetry,
             starting_grid or results,
