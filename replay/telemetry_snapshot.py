@@ -7,6 +7,7 @@ class TelemetrySnapshot:
     timestamp: float = 0.0
     lap: int = 0
     total_laps: int = 0
+    session_type: str = "Race"
     session_flags: int = 0
     track_info: dict[str, Any] = field(default_factory=dict)
     results: list[dict[str, Any]] = field(default_factory=list)
@@ -28,6 +29,7 @@ class TelemetrySnapshot:
             timestamp=timestamp,
             lap=telemetry.get_lap(),
             total_laps=telemetry.get_total_laps(),
+            session_type=telemetry.get_session_type(),
             session_flags=telemetry.get_session_flags(),
             track_info=telemetry.get_track_info(),
             results=telemetry.get_results(),

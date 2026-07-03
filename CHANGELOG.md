@@ -6,12 +6,16 @@
 - Progressive pre-race welcome, track, weather, and complete starting-field segments
 - Support for grid positions reported as either zero- or one-based values
 - Regression coverage based on the first live iRacing test
+- Practice, Qualifying, Warmup, and Race session detection
+- Safe startup voice diagnostics and a standalone `--voice-test`
 
 ### Fixed
 - Initial green flag being described as a restart
 - Opening package being skipped when connecting at one-to-green
 - Zero-second gaps being announced as active battles
 - Closing-stage calls firing immediately in short races
+- Commentary starting before the Race session at multi-session league events
+- Session data being read from the wrong iRacing session index
 
 ## Version 0.18 - Platform Foundation
 

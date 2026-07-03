@@ -29,6 +29,9 @@ class SnapshotSource:
     def get_session_flags(self):
         return self.snapshot.session_flags
 
+    def get_session_type(self):
+        return self.snapshot.session_type
+
     def get_track_info(self):
         return self.snapshot.track_info
 
@@ -117,8 +120,53 @@ def test_initial_one_to_green_keeps_the_opening_package_available():
     )
 
 
+def test_engine_is_silent_until_the_race_session_begins():
+    results = [
+        {"CarIdx": index, "Position": index, "LapsComplete": 0}
+        for index in range(5)
+    ]
+    drivers = {
+        index: {"name": f"Driver {index + 1}", "number": str(index + 1)}
+        for index in range(5)
+    }
+    source = SnapshotSource(
+        TelemetrySnapshot(
+            session_type="Practice",
+            results=results,
+            driver_lookup=drivers,
+        )
+    )
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+
+    assert engine.tick(source) is None
+    assert engine.broadcast_queue.items == []
+
+    source.snapshot = TelemetrySnapshot(
+        session_type="Lone Qualify",
+        results=results,
+        driver_lookup=drivers,
+    )
+    assert engine.tick(source) is None
+    assert engine.broadcast_queue.items == []
+
+    source.snapshot = TelemetrySnapshot(
+        session_type="Race",
+        total_laps=20,
+        session_flags=RaceFlags.START_READY,
+        track_info={"track_name": "Nashville"},
+        results=results,
+        driver_lookup=drivers,
+        pit_road_status=[False] * 5,
+    )
+    emitted = engine.tick(source)
+
+    assert emitted.category == "opening_welcome"
+    assert engine.race_director.race_started is False
+
+
 class RaceFlags:
     GREEN = 0x00000004
     CAUTION = 0x00004000
     ONE_TO_GREEN = 0x00000200
+    START_READY = 0x20000000
     START_GO = 0x80000000

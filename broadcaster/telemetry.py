@@ -37,18 +37,38 @@ class IRacingTelemetry:
         except Exception:
             return 0
 
+    def get_current_session_num(self):
+        try:
+            return int(self.ir["SessionNum"])
+        except Exception:
+            session_info = self.get_session_info() or {}
+            try:
+                return int(session_info.get("CurrentSessionNum", 0))
+            except (TypeError, ValueError):
+                return 0
+
+    def get_current_session(self):
+        session_info = self.get_session_info() or {}
+        sessions = session_info.get("Sessions", []) or []
+        current_session_num = self.get_current_session_num()
+
+        for session in sessions:
+            try:
+                if int(session.get("SessionNum")) == current_session_num:
+                    return session
+            except (TypeError, ValueError):
+                continue
+
+        if 0 <= current_session_num < len(sessions):
+            return sessions[current_session_num]
+        return {}
+
+    def get_session_type(self):
+        session = self.get_current_session()
+        return session.get("SessionType") or session.get("SessionName") or "Unknown"
+
     def get_total_laps(self):
-        session_info = self.get_session_info()
-        if not session_info:
-            return 0
-
-        current_session = session_info.get("CurrentSessionNum", 0)
-        sessions = session_info.get("Sessions", [])
-
-        if current_session >= len(sessions):
-            return 0
-
-        session = sessions[current_session]
+        session = self.get_current_session()
 
         try:
             return int(session.get("SessionLaps", 0))
@@ -56,17 +76,7 @@ class IRacingTelemetry:
             return 0
 
     def get_results(self):
-        session_info = self.get_session_info()
-        if not session_info:
-            return []
-
-        current_session = session_info.get("CurrentSessionNum", 0)
-        sessions = session_info.get("Sessions", [])
-
-        if current_session >= len(sessions):
-            return []
-
-        return sessions[current_session].get("ResultsPositions") or []
+        return self.get_current_session().get("ResultsPositions") or []
 
     def get_driver_lookup(self):
         driver_info = self.get_driver_info()

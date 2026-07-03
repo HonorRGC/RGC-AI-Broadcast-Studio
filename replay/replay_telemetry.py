@@ -30,6 +30,10 @@ class ReplayTelemetry:
         snapshot = self.current_snapshot()
         return snapshot.session_flags if snapshot else 0
 
+    def get_session_type(self):
+        snapshot = self.current_snapshot()
+        return snapshot.session_type if snapshot else "Unknown"
+
     def get_lap(self):
         snapshot = self.current_snapshot()
         return snapshot.race_lap() if snapshot else 0

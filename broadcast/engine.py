@@ -8,6 +8,7 @@ from production.openai_director import OpenAIDirector
 from production.opening_director import OpeningDirector
 from production.pit_strategy_detector import PitStrategyDetector
 from production.race_intelligence import RaceIntelligence
+from production.session_tracker import SessionTracker
 
 
 class BroadcastEngine:
@@ -21,6 +22,10 @@ class BroadcastEngine:
         self.reset()
 
     def reset(self):
+        self.session_tracker = SessionTracker()
+        self._reset_race_session()
+
+    def _reset_race_session(self):
         self.race_brain = RaceBrain()
         self.race_director = RaceDirector()
         self.race_intelligence = RaceIntelligence()
@@ -31,6 +36,19 @@ class BroadcastEngine:
         self.broadcast_queue = BroadcastQueue()
 
     def tick(self, telemetry):
+        session_type_reader = getattr(telemetry, "get_session_type", None)
+        session_type = session_type_reader() if session_type_reader else "Race"
+        transition = self.session_tracker.update(session_type)
+
+        if transition.changed:
+            print(f"iRacing session detected: {transition.current.value}")
+
+        if not self.session_tracker.is_race():
+            return None
+
+        if transition.entered_race:
+            self._reset_race_session()
+
         results = telemetry.get_results()
         driver_lookup = telemetry.get_driver_lookup()
         current_lap = telemetry.get_lap()

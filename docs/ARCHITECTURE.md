@@ -7,12 +7,13 @@ A fact should have one owner and a story should have one route to air. Feature m
 ## Runtime flow
 
 1. A telemetry source exposes the live/replay read contract.
-2. `RaceDirector` owns race phase and protected race-control calls.
-3. `RaceIntelligence`, `RaceBrain`, `IncidentDetector`, and `PitStrategyDetector` produce facts and candidate stories.
-4. `EditorialProducer` deduplicates, delays, prioritizes, and assigns a speaker.
-5. `OpenAIDirector` turns the assignment into concise on-air language. Rule-based text remains the fallback.
-6. `BroadcastQueue` expires stale work and lets protected race control outrank normal stories.
-7. `BroadcastBooth` routes the selected item to console and the appropriate ElevenLabs voice.
+2. `SessionTracker` identifies Practice, Qualifying, Warmup, and Race. Only Race reaches the on-air pipeline.
+3. `RaceDirector` owns race phase and protected race-control calls.
+4. `RaceIntelligence`, `RaceBrain`, `IncidentDetector`, and `PitStrategyDetector` produce facts and candidate stories.
+5. `EditorialProducer` deduplicates, delays, prioritizes, and assigns a speaker.
+6. `OpenAIDirector` turns the assignment into concise on-air language. Rule-based text remains the fallback.
+7. `BroadcastQueue` expires stale work and lets protected race control outrank normal stories.
+8. `BroadcastBooth` routes the selected item to console and the appropriate ElevenLabs voice.
 
 ## Ownership
 
@@ -21,6 +22,7 @@ A fact should have one owner and a story should have one route to air. Feature m
 | Live SDK reads | `broadcaster.telemetry.IRacingTelemetry` |
 | Recorded SDK reads | `replay.replay_telemetry.ReplayTelemetry` |
 | Session orchestration | `broadcast.engine.BroadcastEngine` |
+| Weekend session boundary | `production.session_tracker.SessionTracker` |
 | Race phase | `broadcaster.race_director.RaceDirector` |
 | Developing stories | `production.race_intelligence.RaceIntelligence` |
 | Pass detection | `broadcaster.race_brain.RaceBrain` |

@@ -14,6 +14,8 @@ Current version: **v0.18 - Platform Foundation**
 - Lead, Jeff, and Sarah ElevenLabs voice routing
 - Priority, expiration, and deduplication in the broadcast scheduler
 - Progressive pre-race welcome, weather, track report, and full-field rundown
+- Silent Practice/Qualifying detection with race-state reset when the Race session begins
+- Voice configuration diagnostics and a standalone ElevenLabs test command
 - Automated tests for the critical orchestration rules
 
 ## Known limitations
@@ -30,4 +32,4 @@ Collect representative race recordings and use them to validate incident detecti
 
 ## Planned weekend-session intelligence
 
-The intended broadcast lifecycle begins in practice, carries driver observations into qualifying, and then uses qualifying and practice context during the race. Session transitions must reset session-specific timing while preserving a separate weekend memory. This is the next architectural layer after race-mode validation.
+The broadcast now recognizes Practice, Qualifying, Warmup, and Race, but intentionally remains silent before the Race session. The next layer will collect practice and qualifying observations into a separate weekend memory while preserving the current rule that on-air commentary begins only when the Race session opens.

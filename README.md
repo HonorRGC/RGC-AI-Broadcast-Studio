@@ -15,6 +15,8 @@ iRacing or JSONL replay
 
 Both live and replay telemetry use the same `BroadcastEngine`. Race-control messages can preempt stale commentary, pending stories are deduplicated and expired, and every story has one route to air.
 
+For multi-session league events, Practice and Qualifying are detected but remain silent. Entering the Race session resets race-only state and begins the welcome, weather, track report, and starting-field rundown while cars are gridding.
+
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for responsibilities and extension rules.
 
 ## Setup
@@ -41,7 +43,10 @@ Useful options:
 ```powershell
 python app.py --no-voice
 python app.py --tick-seconds 0.5
+python app.py --voice-test
 ```
+
+`--voice-test` reports whether the ElevenLabs key and voice IDs were loaded, plays one Lead sample, and exits without connecting to iRacing.
 
 ## Run a recorded race
 
