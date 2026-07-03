@@ -13,7 +13,8 @@ A fact should have one owner and a story should have one route to air. Feature m
 5. `EditorialProducer` deduplicates, delays, prioritizes, and assigns a speaker.
 6. `OpenAIDirector` turns the assignment into concise on-air language. Rule-based text remains the fallback.
 7. `BroadcastQueue` expires stale work and lets protected race control outrank normal stories.
-8. `BroadcastBooth` routes the selected item to console and the appropriate ElevenLabs voice.
+8. `CameraDirector` optionally observes or follows the selected item's camera target.
+9. `BroadcastBooth` routes the selected item to console and the appropriate ElevenLabs voice.
 
 ## Ownership
 
@@ -31,6 +32,7 @@ A fact should have one owner and a story should have one route to air. Feature m
 | Editorial timing | `production.editorial_producer.EditorialProducer` |
 | Natural language | `production.openai_director.OpenAIDirector` |
 | Airtime scheduling | `broadcast.broadcast_queue.BroadcastQueue` |
+| Camera targeting and switching | `production.camera_director.CameraDirector` |
 | Voice routing | `broadcast.booth.BroadcastBooth` |
 
 ## Extension rules

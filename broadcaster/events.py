@@ -10,6 +10,7 @@ class RaceEvent:
     importance: int
     message: str
 
+    car_idx: int | None = None
     car_number: str = "?"
     starting_position: int = 0
     positions_gained_from_start: int = 0

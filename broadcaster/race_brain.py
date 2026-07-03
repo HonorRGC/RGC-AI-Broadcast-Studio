@@ -63,6 +63,7 @@ class RaceBrain:
                 event = RaceEvent(
                     event_type="PASS",
                     driver_name=driver.name,
+                    car_idx=car_idx,
                     car_number=driver.number,
                     old_position=driver.previous_position,
                     new_position=position,

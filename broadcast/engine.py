@@ -158,6 +158,10 @@ class BroadcastEngine:
                 driver_name=event.driver_name,
                 car_number=event.car_number,
                 speaker="lead",
+                camera_target_car_idx=event.car_idx,
+                participant_car_indices=tuple(
+                    car_idx for car_idx in (event.car_idx,) if car_idx is not None
+                ),
             )
 
     def _collect_action_stories(
@@ -244,6 +248,8 @@ class BroadcastEngine:
                 speaker="lead",
                 expires_after=25,
                 dedupe_key=f"incident:{event.car_idx}:{event.trouble_type}",
+                camera_target_car_idx=event.car_idx,
+                participant_car_indices=(event.car_idx,),
             )
 
     def _queue_editorial_decision(self, race_state, race_knowledge):

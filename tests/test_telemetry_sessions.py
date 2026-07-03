@@ -46,3 +46,25 @@ def test_starting_grid_falls_back_to_qualifying_results():
     }
 
     assert telemetry.get_starting_grid() == qualifying_grid
+
+
+def test_live_telemetry_exposes_camera_groups_and_switches_by_car_number():
+    class FakeIR(dict):
+        def __init__(self):
+            super().__init__(
+                CameraInfo={
+                    "Groups": [{"GroupNum": 4, "GroupName": "TV1"}]
+                }
+            )
+            self.commands = []
+
+        def cam_switch_num(self, car_number, group_number, camera_number):
+            self.commands.append((car_number, group_number, camera_number))
+            return 1
+
+    telemetry = IRacingTelemetry.__new__(IRacingTelemetry)
+    telemetry.ir = FakeIR()
+
+    assert telemetry.get_camera_groups()[0]["GroupName"] == "TV1"
+    assert telemetry.switch_camera_to_car("14", 4) is True
+    assert telemetry.ir.commands == [("14", 4, 0)]

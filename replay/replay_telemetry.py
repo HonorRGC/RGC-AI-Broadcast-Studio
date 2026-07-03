@@ -62,6 +62,9 @@ class ReplayTelemetry:
         snapshot = self.current_snapshot()
         return snapshot.track_info if snapshot else {}
 
+    def get_camera_groups(self):
+        return []
+
     def get_car_idx_on_pit_road(self):
         return self._snapshot_list("pit_road_status")
 

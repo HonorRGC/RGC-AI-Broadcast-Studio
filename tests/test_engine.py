@@ -229,6 +229,28 @@ def test_engine_preserves_camera_target_for_close_action():
     assert action_items[0].participant_car_indices == (0, 1, 2)
 
 
+def test_pass_story_carries_overtaking_car_as_camera_target():
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    drivers = {
+        0: {"name": "Leader", "number": "77"},
+        1: {"name": "Eric Hudec", "number": "14"},
+    }
+    initial = [
+        {"CarIdx": 0, "Position": 0, "LapsComplete": 1},
+        {"CarIdx": 1, "Position": 3, "LapsComplete": 1},
+    ]
+    changed = [
+        {"CarIdx": 0, "Position": 0, "LapsComplete": 2},
+        {"CarIdx": 1, "Position": 2, "LapsComplete": 2},
+    ]
+    engine.race_brain.analyze(initial, drivers)
+
+    engine._collect_pass_stories(changed, drivers)
+
+    assert engine.editorial_producer.items[0].camera_target_car_idx == 1
+    assert engine.editorial_producer.items[0].participant_car_indices == (1,)
+
+
 class RaceFlags:
     GREEN = 0x00000004
     CAUTION = 0x00004000

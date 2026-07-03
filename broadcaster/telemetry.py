@@ -127,6 +127,24 @@ class IRacingTelemetry:
 
         return lookup
 
+    def get_camera_groups(self):
+        camera_info = self.safe_read("CameraInfo") or {}
+        if not isinstance(camera_info, dict):
+            return []
+        return camera_info.get("Groups") or []
+
+    def switch_camera_to_car(self, car_number, group_number, camera_number=0):
+        try:
+            return bool(
+                self.ir.cam_switch_num(
+                    str(car_number),
+                    int(group_number),
+                    int(camera_number),
+                )
+            )
+        except Exception:
+            return False
+
     def clean_driver_name(self, name):
         if not name:
             return name

@@ -100,6 +100,12 @@ class EditorialProducer:
             car_number=getattr(pit_event, "car_number", ""),
             speaker="sarah",
             category="pit_strategy",
+            camera_target_car_idx=getattr(pit_event, "car_idx", None),
+            participant_car_indices=tuple(
+                car_idx
+                for car_idx in (getattr(pit_event, "car_idx", None),)
+                if car_idx is not None
+            ),
         )
 
         self.add_item(item)
@@ -123,6 +129,12 @@ class EditorialProducer:
                 source="race_intelligence",
                 driver_name=getattr(top_story, "driver_name", ""),
                 car_number=getattr(top_story, "car_number", ""),
+                camera_target_car_idx=getattr(top_story, "car_idx", None),
+                participant_car_indices=tuple(
+                    car_idx
+                    for car_idx in (getattr(top_story, "car_idx", None),)
+                    if car_idx is not None
+                ),
             )
             if item:
                 created_items.append(item)
@@ -137,6 +149,15 @@ class EditorialProducer:
                 source="battle_detector",
                 driver_name=getattr(best_battle, "chasing_driver_name", ""),
                 car_number=getattr(best_battle, "chasing_car_number", ""),
+                camera_target_car_idx=getattr(best_battle, "chasing_car_idx", None),
+                participant_car_indices=tuple(
+                    car_idx
+                    for car_idx in (
+                        getattr(best_battle, "lead_car_idx", None),
+                        getattr(best_battle, "chasing_car_idx", None),
+                    )
+                    if car_idx is not None
+                ),
             )
             if item:
                 created_items.append(item)
