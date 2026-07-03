@@ -252,6 +252,25 @@ class BroadcastEngine:
                     camera_target_car_idx=primary_car_idx,
                     participant_car_indices=report.car_indices,
                 )
+            if self.race_director.phase == RacePhase.ONE_TO_GREEN:
+                small_report = self.caution_pit_reporter.build_small_group_report()
+                if small_report:
+                    primary_car_idx = (
+                        small_report.car_indices[0]
+                        if small_report.car_indices
+                        else None
+                    )
+                    self.broadcast_queue.add(
+                        small_report.message,
+                        priority=small_report.importance,
+                        category="caution_pit_summary",
+                        protected=False,
+                        speaker="sarah",
+                        expires_after=45,
+                        dedupe_key=f"caution_pit_small_group:{current_lap}",
+                        camera_target_car_idx=primary_car_idx,
+                        participant_car_indices=small_report.car_indices,
+                    )
             return
 
         self.caution_pit_reporter.update(
@@ -296,7 +315,22 @@ class BroadcastEngine:
         pit_road_status,
         current_lap,
     ):
+        caution_just_started = (
+            self.race_director.phase == RacePhase.CAUTION
+            and self.race_director.phase_changed
+            and self.race_director.previous_phase != RacePhase.CAUTION
+        )
         if current_lap < self.INCIDENT_DETECTION_AFTER_LAP:
+            if caution_just_started:
+                self.queue_incident_marker_replay(
+                    results,
+                    telemetry,
+                    current_lap,
+                    reason=(
+                        "caution started before scoring had enough laps "
+                        "to build a replay candidate"
+                    ),
+                )
             return
 
         events = self.incident_detector.analyze(
@@ -309,21 +343,17 @@ class BroadcastEngine:
             est_time_status=telemetry.get_car_idx_est_time(),
             pit_road_status=pit_road_status,
         )
-        caution_just_started = (
-            self.race_director.phase == RacePhase.CAUTION
-            and self.race_director.phase_changed
-            and self.race_director.previous_phase != RacePhase.CAUTION
-        )
         if not events and caution_just_started:
             fallback = self.incident_detector.build_caution_fallback(current_lap)
             if fallback:
                 events = [fallback]
         if not events:
             if caution_just_started:
-                self.report_incident_debug(
-                    "caution started but no replay candidate was found",
+                self.queue_incident_marker_replay(
                     results,
                     telemetry,
+                    current_lap,
+                    reason="caution started but no replay candidate was found",
                 )
             return
 
@@ -359,6 +389,24 @@ class BroadcastEngine:
                 replay_incident_delta=event.incident_delta,
                 replay_multi_angle=replay_eligible and caution_just_started,
             )
+
+    def queue_incident_marker_replay(self, results, telemetry, current_lap, reason):
+        self.report_incident_debug(reason, results, telemetry)
+        session_num_reader = getattr(telemetry, "get_current_session_num", None)
+        session_num = session_num_reader() if session_num_reader else 0
+        self.broadcast_queue.add(
+            "We are going to take a look at what may have brought out this caution.",
+            priority=10,
+            category="incident",
+            protected=True,
+            speaker="lead",
+            expires_after=25,
+            dedupe_key=f"incident:marker:caution:{current_lap}:{session_num}",
+            replay_session_num=session_num,
+            replay_incident_delta=0,
+            replay_multi_angle=True,
+            replay_use_incident_marker=True,
+        )
 
     def report_incident_debug(self, reason, results, telemetry):
         if not self.incident_debug:

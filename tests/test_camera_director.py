@@ -37,6 +37,10 @@ class CameraTelemetry:
         self.switches.append((car_number, group_number, camera_number))
         return True
 
+    def switch_camera_to_incident(self, group_number, camera_number=0):
+        self.switches.append(("incident", group_number, camera_number))
+        return True
+
     def is_replay_at_live_edge(self):
         return self.at_live_edge
 
@@ -93,7 +97,17 @@ def test_camera_story_without_target_is_ignored():
     decision = director.follow(target_item(None), telemetry)
 
     assert decision.status == "ignored"
-    assert telemetry.switches == []
+
+
+def test_camera_can_focus_iracing_incident_camera():
+    telemetry = CameraTelemetry()
+    director = CameraDirector(mode="auto", preferred_group="TV1")
+
+    decision = director.focus_incident_replay("TV1", telemetry)
+
+    assert decision.status == "switched"
+    assert decision.group_number == 4
+    assert telemetry.switches == [("incident", 4, 0)]
 
 
 def test_unknown_camera_group_fails_without_sending_command():

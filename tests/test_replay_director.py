@@ -14,6 +14,10 @@ class ReplayTelemetry:
         self.seeks.append((session_num, session_time_seconds))
         return True
 
+    def seek_previous_incident(self):
+        self.seeks.append(("previous_incident",))
+        return True
+
     def return_to_live(self):
         self.live_returns += 1
         return True
@@ -38,6 +42,10 @@ class ReplayCamera:
         self.focuses.append((car_idx, group_name))
         return SimpleNamespace(status="switched", reason="Camera switched.")
 
+    def focus_incident_replay(self, group_name, telemetry):
+        self.focuses.append(("incident", group_name))
+        return SimpleNamespace(status="switched", reason="Incident camera switched.")
+
     def end_replay(self, telemetry):
         self.replay_active = False
         self.ends += 1
@@ -53,6 +61,19 @@ def incident_item(multi_angle=False):
         replay_session_time=100.0,
         replay_incident_delta=2,
         replay_multi_angle=multi_angle,
+    )
+
+
+def incident_marker_item():
+    return SimpleNamespace(
+        category="incident",
+        dedupe_key="incident:marker:caution:1:2",
+        camera_target_car_idx=None,
+        replay_session_num=2,
+        replay_session_time=None,
+        replay_incident_delta=0,
+        replay_multi_angle=True,
+        replay_use_incident_marker=True,
     )
 
 
@@ -138,3 +159,19 @@ def test_caution_replay_aborts_when_green_returns_even_without_queue_item():
     assert decision.status == "live"
     assert telemetry.live_returns == 1
     assert camera.replay_active is False
+
+
+def test_incident_marker_replay_uses_iracing_previous_incident_camera():
+    telemetry = ReplayTelemetry()
+    camera = ReplayCamera()
+    times = iter([10.0, 19.0, 28.0])
+    director = ReplayDirector(mode="auto", clock=lambda: next(times))
+
+    started = director.handle_item(incident_marker_item(), telemetry, camera)
+    second_angle = director.update(telemetry, camera)
+
+    assert started.status == "started"
+    assert started.total_angles == 2
+    assert second_angle.status == "angle"
+    assert telemetry.seeks == [("previous_incident",), ("previous_incident",)]
+    assert camera.focuses == [("incident", "TV1"), ("incident", "TV2")]

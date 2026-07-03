@@ -41,6 +41,7 @@ class ReplayDirector:
         self.angle_index = 0
         self.angle_started_at = None
         self.camera_engaged = False
+        self.use_incident_marker = False
         self.played_story_ids = set()
 
     def handle_item(self, item, telemetry, camera_director):
@@ -59,7 +60,11 @@ class ReplayDirector:
         session_time = getattr(item, "replay_session_time", None)
         session_num = getattr(item, "replay_session_num", None)
         car_idx = getattr(item, "camera_target_car_idx", None)
-        if session_time is None or session_num is None or car_idx is None:
+        use_incident_marker = bool(getattr(item, "replay_use_incident_marker", False))
+        if (
+            not use_incident_marker
+            and (session_time is None or session_num is None or car_idx is None)
+        ):
             return ReplayDecision("ignored", "The incident has no replay marker.")
 
         groups = (
@@ -68,8 +73,13 @@ class ReplayDirector:
             else self.angle_groups[:1]
         )
         self.car_idx = car_idx
-        self.session_num = int(session_num)
-        self.replay_start_time = max(0.0, float(session_time) - self.pre_roll_seconds)
+        self.session_num = int(session_num or 0)
+        self.replay_start_time = (
+            0.0
+            if use_incident_marker
+            else max(0.0, float(session_time) - self.pre_roll_seconds)
+        )
+        self.use_incident_marker = use_incident_marker
         self.active_groups = groups
         self.angle_index = 0
 
@@ -82,11 +92,17 @@ class ReplayDirector:
         if self.mode == "auto":
             camera_director.begin_replay()
             self.camera_engaged = True
-            camera_decision = camera_director.focus_replay(
-                self.car_idx,
-                self.active_groups[0],
-                telemetry,
-            )
+            if self.use_incident_marker:
+                camera_decision = camera_director.focus_incident_replay(
+                    self.active_groups[0],
+                    telemetry,
+                )
+            else:
+                camera_decision = camera_director.focus_replay(
+                    self.car_idx,
+                    self.active_groups[0],
+                    telemetry,
+                )
             if camera_decision.status == "failed":
                 self.restore_live_after_failure(telemetry, camera_director)
                 return ReplayDecision("failed", camera_decision.reason)
@@ -124,11 +140,17 @@ class ReplayDirector:
 
         group_name = self.active_groups[self.angle_index]
         if self.mode == "auto":
-            camera_decision = camera_director.focus_replay(
-                self.car_idx,
-                group_name,
-                telemetry,
-            )
+            if self.use_incident_marker:
+                camera_decision = camera_director.focus_incident_replay(
+                    group_name,
+                    telemetry,
+                )
+            else:
+                camera_decision = camera_director.focus_replay(
+                    self.car_idx,
+                    group_name,
+                    telemetry,
+                )
             if camera_decision.status == "failed":
                 return self.finish(telemetry, camera_director, failed=True)
 
@@ -162,6 +184,9 @@ class ReplayDirector:
     def seek_to_incident(self, telemetry):
         if self.mode == "observe":
             return True
+        if getattr(self, "use_incident_marker", False):
+            seeker = getattr(telemetry, "seek_previous_incident", None)
+            return bool(seeker and seeker())
         return telemetry.seek_replay_session_time(
             self.session_num,
             self.replay_start_time,

@@ -349,6 +349,45 @@ def test_incident_is_collected_after_race_enters_caution():
     )
 
 
+def test_early_caution_without_candidate_queues_iracing_incident_marker_replay():
+    drivers = {0: {"name": "Driver One", "number": "1"}}
+    snapshot = TelemetrySnapshot(
+        lap=1,
+        total_laps=20,
+        session_flags=RaceFlags.CAUTION,
+        session_num=2,
+        session_time=35.0,
+        results=[
+            {"CarIdx": 0, "Position": 0, "LapsComplete": 1, "Incidents": 0}
+        ],
+        driver_lookup=drivers,
+        pit_road_status=[False],
+        track_surface=[3],
+        track_surface_material=[0],
+        lap_dist_pct=[0.4],
+        est_time=[20.0],
+    )
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    engine.race_director.phase = RacePhase.CAUTION
+    engine.race_director.previous_phase = RacePhase.GREEN
+    engine.race_director.phase_changed = True
+
+    engine._collect_incidents(
+        telemetry=SnapshotSource(snapshot),
+        results=snapshot.results,
+        driver_lookup=drivers,
+        pit_road_status=snapshot.pit_road_status,
+        current_lap=1,
+    )
+
+    incident = next(
+        item for item in engine.broadcast_queue.items if item.category == "incident"
+    )
+    assert incident.replay_use_incident_marker is True
+    assert incident.replay_multi_angle is True
+    assert incident.camera_target_car_idx is None
+
+
 def test_green_flag_incident_requests_only_one_replay_angle():
     drivers = {0: {"name": "Driver One", "number": "1"}}
     source = SnapshotSource(
@@ -438,9 +477,44 @@ def test_incident_after_caution_transition_uses_only_one_replay_angle():
     engine.tick(source)
 
     incident = next(
-        item for item in engine.broadcast_queue.items if item.category == "incident"
+        item for item in engine.broadcast_queue.items
+        if item.category == "incident" and item.replay_incident_delta == 2
     )
     assert incident.replay_multi_angle is False
+
+
+def test_one_to_green_reports_small_caution_pit_group():
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    results = [
+        {"CarIdx": index, "Position": index}
+        for index in range(6)
+    ]
+    drivers = {
+        index: {"name": f"Driver {index + 1}", "number": str(index + 1)}
+        for index in range(6)
+    }
+    engine.race_director.phase = RacePhase.CAUTION
+    engine._collect_pit_stories(
+        results=results,
+        driver_lookup=drivers,
+        pit_road_status=[False, True, False, False, False, False],
+        current_lap=5,
+    )
+    engine.race_director.phase = RacePhase.ONE_TO_GREEN
+    engine._collect_pit_stories(
+        results=results,
+        driver_lookup=drivers,
+        pit_road_status=[False, False, False, False, False, False],
+        current_lap=6,
+    )
+
+    pit_item = next(
+        item for item in engine.broadcast_queue.items
+        if item.dedupe_key.startswith("caution_pit_small_group")
+    )
+    assert "Only a few takers" in pit_item.message
+    assert pit_item.speaker == "sarah"
+    assert pit_item.camera_target_car_idx == 1
 
 
 def test_cool_down_state_airs_checkered_and_suppresses_false_incident():

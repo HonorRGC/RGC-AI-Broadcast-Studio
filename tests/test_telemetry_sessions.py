@@ -62,12 +62,18 @@ def test_live_telemetry_exposes_camera_groups_and_switches_by_car_number():
             self.commands.append((car_number, group_number, camera_number))
             return 1
 
+        def cam_switch_pos(self, position, group_number, camera_number):
+            self.commands.append((position, group_number, camera_number))
+            return 1
+
     telemetry = IRacingTelemetry.__new__(IRacingTelemetry)
     telemetry.ir = FakeIR()
 
     assert telemetry.get_camera_groups()[0]["GroupName"] == "TV1"
     assert telemetry.switch_camera_to_car("14", 4) is True
-    assert telemetry.ir.commands == [("14", 4, 0)]
+    assert telemetry.switch_camera_to_incident(4) is True
+    assert telemetry.ir.commands[0] == ("14", 4, 0)
+    assert telemetry.ir.commands[-1][1:] == (4, 0)
 
 
 def test_live_telemetry_detects_replay_delay_and_returns_to_live_edge():
@@ -98,6 +104,8 @@ def test_live_telemetry_detects_replay_delay_and_returns_to_live_edge():
     assert telemetry.ir.replay_commands[-1] == ("speed", 1)
     assert telemetry.seek_replay_session_time(2, 45.5) is True
     assert ("session_time", 2, 45500) in telemetry.ir.replay_commands
+    assert telemetry.seek_previous_incident() is True
+    assert telemetry.ir.replay_commands[-2][0] == "search"
 
 
 def test_live_results_include_the_player_incident_total():

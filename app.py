@@ -95,9 +95,14 @@ def report_replay_decision(decision):
     if decision.status == "live":
         print("REPLAY: returned to live racing.")
         return
+    target = (
+        f"car index {decision.car_idx}"
+        if decision.car_idx is not None
+        else "iRacing incident camera"
+    )
     print(
         f"REPLAY: angle {decision.angle_number} of {decision.total_angles}, "
-        f"car index {decision.car_idx} on {decision.angle_group}."
+        f"{target} on {decision.angle_group}."
     )
 
 

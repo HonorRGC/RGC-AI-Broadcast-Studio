@@ -20,6 +20,7 @@ class ScheduledBroadcast:
     replay_session_time: float | None = None
     replay_incident_delta: int = 0
     replay_multi_angle: bool = False
+    replay_use_incident_marker: bool = False
     created_at: float = field(default_factory=time.time)
 
     @property
@@ -53,6 +54,7 @@ class BroadcastQueue:
         replay_session_time=None,
         replay_incident_delta=0,
         replay_multi_angle=False,
+        replay_use_incident_marker=False,
     ):
         if not commentary:
             return
@@ -78,6 +80,7 @@ class BroadcastQueue:
                 replay_session_time=replay_session_time,
                 replay_incident_delta=replay_incident_delta,
                 replay_multi_angle=bool(replay_multi_angle),
+                replay_use_incident_marker=bool(replay_use_incident_marker),
             )
         )
 

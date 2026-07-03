@@ -189,6 +189,46 @@ class CameraDirector:
             force=True,
         )
 
+    def focus_incident_replay(self, group_name, telemetry):
+        now = self.clock()
+        group = self.resolve_camera_group(telemetry.get_camera_groups(), group_name)
+        if group is None:
+            return CameraDecision(
+                "failed",
+                f"Camera group {group_name!r} was not found.",
+            )
+        group_number = self.safe_int(group.get("GroupNum"))
+        resolved_name = str(group.get("GroupName") or group_name)
+        if group_number is None:
+            return CameraDecision(
+                "failed",
+                "The selected camera group has no valid number.",
+                group_name=resolved_name,
+            )
+
+        status = "suggested"
+        if self.mode == "auto":
+            switch = getattr(telemetry, "switch_camera_to_incident", None)
+            if switch is None or not switch(group_number, 0):
+                return CameraDecision(
+                    "failed",
+                    "iRacing did not accept the incident camera command.",
+                    group_number=group_number,
+                    group_name=resolved_name,
+                )
+            status = "switched"
+
+        self.current_car_idx = None
+        self.current_group_number = group_number
+        self.current_role = "replay"
+        self.last_switch_at = now
+        return CameraDecision(
+            status,
+            "Incident camera selected.",
+            group_number=group_number,
+            group_name=resolved_name,
+        )
+
     def end_replay(self, telemetry):
         self.replay_active = False
         self.live_edge_initialized = True

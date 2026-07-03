@@ -76,6 +76,14 @@ class IRacingTelemetry:
         except Exception:
             return False
 
+    def seek_previous_incident(self):
+        try:
+            seek_sent = self.ir.replay_search(irsdk.RpySrchMode.prev_incident)
+            speed_sent = self.ir.replay_set_play_speed(1)
+            return bool(seek_sent and speed_sent)
+        except Exception:
+            return False
+
     def get_current_session_num(self):
         try:
             return int(self.ir["SessionNum"])
@@ -199,6 +207,18 @@ class IRacingTelemetry:
             return bool(
                 self.ir.cam_switch_num(
                     str(car_number),
+                    int(group_number),
+                    int(camera_number),
+                )
+            )
+        except Exception:
+            return False
+
+    def switch_camera_to_incident(self, group_number, camera_number=0):
+        try:
+            return bool(
+                self.ir.cam_switch_pos(
+                    irsdk.csMode.at_incident,
                     int(group_number),
                     int(camera_number),
                 )
