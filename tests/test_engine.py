@@ -85,6 +85,40 @@ def test_engine_reset_clears_session_state():
     assert engine.broadcast_queue.items == []
 
 
+def test_initial_one_to_green_keeps_the_opening_package_available():
+    results = [
+        {"CarIdx": index, "Position": index, "LapsComplete": 0}
+        for index in range(5)
+    ]
+    drivers = {
+        index: {"name": f"Driver {index + 1}", "number": str(index + 1)}
+        for index in range(5)
+    }
+    snapshot = TelemetrySnapshot(
+        lap=0,
+        total_laps=20,
+        session_flags=RaceFlags.ONE_TO_GREEN | RaceFlags.CAUTION,
+        track_info={"track_name": "Nashville"},
+        results=results,
+        driver_lookup=drivers,
+        pit_road_status=[False] * 5,
+    )
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+
+    emitted = engine.tick(SnapshotSource(snapshot))
+
+    assert emitted.dedupe_key == "race_control:one_to_green:initial"
+    assert any(
+        item.category == "opening_welcome" for item in engine.broadcast_queue.items
+    )
+    assert any(
+        item.category.startswith("opening_field_rundown")
+        for item in engine.broadcast_queue.items
+    )
+
+
 class RaceFlags:
     GREEN = 0x00000004
+    CAUTION = 0x00004000
+    ONE_TO_GREEN = 0x00000200
     START_GO = 0x80000000

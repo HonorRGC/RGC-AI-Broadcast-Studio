@@ -11,6 +11,15 @@ The studio now has one orchestration path for live and replay telemetry. Develop
 - Validate battle gaps and incident signals against those fixtures
 - Add end-to-end editorial timing assertions
 
+## Weekend Session Intelligence
+
+- Start the broadcast during practice
+- Track practice pace, consistency, incidents, and developing driver stories
+- Carry relevant practice observations into qualifying
+- Report qualifying results and build the race starting lineup
+- Preserve weekend memory across Practice, Qualifying, and Race transitions
+- Reset race-control state without losing weekend-level driver context
+
 ## v0.20 - Managed Audio
 
 - Replace shell-launched MP3 playback with a managed player

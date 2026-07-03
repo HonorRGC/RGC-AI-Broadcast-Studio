@@ -23,6 +23,7 @@ class BattleStory:
 
 class BattleDetector:
     def __init__(self):
+        self.minimum_valid_gap = 0.05
         self.lead_battle_gap = 0.50
         self.top_five_battle_gap = 0.75
         self.top_ten_battle_gap = 1.00
@@ -44,6 +45,9 @@ class BattleDetector:
 
             position = self.safe_int(lead_car.get("Position", 999))
             gap = self.safe_float(chasing_car.get("Time", 999.0))
+
+            if gap < self.minimum_valid_gap:
+                continue
 
             if position <= 1 and gap <= self.lead_battle_gap:
                 battles.append(

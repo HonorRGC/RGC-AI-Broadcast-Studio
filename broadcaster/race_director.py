@@ -50,9 +50,6 @@ class RaceDirector:
 
         new_phase = self.detect_phase(session_flags, results, current_lap, total_laps)
 
-        if new_phase == RacePhase.GREEN:
-            self.race_started = True
-
         if new_phase != RacePhase.CHECKERED:
             self.handle_lap_calls(current_lap, total_laps, scheduler)
 
@@ -60,6 +57,9 @@ class RaceDirector:
             self.previous_phase = self.phase
             self.phase = new_phase
             self.handle_phase_change(results, driver_lookup, scheduler, track_info)
+
+        if new_phase == RacePhase.GREEN:
+            self.race_started = True
 
     def detect_phase(self, session_flags, results, current_lap, total_laps):
         if self.has_flag(session_flags, self.CHECKERED_FLAG):
@@ -129,7 +129,7 @@ class RaceDirector:
         scheduler.clear_for_race_control()
         track_name = self.get_track_name(track_info)
 
-        if self.previous_phase in [RacePhase.CAUTION, RacePhase.ONE_TO_GREEN]:
+        if self.race_started and self.previous_phase in [RacePhase.CAUTION, RacePhase.ONE_TO_GREEN]:
             message = f"Green flag is back in the air! We are racing again at {track_name}!"
         else:
             message = f"Green flag is in the air! We are racing at {track_name}!"
@@ -172,17 +172,30 @@ class RaceDirector:
         if self.one_to_green_announced:
             return
 
-        scheduler.clear_for_race_control()
         track_name = self.get_track_name(track_info)
 
+        if self.race_started:
+            scheduler.clear_for_race_control()
+            message = (
+                f"One lap to green here at {track_name}. "
+                "The field is doubling up for the restart."
+            )
+            dedupe_key = "race_control:one_to_green:restart"
+        else:
+            message = (
+                f"One pace lap remains before the green flag here at {track_name}. "
+                "The field is getting set for the start."
+            )
+            dedupe_key = "race_control:one_to_green:initial"
+
         scheduler.add(
-            f"One lap to green here at {track_name}. The field is doubling up for the restart.",
+            message,
             priority=11,
             category="race_control",
             protected=True,
             speaker="lead",
             expires_after=45,
-            dedupe_key="race_control:one_to_green",
+            dedupe_key=dedupe_key,
         )
 
         self.one_to_green_announced = True
@@ -224,12 +237,16 @@ class RaceDirector:
         self.checkered_announced = True
 
     def handle_lap_calls(self, current_lap, total_laps, scheduler):
-        if total_laps <= 0 or current_lap <= 0:
+        if not self.race_started or total_laps <= 0 or current_lap <= 0:
             return
 
         laps_to_go = total_laps - current_lap
 
-        if laps_to_go <= 10 and laps_to_go > 5 and not self.ten_to_go_announced:
+        if (
+            total_laps > 10
+            and 5 < laps_to_go <= 10
+            and not self.ten_to_go_announced
+        ):
             scheduler.add(
                 f"{laps_to_go} laps to go. The closing stage of this race is underway.",
                 priority=9,
@@ -239,7 +256,7 @@ class RaceDirector:
             )
             self.ten_to_go_announced = True
 
-        if laps_to_go <= 5 and laps_to_go > 1 and not self.five_to_go_announced:
+        if total_laps > 5 and 1 < laps_to_go <= 5 and not self.five_to_go_announced:
             scheduler.add(
                 f"{laps_to_go} laps to go. The pressure is about to ramp up.",
                 priority=9,

@@ -48,15 +48,14 @@ class BroadcastEngine:
         )
         race_state = self.race_intelligence.get_race_state()
 
+        self._queue_opening(telemetry, results, driver_lookup, current_lap)
+
         self.race_director.update(
             telemetry=telemetry,
             results=results,
             driver_lookup=driver_lookup,
             scheduler=self.broadcast_queue,
         )
-
-        if self.race_director.phase in (RacePhase.UNKNOWN, RacePhase.FORMATION):
-            self._queue_opening(telemetry, results, driver_lookup, current_lap)
 
         if self.race_director.race_started:
             self._collect_pit_stories(
@@ -81,7 +80,11 @@ class BroadcastEngine:
         return self.broadcast_queue.next_item()
 
     def _queue_opening(self, telemetry, results, driver_lookup, current_lap):
-        if self.opening_director.is_complete() or current_lap > 0:
+        if (
+            self.opening_director.is_complete()
+            or self.race_director.race_started
+            or current_lap > 1
+        ):
             return
 
         for segment in self.opening_director.update(
@@ -96,7 +99,7 @@ class BroadcastEngine:
                 category=segment.category,
                 protected=False,
                 speaker=segment.speaker,
-                expires_after=60,
+                expires_after=180,
                 dedupe_key=segment.category,
             )
 

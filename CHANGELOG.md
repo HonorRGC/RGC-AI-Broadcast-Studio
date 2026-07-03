@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- Progressive pre-race welcome, track, weather, and complete starting-field segments
+- Support for grid positions reported as either zero- or one-based values
+- Regression coverage based on the first live iRacing test
+
+### Fixed
+- Initial green flag being described as a restart
+- Opening package being skipped when connecting at one-to-green
+- Zero-second gaps being announced as active battles
+- Closing-stage calls firing immediately in short races
+
 ## Version 0.18 - Platform Foundation
 
 ### Added
