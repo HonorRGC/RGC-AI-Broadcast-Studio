@@ -271,6 +271,7 @@ def test_engine_queues_quarter_field_rundown_under_green():
     ]
     assert len(rundown) == 2
     assert rundown[0].camera_sequence == tuple(range(8))
+    assert rundown[0].protected is True
     assert "field as they ran when we froze the order" in rundown[0].message
 
 
@@ -315,7 +316,7 @@ def test_incident_is_collected_after_race_enters_caution():
         )
     )
     engine = BroadcastEngine(openai_director=SilentOpenAI())
-    engine.tick(source)
+    emitted = engine.tick(source)
     source.snapshot = TelemetrySnapshot(
         lap=3,
         total_laps=20,
@@ -333,7 +334,7 @@ def test_incident_is_collected_after_race_enters_caution():
         est_time=[20.0],
     )
 
-    engine.tick(source)
+    emitted = engine.tick(source)
 
     incident_items = [
         item for item in engine.broadcast_queue.items if item.category == "incident"
@@ -343,10 +344,7 @@ def test_incident_is_collected_after_race_enters_caution():
     assert incident_items[0].replay_session_num == 2
     assert incident_items[0].replay_session_time == 125.0
     assert incident_items[0].replay_multi_angle is True
-    assert any(
-        item.dedupe_key == "race_control:caution"
-        for item in engine.broadcast_queue.items
-    )
+    assert emitted.dedupe_key == "race_control:caution"
 
 
 def test_early_caution_without_candidate_queues_iracing_incident_marker_replay():
@@ -427,11 +425,9 @@ def test_green_flag_incident_requests_only_one_replay_angle():
         est_time=[20.0],
     )
 
-    engine.tick(source)
+    emitted = engine.tick(source)
 
-    incident = next(
-        item for item in engine.broadcast_queue.items if item.category == "incident"
-    )
+    incident = emitted
     assert incident.replay_session_time == 51.0
     assert incident.replay_multi_angle is False
 

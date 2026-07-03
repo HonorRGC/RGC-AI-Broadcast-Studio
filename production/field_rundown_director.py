@@ -56,6 +56,10 @@ class FieldRundownDirector:
             entries.append(
                 {
                     "position": display_position,
+                    "starting_position": self.safe_int(
+                        car.get("StartingPosition"),
+                        0,
+                    ),
                     "car_idx": car_idx,
                     "name": name,
                     "number": number,
@@ -82,7 +86,7 @@ class FieldRundownDirector:
             segments.append(
                 FieldRundownSegment(
                     message=f"{intro} {' '.join(lines)}{closing}",
-                    priority=7,
+                    priority=8,
                     speaker="lead" if group_number % 2 == 1 else "jeff",
                     category=f"quarter_field_rundown_{group_number}",
                     camera_sequence=tuple(
@@ -108,9 +112,28 @@ class FieldRundownDirector:
 
     def format_entry(self, entry):
         position = PositionFormatter.ordinal(entry["position"])
-        return (
-            f"{position}, the {entry['number']} of {entry['name']}."
+        starting_position = entry.get("starting_position", 0)
+        movement = self.movement_phrase(
+            current_position=entry["position"],
+            starting_position=starting_position,
         )
+        return (
+            f"{position}, the {entry['number']} of {entry['name']}{movement}."
+        )
+
+    def movement_phrase(self, current_position, starting_position):
+        if not starting_position:
+            return ""
+        starting = PositionFormatter.ordinal(starting_position)
+        net = starting_position - current_position
+        if net > 0:
+            return f", after starting {starting}, up {self.position_count(net)}"
+        if net < 0:
+            return (
+                f", after starting {starting}, down "
+                f"{self.position_count(abs(net))}"
+            )
+        return f", right where they started in {starting}"
 
     def results_are_zero_based(self, results):
         return any(car.get("Position") == 0 for car in results or [])
@@ -121,3 +144,18 @@ class FieldRundownDirector:
         except Exception:
             return 999
         return position + 1 if zero_based else position
+
+    def position_count(self, count):
+        try:
+            count = int(count)
+        except Exception:
+            return f"{count} spots"
+        if count == 1:
+            return "one spot"
+        return f"{count} spots"
+
+    def safe_int(self, value, default=0):
+        try:
+            return int(value)
+        except Exception:
+            return default

@@ -55,7 +55,7 @@ def parse_args():
     parser.add_argument(
         "--incident-marker-preroll-seconds",
         type=float,
-        default=6.0,
+        default=12.0,
         help=(
             "Seconds to back up before iRacing's incident marker when the "
             "broadcast cannot identify a specific incident car"

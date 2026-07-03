@@ -92,6 +92,16 @@ def test_new_race_control_state_replaces_an_unspoken_old_state():
     assert queue.items[0].dedupe_key == "race_control:one_to_green:restart"
 
 
+def test_caution_uses_immediate_trouble_language():
+    director = RaceDirector()
+    queue = BroadcastQueue()
+
+    director.handle_caution(queue, {"track_name": "Homestead"})
+
+    assert queue.items[0].message.startswith("Trouble on the speedway")
+    assert "caution is out" in queue.items[0].message
+
+
 def test_one_to_green_preserves_a_pending_caution_pit_summary():
     director = RaceDirector()
     director.race_started = True

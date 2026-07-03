@@ -119,3 +119,4 @@ class BroadcastQueue:
     def clear_for_race_control(self, preserve_categories=()):
         preserved = set(preserve_categories)
         self.items = [item for item in self.items if item.category in preserved]
+        self.busy_until = 0.0

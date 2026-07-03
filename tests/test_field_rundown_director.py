@@ -4,9 +4,11 @@ from production.field_rundown_director import FieldRundownDirector
 def test_quarter_rundown_freezes_and_segments_the_full_field():
     director = FieldRundownDirector()
     results = [
-        {"CarIdx": index, "Position": index}
+        {"CarIdx": index, "Position": index, "StartingPosition": index + 1}
         for index in range(10)
     ]
+    results[1]["StartingPosition"] = 5
+    results[3]["StartingPosition"] = 2
     drivers = {
         index: {"name": f"Driver {index + 1}", "number": str(index + 1)}
         for index in range(10)
@@ -32,6 +34,8 @@ def test_quarter_rundown_freezes_and_segments_the_full_field():
     assert segments[0].camera_sequence == tuple(range(8))
     assert segments[1].camera_sequence == (8, 9)
     assert "At quarter distance" in segments[0].message
+    assert "Driver 2, after starting fifth, up 3 spots" in segments[0].message
+    assert "Driver 4, after starting second, down 2 spots" in segments[0].message
     assert "Driver 10" in segments[1].message
     assert "completes the full-field reset" in segments[1].message
     assert repeated == []

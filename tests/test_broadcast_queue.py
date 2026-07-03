@@ -30,3 +30,21 @@ def test_expired_commentary_never_airs():
     queue.items[0].created_at = 10
 
     assert queue.next_item(now=20) is None
+
+
+def test_race_control_clear_resets_busy_timer_for_immediate_interrupt():
+    queue = BroadcastQueue()
+    queue.busy_until = 999
+    queue.add("Normal story", category="race_story")
+
+    queue.clear_for_race_control()
+    queue.add(
+        "Trouble on the speedway.",
+        category="race_control",
+        protected=True,
+        priority=12,
+    )
+
+    item = queue.next_item(now=time.time())
+
+    assert item.message == "Trouble on the speedway."

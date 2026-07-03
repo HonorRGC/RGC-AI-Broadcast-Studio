@@ -150,7 +150,7 @@ class BroadcastEngine:
                 segment.message,
                 priority=segment.priority,
                 category=segment.category,
-                protected=False,
+                protected=True,
                 speaker=segment.speaker,
                 expires_after=180,
                 dedupe_key=segment.category,
@@ -290,7 +290,7 @@ class BroadcastEngine:
         total_laps,
     ):
         for segment in self.field_rundown_director.update(
-            results=results,
+            results=self.enrich_results_with_starting_positions(results),
             driver_lookup=driver_lookup,
             current_lap=current_lap,
             total_laps=total_laps,
@@ -300,12 +300,24 @@ class BroadcastEngine:
                 segment.message,
                 priority=segment.priority,
                 category=segment.category,
-                protected=False,
+                protected=True,
                 speaker=segment.speaker,
                 expires_after=180,
                 dedupe_key=segment.category,
                 camera_sequence=segment.camera_sequence,
             )
+
+    def enrich_results_with_starting_positions(self, results):
+        enriched = []
+        for car in results or []:
+            car_copy = dict(car)
+            car_idx = car_copy.get("CarIdx")
+            if car_idx is not None:
+                driver = self.race_brain.driver_manager.get_driver(car_idx)
+                if driver.starting_position:
+                    car_copy["StartingPosition"] = driver.starting_position
+            enriched.append(car_copy)
+        return enriched
 
     def _collect_incidents(
         self,

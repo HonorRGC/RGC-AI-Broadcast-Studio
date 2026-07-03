@@ -198,7 +198,7 @@ class RaceDirector:
         track_name = self.get_track_name(track_info)
 
         scheduler.add(
-            f"Caution is on the speedway here at {track_name}. We'll have to see what brought this yellow flag out.",
+            f"Trouble on the speedway — caution is out here at {track_name}. We'll have to see what brought this yellow flag out.",
             priority=12,
             category="race_control",
             protected=True,
@@ -380,9 +380,9 @@ class RaceDirector:
         }
         scheduler.add(
             messages[latest_name],
-            priority=8,
+            priority=9,
             category="race_progress",
-            protected=False,
+            protected=True,
             speaker="lead",
             expires_after=45,
             dedupe_key=f"race_progress:{latest_name}",
