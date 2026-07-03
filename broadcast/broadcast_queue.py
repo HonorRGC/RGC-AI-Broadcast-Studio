@@ -15,6 +15,7 @@ class ScheduledBroadcast:
     dedupe_key: str = ""
     camera_target_car_idx: int | None = None
     participant_car_indices: Tuple[int, ...] = ()
+    camera_sequence: Tuple[int, ...] = ()
     created_at: float = field(default_factory=time.time)
 
     @property
@@ -43,6 +44,7 @@ class BroadcastQueue:
         dedupe_key="",
         camera_target_car_idx=None,
         participant_car_indices=(),
+        camera_sequence=(),
     ):
         if not commentary:
             return
@@ -63,6 +65,7 @@ class BroadcastQueue:
                 dedupe_key=key,
                 camera_target_car_idx=camera_target_car_idx,
                 participant_car_indices=tuple(participant_car_indices),
+                camera_sequence=tuple(camera_sequence),
             )
         )
 

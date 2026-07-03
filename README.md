@@ -47,12 +47,12 @@ python app.py --no-voice
 python app.py --tick-seconds 0.5
 python app.py --voice-test
 python app.py --camera-mode observe
-python app.py --camera-mode auto --camera-group TV1
+python app.py --camera-mode auto --camera-group TV1 --camera-home-group "TV Mixed"
 ```
 
 `--voice-test` reports whether the ElevenLabs key and voice IDs were loaded, plays one Lead sample, and exits without connecting to iRacing.
 
-Camera direction is off by default. `observe` prints the car and camera group that would be selected without controlling iRacing. `auto` sends camera-switch commands for passes, close battles, pit stories, and incidents. Use camera modes while spectating or viewing the session screen; the director holds each selected car for at least eight seconds to avoid rapid cuts.
+Camera direction is off by default. `observe` prints the car and camera group that would be selected without controlling iRacing. `auto` keeps the leader on the `TV Mixed` home shot, uses `TV1` for passes, close battles, pit stories, and incidents, and returns home after ten seconds. During the starting-lineup narration it advances through the named drivers, and the green flag immediately restores the leader shot. Use camera modes while spectating or viewing the session screen.
 
 ## Run a recorded race
 

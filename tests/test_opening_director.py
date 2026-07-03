@@ -52,6 +52,8 @@ def test_opening_waits_for_lineup_after_welcome_and_weather():
     assert lineup_segments[1].category == "opening_field_rundown_2"
     assert "On the pole, the 1 of Driver 1" in lineup_segments[0].message
     assert "Starting 12th, the 12 of Driver 12" in lineup_segments[1].message
+    assert lineup_segments[0].camera_sequence == tuple(range(10))
+    assert lineup_segments[1].camera_sequence == (10, 11)
     assert director.is_complete() is True
 
 

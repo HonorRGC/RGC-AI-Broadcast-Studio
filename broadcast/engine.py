@@ -91,6 +91,13 @@ class BroadcastEngine:
                 pit_road_status,
                 current_lap,
             )
+            self._collect_incidents(
+                telemetry,
+                results,
+                driver_lookup,
+                pit_road_status,
+                current_lap,
+            )
 
         if self.race_director.phase == RacePhase.GREEN:
             self.editorial_producer.submit_race_knowledge(race_knowledge)
@@ -102,13 +109,6 @@ class BroadcastEngine:
                 current_lap,
             )
             self._collect_pass_stories(results, driver_lookup)
-            self._collect_incidents(
-                telemetry,
-                results,
-                driver_lookup,
-                pit_road_status,
-                current_lap,
-            )
             self._queue_editorial_decision(race_state, race_knowledge)
 
         return self.broadcast_queue.next_item()
@@ -135,6 +135,7 @@ class BroadcastEngine:
                 speaker=segment.speaker,
                 expires_after=180,
                 dedupe_key=segment.category,
+                camera_sequence=segment.camera_sequence,
             )
 
     def _collect_pass_stories(self, results, driver_lookup):

@@ -8,12 +8,27 @@ class CameraTelemetry:
         self.switches = []
 
     def get_driver_lookup(self):
-        return {3: {"name": "Eric Hudec", "number": "14"}}
+        return {
+            0: {"name": "Leader", "number": "77"},
+            3: {"name": "Eric Hudec", "number": "14"},
+            4: {"name": "Another Driver", "number": "24"},
+        }
+
+    def get_results(self):
+        return [
+            {"CarIdx": 0, "Position": 0},
+            {"CarIdx": 3, "Position": 1},
+            {"CarIdx": 4, "Position": 2},
+        ]
+
+    def get_session_type(self):
+        return "Race"
 
     def get_camera_groups(self):
         return [
             {"GroupNum": 1, "GroupName": "Scenic"},
             {"GroupNum": 4, "GroupName": "TV1"},
+            {"GroupNum": 5, "GroupName": "TV Mixed"},
         ]
 
     def switch_camera_to_car(self, car_number, group_number, camera_number=0):
@@ -22,7 +37,13 @@ class CameraTelemetry:
 
 
 def target_item(car_idx=3):
-    return SimpleNamespace(camera_target_car_idx=car_idx)
+    return SimpleNamespace(
+        camera_target_car_idx=car_idx,
+        camera_sequence=(),
+        dedupe_key="race_story",
+        category="race_story",
+        message="A developing race story.",
+    )
 
 
 def test_observe_mode_reports_target_without_switching_camera():
@@ -73,3 +94,67 @@ def test_unknown_camera_group_fails_without_sending_command():
 
     assert decision.status == "failed"
     assert telemetry.switches == []
+
+
+def test_story_shot_returns_to_leader_on_tv_mixed_after_ten_seconds():
+    telemetry = CameraTelemetry()
+    times = iter([100.0, 111.0])
+    director = CameraDirector(mode="auto", clock=lambda: next(times))
+
+    story = director.follow(target_item(3), telemetry)
+    home = director.update(telemetry)
+
+    assert story.status == "switched"
+    assert home.status == "switched"
+    assert telemetry.switches == [("14", 4, 0), ("77", 5, 0)]
+
+
+def test_green_flag_forces_camera_back_to_leader():
+    telemetry = CameraTelemetry()
+    times = iter([100.0, 101.0])
+    director = CameraDirector(mode="auto", clock=lambda: next(times))
+    director.follow(target_item(3), telemetry)
+    green = SimpleNamespace(
+        camera_target_car_idx=None,
+        camera_sequence=(),
+        dedupe_key="race_control:green:FORMATION",
+        message="Green flag!",
+    )
+
+    decision = director.follow(green, telemetry)
+
+    assert decision.status == "switched"
+    assert telemetry.switches[-1] == ("77", 5, 0)
+
+
+def test_lineup_sequence_advances_to_each_named_driver():
+    telemetry = CameraTelemetry()
+    times = iter([100.0, 105.0])
+    director = CameraDirector(mode="auto", clock=lambda: next(times))
+    lineup = SimpleNamespace(
+        camera_target_car_idx=None,
+        camera_sequence=(3, 4),
+        dedupe_key="opening_field_rundown_1",
+        message="On the pole is one driver. Alongside is another driver.",
+    )
+
+    first = director.follow(lineup, telemetry)
+    second = director.update(telemetry)
+
+    assert first.status == "switched"
+    assert second.status == "switched"
+    assert telemetry.switches == [("14", 4, 0), ("24", 4, 0)]
+
+
+def test_incident_camera_can_interrupt_the_minimum_hold():
+    telemetry = CameraTelemetry()
+    times = iter([100.0, 101.0])
+    director = CameraDirector(mode="auto", clock=lambda: next(times))
+    director.follow(target_item(3), telemetry)
+    incident = target_item(4)
+    incident.category = "incident"
+
+    decision = director.follow(incident, telemetry)
+
+    assert decision.status == "switched"
+    assert telemetry.switches[-1] == ("24", 4, 0)

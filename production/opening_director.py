@@ -7,6 +7,7 @@ class OpeningSegment:
     priority: int = 10
     speaker: str = "lead"
     category: str = "opening"
+    camera_sequence: tuple[int, ...] = ()
 
 
 class OpeningDirector:
@@ -126,11 +127,13 @@ class OpeningDirector:
             driver_info = driver_lookup.get(car_idx, {})
             name = driver_info.get("name", f"Car {car_idx}")
             number = driver_info.get("number", "?")
-            entries.append(self.format_lineup_entry(position, number, name))
+            entries.append((car_idx, self.format_lineup_entry(position, number, name)))
 
         segments = []
         for start in range(0, len(entries), self.LINEUP_GROUP_SIZE):
             group = entries[start : start + self.LINEUP_GROUP_SIZE]
+            group_car_indices = tuple(entry[0] for entry in group)
+            group_messages = [entry[1] for entry in group]
             group_number = start // self.LINEUP_GROUP_SIZE + 1
             intro = (
                 "Here is your starting lineup."
@@ -139,9 +142,10 @@ class OpeningDirector:
             )
             segments.append(
                 OpeningSegment(
-                    f"{intro} {' '.join(group)}",
+                    f"{intro} {' '.join(group_messages)}",
                     priority=9,
                     category=f"opening_field_rundown_{group_number}",
+                    camera_sequence=group_car_indices,
                 )
             )
         return segments

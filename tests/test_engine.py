@@ -251,6 +251,50 @@ def test_pass_story_carries_overtaking_car_as_camera_target():
     assert engine.editorial_producer.items[0].participant_car_indices == (1,)
 
 
+def test_incident_is_collected_after_race_enters_caution():
+    drivers = {0: {"name": "Driver One", "number": "1"}}
+    source = SnapshotSource(
+        TelemetrySnapshot(
+            lap=3,
+            total_laps=20,
+            session_flags=RaceFlags.GREEN,
+            results=[
+                {"CarIdx": 0, "Position": 0, "LapsComplete": 3, "Incidents": 0}
+            ],
+            driver_lookup=drivers,
+            pit_road_status=[False],
+            track_surface=[3],
+            track_surface_material=[0],
+            lap_dist_pct=[0.4],
+            est_time=[20.0],
+        )
+    )
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    engine.tick(source)
+    source.snapshot = TelemetrySnapshot(
+        lap=3,
+        total_laps=20,
+        session_flags=RaceFlags.CAUTION,
+        results=[
+            {"CarIdx": 0, "Position": 0, "LapsComplete": 3, "Incidents": 2}
+        ],
+        driver_lookup=drivers,
+        pit_road_status=[False],
+        track_surface=[3],
+        track_surface_material=[0],
+        lap_dist_pct=[0.4],
+        est_time=[20.0],
+    )
+
+    engine.tick(source)
+
+    incident_items = [
+        item for item in engine.broadcast_queue.items if item.category == "incident"
+    ]
+    assert len(incident_items) == 1
+    assert incident_items[0].camera_target_car_idx == 0
+
+
 class RaceFlags:
     GREEN = 0x00000004
     CAUTION = 0x00004000

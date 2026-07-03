@@ -26,13 +26,25 @@ def parse_args():
     parser.add_argument(
         "--camera-group",
         default="TV1",
-        help="iRacing camera group used by observe/auto mode (default: TV1)",
+        help="iRacing camera group for story targets (default: TV1)",
+    )
+    parser.add_argument(
+        "--camera-home-group",
+        default="TV Mixed",
+        help="iRacing camera group for the leader/home shot (default: TV Mixed)",
+    )
+    parser.add_argument(
+        "--camera-return-seconds",
+        type=float,
+        default=10.0,
+        help="Seconds before returning from a story target to the leader",
     )
     return parser.parse_args()
 
 
 def run_source(source, engine, booth, camera_director, tick_seconds):
     while source.is_connected():
+        report_camera_decision(camera_director.update(source))
         item = engine.tick(source)
         if item:
             report_camera_decision(camera_director.follow(item, source))
@@ -67,6 +79,8 @@ def main():
     camera_director = CameraDirector(
         mode=args.camera_mode,
         preferred_group=args.camera_group,
+        home_group=args.camera_home_group,
+        return_after_seconds=args.camera_return_seconds,
     )
 
     print("=" * 60)
@@ -82,7 +96,10 @@ def main():
         f"Jeff={'SET' if voice_ids['jeff'] else 'MISSING'} | "
         f"Sarah={'SET' if voice_ids['sarah'] else 'MISSING'}"
     )
-    print(f"Camera: {args.camera_mode.upper()} ({args.camera_group})")
+    print(
+        f"Camera: {args.camera_mode.upper()} "
+        f"(stories: {args.camera_group} | home: {args.camera_home_group})"
+    )
     print("=" * 60)
 
     if args.voice_test:
