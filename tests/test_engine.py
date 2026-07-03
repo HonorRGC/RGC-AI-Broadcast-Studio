@@ -1,4 +1,5 @@
 from broadcast.engine import BroadcastEngine
+from broadcaster.race_director import RacePhase
 from replay.telemetry_snapshot import TelemetrySnapshot
 
 
@@ -31,6 +32,9 @@ class SnapshotSource:
 
     def get_session_flags(self):
         return self.snapshot.session_flags
+
+    def get_session_state(self):
+        return self.snapshot.session_state
 
     def get_session_type(self):
         return self.snapshot.session_type
@@ -293,6 +297,51 @@ def test_incident_is_collected_after_race_enters_caution():
     ]
     assert len(incident_items) == 1
     assert incident_items[0].camera_target_car_idx == 0
+
+
+def test_cool_down_state_airs_checkered_and_suppresses_false_incident():
+    drivers = {0: {"name": "Race Winner", "number": "77"}}
+    source = SnapshotSource(
+        TelemetrySnapshot(
+            lap=9,
+            total_laps=10,
+            session_flags=RaceFlags.GREEN,
+            session_state=4,
+            results=[
+                {"CarIdx": 0, "Position": 0, "LapsComplete": 9, "Incidents": 0}
+            ],
+            driver_lookup=drivers,
+            pit_road_status=[False],
+            track_surface=[3],
+            track_surface_material=[0],
+            lap_dist_pct=[0.9],
+            est_time=[20.0],
+        )
+    )
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    engine.tick(source)
+    source.snapshot = TelemetrySnapshot(
+        lap=9,
+        total_laps=10,
+        session_flags=0,
+        session_state=6,
+        results=[
+            {"CarIdx": 0, "Position": 0, "LapsComplete": 9, "Incidents": 2}
+        ],
+        driver_lookup=drivers,
+        pit_road_status=[False],
+        track_surface=[1],
+        track_surface_material=[0],
+        lap_dist_pct=[0.4],
+        est_time=[30.0],
+    )
+
+    engine.tick(source)
+
+    categories = [item.category for item in engine.broadcast_queue.items]
+    assert engine.race_director.phase == RacePhase.CHECKERED
+    assert "post_race" in categories
+    assert "incident" not in categories
 
 
 class RaceFlags:

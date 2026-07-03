@@ -141,3 +141,17 @@ def test_finish_rundown_is_limited_to_top_ten():
     assert "Driver 10" in rundown
     assert "Driver 11" not in rundown
     assert "Driver 12" not in rundown
+
+
+def test_cool_down_session_state_is_treated_as_checkered():
+    director = RaceDirector()
+
+    phase = director.detect_phase(
+        session_flags=0,
+        results=[],
+        current_lap=0,
+        total_laps=0,
+        session_state=director.SESSION_STATE_COOL_DOWN,
+    )
+
+    assert phase == RacePhase.CHECKERED

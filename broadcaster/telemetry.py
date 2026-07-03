@@ -37,6 +37,12 @@ class IRacingTelemetry:
         except Exception:
             return 0
 
+    def get_session_state(self):
+        try:
+            return int(self.ir["SessionState"] or 0)
+        except Exception:
+            return 0
+
     def get_current_session_num(self):
         try:
             return int(self.ir["SessionNum"])

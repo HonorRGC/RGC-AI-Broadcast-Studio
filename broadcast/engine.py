@@ -84,7 +84,10 @@ class BroadcastEngine:
             scheduler=self.broadcast_queue,
         )
 
-        if self.race_director.race_started:
+        if (
+            self.race_director.race_started
+            and self.race_director.phase != RacePhase.CHECKERED
+        ):
             self._collect_pit_stories(
                 results,
                 driver_lookup,

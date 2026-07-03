@@ -24,6 +24,8 @@ class RaceDirector:
     START_READY = 0x20000000
     START_SET = 0x40000000
     START_GO = 0x80000000
+    SESSION_STATE_CHECKERED = 5
+    SESSION_STATE_COOL_DOWN = 6
 
     def __init__(self):
         self.reset()
@@ -41,14 +43,32 @@ class RaceDirector:
         self.five_to_go_announced = False
         self.white_flag_announced = False
         self.checkered_announced = False
+        self.last_results = []
+        self.last_driver_lookup = {}
 
     def update(self, telemetry, results, driver_lookup, scheduler):
         session_flags = telemetry.get_session_flags()
+        state_reader = getattr(telemetry, "get_session_state", None)
+        session_state = state_reader() if state_reader else 0
         total_laps = telemetry.get_total_laps()
         current_lap = self.get_best_race_lap(telemetry.get_lap(), results)
         track_info = telemetry.get_track_info()
 
-        new_phase = self.detect_phase(session_flags, results, current_lap, total_laps)
+        if results:
+            self.last_results = list(results)
+        if driver_lookup:
+            self.last_driver_lookup = dict(driver_lookup)
+
+        effective_results = results or self.last_results
+        effective_driver_lookup = driver_lookup or self.last_driver_lookup
+
+        new_phase = self.detect_phase(
+            session_flags,
+            effective_results,
+            current_lap,
+            total_laps,
+            session_state=session_state,
+        )
 
         if new_phase != RacePhase.CHECKERED:
             self.handle_lap_calls(current_lap, total_laps, scheduler)
@@ -56,12 +76,30 @@ class RaceDirector:
         if new_phase != self.phase:
             self.previous_phase = self.phase
             self.phase = new_phase
-            self.handle_phase_change(results, driver_lookup, scheduler, track_info)
+            self.handle_phase_change(
+                effective_results,
+                effective_driver_lookup,
+                scheduler,
+                track_info,
+            )
 
         if new_phase == RacePhase.GREEN:
             self.race_started = True
 
-    def detect_phase(self, session_flags, results, current_lap, total_laps):
+    def detect_phase(
+        self,
+        session_flags,
+        results,
+        current_lap,
+        total_laps,
+        session_state=0,
+    ):
+        if self.safe_int(session_state) in (
+            self.SESSION_STATE_CHECKERED,
+            self.SESSION_STATE_COOL_DOWN,
+        ):
+            return RacePhase.CHECKERED
+
         if self.has_flag(session_flags, self.CHECKERED_FLAG):
             return RacePhase.CHECKERED
 
@@ -377,3 +415,9 @@ class RaceDirector:
             return int(session_flags) & flag != 0
         except Exception:
             return False
+
+    def safe_int(self, value, default=0):
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return default
