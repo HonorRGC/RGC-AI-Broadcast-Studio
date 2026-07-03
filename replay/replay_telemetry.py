@@ -46,6 +46,12 @@ class ReplayTelemetry:
         snapshot = self.current_snapshot()
         return snapshot.results if snapshot else []
 
+    def get_starting_grid(self):
+        snapshot = self.current_snapshot()
+        if not snapshot:
+            return []
+        return snapshot.starting_grid or snapshot.results
+
     def get_driver_lookup(self):
         snapshot = self.current_snapshot()
         if not snapshot:

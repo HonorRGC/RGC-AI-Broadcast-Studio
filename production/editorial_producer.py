@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 import time
 
 from production.editorial_timeline import EditorialTimeline, TimelineStory
@@ -26,6 +26,8 @@ class EditorialItem:
 
     speaker: str = "lead"
     category: str = "editorial"
+    camera_target_car_idx: int | None = None
+    participant_car_indices: Tuple[int, ...] = ()
 
     created_at: float = field(default_factory=time.time)
     last_aired_at: float = 0.0
@@ -62,6 +64,8 @@ class EditorialProducer:
         driver_name="",
         car_number="",
         speaker="",
+        camera_target_car_idx=None,
+        participant_car_indices=(),
     ):
         if not headline:
             return None
@@ -76,6 +80,8 @@ class EditorialProducer:
             car_number=car_number,
             speaker=speaker or self.choose_speaker(story_type),
             category="race_story",
+            camera_target_car_idx=camera_target_car_idx,
+            participant_car_indices=tuple(participant_car_indices),
         )
 
         self.add_item(item)
@@ -246,6 +252,8 @@ class EditorialProducer:
             "battle_for_top_ten",
             "race_leader",
             "lead_change",
+            "side_by_side",
+            "three_car_battle",
         ]:
             return 0
 

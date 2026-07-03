@@ -49,6 +49,14 @@ class PromptBuilder:
         lines.append(f"Headline: {getattr(assignment, 'headline', '')}")
         lines.append(f"Summary: {getattr(assignment, 'summary', '')}")
         lines.append(f"Priority: {getattr(assignment, 'priority', '')}")
+        if getattr(assignment, "story_type", "") in (
+            "side_by_side",
+            "three_car_battle",
+        ):
+            lines.append(
+                "Accuracy: Use only the stated relationship. Do not invent an inside "
+                "or outside lane, three-wide formation, contact, or a completed pass."
+            )
         lines.append("")
 
         if race_state:

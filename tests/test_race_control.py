@@ -109,3 +109,20 @@ def test_short_race_does_not_immediately_call_the_closing_stage():
     director.handle_lap_calls(current_lap=5, total_laps=10, scheduler=queue)
     assert len(queue.items) == 1
     assert queue.items[0].message.startswith("5 laps to go")
+
+
+def test_finish_rundown_is_limited_to_top_ten():
+    director = RaceDirector()
+    results = [
+        {"CarIdx": index, "Position": index + 1} for index in range(12)
+    ]
+    drivers = {
+        index: {"name": f"Driver {index + 1}", "number": str(index + 1)}
+        for index in range(12)
+    }
+
+    rundown = director.build_finish_rundown(results, drivers, max_cars=10)
+
+    assert "Driver 10" in rundown
+    assert "Driver 11" not in rundown
+    assert "Driver 12" not in rundown

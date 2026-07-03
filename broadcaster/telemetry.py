@@ -78,6 +78,36 @@ class IRacingTelemetry:
     def get_results(self):
         return self.get_current_session().get("ResultsPositions") or []
 
+    def get_starting_grid(self):
+        """Return the fullest available race grid before live results populate."""
+        current_results = self.get_results()
+        candidates = [current_results, self.get_qualifying_results()]
+
+        sessions = (self.get_session_info() or {}).get("Sessions", []) or []
+        current_session_num = self.get_current_session_num()
+        for session in reversed(sessions):
+            try:
+                session_num = int(session.get("SessionNum", -1))
+            except (TypeError, ValueError):
+                session_num = -1
+            session_type = str(
+                session.get("SessionType") or session.get("SessionName") or ""
+            ).lower()
+            if session_num < current_session_num and "qual" in session_type:
+                candidates.append(session.get("ResultsPositions") or [])
+
+        return max(candidates, key=self._valid_result_count, default=[])
+
+    def get_qualifying_results(self):
+        qualify_info = self.safe_read("QualifyResultsInfo") or {}
+        if not isinstance(qualify_info, dict):
+            return []
+        return qualify_info.get("Results") or []
+
+    @staticmethod
+    def _valid_result_count(results):
+        return sum(1 for car in results or [] if car.get("CarIdx") is not None)
+
     def get_driver_lookup(self):
         driver_info = self.get_driver_info()
         if not driver_info:

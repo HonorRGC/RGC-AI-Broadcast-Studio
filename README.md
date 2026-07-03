@@ -15,6 +15,8 @@ iRacing or JSONL replay
 
 Both live and replay telemetry use the same `BroadcastEngine`. Race-control messages can preempt stale commentary, pending stories are deduplicated and expired, and every story has one route to air.
 
+The action detector watches position-adjacent cars on the same lap for very small longitudinal gaps. It creates side-by-side and three-car-battle assignments and attaches the involved car indices plus a recommended camera target. Lane-specific calls such as "on the outside" or "three-wide" are intentionally withheld until a future camera or spatial-data layer can confirm them.
+
 For multi-session league events, Practice and Qualifying are detected but remain silent. Entering the Race session resets race-only state and begins the welcome, weather, track report, and starting-field rundown while cars are gridding.
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for responsibilities and extension rules.

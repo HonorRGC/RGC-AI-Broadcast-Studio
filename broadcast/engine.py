@@ -2,6 +2,7 @@ from broadcast.broadcast_queue import BroadcastQueue
 from broadcaster.race_brain import RaceBrain
 from broadcaster.race_director import RaceDirector, RacePhase
 from production.commentary_cleaner import CommentaryCleaner
+from production.action_detector import ActionDetector
 from production.editorial_producer import EditorialDecisionType, EditorialProducer
 from production.incident_detector import IncidentDetector
 from production.openai_director import OpenAIDirector
@@ -29,6 +30,7 @@ class BroadcastEngine:
         self.race_brain = RaceBrain()
         self.race_director = RaceDirector()
         self.race_intelligence = RaceIntelligence()
+        self.action_detector = ActionDetector()
         self.editorial_producer = EditorialProducer()
         self.pit_strategy_detector = PitStrategyDetector()
         self.incident_detector = IncidentDetector()
@@ -66,7 +68,14 @@ class BroadcastEngine:
         )
         race_state = self.race_intelligence.get_race_state()
 
-        self._queue_opening(telemetry, results, driver_lookup, current_lap)
+        grid_reader = getattr(telemetry, "get_starting_grid", None)
+        starting_grid = grid_reader() if grid_reader else results
+        self._queue_opening(
+            telemetry,
+            starting_grid or results,
+            driver_lookup,
+            current_lap,
+        )
 
         self.race_director.update(
             telemetry=telemetry,
@@ -85,6 +94,13 @@ class BroadcastEngine:
 
         if self.race_director.phase == RacePhase.GREEN:
             self.editorial_producer.submit_race_knowledge(race_knowledge)
+            self._collect_action_stories(
+                telemetry,
+                results,
+                driver_lookup,
+                pit_road_status,
+                current_lap,
+            )
             self._collect_pass_stories(results, driver_lookup)
             self._collect_incidents(
                 telemetry,
@@ -142,6 +158,36 @@ class BroadcastEngine:
                 driver_name=event.driver_name,
                 car_number=event.car_number,
                 speaker="lead",
+            )
+
+    def _collect_action_stories(
+        self,
+        telemetry,
+        results,
+        driver_lookup,
+        pit_road_status,
+        current_lap,
+    ):
+        events = self.action_detector.analyze(
+            results=results,
+            driver_lookup=driver_lookup,
+            lap_dist_pct_status=telemetry.get_car_idx_lap_dist_pct(),
+            pit_road_status=pit_road_status,
+            current_lap=current_lap,
+        )
+        for event in events:
+            primary = driver_lookup.get(event.primary_car_idx, {})
+            self.editorial_producer.submit_story(
+                story_type=event.event_type,
+                headline=event.headline,
+                summary=event.summary,
+                priority=event.importance,
+                source="action_detector",
+                driver_name=primary.get("name", ""),
+                car_number=primary.get("number", ""),
+                speaker="lead",
+                camera_target_car_idx=event.camera_target_car_idx,
+                participant_car_indices=event.participant_car_indices,
             )
 
     def _collect_pit_stories(
@@ -222,4 +268,6 @@ class BroadcastEngine:
             speaker=item.speaker,
             expires_after=45,
             dedupe_key=self.editorial_producer.build_story_id(item),
+            camera_target_car_idx=item.camera_target_car_idx,
+            participant_car_indices=item.participant_car_indices,
         )

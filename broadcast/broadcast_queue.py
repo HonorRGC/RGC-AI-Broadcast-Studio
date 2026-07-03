@@ -1,6 +1,6 @@
 import time
 from dataclasses import dataclass, field
-from typing import List
+from typing import List, Tuple
 
 
 @dataclass
@@ -13,6 +13,8 @@ class ScheduledBroadcast:
     delay_seconds: float = 0.0
     expires_after: float = 90.0
     dedupe_key: str = ""
+    camera_target_car_idx: int | None = None
+    participant_car_indices: Tuple[int, ...] = ()
     created_at: float = field(default_factory=time.time)
 
     @property
@@ -39,6 +41,8 @@ class BroadcastQueue:
         delay_seconds=0.0,
         expires_after=90.0,
         dedupe_key="",
+        camera_target_car_idx=None,
+        participant_car_indices=(),
     ):
         if not commentary:
             return
@@ -57,6 +61,8 @@ class BroadcastQueue:
                 delay_seconds=delay_seconds,
                 expires_after=expires_after,
                 dedupe_key=key,
+                camera_target_car_idx=camera_target_car_idx,
+                participant_car_indices=tuple(participant_car_indices),
             )
         )
 

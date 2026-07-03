@@ -11,6 +11,7 @@ class TelemetrySnapshot:
     session_flags: int = 0
     track_info: dict[str, Any] = field(default_factory=dict)
     results: list[dict[str, Any]] = field(default_factory=list)
+    starting_grid: list[dict[str, Any]] = field(default_factory=list)
     driver_lookup: dict[Any, dict[str, Any]] = field(default_factory=dict)
     pit_road_status: list[Any] = field(default_factory=list)
     track_surface: list[Any] = field(default_factory=list)
@@ -33,6 +34,7 @@ class TelemetrySnapshot:
             session_flags=telemetry.get_session_flags(),
             track_info=telemetry.get_track_info(),
             results=telemetry.get_results(),
+            starting_grid=getattr(telemetry, "get_starting_grid", telemetry.get_results)(),
             driver_lookup=telemetry.get_driver_lookup(),
             pit_road_status=telemetry.get_car_idx_on_pit_road(),
             track_surface=telemetry.get_car_idx_track_surface(),

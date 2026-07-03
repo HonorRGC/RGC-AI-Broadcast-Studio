@@ -17,6 +17,9 @@ class SnapshotSource:
     def get_results(self):
         return self.snapshot.results
 
+    def get_starting_grid(self):
+        return self.snapshot.starting_grid or self.snapshot.results
+
     def get_driver_lookup(self):
         return self.snapshot.driver_lookup
 
@@ -162,6 +165,64 @@ def test_engine_is_silent_until_the_race_session_begins():
 
     assert emitted.category == "opening_welcome"
     assert engine.race_director.race_started is False
+
+
+def test_engine_uses_qualifying_grid_when_race_results_are_not_ready():
+    grid = [{"CarIdx": index, "Position": index} for index in range(12)]
+    drivers = {
+        index: {"name": f"Driver {index + 1}", "number": str(index + 1)}
+        for index in range(12)
+    }
+    snapshot = TelemetrySnapshot(
+        session_type="Race",
+        total_laps=20,
+        session_flags=RaceFlags.START_READY,
+        track_info={"track_name": "Nashville"},
+        results=[],
+        starting_grid=grid,
+        driver_lookup=drivers,
+        pit_road_status=[False] * 12,
+    )
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+
+    engine.tick(SnapshotSource(snapshot))
+
+    rundown = [
+        item for item in engine.broadcast_queue.items
+        if item.category.startswith("opening_field_rundown")
+    ]
+    assert len(rundown) == 2
+    assert "Driver 12" in rundown[1].message
+
+
+def test_engine_preserves_camera_target_for_close_action():
+    results = [
+        {"CarIdx": index, "Position": index, "LapsComplete": 5}
+        for index in range(3)
+    ]
+    drivers = {
+        index: {"name": f"Driver {index + 1}", "number": str(index + 1)}
+        for index in range(3)
+    }
+    snapshot = TelemetrySnapshot(
+        lap=5,
+        total_laps=20,
+        session_flags=RaceFlags.GREEN,
+        results=results,
+        driver_lookup=drivers,
+        pit_road_status=[False] * 3,
+        lap_dist_pct=[0.5000, 0.5007, 0.5014],
+    )
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+
+    engine.tick(SnapshotSource(snapshot))
+
+    action_items = [
+        item for item in engine.broadcast_queue.items
+        if item.camera_target_car_idx is not None
+    ]
+    assert len(action_items) == 1
+    assert action_items[0].participant_car_indices == (0, 1, 2)
 
 
 class RaceFlags:
