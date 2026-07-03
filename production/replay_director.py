@@ -20,6 +20,7 @@ class ReplayDirector:
         mode="off",
         angle_groups=("TV1", "TV2"),
         pre_roll_seconds=5.0,
+        incident_marker_pre_roll_frames=360,
         angle_seconds=8.0,
         clock=None,
     ):
@@ -28,6 +29,7 @@ class ReplayDirector:
         self.mode = mode
         self.angle_groups = tuple(angle_groups) or ("TV1",)
         self.pre_roll_seconds = float(pre_roll_seconds)
+        self.incident_marker_pre_roll_frames = int(incident_marker_pre_roll_frames)
         self.angle_seconds = float(angle_seconds)
         self.clock = clock or time.monotonic
         self.reset()
@@ -186,7 +188,7 @@ class ReplayDirector:
             return True
         if getattr(self, "use_incident_marker", False):
             seeker = getattr(telemetry, "seek_previous_incident", None)
-            return bool(seeker and seeker())
+            return bool(seeker and seeker(self.incident_marker_pre_roll_frames))
         return telemetry.seek_replay_session_time(
             self.session_num,
             self.replay_start_time,

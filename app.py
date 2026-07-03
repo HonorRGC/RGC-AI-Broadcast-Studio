@@ -53,6 +53,15 @@ def parse_args():
         help="Seconds to show each incident replay angle",
     )
     parser.add_argument(
+        "--incident-marker-preroll-seconds",
+        type=float,
+        default=6.0,
+        help=(
+            "Seconds to back up before iRacing's incident marker when the "
+            "broadcast cannot identify a specific incident car"
+        ),
+    )
+    parser.add_argument(
         "--incident-debug",
         action="store_true",
         help="Print caution incident-detection diagnostics when no replay is queued",
@@ -138,6 +147,9 @@ def main():
     replay_director = ReplayDirector(
         mode=args.incident_replay,
         angle_seconds=args.replay_angle_seconds,
+        incident_marker_pre_roll_frames=round(
+            max(0.0, args.incident_marker_preroll_seconds) * 60
+        ),
     )
 
     if args.incident_replay == "auto" and args.camera_mode != "auto":

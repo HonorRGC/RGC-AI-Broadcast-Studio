@@ -14,8 +14,8 @@ class ReplayTelemetry:
         self.seeks.append((session_num, session_time_seconds))
         return True
 
-    def seek_previous_incident(self):
-        self.seeks.append(("previous_incident",))
+    def seek_previous_incident(self, pre_roll_frames=360):
+        self.seeks.append(("previous_incident", pre_roll_frames))
         return True
 
     def return_to_live(self):
@@ -173,5 +173,22 @@ def test_incident_marker_replay_uses_iracing_previous_incident_camera():
     assert started.status == "started"
     assert started.total_angles == 2
     assert second_angle.status == "angle"
-    assert telemetry.seeks == [("previous_incident",), ("previous_incident",)]
+    assert telemetry.seeks == [
+        ("previous_incident", 360),
+        ("previous_incident", 360),
+    ]
     assert camera.focuses == [("incident", "TV1"), ("incident", "TV2")]
+
+
+def test_incident_marker_replay_pre_roll_frames_are_configurable():
+    telemetry = ReplayTelemetry()
+    camera = ReplayCamera()
+    director = ReplayDirector(
+        mode="auto",
+        incident_marker_pre_roll_frames=480,
+        clock=lambda: 10.0,
+    )
+
+    director.handle_item(incident_marker_item(), telemetry, camera)
+
+    assert telemetry.seeks == [("previous_incident", 480)]

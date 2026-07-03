@@ -86,6 +86,10 @@ def test_live_telemetry_detects_replay_delay_and_returns_to_live_edge():
             self.replay_commands.append(("search", mode))
             return 1
 
+        def replay_set_play_position(self, mode, frame_num):
+            self.replay_commands.append(("position", mode, frame_num))
+            return 1
+
         def replay_set_play_speed(self, speed):
             self.replay_commands.append(("speed", speed))
             return 1
@@ -104,8 +108,10 @@ def test_live_telemetry_detects_replay_delay_and_returns_to_live_edge():
     assert telemetry.ir.replay_commands[-1] == ("speed", 1)
     assert telemetry.seek_replay_session_time(2, 45.5) is True
     assert ("session_time", 2, 45500) in telemetry.ir.replay_commands
-    assert telemetry.seek_previous_incident() is True
-    assert telemetry.ir.replay_commands[-2][0] == "search"
+    assert telemetry.seek_previous_incident(pre_roll_frames=420) is True
+    assert telemetry.ir.replay_commands[-3][0] == "search"
+    assert telemetry.ir.replay_commands[-2][0] == "position"
+    assert telemetry.ir.replay_commands[-2][2] == -420
 
 
 def test_live_results_include_the_player_incident_total():

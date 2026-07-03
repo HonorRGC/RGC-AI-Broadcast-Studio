@@ -76,9 +76,14 @@ class IRacingTelemetry:
         except Exception:
             return False
 
-    def seek_previous_incident(self):
+    def seek_previous_incident(self, pre_roll_frames=360):
         try:
             seek_sent = self.ir.replay_search(irsdk.RpySrchMode.prev_incident)
+            if pre_roll_frames:
+                self.ir.replay_set_play_position(
+                    irsdk.RpyPosMode.current,
+                    -abs(int(pre_roll_frames)),
+                )
             speed_sent = self.ir.replay_set_play_speed(1)
             return bool(seek_sent and speed_sent)
         except Exception:
