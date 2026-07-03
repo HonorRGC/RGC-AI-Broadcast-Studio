@@ -207,6 +207,32 @@ def test_finish_rundown_is_limited_to_top_ten():
     assert "Driver 12" not in rundown
 
 
+def test_checkered_queues_finish_rundown_then_signoff():
+    director = RaceDirector()
+    queue = BroadcastQueue()
+    results = [
+        {"CarIdx": index, "Position": index + 1} for index in range(3)
+    ]
+    drivers = {
+        index: {"name": f"Driver {index + 1}", "number": str(index + 1)}
+        for index in range(3)
+    }
+
+    director.handle_checkered(
+        results,
+        drivers,
+        queue,
+        {"track_name": "Homestead Miami Speedway"},
+    )
+
+    categories = [item.category for item in queue.items]
+    assert categories == ["race_control", "post_race", "post_race_signoff"]
+    assert queue.items[1].priority > queue.items[2].priority
+    assert "Thank you for watching" in queue.items[2].message
+    assert "Homestead Miami Speedway" in queue.items[2].message
+    assert "Jeff and Sarah" in queue.items[2].message
+
+
 def test_cool_down_session_state_is_treated_as_checkered():
     director = RaceDirector()
 

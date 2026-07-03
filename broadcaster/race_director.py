@@ -282,6 +282,16 @@ class RaceDirector:
             dedupe_key="post_race:finish_rundown",
         )
 
+        scheduler.add(
+            self.build_signoff(track_name),
+            priority=7,
+            category="post_race_signoff",
+            protected=True,
+            speaker="lead",
+            expires_after=240,
+            dedupe_key="post_race:signoff",
+        )
+
         self.checkered_announced = True
 
     def handle_lap_calls(self, current_lap, total_laps, scheduler):
@@ -410,6 +420,13 @@ class RaceDirector:
             lines.append(self.format_driver_position(car, driver_lookup))
 
         return " ".join(lines)
+
+    def build_signoff(self, track_name):
+        return (
+            f"That will do it tonight from {track_name}. "
+            "For Jeff and Sarah, I am Mike with RGC AI Broadcast. "
+            "Thank you for watching, and we will see you next time."
+        )
 
     def format_driver_position(self, car, driver_lookup):
         car_idx = car.get("CarIdx")
