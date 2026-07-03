@@ -36,6 +36,12 @@ class SnapshotSource:
     def get_session_state(self):
         return self.snapshot.session_state
 
+    def get_current_session_num(self):
+        return self.snapshot.session_num
+
+    def get_session_time(self):
+        return self.snapshot.session_time
+
     def get_session_type(self):
         return self.snapshot.session_type
 
@@ -279,6 +285,8 @@ def test_incident_is_collected_after_race_enters_caution():
         lap=3,
         total_laps=20,
         session_flags=RaceFlags.CAUTION,
+        session_num=2,
+        session_time=125.0,
         results=[
             {"CarIdx": 0, "Position": 0, "LapsComplete": 3, "Incidents": 2}
         ],
@@ -297,6 +305,107 @@ def test_incident_is_collected_after_race_enters_caution():
     ]
     assert len(incident_items) == 1
     assert incident_items[0].camera_target_car_idx == 0
+    assert incident_items[0].replay_session_num == 2
+    assert incident_items[0].replay_session_time == 125.0
+    assert incident_items[0].replay_multi_angle is True
+    assert any(
+        item.dedupe_key == "race_control:caution"
+        for item in engine.broadcast_queue.items
+    )
+
+
+def test_green_flag_incident_requests_only_one_replay_angle():
+    drivers = {0: {"name": "Driver One", "number": "1"}}
+    source = SnapshotSource(
+        TelemetrySnapshot(
+            lap=3,
+            total_laps=20,
+            session_flags=RaceFlags.GREEN,
+            session_num=2,
+            session_time=50.0,
+            results=[
+                {"CarIdx": 0, "Position": 0, "LapsComplete": 3, "Incidents": 0}
+            ],
+            driver_lookup=drivers,
+            pit_road_status=[False],
+            track_surface=[3],
+            track_surface_material=[0],
+            lap_dist_pct=[0.4],
+            est_time=[20.0],
+        )
+    )
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    engine.tick(source)
+    source.snapshot = TelemetrySnapshot(
+        lap=3,
+        total_laps=20,
+        session_flags=RaceFlags.GREEN,
+        session_num=2,
+        session_time=51.0,
+        results=[
+            {"CarIdx": 0, "Position": 0, "LapsComplete": 3, "Incidents": 2}
+        ],
+        driver_lookup=drivers,
+        pit_road_status=[False],
+        track_surface=[3],
+        track_surface_material=[0],
+        lap_dist_pct=[0.4],
+        est_time=[20.0],
+    )
+
+    engine.tick(source)
+
+    incident = next(
+        item for item in engine.broadcast_queue.items if item.category == "incident"
+    )
+    assert incident.replay_session_time == 51.0
+    assert incident.replay_multi_angle is False
+
+
+def test_incident_after_caution_transition_uses_only_one_replay_angle():
+    drivers = {0: {"name": "Driver One", "number": "1"}}
+    source = SnapshotSource(
+        TelemetrySnapshot(
+            lap=3,
+            total_laps=20,
+            session_flags=RaceFlags.GREEN,
+            results=[
+                {"CarIdx": 0, "Position": 0, "LapsComplete": 3, "Incidents": 0}
+            ],
+            driver_lookup=drivers,
+            pit_road_status=[False],
+            track_surface=[3],
+            track_surface_material=[0],
+            lap_dist_pct=[0.4],
+            est_time=[20.0],
+        )
+    )
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    engine.tick(source)
+    source.snapshot = TelemetrySnapshot(
+        lap=3,
+        total_laps=20,
+        session_flags=RaceFlags.CAUTION,
+        results=[
+            {"CarIdx": 0, "Position": 0, "LapsComplete": 3, "Incidents": 0}
+        ],
+        driver_lookup=drivers,
+        pit_road_status=[False],
+        track_surface=[3],
+        track_surface_material=[0],
+        lap_dist_pct=[0.4],
+        est_time=[20.0],
+    )
+    engine.tick(source)
+    source.snapshot.results[0]["Incidents"] = 2
+    source.snapshot.session_time = 60.0
+
+    engine.tick(source)
+
+    incident = next(
+        item for item in engine.broadcast_queue.items if item.category == "incident"
+    )
+    assert incident.replay_multi_angle is False
 
 
 def test_cool_down_state_airs_checkered_and_suppresses_false_incident():

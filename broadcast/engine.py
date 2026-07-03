@@ -246,8 +246,22 @@ class BroadcastEngine:
         if not events:
             return
 
-        self.broadcast_queue.clear_for_race_control()
+        if self.race_director.phase not in (
+            RacePhase.CAUTION,
+            RacePhase.ONE_TO_GREEN,
+        ):
+            self.broadcast_queue.clear_for_race_control()
+        session_num_reader = getattr(telemetry, "get_current_session_num", None)
+        session_time_reader = getattr(telemetry, "get_session_time", None)
+        session_num = session_num_reader() if session_num_reader else 0
+        session_time = session_time_reader() if session_time_reader else 0.0
+        caution_just_started = (
+            self.race_director.phase == RacePhase.CAUTION
+            and self.race_director.phase_changed
+            and self.race_director.previous_phase != RacePhase.CAUTION
+        )
         for event in events:
+            replay_eligible = event.incident_delta >= 2
             self.broadcast_queue.add(
                 self.commentary_cleaner.clean(event.message),
                 priority=event.importance,
@@ -255,9 +269,16 @@ class BroadcastEngine:
                 protected=True,
                 speaker="lead",
                 expires_after=25,
-                dedupe_key=f"incident:{event.car_idx}:{event.trouble_type}",
+                dedupe_key=(
+                    f"incident:{event.car_idx}:{event.trouble_type}:"
+                    f"{event.lap}:{event.total_incidents}"
+                ),
                 camera_target_car_idx=event.car_idx,
                 participant_car_indices=(event.car_idx,),
+                replay_session_num=session_num if replay_eligible else None,
+                replay_session_time=session_time if replay_eligible else None,
+                replay_incident_delta=event.incident_delta,
+                replay_multi_angle=replay_eligible and caution_just_started,
             )
 
     def _queue_editorial_decision(self, race_state, race_knowledge):

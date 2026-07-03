@@ -42,11 +42,15 @@ class CameraDirector:
         self.return_home_at = None
         self.live_edge_initialized = False
         self.last_live_sync_at = None
+        self.replay_active = False
         self.clear_sequence()
 
     def update(self, telemetry):
         if self.mode == "off" or not self.is_race_session(telemetry):
             return CameraDecision("ignored", "Camera direction is inactive.")
+
+        if self.replay_active:
+            return CameraDecision("held", "Incident replay controls the camera.")
 
         now = self.clock()
         live_decision = self.ensure_live_edge(telemetry, now)
@@ -123,6 +127,9 @@ class CameraDirector:
             return CameraDecision("ignored", "Camera direction is off.")
 
         now = self.clock()
+        if self.replay_active and not self.is_green_flag_item(item):
+            return CameraDecision("held", "Incident replay controls the camera.")
+
         if self.is_green_flag_item(item):
             self.clear_sequence()
             self.return_home_at = None
@@ -166,6 +173,28 @@ class CameraDirector:
         ):
             self.return_home_at = now + self.return_after_seconds
         return decision
+
+    def begin_replay(self):
+        self.replay_active = True
+        self.return_home_at = None
+        self.clear_sequence()
+
+    def focus_replay(self, car_idx, group_name, telemetry):
+        return self.focus_car(
+            car_idx,
+            group_name,
+            telemetry,
+            self.clock(),
+            role="replay",
+            force=True,
+        )
+
+    def end_replay(self, telemetry):
+        self.replay_active = False
+        self.live_edge_initialized = True
+        self.return_home_at = None
+        self.clear_sequence()
+        return self.focus_home(telemetry, self.clock(), force=True)
 
     def focus_home(self, telemetry, now, force=False):
         car_idx = self.get_leader_car_idx(telemetry)

@@ -84,9 +84,17 @@ def test_live_telemetry_detects_replay_delay_and_returns_to_live_edge():
             self.replay_commands.append(("speed", speed))
             return 1
 
+        def replay_search_session_time(self, session_num, session_time_ms):
+            self.replay_commands.append(
+                ("session_time", session_num, session_time_ms)
+            )
+            return 1
+
     telemetry = IRacingTelemetry.__new__(IRacingTelemetry)
     telemetry.ir = FakeIR()
 
     assert telemetry.is_replay_at_live_edge() is False
     assert telemetry.return_to_live() is True
     assert telemetry.ir.replay_commands[-1] == ("speed", 1)
+    assert telemetry.seek_replay_session_time(2, 45.5) is True
+    assert ("session_time", 2, 45500) in telemetry.ir.replay_commands

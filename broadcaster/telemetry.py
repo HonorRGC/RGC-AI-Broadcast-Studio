@@ -59,6 +59,23 @@ class IRacingTelemetry:
         except Exception:
             return False
 
+    def get_session_time(self):
+        try:
+            return float(self.ir["SessionTime"] or 0.0)
+        except Exception:
+            return 0.0
+
+    def seek_replay_session_time(self, session_num, session_time_seconds):
+        try:
+            seek_sent = self.ir.replay_search_session_time(
+                int(session_num),
+                max(0, int(float(session_time_seconds) * 1000)),
+            )
+            speed_sent = self.ir.replay_set_play_speed(1)
+            return bool(seek_sent and speed_sent)
+        except Exception:
+            return False
+
     def get_current_session_num(self):
         try:
             return int(self.ir["SessionNum"])

@@ -48,11 +48,14 @@ python app.py --tick-seconds 0.5
 python app.py --voice-test
 python app.py --camera-mode observe
 python app.py --camera-mode auto --camera-group TV1 --camera-home-group "TV Mixed"
+python app.py --camera-mode auto --incident-replay auto
 ```
 
 `--voice-test` reports whether the ElevenLabs key and voice IDs were loaded, plays one Lead sample, and exits without connecting to iRacing.
 
 Camera direction is off by default. `observe` prints the car and camera group that would be selected without controlling iRacing. `auto` keeps the viewed replay at the live edge, holds the leader on the `TV Mixed` home shot, uses the closer `TV1` group for passes, lineup drivers, battles, pit stories, and incidents, and returns home after ten seconds. Starting-lineup groups rotate Lead, Jeff, then Lead while the camera advances through the named drivers; the green flag immediately restores the leader shot. Use camera modes while spectating or viewing the session screen.
+
+Incident replay is separately opt-in. `--incident-replay auto` requires `--camera-mode auto`. A 2x-or-higher incident receives one TV1 replay with five seconds of pre-roll. When that incident is detected as a new caution begins, the director repeats the same moment on TV2 before returning to the live leader. Live-edge enforcement pauses while replay is active, and green or checkered immediately aborts replay and returns live. Use `--incident-replay observe` to preview replay decisions without sending replay or camera commands.
 
 ## Run a recorded race
 

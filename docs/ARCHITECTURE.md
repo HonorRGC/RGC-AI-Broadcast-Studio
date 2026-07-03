@@ -14,7 +14,8 @@ A fact should have one owner and a story should have one route to air. Feature m
 6. `OpenAIDirector` turns the assignment into concise on-air language. Rule-based text remains the fallback.
 7. `BroadcastQueue` expires stale work and lets protected race control outrank normal stories.
 8. `CameraDirector` optionally sequences grid shots, follows the selected story target, and returns to a leader-centered home shot.
-9. `BroadcastBooth` routes the selected item to console and the appropriate ElevenLabs voice.
+9. `ReplayDirector` optionally seeks confirmed 2x incident markers, manages caution-only multi-angle playback, and owns the return to live.
+10. `BroadcastBooth` routes the selected item to console and the appropriate ElevenLabs voice.
 
 ## Ownership
 
@@ -33,6 +34,7 @@ A fact should have one owner and a story should have one route to air. Feature m
 | Natural language | `production.openai_director.OpenAIDirector` |
 | Airtime scheduling | `broadcast.broadcast_queue.BroadcastQueue` |
 | Camera targeting and switching | `production.camera_director.CameraDirector` |
+| Incident replay lifecycle | `production.replay_director.ReplayDirector` |
 | Voice routing | `broadcast.booth.BroadcastBooth` |
 
 ## Extension rules

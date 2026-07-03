@@ -179,3 +179,15 @@ def test_auto_mode_returns_a_behind_replay_view_to_live():
 
     assert decision.status == "live"
     assert telemetry.return_to_live_calls == 1
+
+
+def test_live_edge_enforcement_is_suspended_during_incident_replay():
+    telemetry = CameraTelemetry()
+    telemetry.at_live_edge = False
+    director = CameraDirector(mode="auto", clock=lambda: 100.0)
+    director.begin_replay()
+
+    decision = director.update(telemetry)
+
+    assert decision.status == "held"
+    assert telemetry.return_to_live_calls == 0

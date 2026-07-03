@@ -16,6 +16,10 @@ class ScheduledBroadcast:
     camera_target_car_idx: int | None = None
     participant_car_indices: Tuple[int, ...] = ()
     camera_sequence: Tuple[int, ...] = ()
+    replay_session_num: int | None = None
+    replay_session_time: float | None = None
+    replay_incident_delta: int = 0
+    replay_multi_angle: bool = False
     created_at: float = field(default_factory=time.time)
 
     @property
@@ -45,6 +49,10 @@ class BroadcastQueue:
         camera_target_car_idx=None,
         participant_car_indices=(),
         camera_sequence=(),
+        replay_session_num=None,
+        replay_session_time=None,
+        replay_incident_delta=0,
+        replay_multi_angle=False,
     ):
         if not commentary:
             return
@@ -66,6 +74,10 @@ class BroadcastQueue:
                 camera_target_car_idx=camera_target_car_idx,
                 participant_car_indices=tuple(participant_car_indices),
                 camera_sequence=tuple(camera_sequence),
+                replay_session_num=replay_session_num,
+                replay_session_time=replay_session_time,
+                replay_incident_delta=replay_incident_delta,
+                replay_multi_angle=bool(replay_multi_angle),
             )
         )
 

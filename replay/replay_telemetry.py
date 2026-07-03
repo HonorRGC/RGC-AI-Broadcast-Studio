@@ -38,6 +38,17 @@ class ReplayTelemetry:
         snapshot = self.current_snapshot()
         return snapshot.session_state if snapshot else 0
 
+    def get_current_session_num(self):
+        snapshot = self.current_snapshot()
+        return snapshot.session_num if snapshot else 0
+
+    def get_session_time(self):
+        snapshot = self.current_snapshot()
+        return snapshot.session_time if snapshot else 0.0
+
+    def seek_replay_session_time(self, session_num, session_time_seconds):
+        return False
+
     def get_lap(self):
         snapshot = self.current_snapshot()
         return snapshot.race_lap() if snapshot else 0

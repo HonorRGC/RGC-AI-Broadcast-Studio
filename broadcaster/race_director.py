@@ -33,6 +33,7 @@ class RaceDirector:
     def reset(self):
         self.phase = RacePhase.UNKNOWN
         self.previous_phase = RacePhase.UNKNOWN
+        self.phase_changed = False
         self.race_started = False
 
         self.formation_announced = False
@@ -47,6 +48,7 @@ class RaceDirector:
         self.last_driver_lookup = {}
 
     def update(self, telemetry, results, driver_lookup, scheduler):
+        self.phase_changed = False
         session_flags = telemetry.get_session_flags()
         state_reader = getattr(telemetry, "get_session_state", None)
         session_state = state_reader() if state_reader else 0
@@ -74,6 +76,7 @@ class RaceDirector:
             self.handle_lap_calls(current_lap, total_laps, scheduler)
 
         if new_phase != self.phase:
+            self.phase_changed = True
             self.previous_phase = self.phase
             self.phase = new_phase
             self.handle_phase_change(

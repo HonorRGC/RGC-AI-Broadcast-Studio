@@ -10,6 +10,8 @@ class TelemetrySnapshot:
     session_type: str = "Race"
     session_flags: int = 0
     session_state: int = 0
+    session_num: int = 0
+    session_time: float = 0.0
     track_info: dict[str, Any] = field(default_factory=dict)
     results: list[dict[str, Any]] = field(default_factory=list)
     starting_grid: list[dict[str, Any]] = field(default_factory=list)
@@ -34,6 +36,8 @@ class TelemetrySnapshot:
             session_type=telemetry.get_session_type(),
             session_flags=telemetry.get_session_flags(),
             session_state=getattr(telemetry, "get_session_state", lambda: 0)(),
+            session_num=getattr(telemetry, "get_current_session_num", lambda: 0)(),
+            session_time=getattr(telemetry, "get_session_time", lambda: 0.0)(),
             track_info=telemetry.get_track_info(),
             results=telemetry.get_results(),
             starting_grid=getattr(telemetry, "get_starting_grid", telemetry.get_results)(),
