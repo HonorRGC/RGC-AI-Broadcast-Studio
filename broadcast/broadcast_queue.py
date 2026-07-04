@@ -16,6 +16,7 @@ class ScheduledBroadcast:
     camera_target_car_idx: int | None = None
     participant_car_indices: Tuple[int, ...] = ()
     camera_sequence: Tuple[int, ...] = ()
+    camera_sequence_steps: Tuple[tuple, ...] = ()
     replay_session_num: int | None = None
     replay_session_time: float | None = None
     replay_incident_delta: int = 0
@@ -50,6 +51,7 @@ class BroadcastQueue:
         camera_target_car_idx=None,
         participant_car_indices=(),
         camera_sequence=(),
+        camera_sequence_steps=(),
         replay_session_num=None,
         replay_session_time=None,
         replay_incident_delta=0,
@@ -76,6 +78,7 @@ class BroadcastQueue:
                 camera_target_car_idx=camera_target_car_idx,
                 participant_car_indices=tuple(participant_car_indices),
                 camera_sequence=tuple(camera_sequence),
+                camera_sequence_steps=tuple(camera_sequence_steps),
                 replay_session_num=replay_session_num,
                 replay_session_time=replay_session_time,
                 replay_incident_delta=replay_incident_delta,

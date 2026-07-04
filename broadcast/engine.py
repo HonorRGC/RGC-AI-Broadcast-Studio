@@ -166,6 +166,7 @@ class BroadcastEngine:
                 expires_after=180,
                 dedupe_key=segment.category,
                 camera_sequence=segment.camera_sequence,
+                camera_sequence_steps=getattr(segment, "camera_sequence_steps", ()),
             )
 
     def _collect_pass_stories(self, results, driver_lookup):
@@ -318,6 +319,7 @@ class BroadcastEngine:
                 expires_after=180,
                 dedupe_key=segment.category,
                 camera_sequence=segment.camera_sequence,
+                camera_sequence_steps=getattr(segment, "camera_sequence_steps", ()),
             )
         return queued
 

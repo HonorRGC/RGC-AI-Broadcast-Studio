@@ -10,6 +10,7 @@ class FieldRundownSegment:
     speaker: str
     category: str
     camera_sequence: tuple[int, ...] = ()
+    camera_sequence_steps: tuple[tuple, ...] = ()
 
 
 class FieldRundownDirector:
@@ -100,10 +101,21 @@ class FieldRundownDirector:
                         for entry in group
                         if entry["car_idx"] is not None
                     ),
+                    camera_sequence_steps=self.build_quarter_camera_steps(group),
                 )
             )
 
         return segments
+
+    def build_quarter_camera_steps(self, group):
+        steps = []
+        for entry in group:
+            car_idx = entry["car_idx"]
+            if car_idx is None:
+                continue
+            steps.append((car_idx, "TV1", 0))
+            steps.append((car_idx, "Cockpit", 0))
+        return tuple(steps)
 
     def freeze_running_order(self, results):
         valid = [dict(car) for car in results or [] if car.get("CarIdx") is not None]

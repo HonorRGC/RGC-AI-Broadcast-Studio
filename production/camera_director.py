@@ -65,17 +65,17 @@ class CameraDirector:
             and now >= self.next_sequence_at
         ):
             if self.sequence_index < len(self.sequence):
-                car_idx = self.sequence[self.sequence_index]
+                car_idx, group_name, camera_number = self.sequence[self.sequence_index]
                 self.sequence_index += 1
                 self.next_sequence_at = now + self.sequence_interval
                 return self.focus_car(
                     car_idx,
-                    self.preferred_group,
+                    group_name,
                     telemetry,
                     now,
                     role="lineup",
                     force=True,
-                    camera_number=self.lineup_camera_number,
+                    camera_number=camera_number,
                 )
             self.clear_sequence()
             return self.focus_home(telemetry, now, force=True)
@@ -138,21 +138,22 @@ class CameraDirector:
             self.return_home_at = None
             return self.focus_home(telemetry, now, force=True)
 
-        sequence = tuple(getattr(item, "camera_sequence", ()) or ())
+        sequence = self.build_sequence_steps(item)
         if sequence:
             self.return_home_at = None
             self.sequence = sequence
             self.sequence_index = 1
             self.sequence_interval = self.estimate_sequence_interval(item, sequence)
             self.next_sequence_at = now + self.sequence_interval
+            car_idx, group_name, camera_number = sequence[0]
             return self.focus_car(
-                sequence[0],
-                self.preferred_group,
+                car_idx,
+                group_name,
                 telemetry,
                 now,
                 role="lineup",
                 force=True,
-                camera_number=self.lineup_camera_number,
+                camera_number=camera_number,
             )
 
         car_idx = getattr(item, "camera_target_car_idx", None)
@@ -356,6 +357,37 @@ class CameraDirector:
         self.sequence_interval = 0.0
         self.next_sequence_at = None
 
+    def build_sequence_steps(self, item):
+        detailed_steps = tuple(getattr(item, "camera_sequence_steps", ()) or ())
+        if detailed_steps:
+            return tuple(
+                self.normalize_sequence_step(step)
+                for step in detailed_steps
+                if self.normalize_sequence_step(step) is not None
+            )
+
+        return tuple(
+            (car_idx, self.preferred_group, self.lineup_camera_number)
+            for car_idx in tuple(getattr(item, "camera_sequence", ()) or ())
+        )
+
+    def normalize_sequence_step(self, step):
+        if isinstance(step, dict):
+            car_idx = step.get("car_idx")
+            group_name = step.get("group_name", self.preferred_group)
+            camera_number = step.get("camera_number", self.lineup_camera_number)
+            return (car_idx, group_name, camera_number)
+
+        if isinstance(step, (tuple, list)):
+            if not step:
+                return None
+            car_idx = step[0]
+            group_name = step[1] if len(step) > 1 else self.preferred_group
+            camera_number = step[2] if len(step) > 2 else self.lineup_camera_number
+            return (car_idx, group_name, camera_number)
+
+        return (step, self.preferred_group, self.lineup_camera_number)
+
     def estimate_sequence_interval(self, item, sequence):
         words = len(str(getattr(item, "message", "")).split())
         speech_seconds = max(5.0, min(45.0, words / 2.45))
@@ -381,6 +413,7 @@ class CameraDirector:
         aliases = {
             "focus crashes": ("crash", "incident", "accident", "tv1"),
             "far chase": ("far chase", "chase", "tv1"),
+            "cockpit": ("cockpit", "in car", "driver", "tv1"),
         }
         for alias in aliases.get(wanted, ()):
             for group in groups or []:

@@ -31,6 +31,7 @@ class CameraTelemetry:
             {"GroupNum": 1, "GroupName": "Scenic"},
             {"GroupNum": 4, "GroupName": "TV1"},
             {"GroupNum": 5, "GroupName": "TV Mixed"},
+            {"GroupNum": 6, "GroupName": "Cockpit"},
         ]
 
     def switch_camera_to_car(self, car_number, group_number, camera_number=0):
@@ -168,6 +169,26 @@ def test_lineup_sequence_advances_to_each_named_driver():
     assert first.status == "switched"
     assert second.status == "switched"
     assert telemetry.switches == [("14", 4, 1), ("24", 4, 1)]
+
+
+def test_custom_sequence_can_switch_tv1_then_cockpit_for_same_driver():
+    telemetry = CameraTelemetry()
+    times = iter([100.0, 103.0])
+    director = CameraDirector(mode="auto", clock=lambda: next(times))
+    rundown = SimpleNamespace(
+        camera_target_car_idx=None,
+        camera_sequence=(),
+        camera_sequence_steps=((3, "TV1", 0), (3, "Cockpit", 0)),
+        dedupe_key="quarter_field_rundown_1",
+        message="Quarter-race field rundown for one driver.",
+    )
+
+    first = director.follow(rundown, telemetry)
+    second = director.update(telemetry)
+
+    assert first.status == "switched"
+    assert second.status == "switched"
+    assert telemetry.switches == [("14", 4, 0), ("14", 6, 0)]
 
 
 def test_incident_camera_can_interrupt_the_minimum_hold():

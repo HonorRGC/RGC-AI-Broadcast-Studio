@@ -33,6 +33,12 @@ def test_quarter_rundown_freezes_and_segments_the_full_field():
     assert segments[0].category == "quarter_field_rundown_1"
     assert segments[0].speaker == "jeff"
     assert segments[0].camera_sequence == (0, 3, 2, 1, 4, 5, 6, 7)
+    assert segments[0].camera_sequence_steps[:4] == (
+        (0, "TV1", 0),
+        (0, "Cockpit", 0),
+        (3, "TV1", 0),
+        (3, "Cockpit", 0),
+    )
     assert segments[1].camera_sequence == (8, 9)
     assert "At quarter distance" in segments[0].message
     assert "qualifying-order reset" in segments[0].message
