@@ -218,7 +218,7 @@ class RaceDirector:
 
         if self.race_started:
             scheduler.clear_for_race_control(
-                preserve_categories=("caution_pit_summary",)
+                preserve_categories=("caution_pit_summary", "sponsor_read")
             )
             message = (
                 f"One lap to green here at {track_name}. "

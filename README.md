@@ -96,6 +96,17 @@ OVERLAY_RACE_SPONSOR=Lee Family Racing
 OVERLAY_SERIES_NAME=RGC Cup Series
 ```
 
+Optional sponsor reads can use the same sponsor or a specific read:
+
+```text
+USE_SPONSOR_READS=true
+SPONSOR_READ_NAME=RGC Motorsports
+SPONSOR_READ_CAUSE=Autism Awareness
+SPONSOR_READ_MESSAGE=
+```
+
+When enabled, the broadcast can place short sponsor mentions after the pre-race field rundown and during natural caution breaks after replay or pit-road coverage.
+
 Then start the broadcast with:
 
 ```powershell

@@ -13,6 +13,7 @@ from production.opening_director import OpeningDirector
 from production.pit_strategy_detector import PitStrategyDetector
 from production.race_intelligence import RaceIntelligence
 from production.session_tracker import SessionTracker
+from production.sponsor_reads import SponsorReadDirector
 
 
 class BroadcastEngine:
@@ -43,6 +44,7 @@ class BroadcastEngine:
         self.incident_detector.debug = self.incident_debug
         self.field_rundown_director = FieldRundownDirector()
         self.opening_director = OpeningDirector()
+        self.sponsor_read_director = SponsorReadDirector()
         self.broadcast_queue = BroadcastQueue()
         self.caution_marker_replay_count = 0
 
@@ -169,6 +171,23 @@ class BroadcastEngine:
                 camera_sequence_steps=getattr(segment, "camera_sequence_steps", ()),
             )
 
+        if self.opening_director.is_complete():
+            self._queue_opening_sponsor_read()
+
+    def _queue_opening_sponsor_read(self):
+        message = self.sponsor_read_director.opening_read()
+        if not message:
+            return
+        self.broadcast_queue.add(
+            message,
+            priority=8,
+            category="sponsor_read",
+            protected=True,
+            speaker="lead",
+            expires_after=180,
+            dedupe_key="sponsor_read:opening",
+        )
+
     def _collect_pass_stories(self, results, driver_lookup):
         for event in self.race_brain.analyze(results, driver_lookup):
             if event.importance < 6:
@@ -264,6 +283,7 @@ class BroadcastEngine:
                     camera_target_car_idx=primary_car_idx,
                     participant_car_indices=report.car_indices,
                 )
+                self._queue_caution_sponsor_read(current_lap)
             if self.race_director.phase == RacePhase.ONE_TO_GREEN:
                 small_report = self.caution_pit_reporter.build_small_group_report()
                 if small_report:
@@ -283,6 +303,7 @@ class BroadcastEngine:
                         camera_target_car_idx=primary_car_idx,
                         participant_car_indices=small_report.car_indices,
                     )
+                    self._queue_caution_sponsor_read(current_lap)
             return
 
         self.caution_pit_reporter.update(
@@ -293,6 +314,20 @@ class BroadcastEngine:
         )
         for event in events:
             self.editorial_producer.submit_pit_event(event)
+
+    def _queue_caution_sponsor_read(self, current_lap):
+        message = self.sponsor_read_director.caution_read(current_lap)
+        if not message:
+            return
+        self.broadcast_queue.add(
+            message,
+            priority=7,
+            category="sponsor_read",
+            protected=False,
+            speaker="lead",
+            expires_after=90,
+            dedupe_key=f"sponsor_read:caution:{current_lap}",
+        )
 
     def _queue_quarter_field_rundown(
         self,

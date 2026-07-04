@@ -11,6 +11,24 @@ class SilentOpenAI:
         return fallback_text
 
 
+class StubSponsorReads:
+    def __init__(self):
+        self.opening_sent = False
+        self.caution_sent = False
+
+    def opening_read(self):
+        if self.opening_sent:
+            return None
+        self.opening_sent = True
+        return "Opening sponsor read."
+
+    def caution_read(self, current_lap=0):
+        if self.caution_sent:
+            return None
+        self.caution_sent = True
+        return f"Caution sponsor read on lap {current_lap}."
+
+
 class SnapshotSource:
     def __init__(self, snapshot):
         self.snapshot = snapshot
@@ -135,6 +153,38 @@ def test_initial_one_to_green_keeps_the_opening_package_available():
         item.category.startswith("opening_field_rundown")
         for item in engine.broadcast_queue.items
     )
+
+
+def test_engine_queues_sponsor_read_after_opening_lineup():
+    results = [
+        {"CarIdx": index, "Position": index, "LapsComplete": 0}
+        for index in range(5)
+    ]
+    drivers = {
+        index: {"name": f"Driver {index + 1}", "number": str(index + 1)}
+        for index in range(5)
+    }
+    snapshot = TelemetrySnapshot(
+        lap=0,
+        total_laps=20,
+        session_flags=RaceFlags.START_READY,
+        track_info={"track_name": "Nashville"},
+        results=results,
+        driver_lookup=drivers,
+        pit_road_status=[False] * 5,
+    )
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    engine.session_tracker.update("Race")
+    engine.sponsor_read_director = StubSponsorReads()
+
+    engine.tick(SnapshotSource(snapshot))
+
+    sponsor_items = [
+        item for item in engine.broadcast_queue.items
+        if item.category == "sponsor_read"
+    ]
+    assert len(sponsor_items) == 1
+    assert sponsor_items[0].message == "Opening sponsor read."
 
 
 def test_engine_is_silent_until_the_race_session_begins():
@@ -481,6 +531,7 @@ def test_incident_after_caution_transition_uses_only_one_replay_angle():
 
 def test_one_to_green_reports_small_caution_pit_group():
     engine = BroadcastEngine(openai_director=SilentOpenAI())
+    engine.sponsor_read_director = StubSponsorReads()
     results = [
         {"CarIdx": index, "Position": index}
         for index in range(6)
@@ -511,6 +562,11 @@ def test_one_to_green_reports_small_caution_pit_group():
     assert "Only a few takers" in pit_item.message
     assert pit_item.speaker == "sarah"
     assert pit_item.camera_target_car_idx == 1
+    assert any(
+        item.category == "sponsor_read"
+        and item.message == "Caution sponsor read on lap 6."
+        for item in engine.broadcast_queue.items
+    )
 
 
 def test_cool_down_state_airs_checkered_and_suppresses_false_incident():

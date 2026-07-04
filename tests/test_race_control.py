@@ -111,10 +111,16 @@ def test_one_to_green_preserves_a_pending_caution_pit_summary():
         category="caution_pit_summary",
         speaker="sarah",
     )
+    queue.add(
+        "Tonight's coverage is presented by RGC Motorsports.",
+        category="sponsor_read",
+        speaker="lead",
+    )
 
     director.handle_one_to_green([], {}, queue, {"track_name": "Daytona"})
 
     assert any(item.category == "caution_pit_summary" for item in queue.items)
+    assert any(item.category == "sponsor_read" for item in queue.items)
     assert any(
         item.dedupe_key == "race_control:one_to_green:restart"
         for item in queue.items
