@@ -25,3 +25,9 @@ PIT_VOICE_ID = os.getenv("PIT_VOICE_ID")
 # League context
 USE_LEAGUE_DRIVER_NOTES = os.getenv("USE_LEAGUE_DRIVER_NOTES", "false").lower() == "true"
 LEAGUE_DRIVERS_CSV = os.getenv("LEAGUE_DRIVERS_CSV", "league/drivers.csv")
+
+
+# Overlay graphics
+OVERLAY_EVENT_TITLE = os.getenv("OVERLAY_EVENT_TITLE", "RGC AI Broadcast")
+OVERLAY_RACE_SPONSOR = os.getenv("OVERLAY_RACE_SPONSOR", "")
+OVERLAY_SERIES_NAME = os.getenv("OVERLAY_SERIES_NAME", "")

@@ -5,6 +5,7 @@ from broadcast.booth import BroadcastBooth
 from broadcast.engine import BroadcastEngine
 from broadcaster.telemetry import IRacingTelemetry
 from production.camera_director import CameraDirector
+from production.overlay import OverlayServer
 from production.replay_director import ReplayDirector
 
 
@@ -66,6 +67,22 @@ def parse_args():
         action="store_true",
         help="Print caution incident-detection diagnostics when no replay is queued",
     )
+    parser.add_argument(
+        "--overlay",
+        action="store_true",
+        help="Start the local browser-source race overlay",
+    )
+    parser.add_argument(
+        "--overlay-host",
+        default="127.0.0.1",
+        help="Host for the browser-source overlay server",
+    )
+    parser.add_argument(
+        "--overlay-port",
+        type=int,
+        default=8765,
+        help="Port for the browser-source overlay server",
+    )
     return parser.parse_args()
 
 
@@ -75,9 +92,12 @@ def run_source(
     booth,
     camera_director,
     replay_director,
+    overlay_server,
     tick_seconds,
 ):
     while source.is_connected():
+        if overlay_server:
+            overlay_server.update_from_telemetry(source)
         report_replay_decision(replay_director.update(source, camera_director))
         report_camera_decision(camera_director.update(source))
         item = engine.tick(source)
@@ -151,11 +171,20 @@ def main():
             max(0.0, args.incident_marker_preroll_seconds) * 60
         ),
     )
+    overlay_server = OverlayServer(
+        host=args.overlay_host,
+        port=args.overlay_port,
+    ) if args.overlay else None
 
     if args.incident_replay == "auto" and args.camera_mode != "auto":
         raise SystemExit(
             "--incident-replay auto requires --camera-mode auto."
         )
+    if overlay_server:
+        overlay_url = overlay_server.start()
+        print(f"Overlay: ON ({overlay_url})")
+    else:
+        print("Overlay: OFF")
 
     print("=" * 60)
     print("RGC AI Broadcast Studio")
@@ -207,6 +236,7 @@ def main():
             booth,
             camera_director,
             replay_director,
+            overlay_server,
             args.tick_seconds,
         )
         return
@@ -228,6 +258,7 @@ def main():
             booth,
             camera_director,
             replay_director,
+            overlay_server,
             args.tick_seconds,
         )
         print("Disconnected from iRacing. Resetting broadcast session.")
