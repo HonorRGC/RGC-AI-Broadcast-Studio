@@ -79,6 +79,12 @@ class PromptBuilder:
             if top_story:
                 lines.append(f"Top Story: {getattr(top_story, 'summary', '')}")
 
+            league_driver_context = race_knowledge.get("league_driver_context") or []
+            if league_driver_context:
+                lines.append("Verified League Driver Notes:")
+                for context_line in league_driver_context[:3]:
+                    lines.append(f"- {context_line}")
+
             lines.append("")
 
         lines.append("DELIVERY INSTRUCTIONS")
@@ -101,6 +107,8 @@ class PromptBuilder:
             return (
                 "Give one sharp analyst-style observation. "
                 "Explain why this matters or what the driver did well. "
+                "If verified league driver notes are provided, use at most one "
+                "naturally fitting detail and do not force it. "
                 "Limit it to 1 or 2 sentences."
             )
 
@@ -108,11 +116,15 @@ class PromptBuilder:
             return (
                 "Give a short pit-road or strategy-style update. "
                 "Focus on race strategy, timing, or consequences. "
+                "If verified league driver notes are provided, use at most one "
+                "naturally fitting detail and do not force it. "
                 "Limit it to 1 or 2 sentences."
             )
 
         return (
             "Deliver this like a lead announcer on a live race broadcast. "
             "Make it exciting but not overdone. "
+            "If verified league driver notes are provided, use at most one "
+            "naturally fitting detail and do not force it. "
             "Limit it to 1 or 2 sentences."
         )

@@ -161,6 +161,11 @@ def main():
     print("RGC AI Broadcast Studio")
     print("=" * 60)
     print(f"OpenAI: {'ON' if engine.openai_director.is_enabled() else 'OFF'}")
+    print(
+        "League driver notes: "
+        f"{'ON' if engine.league_context.is_configured() else 'OFF'} "
+        f"({engine.league_context.drivers_csv_path})"
+    )
     voice_ready, voice_reason = booth.voice_status()
     voice_ids = booth.voice_id_status()
     print(f"ElevenLabs: {'ON' if voice_ready else 'OFF'} ({voice_reason})")

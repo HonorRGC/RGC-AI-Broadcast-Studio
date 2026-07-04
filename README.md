@@ -34,6 +34,19 @@ Copy-Item .env.example .env
 
 Add the desired API keys and voice IDs to `.env`. Generated audio and telemetry recordings are intentionally ignored by Git.
 
+## Optional league driver notes
+
+To let the broadcast use real league details, copy the example driver file and edit it for your league:
+
+```powershell
+New-Item -ItemType Directory -Force league
+Copy-Item league.example\drivers.csv league\drivers.csv
+```
+
+Fill in hometown, state, country, driving style, sponsor, and notes for the drivers you know. The real `league\` folder is ignored by Git so private league notes do not get published by accident.
+
+When OpenAI is enabled, race-story commentary can use one verified league detail when it naturally fits. For example, it may mention a driver’s hometown, driving style, or sponsor during a pass, battle, pit call, or momentum update. It should not invent missing facts or force a sponsor mention into every call.
+
 ## Run a live broadcast
 
 ```powershell

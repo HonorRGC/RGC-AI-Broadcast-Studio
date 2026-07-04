@@ -7,6 +7,7 @@ from production.action_detector import ActionDetector
 from production.editorial_producer import EditorialDecisionType, EditorialProducer
 from production.field_rundown_director import FieldRundownDirector
 from production.incident_detector import IncidentDetector
+from production.league_context import LeagueContext
 from production.openai_director import OpenAIDirector
 from production.opening_director import OpeningDirector
 from production.pit_strategy_detector import PitStrategyDetector
@@ -22,6 +23,7 @@ class BroadcastEngine:
     def __init__(self, openai_director=None, incident_debug=False):
         self.openai_director = openai_director or OpenAIDirector()
         self.commentary_cleaner = CommentaryCleaner()
+        self.league_context = LeagueContext()
         self.incident_debug = bool(incident_debug)
         self.reset()
 
@@ -58,7 +60,9 @@ class BroadcastEngine:
             self._reset_race_session()
 
         results = telemetry.get_results()
-        driver_lookup = telemetry.get_driver_lookup()
+        driver_lookup = self.league_context.enrich_driver_lookup(
+            telemetry.get_driver_lookup()
+        )
         current_lap = telemetry.get_lap()
         total_laps = telemetry.get_total_laps()
         session_flags = telemetry.get_session_flags()
@@ -128,7 +132,11 @@ class BroadcastEngine:
                 current_lap,
             )
             self._collect_pass_stories(results, driver_lookup)
-            self._queue_editorial_decision(race_state, race_knowledge)
+            self._queue_editorial_decision(
+                race_state,
+                race_knowledge,
+                driver_lookup,
+            )
 
         return self.broadcast_queue.next_item()
 
@@ -448,18 +456,25 @@ class BroadcastEngine:
         except Exception:
             return default
 
-    def _queue_editorial_decision(self, race_state, race_knowledge):
+    def _queue_editorial_decision(self, race_state, race_knowledge, driver_lookup):
         decision = self.editorial_producer.choose_next_item(race_state=race_state)
         if decision.decision_type != EditorialDecisionType.AIR_NOW or not decision.item:
             return
 
         item = decision.item
         fallback = self.commentary_cleaner.clean(item.summary)
+        enriched_knowledge = dict(race_knowledge or {})
+        league_driver_context = self.league_context.context_for_item(
+            item,
+            driver_lookup,
+        )
+        if league_driver_context:
+            enriched_knowledge["league_driver_context"] = league_driver_context
         commentary = self.openai_director.generate_commentary(
             speaker=item.speaker,
             assignment=item,
             race_state=race_state,
-            race_knowledge=race_knowledge,
+            race_knowledge=enriched_knowledge,
             fallback_text=fallback,
         )
         self.broadcast_queue.add(

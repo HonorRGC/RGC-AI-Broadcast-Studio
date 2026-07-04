@@ -1,4 +1,5 @@
 .env
+league/
 .venv/
 .pytest_cache/
 .ruff_cache/
