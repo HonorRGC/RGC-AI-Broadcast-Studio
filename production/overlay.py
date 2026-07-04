@@ -1,5 +1,6 @@
 import json
 import threading
+import time
 from dataclasses import dataclass, field
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
@@ -63,9 +64,19 @@ class OverlayState:
 
 
 class OverlayStateBuilder:
-    def __init__(self, event_config=None, max_entries=20):
+    def __init__(
+        self,
+        event_config=None,
+        max_entries=20,
+        fixed_entries=15,
+        cycle_interval_seconds=8,
+        clock=None,
+    ):
         self.event_config = event_config or OverlayEventConfig()
         self.max_entries = int(max_entries)
+        self.fixed_entries = int(fixed_entries)
+        self.cycle_interval_seconds = max(1, int(cycle_interval_seconds))
+        self.clock = clock or time.monotonic
 
     def build_from_telemetry(self, telemetry):
         results = telemetry.get_results()
@@ -99,7 +110,7 @@ class OverlayStateBuilder:
         valid_results.sort(key=lambda car: self.safe_int(car.get("Position"), 999))
 
         leaderboard = []
-        for car in valid_results[: self.max_entries]:
+        for car in valid_results:
             car_idx = car.get("CarIdx")
             driver = (driver_lookup or {}).get(car_idx, {})
             raw_position = self.safe_int(car.get("Position"), len(leaderboard) + 1)
@@ -116,7 +127,26 @@ class OverlayStateBuilder:
                     interval="" if display_position == 1 else self.format_interval(car),
                 )
             )
-        return leaderboard
+        return self.visible_leaderboard_window(leaderboard)
+
+    def visible_leaderboard_window(self, leaderboard):
+        if len(leaderboard) <= self.max_entries:
+            return leaderboard[: self.max_entries]
+
+        fixed_count = min(self.fixed_entries, self.max_entries)
+        cycle_count = self.max_entries - fixed_count
+        if cycle_count <= 0:
+            return leaderboard[: self.max_entries]
+
+        fixed = leaderboard[:fixed_count]
+        rotating = leaderboard[fixed_count:]
+        if len(rotating) <= cycle_count:
+            return leaderboard[: self.max_entries]
+
+        step = int(self.clock() // self.cycle_interval_seconds)
+        start = step % len(rotating)
+        rotated = rotating[start:] + rotating[:start]
+        return fixed + rotated[:cycle_count]
 
     def format_interval(self, car):
         if "Time" in car and car.get("Time") not in (None, ""):
@@ -251,11 +281,11 @@ OVERLAY_HTML = r"""<!doctype html>
 
     .top-banner {
       position: absolute;
-      left: 50%;
+      left: 24px;
+      right: 24px;
       top: 24px;
-      transform: translateX(-50%);
-      min-width: 760px;
-      max-width: 1120px;
+      min-width: 0;
+      max-width: none;
       height: 76px;
       display: flex;
       align-items: center;
@@ -295,7 +325,7 @@ OVERLAY_HTML = r"""<!doctype html>
       position: absolute;
       left: 24px;
       top: 124px;
-      width: 330px;
+      width: 292px;
       background: var(--rgc-panel);
       box-shadow: 0 14px 34px rgba(0, 0, 0, 0.40);
       border-left: 5px solid var(--rgc-red);
@@ -304,8 +334,8 @@ OVERLAY_HTML = r"""<!doctype html>
     .leaderboard-header {
       display: grid;
       grid-template-columns: 1fr auto;
-      gap: 10px;
-      padding: 12px 14px;
+      gap: 8px;
+      padding: 10px 12px;
       background: var(--rgc-dark);
       border-bottom: 1px solid var(--rgc-line);
       text-transform: uppercase;
@@ -320,13 +350,13 @@ OVERLAY_HTML = r"""<!doctype html>
 
     .row {
       display: grid;
-      grid-template-columns: 40px 54px 1fr auto;
-      gap: 8px;
+      grid-template-columns: 34px 46px 1fr auto;
+      gap: 7px;
       align-items: center;
       min-height: 32px;
-      padding: 5px 12px;
+      padding: 5px 10px;
       border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-      font-size: 15px;
+      font-size: 14px;
     }
 
     .row:nth-child(even) {
@@ -336,7 +366,7 @@ OVERLAY_HTML = r"""<!doctype html>
     .pos {
       color: #fff;
       font-weight: 900;
-      font-size: 17px;
+      font-size: 16px;
     }
 
     .num {
