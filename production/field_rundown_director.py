@@ -17,29 +17,47 @@ class FieldRundownDirector:
     GROUP_SIZE = 8
 
     def __init__(self):
-        self.quarter_rundown_sent = False
+        self.sent_milestones = set()
+        self.active_milestone = None
+        self.active_entries = []
+        self.active_next_index = 0
 
     def update(self, results, driver_lookup, current_lap, total_laps, under_green):
-        if self.quarter_rundown_sent:
-            return []
         if not under_green or total_laps < 20 or current_lap <= 0:
             return []
 
-        quarter_lap = max(1, round(total_laps * 0.25))
-        if current_lap < quarter_lap:
+        milestone = self.active_milestone or self.next_due_milestone(
+            current_lap,
+            total_laps,
+        )
+        if not milestone:
             return []
 
-        frozen_results = self.freeze_starting_order(results)
-        if len(frozen_results) < 3:
-            return []
+        if self.active_milestone is None:
+            frozen_results = self.freeze_starting_order(results)
+            if len(frozen_results) < 3:
+                return []
+            self.active_milestone = milestone
+            self.active_entries = self.build_entries(frozen_results, driver_lookup)
+            self.active_next_index = 0
 
-        self.quarter_rundown_sent = True
-        return self.build_quarter_rundown(
-            frozen_results,
-            driver_lookup,
+        segment = self.build_next_segment(
+            milestone=self.active_milestone,
+            entries=self.active_entries,
             current_lap=current_lap,
             total_laps=total_laps,
         )
+        return [segment] if segment else []
+
+    def next_due_milestone(self, current_lap, total_laps):
+        milestones = (
+            ("quarter", max(1, round(total_laps * 0.25))),
+            ("three_quarter", max(1, round(total_laps * 0.75))),
+        )
+        for name, lap in milestones:
+            if name not in self.sent_milestones and current_lap >= lap:
+                return name
+        return None
 
     def build_quarter_rundown(
         self,
@@ -48,6 +66,14 @@ class FieldRundownDirector:
         current_lap=0,
         total_laps=0,
     ):
+        return self.build_segments(
+            "quarter",
+            self.build_entries(frozen_results, driver_lookup),
+            current_lap,
+            total_laps,
+        )
+
+    def build_entries(self, frozen_results, driver_lookup):
         entries = []
         zero_based = self.results_are_zero_based(frozen_results)
         for order_position, car in enumerate(frozen_results, start=1):
@@ -72,30 +98,27 @@ class FieldRundownDirector:
                     "number": number,
                 }
             )
+        return entries
 
+    def build_segments(self, milestone, entries, current_lap=0, total_laps=0):
         segments = []
         for group_number, start in enumerate(
             range(0, len(entries), self.GROUP_SIZE),
             start=1,
         ):
             group = entries[start:start + self.GROUP_SIZE]
-            intro = (
-                f"At quarter distance, lap {current_lap} of {total_laps}, "
-                "here is the field as they ran when we froze the order."
-                if group_number == 1
-                else "Continuing the quarter-race field rundown."
-            )
+            intro = self.segment_intro(milestone, group_number, current_lap, total_laps)
             lines = [self.format_entry(entry) for entry in group]
             closing = ""
             if start + self.GROUP_SIZE >= len(entries):
-                closing = " That completes the full-field reset at quarter distance."
+                closing = self.segment_closing(milestone)
 
             segments.append(
                 FieldRundownSegment(
                     message=f"{intro} {' '.join(lines)}{closing}",
                     priority=10,
                     speaker="jeff",
-                    category=f"quarter_field_rundown_{group_number}",
+                    category=f"{milestone}_field_rundown_{group_number}",
                     camera_sequence=tuple(
                         entry["car_idx"]
                         for entry in group
@@ -106,6 +129,67 @@ class FieldRundownDirector:
             )
 
         return segments
+
+    def build_next_segment(self, milestone, entries, current_lap, total_laps):
+        start = self.active_next_index
+        if start >= len(entries):
+            self.complete_active_milestone()
+            return None
+
+        group_number = start // self.GROUP_SIZE + 1
+        group = entries[start:start + self.GROUP_SIZE]
+        self.active_next_index += len(group)
+        is_final = self.active_next_index >= len(entries)
+        if is_final:
+            self.sent_milestones.add(milestone)
+
+        intro = self.segment_intro(milestone, group_number, current_lap, total_laps)
+        lines = [self.format_entry(entry) for entry in group]
+        closing = self.segment_closing(milestone) if is_final else ""
+        segment = FieldRundownSegment(
+            message=f"{intro} {' '.join(lines)}{closing}",
+            priority=10,
+            speaker="jeff",
+            category=f"{milestone}_field_rundown_{group_number}",
+            camera_sequence=tuple(
+                entry["car_idx"] for entry in group if entry["car_idx"] is not None
+            ),
+            camera_sequence_steps=self.build_quarter_camera_steps(group),
+        )
+
+        if is_final:
+            self.complete_active_milestone()
+        return segment
+
+    def complete_active_milestone(self):
+        self.active_milestone = None
+        self.active_entries = []
+        self.active_next_index = 0
+
+    def segment_intro(self, milestone, group_number, current_lap, total_laps):
+        laps_left = max(total_laps - current_lap, 0) if total_laps else 0
+        lap_text = f" with {laps_left} laps to go" if laps_left else ""
+        if milestone == "three_quarter":
+            if group_number == 1:
+                return (
+                    f"We are three quarters into this race{lap_text}. "
+                    "Let's run through the field by qualifying order and see where "
+                    "everyone is now."
+                )
+            return "Continuing the three-quarter field rundown."
+
+        if group_number == 1:
+            return (
+                f"We are one quarter into this race{lap_text}. "
+                "Let's do a rundown of the field, starting with where they started "
+                "on the grid and seeing where they are now."
+            )
+        return "Continuing the quarter-race field rundown."
+
+    def segment_closing(self, milestone):
+        if milestone == "three_quarter":
+            return " That completes the full-field reset at the three-quarter mark."
+        return " That completes the full-field reset at quarter distance."
 
     def build_quarter_camera_steps(self, group):
         steps = []

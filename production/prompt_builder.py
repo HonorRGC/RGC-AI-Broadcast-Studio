@@ -64,7 +64,13 @@ class PromptBuilder:
             lines.append("----------")
             lines.append(f"Moment: {getattr(getattr(race_state, 'moment', None), 'value', 'UNKNOWN')}")
             lines.append(f"Lap: {getattr(race_state, 'current_lap', 0)} of {getattr(race_state, 'total_laps', 0)}")
-            lines.append(f"Laps Remaining: {getattr(race_state, 'laps_remaining', 0)}")
+            lines.append(
+                f"Race Laps To Go: {getattr(race_state, 'laps_remaining', 0)}"
+            )
+            lines.append(
+                "Lap wording: if you mention this number, call it laps to go "
+                "or laps remaining. Do not say laps ahead."
+            )
             lines.append("")
 
         if race_knowledge:

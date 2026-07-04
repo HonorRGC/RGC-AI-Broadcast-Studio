@@ -18,10 +18,10 @@ class ReplayDirector:
     def __init__(
         self,
         mode="off",
-        angle_groups=("Focus Crashes", "Far Chase", "TV1"),
-        pre_roll_seconds=5.0,
-        incident_marker_pre_roll_frames=360,
-        angle_seconds=8.0,
+        angle_groups=("Focus Crashes", "Far Chase", "TV1", "TV2", "Far Chase", "TV1"),
+        pre_roll_seconds=8.0,
+        incident_marker_pre_roll_frames=900,
+        angle_seconds=10.0,
         clock=None,
     ):
         if mode not in self.MODES:

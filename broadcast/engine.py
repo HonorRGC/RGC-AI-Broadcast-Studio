@@ -336,6 +336,9 @@ class BroadcastEngine:
         current_lap,
         total_laps,
     ):
+        if not self.broadcast_queue.can_speak():
+            return False
+
         queued = False
         for segment in self.field_rundown_director.update(
             results=self.enrich_results_with_starting_positions(results),

@@ -8,6 +8,7 @@ class OpeningSegment:
     speaker: str = "lead"
     category: str = "opening"
     camera_sequence: tuple[int, ...] = ()
+    camera_sequence_steps: tuple[tuple, ...] = ()
 
 
 class OpeningDirector:
@@ -169,6 +170,9 @@ class OpeningDirector:
                     speaker="jeff",
                     category=f"opening_field_rundown_{group_number}",
                     camera_sequence=group_car_indices,
+                    camera_sequence_steps=tuple(
+                        (car_idx, "Far Chase", 0) for car_idx in group_car_indices
+                    ),
                 )
             )
         return segments

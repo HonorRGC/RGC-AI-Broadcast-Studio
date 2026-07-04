@@ -319,10 +319,10 @@ def test_engine_queues_quarter_field_rundown_under_green():
         item for item in engine.broadcast_queue.items
         if item.category.startswith("quarter_field_rundown")
     ]
-    assert len(rundown) == 2
+    assert len(rundown) == 1
     assert rundown[0].camera_sequence == tuple(range(8))
     assert rundown[0].protected is True
-    assert "field as they ran when we froze the order" in rundown[0].message
+    assert "one quarter into this race" in rundown[0].message
 
 
 def test_pass_story_carries_overtaking_car_as_camera_target():

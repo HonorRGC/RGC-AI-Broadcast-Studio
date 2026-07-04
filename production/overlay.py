@@ -363,6 +363,11 @@ OVERLAY_HTML = r"""<!doctype html>
       background: rgba(255, 255, 255, 0.035);
     }
 
+    .row.cycle-divider {
+      border-bottom: 3px solid rgba(215, 25, 32, 0.86);
+      box-shadow: 0 3px 0 rgba(0, 0, 0, 0.28);
+    }
+
     .pos {
       color: #fff;
       font-weight: 900;
@@ -436,9 +441,10 @@ OVERLAY_HTML = r"""<!doctype html>
 
       const rows = document.getElementById("leaderboard-rows");
       rows.innerHTML = "";
-      for (const entry of (state.leaderboard || []).slice(0, 20)) {
+      for (const [index, entry] of (state.leaderboard || []).slice(0, 20).entries()) {
         const row = document.createElement("div");
         row.className = "row";
+        if (index === 14) row.classList.add("cycle-divider");
         row.innerHTML = `
           <span class="pos">${entry.position}</span>
           <span class="num">${escapeHtml(entry.car_number || "?")}</span>

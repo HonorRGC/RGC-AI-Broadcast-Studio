@@ -38,7 +38,7 @@ def parse_args():
     parser.add_argument(
         "--camera-return-seconds",
         type=float,
-        default=10.0,
+        default=14.0,
         help="Seconds before returning from a story target to the leader",
     )
     parser.add_argument(
@@ -50,13 +50,13 @@ def parse_args():
     parser.add_argument(
         "--replay-angle-seconds",
         type=float,
-        default=8.0,
+        default=10.0,
         help="Seconds to show each incident replay angle",
     )
     parser.add_argument(
         "--incident-marker-preroll-seconds",
         type=float,
-        default=12.0,
+        default=15.0,
         help=(
             "Seconds to back up before iRacing's incident marker when the "
             "broadcast cannot identify a specific incident car"

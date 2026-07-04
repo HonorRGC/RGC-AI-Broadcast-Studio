@@ -412,8 +412,9 @@ class CameraDirector:
 
         aliases = {
             "focus crashes": ("crash", "incident", "accident", "tv1"),
-            "far chase": ("far chase", "chase", "tv1"),
+            "far chase": ("far chase", "rear chase", "chase", "tv1"),
             "cockpit": ("cockpit", "in car", "driver", "tv1"),
+            "tv2": ("tv2", "tv 2", "tv1"),
         }
         for alias in aliases.get(wanted, ()):
             for group in groups or []:

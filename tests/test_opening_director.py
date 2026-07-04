@@ -56,6 +56,10 @@ def test_opening_waits_for_lineup_after_welcome_and_weather():
     assert "On the pole, the 1 of Driver 1" in lineup_segments[0].message
     assert "Starting 12th, the 12 of Driver 12" in lineup_segments[1].message
     assert lineup_segments[0].camera_sequence == tuple(range(10))
+    assert lineup_segments[0].camera_sequence_steps[:2] == (
+        (0, "Far Chase", 0),
+        (1, "Far Chase", 0),
+    )
     assert lineup_segments[1].camera_sequence == (10, 11)
     assert lineup_segments[0].speaker == "jeff"
     assert lineup_segments[1].speaker == "jeff"

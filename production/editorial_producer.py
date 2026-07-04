@@ -49,7 +49,7 @@ class EditorialProducer:
 
         self.timeline = EditorialTimeline()
         self.minimum_repeat_seconds = 120
-        self.minimum_driver_repeat_seconds = 90
+        self.minimum_driver_repeat_seconds = 150
         self.max_items = 50
 
     # ---------------------------------------------------------
