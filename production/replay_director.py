@@ -18,7 +18,7 @@ class ReplayDirector:
     def __init__(
         self,
         mode="off",
-        angle_groups=("TV1", "TV2"),
+        angle_groups=("Focus Crashes", "Far Chase", "TV1"),
         pre_roll_seconds=5.0,
         incident_marker_pre_roll_frames=360,
         angle_seconds=8.0,
@@ -216,6 +216,4 @@ class ReplayDirector:
         session_flags = flags_reader() if flags_reader else 0
         if int(session_flags or 0) & 0x00000001:
             return True
-        return len(self.active_groups) > 1 and bool(
-            int(session_flags or 0) & 0x00000004
-        )
+        return False

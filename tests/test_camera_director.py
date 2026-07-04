@@ -167,7 +167,7 @@ def test_lineup_sequence_advances_to_each_named_driver():
 
     assert first.status == "switched"
     assert second.status == "switched"
-    assert telemetry.switches == [("14", 4, 0), ("24", 4, 0)]
+    assert telemetry.switches == [("14", 4, 1), ("24", 4, 1)]
 
 
 def test_incident_camera_can_interrupt_the_minimum_hold():

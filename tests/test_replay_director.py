@@ -88,7 +88,7 @@ def test_ordinary_incident_plays_one_angle_then_returns_live():
     telemetry = ReplayTelemetry()
     camera = ReplayCamera()
     times = iter([10.0, 19.0])
-    director = ReplayDirector(mode="auto", clock=lambda: next(times))
+    director = ReplayDirector(mode="auto", angle_groups=("TV1", "TV2"), clock=lambda: next(times))
 
     started = director.handle_item(incident_item(), telemetry, camera)
     finished = director.update(telemetry, camera)
@@ -105,7 +105,7 @@ def test_new_caution_incident_replays_tv1_then_tv2_before_live():
     telemetry = ReplayTelemetry()
     camera = ReplayCamera()
     times = iter([10.0, 19.0, 28.0])
-    director = ReplayDirector(mode="auto", clock=lambda: next(times))
+    director = ReplayDirector(mode="auto", angle_groups=("TV1", "TV2"), clock=lambda: next(times))
 
     started = director.handle_item(incident_item(multi_angle=True), telemetry, camera)
     second_angle = director.update(telemetry, camera)
@@ -123,7 +123,7 @@ def test_new_caution_incident_replays_tv1_then_tv2_before_live():
 def test_green_flag_interrupts_replay_and_returns_live_immediately():
     telemetry = ReplayTelemetry()
     camera = ReplayCamera()
-    director = ReplayDirector(mode="auto", clock=lambda: 10.0)
+    director = ReplayDirector(mode="auto", angle_groups=("TV1", "TV2"), clock=lambda: 10.0)
     director.handle_item(incident_item(multi_angle=True), telemetry, camera)
 
     decision = director.handle_item(green_item(), telemetry, camera)
@@ -136,7 +136,7 @@ def test_green_flag_interrupts_replay_and_returns_live_immediately():
 def test_observe_mode_never_seeks_or_changes_live_replay_state():
     telemetry = ReplayTelemetry()
     camera = ReplayCamera()
-    director = ReplayDirector(mode="observe", clock=lambda: 10.0)
+    director = ReplayDirector(mode="observe", angle_groups=("TV1", "TV2"), clock=lambda: 10.0)
 
     decision = director.handle_item(incident_item(), telemetry, camera)
 
@@ -147,25 +147,26 @@ def test_observe_mode_never_seeks_or_changes_live_replay_state():
     assert camera.replay_active is False
 
 
-def test_caution_replay_aborts_when_green_returns_even_without_queue_item():
+def test_caution_replay_continues_during_caution_flag_state():
     telemetry = ReplayTelemetry()
     camera = ReplayCamera()
-    director = ReplayDirector(mode="auto", clock=lambda: 10.0)
+    times = iter([10.0, 19.0])
+    director = ReplayDirector(mode="auto", angle_groups=("TV1", "TV2"), clock=lambda: next(times))
     director.handle_item(incident_item(multi_angle=True), telemetry, camera)
     telemetry.session_flags = 0x00000004
 
     decision = director.update(telemetry, camera)
 
-    assert decision.status == "live"
-    assert telemetry.live_returns == 1
-    assert camera.replay_active is False
+    assert decision.status == "angle"
+    assert telemetry.live_returns == 0
+    assert camera.replay_active is True
 
 
 def test_incident_marker_replay_uses_iracing_previous_incident_camera():
     telemetry = ReplayTelemetry()
     camera = ReplayCamera()
     times = iter([10.0, 19.0, 28.0])
-    director = ReplayDirector(mode="auto", clock=lambda: next(times))
+    director = ReplayDirector(mode="auto", angle_groups=("TV1", "TV2"), clock=lambda: next(times))
 
     started = director.handle_item(incident_marker_item(), telemetry, camera)
     second_angle = director.update(telemetry, camera)
@@ -185,6 +186,7 @@ def test_incident_marker_replay_pre_roll_frames_are_configurable():
     camera = ReplayCamera()
     director = ReplayDirector(
         mode="auto",
+        angle_groups=("TV1", "TV2"),
         incident_marker_pre_roll_frames=480,
         clock=lambda: 10.0,
     )

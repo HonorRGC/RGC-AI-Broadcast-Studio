@@ -31,11 +31,13 @@ def test_quarter_rundown_freezes_and_segments_the_full_field():
 
     assert len(segments) == 2
     assert segments[0].category == "quarter_field_rundown_1"
-    assert segments[0].camera_sequence == tuple(range(8))
+    assert segments[0].speaker == "jeff"
+    assert segments[0].camera_sequence == (0, 3, 2, 1, 4, 5, 6, 7)
     assert segments[1].camera_sequence == (8, 9)
     assert "At quarter distance" in segments[0].message
-    assert "Driver 2, after starting fifth, up 3 spots" in segments[0].message
-    assert "Driver 4, after starting second, down 2 spots" in segments[0].message
+    assert "qualifying-order reset" in segments[0].message
+    assert "Driver 2 is now running second, after starting fifth, up 3 spots" in segments[0].message
+    assert "Driver 4 is now running fourth, after starting second, down 2 spots" in segments[0].message
     assert "Driver 10" in segments[1].message
     assert "completes the full-field reset" in segments[1].message
     assert repeated == []

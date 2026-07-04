@@ -23,7 +23,7 @@ class OverlayTelemetry:
         return "Race"
 
     def get_lap(self):
-        return 12
+        return 0
 
     def get_total_laps(self):
         return 80

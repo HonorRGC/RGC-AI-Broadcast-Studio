@@ -78,10 +78,16 @@ class OverlayStateBuilder:
             event=self.event_config,
             session_type=session_type,
             track_name=(track_info or {}).get("track_name", ""),
-            lap=self.safe_int(telemetry.get_lap()),
+            lap=self.best_race_lap(results, telemetry.get_lap()),
             total_laps=self.safe_int(telemetry.get_total_laps()),
             leaderboard=self.build_leaderboard(results, driver_lookup),
         )
+
+    def best_race_lap(self, results, telemetry_lap=0):
+        laps = [self.safe_int(telemetry_lap)]
+        for car in results or []:
+            laps.append(self.safe_int(car.get("LapsComplete", car.get("Lap", 0))))
+        return max(laps, default=0)
 
     def build_leaderboard(self, results, driver_lookup):
         valid_results = [

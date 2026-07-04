@@ -28,7 +28,7 @@ class FieldRundownDirector:
         if current_lap < quarter_lap:
             return []
 
-        frozen_results = self.freeze_running_order(results)
+        frozen_results = self.freeze_starting_order(results)
         if len(frozen_results) < 3:
             return []
 
@@ -48,17 +48,23 @@ class FieldRundownDirector:
         total_laps=0,
     ):
         entries = []
-        for display_position, car in enumerate(frozen_results, start=1):
+        zero_based = self.results_are_zero_based(frozen_results)
+        for order_position, car in enumerate(frozen_results, start=1):
             car_idx = car.get("CarIdx")
             driver_info = driver_lookup.get(car_idx, {})
             name = driver_info.get("name", f"Car {car_idx}")
             number = driver_info.get("number", "?")
+            current_position = self.display_position(
+                car.get("Position", order_position),
+                zero_based,
+            )
             entries.append(
                 {
-                    "position": display_position,
+                    "order_position": order_position,
+                    "position": current_position,
                     "starting_position": self.safe_int(
                         car.get("StartingPosition"),
-                        0,
+                        order_position,
                     ),
                     "car_idx": car_idx,
                     "name": name,
@@ -86,8 +92,8 @@ class FieldRundownDirector:
             segments.append(
                 FieldRundownSegment(
                     message=f"{intro} {' '.join(lines)}{closing}",
-                    priority=8,
-                    speaker="lead" if group_number % 2 == 1 else "jeff",
+                    priority=10,
+                    speaker="jeff",
                     category=f"quarter_field_rundown_{group_number}",
                     camera_sequence=tuple(
                         entry["car_idx"]
@@ -110,15 +116,27 @@ class FieldRundownDirector:
             ),
         )
 
+    def freeze_starting_order(self, results):
+        valid = [dict(car) for car in results or [] if car.get("CarIdx") is not None]
+        if any(self.safe_int(car.get("StartingPosition"), 0) > 0 for car in valid):
+            return sorted(
+                valid,
+                key=lambda car: self.safe_int(car.get("StartingPosition"), 999),
+            )
+        return self.freeze_running_order(valid)
+
     def format_entry(self, entry):
-        position = PositionFormatter.ordinal(entry["position"])
+        order_position = PositionFormatter.ordinal(entry["order_position"])
+        current_position = PositionFormatter.ordinal(entry["position"])
         starting_position = entry.get("starting_position", 0)
         movement = self.movement_phrase(
             current_position=entry["position"],
             starting_position=starting_position,
         )
         return (
-            f"{position}, the {entry['number']} of {entry['name']}{movement}."
+            f"{order_position} in our qualifying-order reset, the "
+            f"{entry['number']} of {entry['name']} is now running "
+            f"{current_position}{movement}."
         )
 
     def movement_phrase(self, current_position, starting_position):

@@ -22,6 +22,7 @@ class CameraDirector:
         home_group="TV Mixed",
         minimum_hold_seconds=8.0,
         return_after_seconds=10.0,
+        lineup_camera_number=1,
         clock=None,
     ):
         if mode not in self.MODES:
@@ -31,6 +32,7 @@ class CameraDirector:
         self.home_group = str(home_group or "TV Mixed")
         self.minimum_hold_seconds = float(minimum_hold_seconds)
         self.return_after_seconds = float(return_after_seconds)
+        self.lineup_camera_number = int(lineup_camera_number)
         self.clock = clock or time.monotonic
         self.reset()
 
@@ -73,6 +75,7 @@ class CameraDirector:
                     now,
                     role="lineup",
                     force=True,
+                    camera_number=self.lineup_camera_number,
                 )
             self.clear_sequence()
             return self.focus_home(telemetry, now, force=True)
@@ -149,6 +152,7 @@ class CameraDirector:
                 now,
                 role="lineup",
                 force=True,
+                camera_number=self.lineup_camera_number,
             )
 
         car_idx = getattr(item, "camera_target_car_idx", None)
@@ -158,7 +162,7 @@ class CameraDirector:
         self.clear_sequence()
         force = (
             self.current_role in ("", "home")
-            or getattr(item, "category", "") == "incident"
+            or getattr(item, "category", "") in ("incident", "caution_pit_summary")
         )
         decision = self.focus_car(
             car_idx,
@@ -252,7 +256,16 @@ class CameraDirector:
             force=force,
         )
 
-    def focus_car(self, car_idx, group_name, telemetry, now, role, force=False):
+    def focus_car(
+        self,
+        car_idx,
+        group_name,
+        telemetry,
+        now,
+        role,
+        force=False,
+        camera_number=0,
+    ):
         if (
             not force
             and self.last_switch_at is not None
@@ -301,7 +314,7 @@ class CameraDirector:
         reason = "Observe-only camera target."
         if self.mode == "auto":
             switch = getattr(telemetry, "switch_camera_to_car", None)
-            if switch is None or not switch(car_number, group_number, 0):
+            if switch is None or not switch(car_number, group_number, camera_number):
                 return CameraDecision(
                     "failed",
                     "iRacing did not accept the camera command.",
@@ -362,7 +375,20 @@ class CameraDirector:
             for group in groups or []
             if wanted in str(group.get("GroupName", "")).casefold()
         ]
-        return partial[0] if partial else None
+        if partial:
+            return partial[0]
+
+        aliases = {
+            "focus crashes": ("crash", "incident", "accident", "tv1"),
+            "far chase": ("far chase", "chase", "tv1"),
+        }
+        for alias in aliases.get(wanted, ()):
+            for group in groups or []:
+                name = str(group.get("GroupName", "")).casefold()
+                if alias in name:
+                    return group
+
+        return None
 
     @staticmethod
     def is_green_flag_item(item):

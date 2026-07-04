@@ -57,7 +57,7 @@ def test_opening_waits_for_lineup_after_welcome_and_weather():
     assert "Starting 12th, the 12 of Driver 12" in lineup_segments[1].message
     assert lineup_segments[0].camera_sequence == tuple(range(10))
     assert lineup_segments[1].camera_sequence == (10, 11)
-    assert lineup_segments[0].speaker == "lead"
+    assert lineup_segments[0].speaker == "jeff"
     assert lineup_segments[1].speaker == "jeff"
     assert (
         "That is your 12-car field for 80 laps at Nashville Superspeedway"
@@ -77,10 +77,10 @@ def test_lineup_supports_one_based_positions():
     assert "Starting 5th, the 5 of Driver 5" in lineup.message
 
 
-def test_lineup_rotates_lead_jeff_lead_for_three_groups():
+def test_lineup_uses_jeff_for_all_groups():
     director = OpeningDirector()
     results, drivers = build_lineup(count=25)
 
     segments = director.build_field_rundown(results, drivers)
 
-    assert [segment.speaker for segment in segments] == ["lead", "jeff", "lead"]
+    assert [segment.speaker for segment in segments] == ["jeff", "jeff", "jeff"]

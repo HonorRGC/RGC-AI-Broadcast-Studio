@@ -211,7 +211,7 @@ def test_engine_uses_qualifying_grid_when_race_results_are_not_ready():
 
 def test_engine_preserves_camera_target_for_close_action():
     results = [
-        {"CarIdx": index, "Position": index, "LapsComplete": 5}
+        {"CarIdx": index, "Position": index, "LapsComplete": 4}
         for index in range(3)
     ]
     drivers = {
@@ -219,7 +219,7 @@ def test_engine_preserves_camera_target_for_close_action():
         for index in range(3)
     }
     snapshot = TelemetrySnapshot(
-        lap=5,
+        lap=4,
         total_laps=20,
         session_flags=RaceFlags.GREEN,
         results=results,

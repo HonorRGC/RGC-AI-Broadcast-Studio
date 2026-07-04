@@ -44,6 +44,7 @@ class BroadcastEngine:
         self.field_rundown_director = FieldRundownDirector()
         self.opening_director = OpeningDirector()
         self.broadcast_queue = BroadcastQueue()
+        self.caution_marker_replay_count = 0
 
     def tick(self, telemetry):
         session_type_reader = getattr(telemetry, "get_session_type", None)
@@ -117,12 +118,14 @@ class BroadcastEngine:
             )
 
         if self.race_director.phase == RacePhase.GREEN:
-            self._queue_quarter_field_rundown(
+            queued_quarter_rundown = self._queue_quarter_field_rundown(
                 results,
                 driver_lookup,
                 current_lap,
                 total_laps,
             )
+            if queued_quarter_rundown:
+                return self.broadcast_queue.next_item()
             self.editorial_producer.submit_race_knowledge(race_knowledge)
             self._collect_action_stories(
                 telemetry,
@@ -251,9 +254,9 @@ class BroadcastEngine:
                 primary_car_idx = report.car_indices[0] if report.car_indices else None
                 self.broadcast_queue.add(
                     report.message,
-                    priority=report.importance,
+                    priority=max(report.importance, 9),
                     category="caution_pit_summary",
-                    protected=False,
+                    protected=True,
                     speaker="sarah",
                     expires_after=45,
                     dedupe_key=f"caution_pit_wave:{current_lap}",
@@ -270,9 +273,9 @@ class BroadcastEngine:
                     )
                     self.broadcast_queue.add(
                         small_report.message,
-                        priority=small_report.importance,
+                        priority=max(small_report.importance, 9),
                         category="caution_pit_summary",
-                        protected=False,
+                        protected=True,
                         speaker="sarah",
                         expires_after=45,
                         dedupe_key=f"caution_pit_small_group:{current_lap}",
@@ -297,6 +300,7 @@ class BroadcastEngine:
         current_lap,
         total_laps,
     ):
+        queued = False
         for segment in self.field_rundown_director.update(
             results=self.enrich_results_with_starting_positions(results),
             driver_lookup=driver_lookup,
@@ -304,6 +308,7 @@ class BroadcastEngine:
             total_laps=total_laps,
             under_green=True,
         ):
+            queued = True
             self.broadcast_queue.add(
                 segment.message,
                 priority=segment.priority,
@@ -314,6 +319,7 @@ class BroadcastEngine:
                 dedupe_key=segment.category,
                 camera_sequence=segment.camera_sequence,
             )
+        return queued
 
     def enrich_results_with_starting_positions(self, results):
         enriched = []
@@ -414,6 +420,7 @@ class BroadcastEngine:
         self.report_incident_debug(reason, results, telemetry)
         session_num_reader = getattr(telemetry, "get_current_session_num", None)
         session_num = session_num_reader() if session_num_reader else 0
+        self.caution_marker_replay_count += 1
         self.broadcast_queue.add(
             "We are going to take a look at what may have brought out this caution.",
             priority=10,
@@ -421,7 +428,10 @@ class BroadcastEngine:
             protected=True,
             speaker="lead",
             expires_after=25,
-            dedupe_key=f"incident:marker:caution:{current_lap}:{session_num}",
+            dedupe_key=(
+                f"incident:marker:caution:{current_lap}:{session_num}:"
+                f"{self.caution_marker_replay_count}"
+            ),
             replay_session_num=session_num,
             replay_incident_delta=0,
             replay_multi_angle=True,
