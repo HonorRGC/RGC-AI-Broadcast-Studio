@@ -1,6 +1,7 @@
 from broadcast.engine import BroadcastEngine
 from broadcaster.race_director import RacePhase
 from replay.telemetry_snapshot import TelemetrySnapshot
+import time
 
 
 class SilentOpenAI:
@@ -327,16 +328,93 @@ def test_engine_queues_quarter_field_rundown_under_green():
     engine = BroadcastEngine(openai_director=SilentOpenAI())
     engine.race_director.race_started = True
 
-    engine.tick(SnapshotSource(snapshot))
+    green = engine.tick(SnapshotSource(snapshot))
+    engine.broadcast_queue.busy_until = 0
+    rundown = engine.tick(SnapshotSource(snapshot))
 
-    rundown = [
-        item for item in engine.broadcast_queue.items
-        if item.category.startswith("quarter_field_rundown")
+    assert green.category == "race_control"
+    assert rundown.category == "quarter_field_rundown_1"
+    assert rundown.camera_sequence == tuple(range(8))
+    assert rundown.protected is True
+    assert "one quarter into this race" in rundown.message
+
+
+def test_due_field_rundown_blocks_normal_stories_until_booth_is_clear():
+    results = [
+        {"CarIdx": index, "Position": index, "LapsComplete": 10}
+        for index in range(12)
     ]
-    assert len(rundown) == 1
-    assert rundown[0].camera_sequence == tuple(range(8))
-    assert rundown[0].protected is True
-    assert "one quarter into this race" in rundown[0].message
+    drivers = {
+        index: {"name": f"Driver {index + 1}", "number": str(index + 1)}
+        for index in range(12)
+    }
+    snapshot = TelemetrySnapshot(
+        lap=10,
+        total_laps=40,
+        session_flags=RaceFlags.GREEN,
+        results=results,
+        driver_lookup=drivers,
+        pit_road_status=[False] * 12,
+        track_surface=[3] * 12,
+        track_surface_material=[0] * 12,
+        lap_dist_pct=[0.1] * 12,
+        est_time=[10.0] * 12,
+    )
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    engine.session_tracker.update("Race")
+    engine.race_director.race_started = True
+    engine.race_director.phase = RacePhase.GREEN
+    engine.broadcast_queue.busy_until = time.time() + 60
+
+    first = engine.tick(SnapshotSource(snapshot))
+
+    assert first is None
+    assert engine.editorial_producer.items == []
+    assert engine.field_rundown_director.is_due_or_active(10, 40) is True
+
+    engine.broadcast_queue.busy_until = 0
+    second = engine.tick(SnapshotSource(snapshot))
+
+    assert second.category == "quarter_field_rundown_1"
+    assert "one quarter into this race" in second.message
+
+
+def test_due_field_rundown_waits_for_green_flag_call_then_airs():
+    results = [
+        {"CarIdx": index, "Position": index, "LapsComplete": 10}
+        for index in range(12)
+    ]
+    drivers = {
+        index: {"name": f"Driver {index + 1}", "number": str(index + 1)}
+        for index in range(12)
+    }
+    snapshot = TelemetrySnapshot(
+        lap=10,
+        total_laps=40,
+        session_flags=RaceFlags.GREEN,
+        results=results,
+        driver_lookup=drivers,
+        pit_road_status=[False] * 12,
+        track_surface=[3] * 12,
+        track_surface_material=[0] * 12,
+        lap_dist_pct=[0.1] * 12,
+        est_time=[10.0] * 12,
+        track_info={"track_name": "Chicagoland Speedway"},
+    )
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    engine.race_director.race_started = True
+    engine.race_director.phase = RacePhase.CAUTION
+    engine.race_director.previous_phase = RacePhase.CAUTION
+
+    green = engine.tick(SnapshotSource(snapshot))
+
+    assert green.category == "race_control"
+    assert "Green flag" in green.message
+
+    engine.broadcast_queue.busy_until = 0
+    rundown = engine.tick(SnapshotSource(snapshot))
+
+    assert rundown.category == "quarter_field_rundown_1"
 
 
 def test_pass_story_carries_overtaking_car_as_camera_target():

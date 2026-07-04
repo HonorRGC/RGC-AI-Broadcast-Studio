@@ -49,6 +49,13 @@ class FieldRundownDirector:
         )
         return [segment] if segment else []
 
+    def is_due_or_active(self, current_lap, total_laps):
+        if self.active_milestone:
+            return True
+        if total_laps < 20 or current_lap <= 0:
+            return False
+        return self.next_due_milestone(current_lap, total_laps) is not None
+
     def next_due_milestone(self, current_lap, total_laps):
         milestones = (
             ("quarter", max(1, round(total_laps * 0.25))),

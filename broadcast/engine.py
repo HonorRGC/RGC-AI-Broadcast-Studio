@@ -120,7 +120,24 @@ class BroadcastEngine:
             )
 
         if self.race_director.phase == RacePhase.GREEN:
-            queued_quarter_rundown = self._queue_quarter_field_rundown(
+            mandatory_rundown_due = self.field_rundown_director.is_due_or_active(
+                current_lap,
+                total_laps,
+            )
+            if mandatory_rundown_due:
+                if self.has_pending_race_control():
+                    return self.broadcast_queue.next_item()
+                queued_field_rundown = self._queue_mandatory_field_rundown(
+                    results,
+                    driver_lookup,
+                    current_lap,
+                    total_laps,
+                )
+                if queued_field_rundown:
+                    return self.broadcast_queue.next_item()
+                return None
+
+            queued_quarter_rundown = self._queue_mandatory_field_rundown(
                 results,
                 driver_lookup,
                 current_lap,
@@ -329,7 +346,7 @@ class BroadcastEngine:
             dedupe_key=f"sponsor_read:caution:{current_lap}",
         )
 
-    def _queue_quarter_field_rundown(
+    def _queue_mandatory_field_rundown(
         self,
         results,
         driver_lookup,
@@ -348,18 +365,38 @@ class BroadcastEngine:
             under_green=True,
         ):
             queued = True
+            self.clear_pending_noncritical_stories()
             self.broadcast_queue.add(
                 segment.message,
-                priority=segment.priority,
+                priority=max(segment.priority, 12),
                 category=segment.category,
                 protected=True,
                 speaker=segment.speaker,
-                expires_after=180,
+                expires_after=300,
                 dedupe_key=segment.category,
                 camera_sequence=segment.camera_sequence,
                 camera_sequence_steps=getattr(segment, "camera_sequence_steps", ()),
             )
         return queued
+
+    def has_pending_race_control(self):
+        return any(
+            item.category == "race_control"
+            for item in self.broadcast_queue.items
+        )
+
+    def clear_pending_noncritical_stories(self):
+        preserved_categories = {
+            "race_control",
+            "incident",
+            "caution_pit_summary",
+            "sponsor_read",
+        }
+        self.broadcast_queue.items = [
+            item
+            for item in self.broadcast_queue.items
+            if item.category in preserved_categories
+        ]
 
     def enrich_results_with_starting_positions(self, results):
         enriched = []
