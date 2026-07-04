@@ -2,7 +2,7 @@ import csv
 from dataclasses import dataclass
 from pathlib import Path
 
-from config import LEAGUE_DRIVERS_CSV
+from config import LEAGUE_DRIVERS_CSV, USE_LEAGUE_DRIVER_NOTES
 
 
 @dataclass(frozen=True)
@@ -62,18 +62,26 @@ class LeagueContext:
     Excel, Google Sheets, or a plain text editor without adding a database.
     """
 
-    def __init__(self, drivers_csv_path=LEAGUE_DRIVERS_CSV):
+    def __init__(
+        self,
+        drivers_csv_path=LEAGUE_DRIVERS_CSV,
+        enabled=USE_LEAGUE_DRIVER_NOTES,
+    ):
         self.drivers_csv_path = Path(drivers_csv_path)
+        self.enabled = bool(enabled)
         self.profiles_by_name = {}
         self.profiles_by_number = {}
         self.load()
 
     def is_configured(self):
-        return bool(self.profiles_by_name or self.profiles_by_number)
+        return self.enabled and bool(self.profiles_by_name or self.profiles_by_number)
 
     def load(self):
         self.profiles_by_name = {}
         self.profiles_by_number = {}
+
+        if not self.enabled:
+            return
 
         if not self.drivers_csv_path.exists():
             return
@@ -101,6 +109,9 @@ class LeagueContext:
         )
 
     def enrich_driver_lookup(self, driver_lookup):
+        if not self.enabled:
+            return dict(driver_lookup or {})
+
         enriched = {}
 
         for car_idx, driver_info in (driver_lookup or {}).items():
@@ -120,6 +131,9 @@ class LeagueContext:
         return enriched
 
     def context_for_item(self, item, driver_lookup, max_profiles=3):
+        if not self.enabled:
+            return []
+
         summaries = []
         seen = set()
 

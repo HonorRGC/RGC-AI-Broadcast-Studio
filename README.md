@@ -43,6 +43,19 @@ New-Item -ItemType Directory -Force league
 Copy-Item league.example\drivers.csv league\drivers.csv
 ```
 
+Then enable driver notes in `.env`:
+
+```text
+USE_LEAGUE_DRIVER_NOTES=true
+LEAGUE_DRIVERS_CSV=league/drivers.csv
+```
+
+For official races or unknown fields, leave this off:
+
+```text
+USE_LEAGUE_DRIVER_NOTES=false
+```
+
 Fill in hometown, state, country, driving style, sponsor, and notes for the drivers you know. The real `league\` folder is ignored by Git so private league notes do not get published by accident.
 
 When OpenAI is enabled, race-story commentary can use one verified league detail when it naturally fits. For example, it may mention a driver’s hometown, driving style, or sponsor during a pass, battle, pit call, or momentum update. It should not invent missing facts or force a sponsor mention into every call.
