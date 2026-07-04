@@ -66,8 +66,8 @@ class BroadcastEngine:
         driver_lookup = self.league_context.enrich_driver_lookup(
             telemetry.get_driver_lookup()
         )
-        current_lap = telemetry.get_lap()
         total_laps = telemetry.get_total_laps()
+        current_lap = self.best_race_lap(telemetry.get_lap(), results)
         session_flags = telemetry.get_session_flags()
         pit_road_status = telemetry.get_car_idx_on_pit_road()
 
@@ -505,6 +505,13 @@ class BroadcastEngine:
             return int(value)
         except Exception:
             return default
+
+    def best_race_lap(self, telemetry_lap, results):
+        laps = [self.safe_int(telemetry_lap)]
+        for car in results or []:
+            laps.append(self.safe_int(car.get("Lap", car.get("LapsComplete", 0))))
+            laps.append(self.safe_int(car.get("LapsComplete", car.get("Lap", 0))))
+        return max(laps, default=0)
 
     def _queue_editorial_decision(self, race_state, race_knowledge, driver_lookup):
         decision = self.editorial_producer.choose_next_item(race_state=race_state)

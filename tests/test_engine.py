@@ -108,6 +108,20 @@ def test_engine_queues_exactly_one_initial_green_flag():
     assert pending_green == []
 
 
+def test_engine_uses_field_lap_when_spectator_lap_lags():
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+
+    lap = engine.best_race_lap(
+        5,
+        [
+            {"CarIdx": 1, "LapsComplete": 40},
+            {"CarIdx": 2, "Lap": 39},
+        ],
+    )
+
+    assert lap == 40
+
+
 def test_engine_reset_clears_session_state():
     engine = BroadcastEngine(openai_director=SilentOpenAI())
     engine.race_director.race_started = True
@@ -610,6 +624,13 @@ def test_cool_down_state_airs_checkered_and_suppresses_false_incident():
 
     categories = [item.category for item in engine.broadcast_queue.items]
     assert engine.race_director.phase == RacePhase.CHECKERED
+    assert "incident" not in categories
+    assert "post_race" not in categories
+
+    for _ in range(3):
+        engine.tick(source)
+
+    categories = [item.category for item in engine.broadcast_queue.items]
     assert "post_race" in categories
     assert "incident" not in categories
 

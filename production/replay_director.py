@@ -19,8 +19,8 @@ class ReplayDirector:
         self,
         mode="off",
         angle_groups=("Focus Crashes", "Far Chase", "TV1", "TV2", "Far Chase", "TV1"),
-        pre_roll_seconds=8.0,
-        incident_marker_pre_roll_frames=900,
+        pre_roll_seconds=12.0,
+        incident_marker_pre_roll_frames=1200,
         angle_seconds=10.0,
         clock=None,
     ):
@@ -38,6 +38,7 @@ class ReplayDirector:
         self.active = False
         self.car_idx = None
         self.session_num = 0
+        self.replay_session_time = 0.0
         self.replay_start_time = 0.0
         self.active_groups = ()
         self.angle_index = 0
@@ -76,11 +77,8 @@ class ReplayDirector:
         )
         self.car_idx = car_idx
         self.session_num = int(session_num or 0)
-        self.replay_start_time = (
-            0.0
-            if use_incident_marker
-            else max(0.0, float(session_time) - self.pre_roll_seconds)
-        )
+        self.replay_session_time = float(session_time or 0.0)
+        self.replay_start_time = self.current_replay_start_time()
         self.use_incident_marker = use_incident_marker
         self.active_groups = groups
         self.angle_index = 0
@@ -188,11 +186,26 @@ class ReplayDirector:
             return True
         if getattr(self, "use_incident_marker", False):
             seeker = getattr(telemetry, "seek_previous_incident", None)
-            return bool(seeker and seeker(self.incident_marker_pre_roll_frames))
+            return bool(seeker and seeker(self.current_incident_marker_pre_roll_frames()))
         return telemetry.seek_replay_session_time(
             self.session_num,
-            self.replay_start_time,
+            self.current_replay_start_time(),
         )
+
+    def current_replay_start_time(self):
+        if getattr(self, "use_incident_marker", False):
+            return 0.0
+        return max(0.0, self.replay_session_time - self.current_pre_roll_seconds())
+
+    def current_pre_roll_seconds(self):
+        if self.angle_index == 0:
+            return self.pre_roll_seconds
+        return min(self.pre_roll_seconds, 6.0)
+
+    def current_incident_marker_pre_roll_frames(self):
+        if self.angle_index == 0:
+            return self.incident_marker_pre_roll_frames
+        return min(self.incident_marker_pre_roll_frames, 480)
 
     def restore_live_after_failure(self, telemetry, camera_director):
         if self.mode == "auto":

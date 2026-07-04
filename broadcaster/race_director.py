@@ -44,6 +44,8 @@ class RaceDirector:
         self.five_to_go_announced = False
         self.white_flag_announced = False
         self.checkered_announced = False
+        self.post_race_results_queued = False
+        self.checkered_stabilization_ticks = 0
         self.progress_milestones_announced = set()
         self.last_results = []
         self.last_driver_lookup = {}
@@ -74,7 +76,7 @@ class RaceDirector:
         )
 
         if new_phase != RacePhase.CHECKERED:
-            self.handle_lap_calls(current_lap, total_laps, scheduler)
+            self.handle_lap_calls(current_lap, total_laps, scheduler, session_flags)
 
         if new_phase != self.phase:
             self.phase_changed = True
@@ -89,6 +91,14 @@ class RaceDirector:
 
         if new_phase == RacePhase.GREEN:
             self.race_started = True
+
+        if self.phase == RacePhase.CHECKERED:
+            self.handle_post_race_results(
+                effective_results,
+                effective_driver_lookup,
+                scheduler,
+                track_info,
+            )
 
     def detect_phase(
         self,
@@ -272,12 +282,26 @@ class RaceDirector:
             dedupe_key="race_control:checkered",
         )
 
+        self.checkered_announced = True
+        self.checkered_stabilization_ticks = 0
+
+    def handle_post_race_results(self, results, driver_lookup, scheduler, track_info):
+        if not self.checkered_announced or self.post_race_results_queued:
+            return
+
+        self.checkered_stabilization_ticks += 1
+        if self.checkered_stabilization_ticks < 4:
+            return
+
+        track_name = self.get_track_name(track_info)
+
         scheduler.add(
             self.build_finish_rundown(results, driver_lookup, max_cars=10),
             priority=9,
             category="post_race",
             protected=True,
             speaker="lead",
+            delay_seconds=1.0,
             expires_after=180,
             dedupe_key="post_race:finish_rundown",
         )
@@ -288,17 +312,18 @@ class RaceDirector:
             category="post_race_signoff",
             protected=True,
             speaker="lead",
+            delay_seconds=8.0,
             expires_after=240,
             dedupe_key="post_race:signoff",
         )
 
-        self.checkered_announced = True
+        self.post_race_results_queued = True
 
-    def handle_lap_calls(self, current_lap, total_laps, scheduler):
+    def handle_lap_calls(self, current_lap, total_laps, scheduler, session_flags=0):
         if not self.race_started or total_laps <= 0 or current_lap <= 0:
             return
 
-        laps_to_go = total_laps - current_lap
+        laps_to_go = max(total_laps - current_lap, 0)
 
         self.handle_progress_milestone(
             current_lap,
@@ -312,32 +337,49 @@ class RaceDirector:
             and 5 < laps_to_go <= 10
             and not self.ten_to_go_announced
         ):
+            scheduler.clear_for_race_control(
+                preserve_categories=("caution_pit_summary", "sponsor_read")
+            )
             scheduler.add(
-                f"{laps_to_go} laps to go. The closing stage of this race is underway.",
-                priority=9,
+                "Ten laps to go. The closing stage of this race is underway.",
+                priority=12,
                 category="race_control",
                 protected=True,
                 speaker="lead",
+                expires_after=15,
+                dedupe_key="race_control:ten_to_go",
             )
             self.ten_to_go_announced = True
 
         if total_laps > 5 and 1 < laps_to_go <= 5 and not self.five_to_go_announced:
+            scheduler.clear_for_race_control(
+                preserve_categories=("caution_pit_summary", "sponsor_read")
+            )
             scheduler.add(
-                f"{laps_to_go} laps to go. The pressure is about to ramp up.",
-                priority=9,
+                "Five laps to go. The pressure is about to ramp up.",
+                priority=12,
                 category="race_control",
                 protected=True,
                 speaker="lead",
+                expires_after=15,
+                dedupe_key="race_control:five_to_go",
             )
             self.five_to_go_announced = True
 
-        if laps_to_go == 1 and not self.white_flag_announced:
+        white_flag_is_out = self.has_flag(session_flags, self.WHITE_FLAG)
+        if (
+            (white_flag_is_out or 0 < laps_to_go <= 1)
+            and not self.white_flag_announced
+        ):
+            scheduler.clear_for_race_control()
             scheduler.add(
                 "White flag is in the air. One lap to go.",
-                priority=10,
+                priority=13,
                 category="race_control",
                 protected=True,
                 speaker="lead",
+                expires_after=10,
+                dedupe_key="race_control:white_flag",
             )
             self.white_flag_announced = True
 
@@ -416,8 +458,15 @@ class RaceDirector:
 
         lines = ["Here is how they finished."]
 
+        zero_based_positions = self.results_are_zero_based(results)
         for car in self.sort_results(results)[:max_cars]:
-            lines.append(self.format_driver_position(car, driver_lookup))
+            lines.append(
+                self.format_driver_position(
+                    car,
+                    driver_lookup,
+                    zero_based_positions=zero_based_positions,
+                )
+            )
 
         return " ".join(lines)
 
@@ -428,9 +477,9 @@ class RaceDirector:
             "Thank you for watching, and we will see you next time."
         )
 
-    def format_driver_position(self, car, driver_lookup):
+    def format_driver_position(self, car, driver_lookup, zero_based_positions=False):
         car_idx = car.get("CarIdx")
-        position = self.get_display_position(car)
+        position = self.get_display_position(car, zero_based_positions)
 
         driver_info = driver_lookup.get(car_idx, {})
         name = driver_info.get("name", f"Car {car_idx}")
@@ -449,12 +498,13 @@ class RaceDirector:
             ),
         )
 
-    def get_display_position(self, car):
+    def get_display_position(self, car, zero_based_positions=False):
         raw_position = car.get("Position", 999)
         try:
-            return int(raw_position)
+            position = int(raw_position)
         except Exception:
             return raw_position
+        return position + 1 if zero_based_positions else position
 
     def get_best_race_lap(self, telemetry_lap, results):
         laps = []

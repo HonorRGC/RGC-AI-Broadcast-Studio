@@ -188,7 +188,22 @@ def test_short_race_does_not_immediately_call_the_closing_stage():
 
     director.handle_lap_calls(current_lap=5, total_laps=10, scheduler=queue)
     assert len(queue.items) == 1
-    assert queue.items[0].message.startswith("5 laps to go")
+    assert queue.items[0].message.startswith("Five laps to go")
+
+
+def test_white_flag_can_be_called_from_flag_even_if_lap_count_lags():
+    director = RaceDirector()
+    director.race_started = True
+    queue = BroadcastQueue()
+
+    director.handle_lap_calls(
+        current_lap=8,
+        total_laps=10,
+        scheduler=queue,
+        session_flags=director.WHITE_FLAG,
+    )
+
+    assert any("White flag" in item.message for item in queue.items)
 
 
 def test_long_race_reports_quarter_half_and_three_quarter_progress():
@@ -240,6 +255,13 @@ def test_checkered_queues_finish_rundown_then_signoff():
         queue,
         {"track_name": "Homestead Miami Speedway"},
     )
+    for _ in range(4):
+        director.handle_post_race_results(
+            results,
+            drivers,
+            queue,
+            {"track_name": "Homestead Miami Speedway"},
+        )
 
     categories = [item.category for item in queue.items]
     assert categories == ["race_control", "post_race", "post_race_signoff"]
@@ -247,6 +269,23 @@ def test_checkered_queues_finish_rundown_then_signoff():
     assert "Thank you for watching" in queue.items[2].message
     assert "Homestead Miami Speedway" in queue.items[2].message
     assert "Jeff and Sarah" in queue.items[2].message
+
+
+def test_finish_rundown_formats_zero_based_positions():
+    director = RaceDirector()
+    results = [
+        {"CarIdx": 10, "Position": 0},
+        {"CarIdx": 20, "Position": 1},
+    ]
+    drivers = {
+        10: {"name": "Winner Driver", "number": "10"},
+        20: {"name": "Runner Up", "number": "20"},
+    }
+
+    rundown = director.build_finish_rundown(results, drivers, max_cars=2)
+
+    assert "first, the 10 of Winner Driver" in rundown
+    assert "second, the 20 of Runner Up" in rundown
 
 
 def test_cool_down_session_state_is_treated_as_checkered():
