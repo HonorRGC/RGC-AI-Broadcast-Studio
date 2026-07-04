@@ -49,12 +49,17 @@ The studio now has one orchestration path for live and replay telemetry. Develop
 - Capture likely incidents for replay
 - Return cleanly from replay to live action
 
-## v0.24 - Graphics and League Context
+## v0.24 - League Product and Graphics
 
-- Running order and interval feeds
-- Driver profiles and season standings
-- Pit strategy and incident graphics
-- Sponsor reads and league-specific broadcast packages
+- Browser-source overlay for Streamlabs, OBS, and other production tools
+- Top race banner, leaderboard, lower-third driver card, and segment graphics
+- League configuration files for race name, branding, sponsors, and event data
+- Driver profiles with hometown, state/country, sponsor, style, and notes
+- Sponsor reads and static sponsor graphics
+- Setup guide for league admins
+- Later: commercial video playback after managed audio and overlay control exist
+
+See [docs/LEAGUE_PRODUCT_PLAN.md](docs/LEAGUE_PRODUCT_PLAN.md).
 
 ## Version 1.0
 
