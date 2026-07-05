@@ -10,11 +10,88 @@ if PROJECT_ROOT not in sys.path:
 from broadcaster.telemetry import IRacingTelemetry
 
 
+INTERESTING_SDK_TERMS = [
+    "incident",
+    "penalty",
+    "black",
+    "dq",
+    "disqual",
+    "limit",
+    "drive",
+]
+
+KNOWN_INCIDENT_KEYS = [
+    "PlayerCarMyIncidentCount",
+    "PlayerCarDriverIncidentCount",
+    "PlayerCarTeamIncidentCount",
+    "PlayerIncidents",
+    "CarIdxIncidentCount",
+    "CarIdxIncidents",
+    "CarIdxMyIncidentCount",
+    "CarIdxDriverIncidentCount",
+]
+
+
 def safe_read(telemetry, key):
     try:
         return telemetry.ir[key]
     except Exception:
         return None
+
+
+def find_sdk_variable_names(telemetry):
+    try:
+        return list(telemetry.ir.var_headers_names)
+    except Exception:
+        return []
+
+
+def find_interesting_sdk_variables(telemetry):
+    names = find_sdk_variable_names(telemetry)
+    interesting = []
+
+    for name in names:
+        lowered = str(name).lower()
+        if any(term in lowered for term in INTERESTING_SDK_TERMS):
+            interesting.append(name)
+
+    return sorted(interesting, key=str.lower)
+
+
+def short_value(value, max_items=12):
+    if value is None:
+        return "MISSING"
+
+    if isinstance(value, (list, tuple)):
+        sample = list(value)[:max_items]
+        suffix = "" if len(value) <= max_items else f" ... ({len(value)} total)"
+        return f"{sample}{suffix}"
+
+    return str(value)
+
+
+def print_incident_sdk_probe(telemetry):
+    print("SDK Incident/Penalty Probe")
+    print("-" * 80)
+
+    all_names = find_sdk_variable_names(telemetry)
+    print(f"Live SDK variables: {len(all_names)}")
+
+    matches = find_interesting_sdk_variables(telemetry)
+    if matches:
+        print("Matching SDK variable names:")
+        for name in matches:
+            value = safe_read(telemetry, name)
+            print(f"  {name}: {short_value(value)}")
+    else:
+        print("No live SDK variable names matched incident/penalty/search terms.")
+
+    print()
+    print("Known incident counters this project can use:")
+    for key in KNOWN_INCIDENT_KEYS:
+        print(f"  {key}: {short_value(safe_read(telemetry, key))}")
+
+    print("-" * 80)
 
 
 def decode_flags(flags):
@@ -69,6 +146,7 @@ def main():
 
     print("Connected.")
     print("=" * 80)
+    print_incident_sdk_probe(telemetry)
 
     last_flags = None
     last_state = None
@@ -127,4 +205,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-    
