@@ -517,16 +517,12 @@ class BroadcastEngine:
         )
 
     def should_suppress_soft_incidents(self):
-        if self.race_director.phase in (RacePhase.CAUTION, RacePhase.ONE_TO_GREEN):
-            return True
-        return (
-            self.race_director.phase == RacePhase.GREEN
-            and self.race_director.phase_changed
-            and self.race_director.previous_phase in (
-                RacePhase.CAUTION,
-                RacePhase.ONE_TO_GREEN,
-            )
-        )
+        # Soft telemetry signals such as estimated-time loss, lap-distance loss,
+        # surface changes, and position drops are still useful as background
+        # caution-candidate evidence, but they are too noisy to air as live
+        # incident commentary in official races. Only confirmed incident points
+        # and caution-fallback stories should interrupt the broadcast.
+        return True
 
     def report_incident_debug(self, reason, results, telemetry):
         if not self.incident_debug:

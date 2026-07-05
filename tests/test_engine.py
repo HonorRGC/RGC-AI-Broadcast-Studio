@@ -621,6 +621,58 @@ def test_incident_after_caution_transition_uses_only_one_replay_angle():
     assert incident.replay_multi_angle is False
 
 
+def test_soft_off_pace_signal_does_not_interrupt_broadcast_under_green():
+    drivers = {0: {"name": "Driver One", "number": "1"}}
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    engine.session_tracker.update("Race")
+    engine.race_director.race_started = True
+    engine.race_director.phase = RacePhase.GREEN
+
+    engine._collect_incidents(
+        telemetry=SnapshotSource(
+            TelemetrySnapshot(
+                lap=8,
+                total_laps=90,
+                session_flags=RaceFlags.GREEN,
+                results=[{"CarIdx": 0, "Position": 1, "LapsComplete": 8, "Incidents": 0}],
+                driver_lookup=drivers,
+                track_surface=[3],
+                track_surface_material=[0],
+                lap_dist_pct=[0.5],
+                est_time=[10.0],
+            )
+        ),
+        results=[{"CarIdx": 0, "Position": 1, "LapsComplete": 8, "Incidents": 0}],
+        driver_lookup=drivers,
+        pit_road_status=[False],
+        current_lap=8,
+    )
+    engine._collect_incidents(
+        telemetry=SnapshotSource(
+            TelemetrySnapshot(
+                lap=8,
+                total_laps=90,
+                session_flags=RaceFlags.GREEN,
+                results=[{"CarIdx": 0, "Position": 1, "LapsComplete": 8, "Incidents": 0}],
+                driver_lookup=drivers,
+                track_surface=[3],
+                track_surface_material=[0],
+                lap_dist_pct=[0.5],
+                est_time=[25.0],
+            )
+        ),
+        results=[{"CarIdx": 0, "Position": 1, "LapsComplete": 8, "Incidents": 0}],
+        driver_lookup=drivers,
+        pit_road_status=[False],
+        current_lap=8,
+    )
+
+    assert [
+        item for item in engine.broadcast_queue.items
+        if item.category == "incident"
+    ] == []
+
+
 def test_one_to_green_reports_small_caution_pit_group():
     engine = BroadcastEngine(openai_director=SilentOpenAI())
     engine.sponsor_read_director = StubSponsorReads()
