@@ -12,7 +12,7 @@ class OpeningSegment:
 
 
 class OpeningDirector:
-    LINEUP_GROUP_SIZE = 10
+    LINEUP_GROUP_SIZE = 20
 
     def __init__(self):
         self.welcome_sent = False
@@ -154,7 +154,7 @@ class OpeningDirector:
             intro = (
                 "Here is your starting lineup."
                 if group_number == 1
-                else "Continuing through the starting field."
+                else "Rounding out the starting field."
             )
             closing = ""
             if start + self.LINEUP_GROUP_SIZE >= len(entries) and track_name:
@@ -171,7 +171,7 @@ class OpeningDirector:
                     category=f"opening_field_rundown_{group_number}",
                     camera_sequence=group_car_indices,
                     camera_sequence_steps=tuple(
-                        (car_idx, "Far Chase", 0) for car_idx in group_car_indices
+                        (car_idx, "Rear Chase", 0) for car_idx in group_car_indices
                     ),
                 )
             )

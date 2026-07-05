@@ -303,7 +303,7 @@ class BroadcastEngine:
                     speaker="sarah",
                     expires_after=45,
                     dedupe_key=f"caution_pit_wave:{current_lap}",
-                    camera_target_car_idx=primary_car_idx,
+                    camera_target_car_idx=None,
                     participant_car_indices=report.car_indices,
                 )
                 self._queue_caution_sponsor_read(current_lap)
@@ -323,7 +323,7 @@ class BroadcastEngine:
                         speaker="sarah",
                         expires_after=45,
                         dedupe_key=f"caution_pit_small_group:{current_lap}",
-                        camera_target_car_idx=primary_car_idx,
+                        camera_target_car_idx=None,
                         participant_car_indices=small_report.car_indices,
                     )
                     self._queue_caution_sponsor_read(current_lap)

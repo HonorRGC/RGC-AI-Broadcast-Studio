@@ -270,8 +270,8 @@ def test_engine_uses_qualifying_grid_when_race_results_are_not_ready():
         item for item in engine.broadcast_queue.items
         if item.category.startswith("opening_field_rundown")
     ]
-    assert len(rundown) == 2
-    assert "Driver 12" in rundown[1].message
+    assert len(rundown) == 1
+    assert "Driver 12" in rundown[0].message
 
 
 def test_engine_preserves_camera_target_for_close_action():
@@ -740,7 +740,7 @@ def test_one_to_green_reports_small_caution_pit_group():
     )
     assert "Only a few takers" in pit_item.message
     assert pit_item.speaker == "sarah"
-    assert pit_item.camera_target_car_idx == 1
+    assert pit_item.camera_target_car_idx is None
     assert any(
         item.category == "sponsor_read"
         and item.message == "Caution sponsor read on lap 6."

@@ -102,12 +102,8 @@ class EditorialProducer:
             car_number=getattr(pit_event, "car_number", ""),
             speaker="sarah",
             category="pit_strategy",
-            camera_target_car_idx=getattr(pit_event, "car_idx", None),
-            participant_car_indices=tuple(
-                car_idx
-                for car_idx in (getattr(pit_event, "car_idx", None),)
-                if car_idx is not None
-            ),
+            camera_target_car_idx=None,
+            participant_car_indices=(),
         )
 
         self.add_item(item)

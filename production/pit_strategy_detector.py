@@ -120,13 +120,14 @@ class PitStrategyDetector:
         if under_caution:
             message = (
                 f"{state.driver_name} brings the number {state.car_number} to pit road under caution. "
-                f"This could be a strategy call before the restart."
+                "That could be for service, damage repair, or a restart adjustment."
             )
             importance = 8
         else:
             message = (
                 f"{state.driver_name} is on pit road under green. "
-                f"Green flag pit stops are beginning to shape the strategy."
+                "We'll watch whether that is scheduled service, damage repair, "
+                "or an off-sequence stop."
             )
             importance = 9
 

@@ -50,22 +50,19 @@ def test_opening_waits_for_lineup_after_welcome_and_weather():
     results, drivers = build_lineup()
     lineup_segments = director.update(TrackTelemetry(), results, drivers)
 
-    assert len(lineup_segments) == 2
+    assert len(lineup_segments) == 1
     assert lineup_segments[0].category == "opening_field_rundown_1"
-    assert lineup_segments[1].category == "opening_field_rundown_2"
     assert "On the pole, the 1 of Driver 1" in lineup_segments[0].message
-    assert "Starting 12th, the 12 of Driver 12" in lineup_segments[1].message
-    assert lineup_segments[0].camera_sequence == tuple(range(10))
+    assert "Starting 12th, the 12 of Driver 12" in lineup_segments[0].message
+    assert lineup_segments[0].camera_sequence == tuple(range(12))
     assert lineup_segments[0].camera_sequence_steps[:2] == (
-        (0, "Far Chase", 0),
-        (1, "Far Chase", 0),
+        (0, "Rear Chase", 0),
+        (1, "Rear Chase", 0),
     )
-    assert lineup_segments[1].camera_sequence == (10, 11)
     assert lineup_segments[0].speaker == "jeff"
-    assert lineup_segments[1].speaker == "jeff"
     assert (
         "That is your 12-car field for 80 laps at Nashville Superspeedway"
-        in lineup_segments[1].message
+        in lineup_segments[0].message
     )
     assert director.is_complete() is True
 
@@ -87,4 +84,4 @@ def test_lineup_uses_jeff_for_all_groups():
 
     segments = director.build_field_rundown(results, drivers)
 
-    assert [segment.speaker for segment in segments] == ["jeff", "jeff", "jeff"]
+    assert [segment.speaker for segment in segments] == ["jeff", "jeff"]

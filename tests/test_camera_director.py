@@ -121,6 +121,43 @@ def test_unknown_camera_group_fails_without_sending_command():
     assert telemetry.switches == []
 
 
+def test_tv_mixed_home_shot_falls_back_to_tv3_when_missing():
+    telemetry = CameraTelemetry()
+    telemetry.get_camera_groups = lambda: [
+        {"GroupNum": 4, "GroupName": "TV1"},
+        {"GroupNum": 7, "GroupName": "TV3"},
+    ]
+    director = CameraDirector(mode="auto")
+
+    decision = director.update(telemetry)
+
+    assert decision.status == "switched"
+    assert decision.group_name == "TV3"
+    assert telemetry.switches == [("77", 7, 0)]
+
+
+def test_rear_chase_lineup_falls_back_to_far_chase_when_missing():
+    telemetry = CameraTelemetry()
+    telemetry.get_camera_groups = lambda: [
+        {"GroupNum": 4, "GroupName": "TV1"},
+        {"GroupNum": 8, "GroupName": "Far Chase"},
+    ]
+    director = CameraDirector(mode="auto")
+    lineup = SimpleNamespace(
+        camera_target_car_idx=None,
+        camera_sequence=(),
+        camera_sequence_steps=((3, "Rear Chase", 0),),
+        dedupe_key="opening_field_rundown_1",
+        message="On the pole is one driver.",
+    )
+
+    decision = director.follow(lineup, telemetry)
+
+    assert decision.status == "switched"
+    assert decision.group_name == "Far Chase"
+    assert telemetry.switches == [("14", 8, 0)]
+
+
 def test_story_shot_returns_to_leader_on_tv_mixed_after_ten_seconds():
     telemetry = CameraTelemetry()
     times = iter([100.0, 111.0])
