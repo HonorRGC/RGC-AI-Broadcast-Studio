@@ -71,6 +71,12 @@ class PromptBuilder:
                 "Lap wording: if you mention this number, call it laps to go "
                 "or laps remaining. Do not say laps ahead."
             )
+            lines.append(
+                "Lap restraint: do not mention laps remaining on routine battle, "
+                "pass, or driver update assignments unless the assignment is "
+                "specifically about a lap-count milestone, the final 10 laps, "
+                "white flag, checkered flag, caution, or restart."
+            )
             lines.append("")
 
         if race_knowledge:

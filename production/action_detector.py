@@ -24,6 +24,9 @@ class ActionDetector:
     def __init__(self):
         self.previous_close_pairs = set()
         self.previous_action_signatures = set()
+        self.last_action_lap = -999
+        self.min_laps_between_action_calls = 3
+        self.max_events_per_update = 1
 
     def analyze(self, results, driver_lookup, lap_dist_pct_status, pit_road_status, current_lap):
         if current_lap < 1 or not results or not lap_dist_pct_status:
@@ -101,7 +104,15 @@ class ActionDetector:
 
         self.previous_close_pairs = close_pairs
         self.previous_action_signatures = active_signatures
-        return events
+
+        if not events:
+            return []
+
+        if current_lap - self.last_action_lap < self.min_laps_between_action_calls:
+            return []
+
+        self.last_action_lap = current_lap
+        return events[: self.max_events_per_update]
 
     def _ordered_active_cars(self, results, distances, pit_status):
         zero_based = any(self._integer(car.get("Position"), 999) == 0 for car in results)

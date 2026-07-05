@@ -22,7 +22,7 @@ def parse_args():
     parser.add_argument(
         "--camera-mode",
         choices=CameraDirector.MODES,
-        default="off",
+        default="auto",
         help="Camera direction: off, observe suggestions, or auto-switch iRacing",
     )
     parser.add_argument(
@@ -44,7 +44,7 @@ def parse_args():
     parser.add_argument(
         "--incident-replay",
         choices=ReplayDirector.MODES,
-        default="off",
+        default="auto",
         help="Incident replay: off, observe decisions, or control iRacing replay",
     )
     parser.add_argument(
@@ -70,7 +70,14 @@ def parse_args():
     parser.add_argument(
         "--overlay",
         action="store_true",
+        default=True,
         help="Start the local browser-source race overlay",
+    )
+    parser.add_argument(
+        "--no-overlay",
+        action="store_false",
+        dest="overlay",
+        help="Do not start the local browser-source race overlay",
     )
     parser.add_argument(
         "--overlay-host",
