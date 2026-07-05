@@ -52,19 +52,16 @@ def test_opening_waits_for_lineup_after_welcome_and_weather():
     assert director.update(TrackTelemetry(), results, drivers) == []
     lineup_segments = director.update(TrackTelemetry(), results, drivers)
 
-    assert len(lineup_segments) == 1
+    assert len(lineup_segments) == 12
     assert lineup_segments[0].category == "opening_field_rundown_1"
     assert "On the pole, the 1 of Driver 1" in lineup_segments[0].message
-    assert "Starting 12th, the 12 of Driver 12" in lineup_segments[0].message
-    assert lineup_segments[0].camera_sequence == tuple(range(12))
-    assert lineup_segments[0].camera_sequence_steps[:2] == (
-        (0, "Rear Chase", 0),
-        (1, "Rear Chase", 0),
-    )
+    assert "Starting 12th, the 12 of Driver 12" in lineup_segments[-1].message
+    assert lineup_segments[0].camera_sequence == (0,)
+    assert lineup_segments[0].camera_sequence_steps == ((0, "Rear Chase", 0),)
     assert lineup_segments[0].speaker == "jeff"
     assert (
         "That is your 12-car field for 80 laps at Nashville Superspeedway"
-        in lineup_segments[0].message
+        in lineup_segments[-1].message
     )
     assert director.is_complete() is True
 
@@ -77,9 +74,11 @@ def test_lineup_supports_one_based_positions():
     director.update(TrackTelemetry(), results, drivers)
     segments = director.update(TrackTelemetry(), results, drivers)
 
-    lineup = next(segment for segment in segments if "rundown" in segment.category)
-    assert "On the pole, the 1 of Driver 1" in lineup.message
-    assert "Starting 5th, the 5 of Driver 5" in lineup.message
+    lineup = [
+        segment for segment in segments if "rundown" in segment.category
+    ]
+    assert "On the pole, the 1 of Driver 1" in lineup[0].message
+    assert "Starting 5th, the 5 of Driver 5" in lineup[-1].message
 
 
 def test_lineup_uses_jeff_for_all_groups():
@@ -88,4 +87,5 @@ def test_lineup_uses_jeff_for_all_groups():
 
     segments = director.build_field_rundown(results, drivers)
 
-    assert [segment.speaker for segment in segments] == ["jeff", "jeff"]
+    assert len(segments) == 25
+    assert {segment.speaker for segment in segments} == {"jeff"}

@@ -87,14 +87,14 @@ def green_item():
 def test_ordinary_incident_plays_one_angle_then_returns_live():
     telemetry = ReplayTelemetry()
     camera = ReplayCamera()
-    times = iter([10.0, 21.0])
+    times = iter([10.0, 23.0])
     director = ReplayDirector(mode="auto", angle_groups=("TV1", "TV2"), clock=lambda: next(times))
 
     started = director.handle_item(incident_item(), telemetry, camera)
     finished = director.update(telemetry, camera)
 
     assert started.total_angles == 1
-    assert telemetry.seeks == [(2, 88.0)]
+    assert telemetry.seeks == [(2, 85.0)]
     assert camera.focuses == [(3, "TV1")]
     assert finished.status == "live"
     assert telemetry.live_returns == 1
@@ -104,7 +104,7 @@ def test_ordinary_incident_plays_one_angle_then_returns_live():
 def test_new_caution_incident_replays_tv1_then_tv2_before_live():
     telemetry = ReplayTelemetry()
     camera = ReplayCamera()
-    times = iter([10.0, 21.0, 32.0])
+    times = iter([10.0, 23.0, 36.0])
     director = ReplayDirector(mode="auto", angle_groups=("TV1", "TV2"), clock=lambda: next(times))
 
     started = director.handle_item(incident_item(multi_angle=True), telemetry, camera)
@@ -114,7 +114,7 @@ def test_new_caution_incident_replays_tv1_then_tv2_before_live():
     assert started.total_angles == 2
     assert second_angle.status == "angle"
     assert second_angle.angle_group == "TV2"
-    assert telemetry.seeks == [(2, 88.0), (2, 94.0)]
+    assert telemetry.seeks == [(2, 85.0), (2, 94.0)]
     assert camera.focuses == [(3, "TV1"), (3, "TV2")]
     assert finished.status == "live"
     assert telemetry.live_returns == 1
@@ -150,7 +150,7 @@ def test_observe_mode_never_seeks_or_changes_live_replay_state():
 def test_caution_replay_continues_during_caution_flag_state():
     telemetry = ReplayTelemetry()
     camera = ReplayCamera()
-    times = iter([10.0, 21.0])
+    times = iter([10.0, 23.0])
     director = ReplayDirector(mode="auto", angle_groups=("TV1", "TV2"), clock=lambda: next(times))
     director.handle_item(incident_item(multi_angle=True), telemetry, camera)
     telemetry.session_flags = 0x00000004
@@ -165,7 +165,7 @@ def test_caution_replay_continues_during_caution_flag_state():
 def test_incident_marker_replay_uses_iracing_previous_incident_camera():
     telemetry = ReplayTelemetry()
     camera = ReplayCamera()
-    times = iter([10.0, 21.0, 32.0])
+    times = iter([10.0, 23.0, 36.0])
     director = ReplayDirector(mode="auto", angle_groups=("TV1", "TV2"), clock=lambda: next(times))
 
     started = director.handle_item(incident_marker_item(), telemetry, camera)
@@ -175,7 +175,7 @@ def test_incident_marker_replay_uses_iracing_previous_incident_camera():
     assert started.total_angles == 2
     assert second_angle.status == "angle"
     assert telemetry.seeks == [
-        ("previous_incident", 1200),
+        ("previous_incident", 1500),
         ("previous_incident", 480),
     ]
     assert camera.focuses == [("incident", "TV1"), ("incident", "TV2")]

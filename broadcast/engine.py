@@ -279,10 +279,8 @@ class BroadcastEngine:
         driver = driver_lookup.get(leader_idx, {})
         name = driver.get("name", f"Car {leader_idx}")
         number = driver.get("number", "?")
-        total_text = f" of {total_laps}" if total_laps else ""
         message = (
-            f"Leader update on lap {current_lap}{total_text}: {name} in the "
-            f"number {number} has controlled the point for about "
+            f"{name} in the number {number} has controlled the lead for about "
             f"{laps_led_run} laps. {gap_text}{trend}"
         )
         self.broadcast_queue.add(

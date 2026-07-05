@@ -283,8 +283,9 @@ def test_engine_uses_qualifying_grid_when_race_results_are_not_ready():
         item for item in engine.broadcast_queue.items
         if item.category.startswith("opening_field_rundown")
     ]
-    assert len(rundown) == 1
-    assert "Driver 12" in rundown[0].message
+    assert len(rundown) == 12
+    assert "Driver 12" in rundown[-1].message
+    assert all(len(item.camera_sequence) == 1 for item in rundown)
 
 
 def test_engine_preserves_camera_target_for_close_action():

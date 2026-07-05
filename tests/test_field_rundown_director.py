@@ -48,7 +48,7 @@ def test_quarter_rundown_freezes_top_ten_and_airs_one_driver_at_a_time():
     assert second_segment[0].camera_sequence == (1,)
     assert "one quarter into this race" in segments[0].message
     assert "top ten" in segments[0].message
-    assert "Running first" in segments[0].message
+    assert "First place" in segments[0].message
     assert "Driver 2" in second_segment[0].message
     assert repeated[0].category == "quarter_field_rundown_3"
 

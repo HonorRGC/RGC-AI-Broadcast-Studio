@@ -130,7 +130,7 @@ class FieldRundownDirector:
 
             segments.append(
                 FieldRundownSegment(
-                    message=f"{intro} {' '.join(lines)}{closing}",
+                    message=self.combine_message(intro, lines, closing),
                     priority=10,
                     speaker="jeff",
                     category=f"{milestone}_field_rundown_{group_number}",
@@ -162,7 +162,7 @@ class FieldRundownDirector:
         lines = [self.format_entry(entry) for entry in group]
         closing = self.segment_closing(milestone) if is_final else ""
         segment = FieldRundownSegment(
-            message=f"{intro} {' '.join(lines)}{closing}",
+            message=self.combine_message(intro, lines, closing),
             priority=10,
             speaker="jeff",
             category=f"{milestone}_field_rundown_{group_number}",
@@ -176,6 +176,10 @@ class FieldRundownDirector:
             self.complete_active_milestone()
         return segment
 
+    def combine_message(self, intro, lines, closing):
+        parts = [part for part in [intro, " ".join(lines)] if part]
+        return f"{' '.join(parts)}{closing}".strip()
+
     def complete_active_milestone(self):
         self.active_milestone = None
         self.active_entries = []
@@ -188,17 +192,16 @@ class FieldRundownDirector:
             if group_number == 1:
                 return (
                     f"We are three quarters into this race{lap_text}. "
-                    "Let's reset the top ten and see how the front of the field "
-                    "looks now."
+                    "Let's do a rundown of the top ten."
                 )
-            return "Continuing the three-quarter top-ten reset."
+            return ""
 
         if group_number == 1:
             return (
                 f"We are one quarter into this race{lap_text}. "
-                "Let's reset the top ten in the current running order."
+                "Let's do a rundown of the top ten."
             )
-        return "Continuing the quarter-race top-ten reset."
+        return ""
 
     def segment_closing(self, milestone):
         if milestone == "three_quarter":
@@ -243,7 +246,8 @@ class FieldRundownDirector:
             starting_position=starting_position,
         )
         return (
-            f"Running {current_position}, the {entry['number']} of {entry['name']}"
+            f"{current_position.capitalize()} place, the "
+            f"{entry['number']} of {entry['name']}"
             f"{movement}."
         )
 

@@ -12,7 +12,7 @@ class OpeningSegment:
 
 
 class OpeningDirector:
-    LINEUP_GROUP_SIZE = 20
+    LINEUP_GROUP_SIZE = 1
 
     def __init__(self):
         self.welcome_sent = False
@@ -147,18 +147,32 @@ class OpeningDirector:
             driver_info = driver_lookup.get(car_idx, {})
             name = driver_info.get("name", f"Car {car_idx}")
             number = driver_info.get("number", "?")
-            entries.append((car_idx, self.format_lineup_entry(position, number, name)))
+            entries.append(
+                {
+                    "car_idx": car_idx,
+                    "position": position,
+                    "number": number,
+                    "name": name,
+                }
+            )
 
         segments = []
         for start in range(0, len(entries), self.LINEUP_GROUP_SIZE):
             group = entries[start : start + self.LINEUP_GROUP_SIZE]
-            group_car_indices = tuple(entry[0] for entry in group)
-            group_messages = [entry[1] for entry in group]
+            group_car_indices = tuple(entry["car_idx"] for entry in group)
+            group_messages = [
+                self.format_lineup_entry(
+                    entry["position"],
+                    entry["number"],
+                    entry["name"],
+                )
+                for entry in group
+            ]
             group_number = start // self.LINEUP_GROUP_SIZE + 1
             intro = (
-                "Here is your starting lineup."
+                "Here is your starting lineup. "
                 if group_number == 1
-                else "Rounding out the starting field."
+                else ""
             )
             closing = ""
             if start + self.LINEUP_GROUP_SIZE >= len(entries) and track_name:
@@ -169,7 +183,7 @@ class OpeningDirector:
                 )
             segments.append(
                 OpeningSegment(
-                    f"{intro} {' '.join(group_messages)}{closing}",
+                    f"{intro}{' '.join(group_messages)}{closing}",
                     priority=9,
                     speaker="jeff",
                     category=f"opening_field_rundown_{group_number}",

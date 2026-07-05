@@ -415,6 +415,7 @@ class CameraDirector:
             "far chase": ("far chase", "rear chase", "chase", "tv1"),
             "rear chase": ("rear chase", "far chase", "chase", "tv1"),
             "cockpit": ("cockpit", "in car", "driver", "tv1"),
+            "chopper": ("chopper", "blimp", "aerial", "gyro", "tv3", "tv1"),
             "tv mixed": ("tv mixed", "tv3", "tv 3", "tv1"),
             "tv3": ("tv3", "tv 3", "tv1"),
             "tv2": ("tv2", "tv 2", "tv1"),

@@ -50,13 +50,13 @@ def parse_args():
     parser.add_argument(
         "--replay-angle-seconds",
         type=float,
-        default=10.0,
+        default=12.0,
         help="Seconds to show each incident replay angle",
     )
     parser.add_argument(
         "--incident-marker-preroll-seconds",
         type=float,
-        default=20.0,
+        default=25.0,
         help=(
             "Seconds to back up before iRacing's incident marker when the "
             "broadcast cannot identify a specific incident car"
@@ -158,13 +158,22 @@ def update_overlay_featured_driver(overlay_server, item, source, camera_decision
     if not driver_name and not car_number:
         return
 
-    story = str(getattr(item, "message", "") or "")
+    story = build_featured_driver_story(driver)
     overlay_server.show_featured_driver(
         car_number=car_number,
         driver_name=driver_name,
         story=story,
         duration=12.0,
     )
+
+
+def build_featured_driver_story(driver):
+    details = []
+    for key in ("team_name", "club", "country", "sponsor"):
+        value = str(driver.get(key, "") or "").strip()
+        if value and value not in details:
+            details.append(value)
+    return " | ".join(details[:3]) or "Featured driver"
 
 
 def report_camera_decision(decision):

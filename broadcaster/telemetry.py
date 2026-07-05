@@ -197,6 +197,11 @@ class IRacingTelemetry:
                 "name": self.clean_driver_name(raw_name),
                 "raw_name": raw_name,
                 "number": driver.get("CarNumber", "?"),
+                "country": driver.get("Country", ""),
+                "club": driver.get("ClubName", ""),
+                "team_name": driver.get("TeamName", ""),
+                "sponsor": driver.get("CarSponsor_1", "")
+                or driver.get("CarSponsor1", ""),
             }
 
         return lookup
