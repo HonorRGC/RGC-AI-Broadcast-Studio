@@ -70,9 +70,15 @@ class BroadcastEngine:
         current_lap = self.best_race_lap(telemetry.get_lap(), results)
         session_flags = telemetry.get_session_flags()
         pit_road_status = telemetry.get_car_idx_on_pit_road()
+        track_surface_status = telemetry.get_car_idx_track_surface()
+        story_results = self.active_race_results(
+            results,
+            pit_road_status=pit_road_status,
+            track_surface_status=track_surface_status,
+        )
 
         race_knowledge = self.race_intelligence.update(
-            results=results,
+            results=story_results,
             driver_lookup=driver_lookup,
             current_lap=current_lap,
             total_laps=total_laps,
@@ -148,12 +154,12 @@ class BroadcastEngine:
             self.editorial_producer.submit_race_knowledge(race_knowledge)
             self._collect_action_stories(
                 telemetry,
-                results,
+                story_results,
                 driver_lookup,
                 pit_road_status,
                 current_lap,
             )
-            self._collect_pass_stories(results, driver_lookup)
+            self._collect_pass_stories(story_results, driver_lookup)
             self._queue_editorial_decision(
                 race_state,
                 race_knowledge,
@@ -558,6 +564,47 @@ class BroadcastEngine:
             laps.append(self.safe_int(car.get("Lap", car.get("LapsComplete", 0))))
             laps.append(self.safe_int(car.get("LapsComplete", car.get("Lap", 0))))
         return max(laps, default=0)
+
+    def active_race_results(self, results, pit_road_status=None, track_surface_status=None):
+        if not results:
+            return []
+
+        active = []
+        for car in results or []:
+            car_idx = car.get("CarIdx")
+            if car_idx is None:
+                continue
+            if self.is_on_pit_road(car_idx, pit_road_status):
+                continue
+            if not self.is_active_track_surface(car_idx, track_surface_status):
+                continue
+            active.append(car)
+        return active
+
+    def is_on_pit_road(self, car_idx, pit_road_status):
+        try:
+            return bool(pit_road_status[int(car_idx)])
+        except Exception:
+            return False
+
+    def is_active_track_surface(self, car_idx, track_surface_status):
+        if track_surface_status is None:
+            return True
+        try:
+            surface = track_surface_status[int(car_idx)]
+        except Exception:
+            return True
+        if surface is None:
+            return True
+        try:
+            surface = int(surface)
+        except Exception:
+            return True
+
+        # iRacing can keep cars in the results list even when they are not
+        # actively racing. Values at/below 1 are commonly invalid/not-in-world
+        # or off-racing-surface states and are too noisy for pass/battle stories.
+        return surface > 1
 
     def _queue_editorial_decision(self, race_state, race_knowledge, driver_lookup):
         decision = self.editorial_producer.choose_next_item(race_state=race_state)

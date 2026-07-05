@@ -439,6 +439,41 @@ def test_pass_story_carries_overtaking_car_as_camera_target():
     assert engine.editorial_producer.items[0].participant_car_indices == (1,)
 
 
+def test_inactive_cars_are_filtered_from_pass_stories():
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    drivers = {
+        0: {"name": "Leader", "number": "77"},
+        1: {"name": "Inactive Driver", "number": "14"},
+    }
+    initial = [
+        {"CarIdx": 0, "Position": 0, "LapsComplete": 4},
+        {"CarIdx": 1, "Position": 9, "LapsComplete": 4},
+    ]
+    snapshot = TelemetrySnapshot(
+        lap=5,
+        total_laps=90,
+        session_flags=RaceFlags.GREEN,
+        results=[
+            {"CarIdx": 0, "Position": 0, "LapsComplete": 5},
+            {"CarIdx": 1, "Position": 2, "LapsComplete": 5},
+        ],
+        driver_lookup=drivers,
+        pit_road_status=[False, False],
+        track_surface=[3, 1],
+        track_surface_material=[0, 0],
+        lap_dist_pct=[0.1, 0.2],
+        est_time=[10.0, 10.0],
+    )
+    engine.race_brain.analyze(initial, drivers)
+
+    engine.tick(SnapshotSource(snapshot))
+
+    assert all(
+        item.driver_name != "Inactive Driver"
+        for item in engine.editorial_producer.items
+    )
+
+
 def test_incident_is_collected_after_race_enters_caution():
     drivers = {0: {"name": "Driver One", "number": "1"}}
     source = SnapshotSource(
