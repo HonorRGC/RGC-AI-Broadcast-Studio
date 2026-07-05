@@ -112,7 +112,10 @@ def run_source(
             report_replay_decision(
                 replay_director.handle_item(item, source, camera_director)
             )
-            report_camera_decision(camera_director.follow(item, source))
+            camera_decision = camera_director.follow(item, source)
+            report_camera_decision(camera_decision)
+            if overlay_server:
+                update_overlay_featured_driver(overlay_server, item, source, camera_decision)
             booth.broadcast(item.message, speaker=item.speaker)
 
         if hasattr(source, "next_snapshot"):
@@ -139,6 +142,28 @@ def report_replay_decision(decision):
     print(
         f"REPLAY: angle {decision.angle_number} of {decision.total_angles}, "
         f"{target} on {decision.angle_group}."
+    )
+
+
+def update_overlay_featured_driver(overlay_server, item, source, camera_decision):
+    if camera_decision.status not in ("suggested", "switched", "held"):
+        return
+    car_idx = getattr(item, "camera_target_car_idx", None)
+    if car_idx is None or car_idx != camera_decision.car_idx:
+        return
+
+    driver = source.get_driver_lookup().get(car_idx, {})
+    driver_name = driver.get("name", "")
+    car_number = driver.get("number", camera_decision.car_number)
+    if not driver_name and not car_number:
+        return
+
+    story = str(getattr(item, "message", "") or "")
+    overlay_server.show_featured_driver(
+        car_number=car_number,
+        driver_name=driver_name,
+        story=story,
+        duration=12.0,
     )
 
 

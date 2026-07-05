@@ -47,6 +47,10 @@ class BroadcastEngine:
         self.sponsor_read_director = SponsorReadDirector()
         self.broadcast_queue = BroadcastQueue()
         self.caution_marker_replay_count = 0
+        self.last_leader_story_lap = 0
+        self.current_leader_car_idx = None
+        self.current_leader_started_lap = 0
+        self.last_leader_gap = None
 
     def tick(self, telemetry):
         session_type_reader = getattr(telemetry, "get_session_type", None)
@@ -152,6 +156,12 @@ class BroadcastEngine:
             if queued_quarter_rundown:
                 return self.broadcast_queue.next_item()
             self.editorial_producer.submit_race_knowledge(race_knowledge)
+            self._queue_leader_story(
+                story_results,
+                driver_lookup,
+                current_lap,
+                total_laps,
+            )
             self._collect_action_stories(
                 telemetry,
                 story_results,
@@ -213,7 +223,7 @@ class BroadcastEngine:
 
     def _collect_pass_stories(self, results, driver_lookup):
         for event in self.race_brain.analyze(results, driver_lookup):
-            if event.importance < 6:
+            if event.importance < 8:
                 continue
 
             if event.new_position == 1:
@@ -237,6 +247,85 @@ class BroadcastEngine:
                     car_idx for car_idx in (event.car_idx,) if car_idx is not None
                 ),
             )
+
+    def _queue_leader_story(self, results, driver_lookup, current_lap, total_laps):
+        if current_lap < 3 or not results:
+            return
+        if self.last_leader_story_lap and current_lap - self.last_leader_story_lap < 5:
+            return
+        if self.broadcast_queue.items:
+            return
+
+        ordered = self.sorted_running_order(results)
+        if not ordered:
+            return
+
+        leader = ordered[0]
+        leader_idx = leader.get("CarIdx")
+        if leader_idx is None:
+            return
+
+        if leader_idx != self.current_leader_car_idx:
+            self.current_leader_car_idx = leader_idx
+            self.current_leader_started_lap = current_lap
+            self.last_leader_gap = None
+
+        laps_led_run = max(1, current_lap - self.current_leader_started_lap + 1)
+        second = ordered[1] if len(ordered) > 1 else None
+        gap = self.safe_float(second.get("Time")) if second else 0.0
+        gap_text = self.leader_gap_phrase(gap)
+        trend = self.leader_gap_trend(gap)
+
+        driver = driver_lookup.get(leader_idx, {})
+        name = driver.get("name", f"Car {leader_idx}")
+        number = driver.get("number", "?")
+        total_text = f" of {total_laps}" if total_laps else ""
+        message = (
+            f"Leader update on lap {current_lap}{total_text}: {name} in the "
+            f"number {number} has controlled the point for about "
+            f"{laps_led_run} laps. {gap_text}{trend}"
+        )
+        self.broadcast_queue.add(
+            message,
+            priority=8,
+            category="race_story",
+            protected=False,
+            speaker="jeff",
+            expires_after=35,
+            dedupe_key=f"leader_story:{leader_idx}:{current_lap // 5}",
+            camera_target_car_idx=leader_idx,
+            participant_car_indices=(leader_idx,),
+        )
+        self.last_leader_story_lap = current_lap
+        self.last_leader_gap = gap if gap > 0 else self.last_leader_gap
+
+    def sorted_running_order(self, results):
+        valid = [car for car in results or [] if car.get("CarIdx") is not None]
+        zero_based = any(self.safe_int(car.get("Position"), 999) == 0 for car in valid)
+        return sorted(
+            valid,
+            key=lambda car: self.safe_int(car.get("Position"), 999)
+            + (1 if zero_based else 0),
+        )
+
+    def leader_gap_phrase(self, gap):
+        if gap <= 0:
+            return "The gap behind the leader is still forming. "
+        if gap < 0.35:
+            return f"Second place is right there, only {gap:.1f} seconds back. "
+        if gap < 1.0:
+            return f"The advantage is slim at about {gap:.1f} seconds. "
+        return f"The leader has built a little breathing room at {gap:.1f} seconds. "
+
+    def leader_gap_trend(self, gap):
+        if gap <= 0 or self.last_leader_gap is None:
+            return ""
+        delta = gap - self.last_leader_gap
+        if delta >= 0.3:
+            return "That gap is growing."
+        if delta <= -0.3:
+            return "The chasers are starting to reel that back in."
+        return "The margin is holding fairly steady."
 
     def _collect_action_stories(
         self,
@@ -555,6 +644,13 @@ class BroadcastEngine:
     def safe_int(value, default=0):
         try:
             return int(value)
+        except Exception:
+            return default
+
+    @staticmethod
+    def safe_float(value, default=0.0):
+        try:
+            return float(value)
         except Exception:
             return default
 

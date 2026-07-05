@@ -18,6 +18,7 @@ class OpeningDirector:
         self.welcome_sent = False
         self.track_info_sent = False
         self.lineup_sent = False
+        self.lineup_ready_ticks = 0
 
     def update(self, telemetry, results, driver_lookup, current_lap=0):
         segments = []
@@ -32,6 +33,9 @@ class OpeningDirector:
             self.track_info_sent = True
 
         if not self.lineup_sent and self.has_valid_lineup(results):
+            self.lineup_ready_ticks += 1
+            if self.lineup_ready_ticks < 3:
+                return segments
             total_laps_reader = getattr(telemetry, "get_total_laps", None)
             total_laps = total_laps_reader() if total_laps_reader else 0
             segments.extend(

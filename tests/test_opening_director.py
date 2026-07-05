@@ -48,6 +48,8 @@ def test_opening_waits_for_lineup_after_welcome_and_weather():
     assert director.is_complete() is False
 
     results, drivers = build_lineup()
+    assert director.update(TrackTelemetry(), results, drivers) == []
+    assert director.update(TrackTelemetry(), results, drivers) == []
     lineup_segments = director.update(TrackTelemetry(), results, drivers)
 
     assert len(lineup_segments) == 1
@@ -71,6 +73,8 @@ def test_lineup_supports_one_based_positions():
     director = OpeningDirector()
     results, drivers = build_lineup(count=5, zero_based=False)
 
+    director.update(TrackTelemetry(), results, drivers)
+    director.update(TrackTelemetry(), results, drivers)
     segments = director.update(TrackTelemetry(), results, drivers)
 
     lineup = next(segment for segment in segments if "rundown" in segment.category)

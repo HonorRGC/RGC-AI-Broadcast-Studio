@@ -14,7 +14,8 @@ class FieldRundownSegment:
 
 
 class FieldRundownDirector:
-    GROUP_SIZE = 8
+    GROUP_SIZE = 1
+    MAX_RUNNING_ORDER_CARS = 10
 
     def __init__(self):
         self.sent_milestones = set()
@@ -34,7 +35,9 @@ class FieldRundownDirector:
             return []
 
         if self.active_milestone is None:
-            frozen_results = self.freeze_starting_order(results)
+            frozen_results = self.freeze_running_order(results)[
+                : self.MAX_RUNNING_ORDER_CARS
+            ]
             if len(frozen_results) < 3:
                 return []
             self.active_milestone = milestone
@@ -75,7 +78,12 @@ class FieldRundownDirector:
     ):
         return self.build_segments(
             "quarter",
-            self.build_entries(frozen_results, driver_lookup),
+            self.build_entries(
+                self.freeze_running_order(frozen_results)[
+                    : self.MAX_RUNNING_ORDER_CARS
+                ],
+                driver_lookup,
+            ),
             current_lap,
             total_laps,
         )
@@ -180,23 +188,22 @@ class FieldRundownDirector:
             if group_number == 1:
                 return (
                     f"We are three quarters into this race{lap_text}. "
-                    "Let's run through the field by qualifying order and see where "
-                    "everyone is now."
+                    "Let's reset the top ten and see how the front of the field "
+                    "looks now."
                 )
-            return "Continuing the three-quarter field rundown."
+            return "Continuing the three-quarter top-ten reset."
 
         if group_number == 1:
             return (
                 f"We are one quarter into this race{lap_text}. "
-                "Let's do a rundown of the field, starting with where they started "
-                "on the grid and seeing where they are now."
+                "Let's reset the top ten in the current running order."
             )
-        return "Continuing the quarter-race field rundown."
+        return "Continuing the quarter-race top-ten reset."
 
     def segment_closing(self, milestone):
         if milestone == "three_quarter":
-            return " That completes the full-field reset at the three-quarter mark."
-        return " That completes the full-field reset at quarter distance."
+            return " That completes the top-ten reset at the three-quarter mark."
+        return " That completes the top-ten reset at quarter distance."
 
     def build_quarter_camera_steps(self, group):
         steps = []
@@ -229,7 +236,6 @@ class FieldRundownDirector:
         return self.freeze_running_order(valid)
 
     def format_entry(self, entry):
-        order_position = PositionFormatter.ordinal(entry["order_position"])
         current_position = PositionFormatter.ordinal(entry["position"])
         starting_position = entry.get("starting_position", 0)
         movement = self.movement_phrase(
@@ -237,9 +243,8 @@ class FieldRundownDirector:
             starting_position=starting_position,
         )
         return (
-            f"{order_position} in our qualifying-order reset, the "
-            f"{entry['number']} of {entry['name']} is now running "
-            f"{current_position}{movement}."
+            f"Running {current_position}, the {entry['number']} of {entry['name']}"
+            f"{movement}."
         )
 
     def movement_phrase(self, current_position, starting_position):

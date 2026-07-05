@@ -1,7 +1,7 @@
 from production.field_rundown_director import FieldRundownDirector
 
 
-def test_quarter_rundown_freezes_and_segments_the_full_field():
+def test_quarter_rundown_freezes_top_ten_and_airs_one_driver_at_a_time():
     director = FieldRundownDirector()
     results = [
         {"CarIdx": index, "Position": index, "StartingPosition": index + 1}
@@ -40,21 +40,17 @@ def test_quarter_rundown_freezes_and_segments_the_full_field():
     assert len(second_segment) == 1
     assert segments[0].category == "quarter_field_rundown_1"
     assert segments[0].speaker == "jeff"
-    assert segments[0].camera_sequence == (0, 3, 2, 1, 4, 5, 6, 7)
-    assert segments[0].camera_sequence_steps[:4] == (
+    assert segments[0].camera_sequence == (0,)
+    assert segments[0].camera_sequence_steps == (
         (0, "TV1", 0),
         (0, "Cockpit", 0),
-        (3, "TV1", 0),
-        (3, "Cockpit", 0),
     )
-    assert second_segment[0].camera_sequence == (8, 9)
+    assert second_segment[0].camera_sequence == (1,)
     assert "one quarter into this race" in segments[0].message
-    assert "qualifying-order reset" in segments[0].message
-    assert "Driver 2 is now running second, after starting fifth, up 3 spots" in segments[0].message
-    assert "Driver 4 is now running fourth, after starting second, down 2 spots" in segments[0].message
-    assert "Driver 10" in second_segment[0].message
-    assert "completes the full-field reset" in second_segment[0].message
-    assert repeated == []
+    assert "top ten" in segments[0].message
+    assert "Running first" in segments[0].message
+    assert "Driver 2" in second_segment[0].message
+    assert repeated[0].category == "quarter_field_rundown_3"
 
 
 def test_quarter_rundown_waits_for_green_and_quarter_distance():
@@ -76,8 +72,8 @@ def test_three_quarter_rundown_runs_after_quarter_rundown():
         for index in range(10)
     }
 
-    director.update(results, drivers, 10, 40, under_green=True)
-    director.update(results, drivers, 11, 40, under_green=True)
+    for lap in range(10, 20):
+        director.update(results, drivers, lap, 40, under_green=True)
     segments = director.update(results, drivers, 30, 40, under_green=True)
 
     assert len(segments) == 1

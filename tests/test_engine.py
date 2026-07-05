@@ -99,7 +99,11 @@ def test_engine_queues_exactly_one_initial_green_flag():
     )
     engine = BroadcastEngine(openai_director=SilentOpenAI())
 
-    emitted = engine.tick(SnapshotSource(snapshot))
+    source = SnapshotSource(snapshot)
+    emitted = engine.tick(source)
+    engine.tick(source)
+    engine.tick(source)
+    engine.tick(source)
     pending_green = [
         item for item in engine.broadcast_queue.items if "green" in item.dedupe_key
     ]
@@ -154,7 +158,10 @@ def test_initial_one_to_green_keeps_the_opening_package_available():
     )
     engine = BroadcastEngine(openai_director=SilentOpenAI())
 
-    emitted = engine.tick(SnapshotSource(snapshot))
+    source = SnapshotSource(snapshot)
+    emitted = engine.tick(source)
+    engine.tick(source)
+    engine.tick(source)
 
     assert emitted.category == "opening_welcome"
     assert any(
@@ -192,7 +199,10 @@ def test_engine_queues_sponsor_read_after_opening_lineup():
     engine.session_tracker.update("Race")
     engine.sponsor_read_director = StubSponsorReads()
 
-    engine.tick(SnapshotSource(snapshot))
+    source = SnapshotSource(snapshot)
+    engine.tick(source)
+    engine.tick(source)
+    engine.tick(source)
 
     sponsor_items = [
         item for item in engine.broadcast_queue.items
@@ -264,7 +274,10 @@ def test_engine_uses_qualifying_grid_when_race_results_are_not_ready():
     )
     engine = BroadcastEngine(openai_director=SilentOpenAI())
 
-    engine.tick(SnapshotSource(snapshot))
+    source = SnapshotSource(snapshot)
+    engine.tick(source)
+    engine.tick(source)
+    engine.tick(source)
 
     rundown = [
         item for item in engine.broadcast_queue.items
@@ -334,7 +347,7 @@ def test_engine_queues_quarter_field_rundown_under_green():
 
     assert green.category == "race_control"
     assert rundown.category == "quarter_field_rundown_1"
-    assert rundown.camera_sequence == tuple(range(8))
+    assert rundown.camera_sequence == (0,)
     assert rundown.protected is True
     assert "one quarter into this race" in rundown.message
 

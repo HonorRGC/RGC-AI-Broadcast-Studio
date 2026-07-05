@@ -27,6 +27,7 @@ class LeaderboardEntry:
     driver_name: str
     laps_complete: int = 0
     interval: str = ""
+    fastest_lap: str = ""
 
     def to_dict(self):
         return {
@@ -36,6 +37,22 @@ class LeaderboardEntry:
             "driver_name": self.driver_name,
             "laps_complete": self.laps_complete,
             "interval": self.interval,
+            "fastest_lap": self.fastest_lap,
+        }
+
+
+@dataclass
+class FeaturedDriver:
+    car_number: str = ""
+    driver_name: str = ""
+    story: str = ""
+    expires_at: float = 0.0
+
+    def to_dict(self):
+        return {
+            "car_number": self.car_number,
+            "driver_name": self.driver_name,
+            "story": self.story,
         }
 
 
@@ -46,6 +63,8 @@ class OverlayState:
     track_name: str = ""
     lap: int = 0
     total_laps: int = 0
+    caution: bool = False
+    featured_driver: FeaturedDriver | None = None
     leaderboard: list[LeaderboardEntry] = field(default_factory=list)
 
     def to_dict(self):
@@ -59,6 +78,10 @@ class OverlayState:
             "track_name": self.track_name,
             "lap": self.lap,
             "total_laps": self.total_laps,
+            "caution": self.caution,
+            "featured_driver": (
+                self.featured_driver.to_dict() if self.featured_driver else None
+            ),
             "leaderboard": [entry.to_dict() for entry in self.leaderboard],
         }
 
@@ -91,7 +114,8 @@ class OverlayStateBuilder:
             track_name=(track_info or {}).get("track_name", ""),
             lap=self.best_race_lap(results, telemetry.get_lap()),
             total_laps=self.safe_int(telemetry.get_total_laps()),
-            leaderboard=self.build_leaderboard(results, driver_lookup),
+            caution=self.is_caution(telemetry),
+            leaderboard=self.build_leaderboard(results, driver_lookup, session_type),
         )
 
     def best_race_lap(self, results, telemetry_lap=0):
@@ -100,7 +124,7 @@ class OverlayStateBuilder:
             laps.append(self.safe_int(car.get("LapsComplete", car.get("Lap", 0))))
         return max(laps, default=0)
 
-    def build_leaderboard(self, results, driver_lookup):
+    def build_leaderboard(self, results, driver_lookup, session_type="Race"):
         valid_results = [
             dict(car)
             for car in results or []
@@ -124,10 +148,49 @@ class OverlayStateBuilder:
                     laps_complete=self.safe_int(
                         car.get("LapsComplete", car.get("Lap", 0))
                     ),
-                    interval="" if display_position == 1 else self.format_interval(car),
+                    interval=self.format_entry_metric(
+                        car,
+                        display_position,
+                        session_type,
+                    ),
+                    fastest_lap=self.format_lap_time(self.best_lap_value(car)),
                 )
             )
         return self.visible_leaderboard_window(leaderboard)
+
+    def format_entry_metric(self, car, display_position, session_type):
+        if self.is_timed_session(session_type):
+            return self.format_lap_time(self.best_lap_value(car))
+        return "" if display_position == 1 else self.format_interval(car)
+
+    def is_timed_session(self, session_type):
+        text = str(session_type or "").lower()
+        return "practice" in text or "qual" in text
+
+    def best_lap_value(self, car):
+        for key in ("FastestTime", "BestLapTime", "FastestLapTime", "BestTime"):
+            if key in car and car.get(key) not in (None, "", 0, 0.0):
+                return self.safe_float(car.get(key))
+        return 0.0
+
+    def format_lap_time(self, seconds):
+        seconds = self.safe_float(seconds)
+        if seconds <= 0:
+            return ""
+        minutes = int(seconds // 60)
+        remainder = seconds - minutes * 60
+        if minutes:
+            return f"{minutes}:{remainder:06.3f}"
+        return f"{remainder:.3f}"
+
+    def is_caution(self, telemetry):
+        flags_reader = getattr(telemetry, "get_session_flags", None)
+        flags = flags_reader() if flags_reader else 0
+        try:
+            flags = int(flags or 0)
+        except Exception:
+            flags = 0
+        return bool(flags & (0x00000008 | 0x00000100 | 0x00004000 | 0x00008000))
 
     def visible_leaderboard_window(self, leaderboard):
         if len(leaderboard) <= self.max_entries:
@@ -181,6 +244,7 @@ class OverlayServer:
         self.state_builder = state_builder or OverlayStateBuilder()
         self.state = OverlayState(event=self.state_builder.event_config)
         self.lock = threading.Lock()
+        self.featured_driver = None
         self.httpd = None
         self.thread = None
 
@@ -208,7 +272,23 @@ class OverlayServer:
     def update_from_telemetry(self, telemetry):
         state = self.state_builder.build_from_telemetry(telemetry)
         with self.lock:
+            if (
+                self.featured_driver
+                and self.featured_driver.expires_at > time.monotonic()
+            ):
+                state.featured_driver = self.featured_driver
+            else:
+                self.featured_driver = None
             self.state = state
+
+    def show_featured_driver(self, car_number, driver_name, story="", duration=10.0):
+        with self.lock:
+            self.featured_driver = FeaturedDriver(
+                car_number=str(car_number or ""),
+                driver_name=str(driver_name or ""),
+                story=str(story or ""),
+                expires_at=time.monotonic() + float(duration),
+            )
 
     def current_state_dict(self):
         with self.lock:
@@ -298,6 +378,17 @@ OVERLAY_HTML = r"""<!doctype html>
       letter-spacing: 0.02em;
     }
 
+    .top-banner.caution {
+      border: 4px solid #ffd400;
+      border-bottom-width: 5px;
+      animation: cautionPulse 0.85s infinite alternate;
+    }
+
+    @keyframes cautionPulse {
+      from { box-shadow: 0 0 16px rgba(255, 212, 0, 0.55); }
+      to { box-shadow: 0 0 38px rgba(255, 212, 0, 0.98); }
+    }
+
     .event-title {
       font-size: 28px;
       font-weight: 800;
@@ -325,7 +416,7 @@ OVERLAY_HTML = r"""<!doctype html>
       position: absolute;
       left: 24px;
       top: 124px;
-      width: 292px;
+      width: 264px;
       background: var(--rgc-panel);
       box-shadow: 0 14px 34px rgba(0, 0, 0, 0.40);
       border-left: 5px solid var(--rgc-red);
@@ -335,7 +426,7 @@ OVERLAY_HTML = r"""<!doctype html>
       display: grid;
       grid-template-columns: 1fr auto;
       gap: 8px;
-      padding: 10px 12px;
+      padding: 8px 10px;
       background: var(--rgc-dark);
       border-bottom: 1px solid var(--rgc-line);
       text-transform: uppercase;
@@ -350,13 +441,13 @@ OVERLAY_HTML = r"""<!doctype html>
 
     .row {
       display: grid;
-      grid-template-columns: 34px 46px 1fr auto;
-      gap: 7px;
+      grid-template-columns: 30px 40px 1fr auto;
+      gap: 6px;
       align-items: center;
-      min-height: 32px;
-      padding: 5px 10px;
+      min-height: 25px;
+      padding: 3px 8px;
       border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-      font-size: 14px;
+      font-size: 12px;
     }
 
     .row:nth-child(even) {
@@ -371,7 +462,7 @@ OVERLAY_HTML = r"""<!doctype html>
     .pos {
       color: #fff;
       font-weight: 900;
-      font-size: 16px;
+      font-size: 14px;
     }
 
     .num {
@@ -395,13 +486,59 @@ OVERLAY_HTML = r"""<!doctype html>
       font-size: 12px;
     }
 
+    .driver-card {
+      position: absolute;
+      left: 360px;
+      bottom: 54px;
+      min-width: 430px;
+      max-width: 620px;
+      display: grid;
+      grid-template-columns: 86px 1fr;
+      background: linear-gradient(90deg, rgba(7, 9, 13, 0.96), rgba(24, 30, 42, 0.92));
+      border-left: 6px solid var(--rgc-red);
+      box-shadow: 0 14px 34px rgba(0, 0, 0, 0.42);
+      text-transform: uppercase;
+    }
+
+    .driver-card-number {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #fff;
+      color: #111;
+      font-weight: 950;
+      font-size: 36px;
+    }
+
+    .driver-card-info {
+      padding: 12px 18px;
+    }
+
+    .driver-card-name {
+      font-size: 26px;
+      font-weight: 900;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .driver-card-story {
+      margin-top: 4px;
+      color: var(--rgc-muted);
+      font-size: 13px;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
     .hidden {
       display: none;
     }
   </style>
 </head>
 <body>
-  <section class="top-banner">
+  <section id="top-banner" class="top-banner">
     <div>
       <div id="event-title" class="event-title">RGC AI Broadcast</div>
       <div id="series" class="event-meta"></div>
@@ -418,6 +555,14 @@ OVERLAY_HTML = r"""<!doctype html>
       <span id="lap" class="lap">Lap --</span>
     </div>
     <div id="leaderboard-rows"></div>
+  </section>
+
+  <section id="driver-card" class="driver-card hidden">
+    <div id="driver-card-number" class="driver-card-number"></div>
+    <div class="driver-card-info">
+      <div id="driver-card-name" class="driver-card-name"></div>
+      <div id="driver-card-story" class="driver-card-story"></div>
+    </div>
   </section>
 
   <script>
@@ -438,6 +583,8 @@ OVERLAY_HTML = r"""<!doctype html>
       setText("track", buildTrackLine(state));
       setText("sponsor", event.sponsor ? `Presented by ${event.sponsor}` : "");
       setText("lap", buildLapLine(state));
+      document.getElementById("top-banner").classList.toggle("caution", !!state.caution);
+      renderDriverCard(state.featured_driver);
 
       const rows = document.getElementById("leaderboard-rows");
       rows.innerHTML = "";
@@ -453,6 +600,16 @@ OVERLAY_HTML = r"""<!doctype html>
         `;
         rows.appendChild(row);
       }
+    }
+
+    function renderDriverCard(driver) {
+      const card = document.getElementById("driver-card");
+      const hasDriver = !!(driver && (driver.driver_name || driver.car_number));
+      card.classList.toggle("hidden", !hasDriver);
+      if (!hasDriver) return;
+      setText("driver-card-number", driver.car_number || "?");
+      setText("driver-card-name", driver.driver_name || "Unknown Driver");
+      setText("driver-card-story", driver.story || "Featured driver");
     }
 
     function buildTrackLine(state) {

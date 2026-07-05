@@ -200,11 +200,12 @@ class ReplayDirector:
     def current_pre_roll_seconds(self):
         if self.angle_index == 0:
             return self.pre_roll_seconds
-        return self.pre_roll_seconds + (self.angle_index * self.angle_seconds)
+        return min(self.pre_roll_seconds, 6.0)
 
     def current_incident_marker_pre_roll_frames(self):
-        replay_elapsed_frames = round(self.angle_index * self.angle_seconds * 60)
-        return self.incident_marker_pre_roll_frames + replay_elapsed_frames
+        if self.angle_index == 0:
+            return self.incident_marker_pre_roll_frames
+        return min(self.incident_marker_pre_roll_frames, 480)
 
     def restore_live_after_failure(self, telemetry, camera_director):
         if self.mode == "auto":
