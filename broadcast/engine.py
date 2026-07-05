@@ -445,6 +445,7 @@ class BroadcastEngine:
             lap_dist_pct_status=telemetry.get_car_idx_lap_dist_pct(),
             est_time_status=telemetry.get_car_idx_est_time(),
             pit_road_status=pit_road_status,
+            suppress_soft_events=self.should_suppress_soft_incidents(),
         )
         if not events and caution_just_started:
             fallback = self.incident_detector.build_caution_fallback(current_lap)
@@ -513,6 +514,18 @@ class BroadcastEngine:
             replay_incident_delta=0,
             replay_multi_angle=True,
             replay_use_incident_marker=True,
+        )
+
+    def should_suppress_soft_incidents(self):
+        if self.race_director.phase in (RacePhase.CAUTION, RacePhase.ONE_TO_GREEN):
+            return True
+        return (
+            self.race_director.phase == RacePhase.GREEN
+            and self.race_director.phase_changed
+            and self.race_director.previous_phase in (
+                RacePhase.CAUTION,
+                RacePhase.ONE_TO_GREEN,
+            )
         )
 
     def report_incident_debug(self, reason, results, telemetry):

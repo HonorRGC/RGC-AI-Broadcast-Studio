@@ -240,7 +240,7 @@ class RaceDirector:
         else:
             message = (
                 f"One pace lap remains before the green flag here at {track_name}. "
-                "The field is getting set for the start."
+                "The pace car lights are off, and the start is coming up soon."
             )
             dedupe_key = "race_control:one_to_green:initial"
             priority = 8

@@ -76,6 +76,7 @@ class IncidentDetector:
         lap_dist_pct_status=None,
         est_time_status=None,
         pit_road_status=None,
+        suppress_soft_events=False,
     ) -> List[IncidentEvent]:
         events = []
 
@@ -154,6 +155,7 @@ class IncidentDetector:
                 track_surface=track_surface,
                 track_surface_material=track_surface_material,
                 current_lap=current_lap,
+                suppress_soft_events=suppress_soft_events,
             )
 
             self.remember_caution_candidate(
@@ -262,6 +264,7 @@ class IncidentDetector:
         track_surface,
         track_surface_material,
         current_lap,
+        suppress_soft_events=False,
     ):
         incident_delta = incident_count - state.last_incident_count
         position_loss = position - state.last_position
@@ -292,6 +295,9 @@ class IncidentDetector:
                 incident_delta,
                 incident_count,
             )
+
+        if suppress_soft_events:
+            return None
 
         if position_loss >= self.position_loss_threshold:
             return self.build_event(

@@ -52,6 +52,62 @@ def test_recent_trouble_can_supply_a_cautious_caution_cause_fallback():
     assert event.car_idx == 0
 
 
+def test_soft_incident_suppression_blocks_false_off_pace_calls():
+    detector = IncidentDetector()
+    results = [{"CarIdx": 0, "Position": 1, "LapsComplete": 5, "Incidents": 0}]
+    drivers = {0: {"name": "Driver One", "number": "1"}}
+    detector.analyze(
+        results,
+        drivers,
+        current_lap=5,
+        track_surface_status=[3],
+        lap_dist_pct_status=[0.50],
+        est_time_status=[10.0],
+        pit_road_status=[False],
+    )
+
+    events = detector.analyze(
+        [{"CarIdx": 0, "Position": 1, "LapsComplete": 5, "Incidents": 0}],
+        drivers,
+        current_lap=5,
+        track_surface_status=[3],
+        lap_dist_pct_status=[0.50],
+        est_time_status=[20.0],
+        pit_road_status=[False],
+        suppress_soft_events=True,
+    )
+
+    assert events == []
+
+
+def test_soft_incident_suppression_still_allows_incident_points():
+    detector = IncidentDetector()
+    results = [{"CarIdx": 0, "Position": 1, "LapsComplete": 5, "Incidents": 0}]
+    drivers = {0: {"name": "Driver One", "number": "1"}}
+    detector.analyze(
+        results,
+        drivers,
+        current_lap=5,
+        track_surface_status=[3],
+        lap_dist_pct_status=[0.50],
+        est_time_status=[10.0],
+        pit_road_status=[False],
+    )
+
+    events = detector.analyze(
+        [{"CarIdx": 0, "Position": 1, "LapsComplete": 5, "Incidents": 4}],
+        drivers,
+        current_lap=5,
+        track_surface_status=[3],
+        lap_dist_pct_status=[0.50],
+        est_time_status=[20.0],
+        pit_road_status=[False],
+        suppress_soft_events=True,
+    )
+
+    assert events[0].trouble_type == "major incident"
+
+
 def test_green_run_counter_counts_laps_not_update_ticks():
     tracker = RaceStateTracker()
     green = RaceDirector.GREEN_FLAG
@@ -135,6 +191,7 @@ def test_initial_one_to_green_is_not_called_a_restart():
     director.handle_one_to_green([], {}, queue, {"track_name": "Nashville"})
 
     assert "start" in queue.items[-1].message.lower()
+    assert "pace car lights are off" in queue.items[-1].message.lower()
     assert "restart" not in queue.items[-1].message.lower()
     assert any(item.category == "opening_welcome" for item in queue.items)
 
