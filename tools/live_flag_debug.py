@@ -31,6 +31,22 @@ KNOWN_INCIDENT_KEYS = [
     "CarIdxDriverIncidentCount",
 ]
 
+WEEKEND_INFO_KEYS = [
+    "Official",
+    "LeagueID",
+    "SeasonID",
+    "SessionID",
+    "SubSessionID",
+    "RaceWeek",
+    "EventType",
+    "Category",
+    "SimMode",
+    "TeamRacing",
+    "MinDrivers",
+    "MaxDrivers",
+    "TrackDisplayName",
+]
+
 
 def safe_read(telemetry, key):
     try:
@@ -68,6 +84,60 @@ def short_value(value, max_items=12):
         return f"{sample}{suffix}"
 
     return str(value)
+
+
+def classify_weekend(weekend_info):
+    official = normalize_bool(weekend_info.get("Official"))
+    league_id = safe_int(weekend_info.get("LeagueID"), 0)
+
+    if official is True:
+        return "Official iRacing session"
+    if league_id > 0:
+        return f"League/hosted session (LeagueID {league_id})"
+    if official is False:
+        return "Hosted, test, or non-official session"
+    return "Unknown session type"
+
+
+def normalize_bool(value):
+    if isinstance(value, bool):
+        return value
+    text = str(value).strip().lower()
+    if text in ("1", "true", "yes", "y"):
+        return True
+    if text in ("0", "false", "no", "n"):
+        return False
+    return None
+
+
+def safe_int(value, default=0):
+    try:
+        return int(value)
+    except Exception:
+        return default
+
+
+def print_weekend_probe(telemetry):
+    try:
+        weekend_info = telemetry.get_weekend_info() or {}
+    except Exception:
+        weekend_info = {}
+
+    print("Session Type Probe")
+    print("-" * 80)
+    print(f"Detected Type: {classify_weekend(weekend_info)}")
+
+    if not weekend_info:
+        print("WeekendInfo: MISSING")
+        print("-" * 80)
+        return
+
+    print("WeekendInfo fields:")
+    for key in WEEKEND_INFO_KEYS:
+        if key in weekend_info:
+            print(f"  {key}: {weekend_info.get(key)}")
+
+    print("-" * 80)
 
 
 def print_incident_sdk_probe(telemetry):
@@ -146,6 +216,8 @@ def main():
 
     print("Connected.")
     print("=" * 80)
+    print_weekend_probe(telemetry)
+    print()
     print_incident_sdk_probe(telemetry)
 
     last_flags = None
