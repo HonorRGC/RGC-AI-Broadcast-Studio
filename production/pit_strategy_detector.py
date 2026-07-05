@@ -23,6 +23,8 @@ class PitDriverState:
     on_pit_road: bool = False
     last_pit_lap: int = 0
     last_reported_at: float = 0.0
+    initialized: bool = False
+    started_from_pit_road: bool = False
 
 
 class PitStrategyDetector:
@@ -60,6 +62,22 @@ class PitStrategyDetector:
             )
 
             on_pit_road = self.is_car_on_pit_road(car_idx, pit_road_status)
+
+            if not state.initialized:
+                state.initialized = True
+                if on_pit_road and not under_caution and current_lap <= 1:
+                    state.started_from_pit_road = True
+                    event = self.build_pit_road_start_event(
+                        state=state,
+                        current_lap=current_lap,
+                    )
+                    if event and self.can_report(state):
+                        events.append(event)
+                        state.last_reported_at = time.time()
+                    state.last_pit_lap = current_lap
+
+                state.on_pit_road = on_pit_road
+                continue
 
             if on_pit_road and not state.on_pit_road:
                 event = self.build_pit_entry_event(
@@ -121,6 +139,22 @@ class PitStrategyDetector:
             importance=importance,
             lap=current_lap,
             under_caution=under_caution,
+        )
+
+    def build_pit_road_start_event(self, state, current_lap):
+        return PitStrategyEvent(
+            event_type="PIT_ROAD_START",
+            driver_name=state.driver_name,
+            car_number=state.car_number,
+            car_idx=state.car_idx,
+            message=(
+                f"{state.driver_name} in the number {state.car_number} is starting "
+                "this race from pit road. That is usually because of a penalty, "
+                "a setup issue, or a choice to stay out of early-race trouble."
+            ),
+            importance=8,
+            lap=current_lap,
+            under_caution=False,
         )
 
     def can_report(self, state):
