@@ -77,6 +77,14 @@ class CameraDirector:
                     force=True,
                     camera_number=camera_number,
                 )
+            if self.current_role == "lineup":
+                self.clear_sequence()
+                return CameraDecision(
+                    "held",
+                    "Lineup camera holds until the next driver or green flag.",
+                    car_idx=self.current_car_idx,
+                    group_number=self.current_group_number,
+                )
             self.clear_sequence()
             return self.focus_home(telemetry, now, force=True)
 

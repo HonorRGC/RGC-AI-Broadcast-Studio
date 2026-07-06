@@ -213,7 +213,7 @@ class BroadcastEngine:
             return
         self.broadcast_queue.add(
             message,
-            priority=8,
+            priority=10,
             category="sponsor_read",
             protected=True,
             speaker="lead",

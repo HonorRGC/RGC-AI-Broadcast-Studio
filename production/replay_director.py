@@ -18,7 +18,7 @@ class ReplayDirector:
     def __init__(
         self,
         mode="off",
-        angle_groups=("TV1", "Far Chase", "Chopper", "TV1", "Far Chase", "Chopper"),
+        angle_groups=("Far Chase", "TV1", "Chopper"),
         pre_roll_seconds=15.0,
         incident_marker_pre_roll_frames=1500,
         angle_seconds=12.0,

@@ -211,6 +211,7 @@ def test_engine_queues_sponsor_read_after_opening_lineup():
     ]
     assert len(sponsor_items) == 1
     assert sponsor_items[0].message == "Opening sponsor read."
+    assert sponsor_items[0].priority == 10
 
 
 def test_engine_is_silent_until_the_race_session_begins():

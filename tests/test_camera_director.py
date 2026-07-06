@@ -158,6 +158,31 @@ def test_rear_chase_lineup_falls_back_to_far_chase_when_missing():
     assert telemetry.switches == [("14", 8, 0)]
 
 
+def test_single_driver_lineup_holds_shot_instead_of_returning_home():
+    telemetry = CameraTelemetry()
+    telemetry.get_camera_groups = lambda: [
+        {"GroupNum": 4, "GroupName": "TV1"},
+        {"GroupNum": 8, "GroupName": "Rear Chase"},
+        {"GroupNum": 9, "GroupName": "TV Mixed"},
+    ]
+    times = iter([100.0, 106.0])
+    director = CameraDirector(mode="auto", clock=lambda: next(times))
+    lineup = SimpleNamespace(
+        camera_target_car_idx=None,
+        camera_sequence=(),
+        camera_sequence_steps=((3, "Rear Chase", 0),),
+        dedupe_key="opening_field_rundown_1",
+        message="On the pole is one driver.",
+    )
+
+    first = director.follow(lineup, telemetry)
+    held = director.update(telemetry)
+
+    assert first.status == "switched"
+    assert held.status == "held"
+    assert telemetry.switches == [("14", 8, 0)]
+
+
 def test_story_shot_returns_to_leader_on_tv_mixed_after_ten_seconds():
     telemetry = CameraTelemetry()
     times = iter([100.0, 111.0])
