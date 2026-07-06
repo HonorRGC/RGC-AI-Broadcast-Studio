@@ -134,6 +134,25 @@ def test_default_caution_replay_package_uses_one_stable_angle():
     assert camera.focuses == [(3, "Far Chase")]
 
 
+def test_caution_replay_holds_until_configured_duration():
+    telemetry = ReplayTelemetry()
+    camera = ReplayCamera()
+    times = iter([10.0, 29.0, 31.0])
+    director = ReplayDirector(
+        mode="auto",
+        angle_seconds=20.0,
+        clock=lambda: next(times),
+    )
+
+    director.handle_item(incident_item(multi_angle=True), telemetry, camera)
+    held = director.update(telemetry, camera)
+    finished = director.update(telemetry, camera)
+
+    assert held.status == "held"
+    assert finished.status == "live"
+    assert telemetry.live_returns == 1
+
+
 def test_green_flag_interrupts_replay_and_returns_live_immediately():
     telemetry = ReplayTelemetry()
     camera = ReplayCamera()

@@ -76,7 +76,7 @@ python app.py --tick-seconds 0.5
 python app.py --voice-test
 python app.py --camera-mode observe
 python app.py --camera-mode auto --camera-group TV1 --camera-home-group "TV Mixed"
-python app.py --incident-marker-preroll-seconds 32
+python app.py --incident-marker-preroll-seconds 28
 python app.py --no-overlay
 ```
 
@@ -84,7 +84,7 @@ python app.py --no-overlay
 
 Camera direction is auto by default. `observe` prints the car and camera group that would be selected without controlling iRacing. `auto` keeps the viewed replay at the live edge, holds the leader on the `TV Mixed` home shot, uses the closer `TV1` group for passes, battles, and race stories, and returns home after the story hold. The starting lineup uses Rear Chase when available and holds the lineup shot until the next driver or green flag.
 
-Incident replay is auto by default and requires `--camera-mode auto`. Cautions receive one stable Far Chase replay using iRacing's previous-incident marker with 28 seconds of pre-roll, then the broadcast returns to the live leader. Live-edge enforcement pauses while replay is active, and green or checkered immediately aborts replay and returns live. Use `--incident-replay observe` to preview replay decisions without sending replay or camera commands.
+Incident replay is auto by default and requires `--camera-mode auto`. Cautions receive one stable Far Chase replay using iRacing's previous-incident marker with 25 seconds of pre-roll, held for 20 seconds, then the broadcast returns to the live leader. Live-edge enforcement pauses while replay is active, and green or checkered immediately aborts replay and returns live. Use `--incident-replay observe` to preview replay decisions without sending replay or camera commands.
 
 ## Browser-source overlay
 
