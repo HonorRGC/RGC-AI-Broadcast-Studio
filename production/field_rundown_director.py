@@ -241,15 +241,33 @@ class FieldRundownDirector:
     def format_entry(self, entry):
         current_position = PositionFormatter.ordinal(entry["position"])
         starting_position = entry.get("starting_position", 0)
-        movement = self.movement_phrase(
-            current_position=entry["position"],
-            starting_position=starting_position,
-        )
-        return (
-            f"{current_position.capitalize()} place, the "
-            f"{entry['number']} of {entry['name']}"
-            f"{movement}."
-        )
+        net = starting_position - entry["position"] if starting_position else 0
+        position = entry["position"]
+        number = entry["number"]
+        name = entry["name"]
+
+        if net > 0:
+            templates = (
+                f"{current_position.capitalize()} place is the {number} of {name}, up {self.position_count(net)} from the start.",
+                f"Scored {current_position}, {name} has moved the {number} forward {self.position_count(net)}.",
+                f"{name} has climbed to {current_position} in the number {number}, a gain of {self.position_count(net)}.",
+            )
+        elif net < 0:
+            lost = self.position_count(abs(net))
+            starting = PositionFormatter.ordinal(starting_position)
+            templates = (
+                f"{current_position.capitalize()} place belongs to the {number} of {name}, after starting {starting}.",
+                f"{name} is shown {current_position} in the number {number}, down {lost} from the grid.",
+                f"The {number} of {name} is holding {current_position} now after slipping back {lost}.",
+            )
+        else:
+            templates = (
+                f"{current_position.capitalize()} place, the {number} of {name}, right where they started.",
+                f"{name} continues in {current_position} with the number {number}, matching their starting spot.",
+                f"The {number} of {name} is steady in {current_position}, no change from the grid.",
+            )
+
+        return templates[(position - 1) % len(templates)]
 
     def movement_phrase(self, current_position, starting_position):
         if not starting_position:
