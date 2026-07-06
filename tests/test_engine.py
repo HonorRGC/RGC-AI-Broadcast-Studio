@@ -320,9 +320,9 @@ def test_engine_preserves_camera_target_for_close_action():
     assert action_items[0].participant_car_indices == (0, 1, 2)
 
 
-def test_engine_queues_quarter_field_rundown_under_green():
+def test_engine_queues_long_green_field_rundown_under_green():
     results = [
-        {"CarIdx": index, "Position": index, "LapsComplete": 10}
+        {"CarIdx": index, "Position": index, "LapsComplete": 20}
         for index in range(12)
     ]
     drivers = {
@@ -330,8 +330,8 @@ def test_engine_queues_quarter_field_rundown_under_green():
         for index in range(12)
     }
     snapshot = TelemetrySnapshot(
-        lap=10,
-        total_laps=40,
+        lap=20,
+        total_laps=60,
         session_flags=RaceFlags.GREEN,
         results=results,
         driver_lookup=drivers,
@@ -349,15 +349,15 @@ def test_engine_queues_quarter_field_rundown_under_green():
     rundown = engine.tick(SnapshotSource(snapshot))
 
     assert green.category == "race_control"
-    assert rundown.category == "quarter_field_rundown_1"
+    assert rundown.category == "long_green_field_rundown_1"
     assert rundown.camera_sequence == (0,)
     assert rundown.protected is True
-    assert "one quarter into this race" in rundown.message
+    assert "20-lap green flag run" in rundown.message
 
 
 def test_due_field_rundown_blocks_normal_stories_until_booth_is_clear():
     results = [
-        {"CarIdx": index, "Position": index, "LapsComplete": 10}
+        {"CarIdx": index, "Position": index, "LapsComplete": 20}
         for index in range(12)
     ]
     drivers = {
@@ -365,8 +365,8 @@ def test_due_field_rundown_blocks_normal_stories_until_booth_is_clear():
         for index in range(12)
     }
     snapshot = TelemetrySnapshot(
-        lap=10,
-        total_laps=40,
+        lap=20,
+        total_laps=60,
         session_flags=RaceFlags.GREEN,
         results=results,
         driver_lookup=drivers,
@@ -386,18 +386,18 @@ def test_due_field_rundown_blocks_normal_stories_until_booth_is_clear():
 
     assert first is None
     assert engine.editorial_producer.items == []
-    assert engine.field_rundown_director.is_due_or_active(10, 40) is True
+    assert engine.field_rundown_director.is_due_or_active(20, 60, 20) is True
 
     engine.broadcast_queue.busy_until = 0
     second = engine.tick(SnapshotSource(snapshot))
 
-    assert second.category == "quarter_field_rundown_1"
-    assert "one quarter into this race" in second.message
+    assert second.category == "long_green_field_rundown_1"
+    assert "20-lap green flag run" in second.message
 
 
 def test_due_field_rundown_waits_for_green_flag_call_then_airs():
     results = [
-        {"CarIdx": index, "Position": index, "LapsComplete": 10}
+        {"CarIdx": index, "Position": index, "LapsComplete": 20}
         for index in range(12)
     ]
     drivers = {
@@ -405,8 +405,8 @@ def test_due_field_rundown_waits_for_green_flag_call_then_airs():
         for index in range(12)
     }
     snapshot = TelemetrySnapshot(
-        lap=10,
-        total_laps=40,
+        lap=20,
+        total_laps=60,
         session_flags=RaceFlags.GREEN,
         results=results,
         driver_lookup=drivers,
@@ -430,7 +430,7 @@ def test_due_field_rundown_waits_for_green_flag_call_then_airs():
     engine.broadcast_queue.busy_until = 0
     rundown = engine.tick(SnapshotSource(snapshot))
 
-    assert rundown.category == "quarter_field_rundown_1"
+    assert rundown.category == "long_green_field_rundown_1"
 
 
 def test_pass_story_carries_overtaking_car_as_camera_target():
@@ -812,6 +812,57 @@ def test_one_to_green_reports_small_caution_pit_group():
         and item.message == "Caution sponsor read on lap 6."
         for item in engine.broadcast_queue.items
     )
+    top_ten = next(
+        item for item in engine.broadcast_queue.items
+        if item.category == "caution_top_ten_reset"
+    )
+    assert "Before this restart, here is the top ten" in top_ten.message
+    assert "1: the 1 of Driver 1" in top_ten.message
+
+
+def test_one_to_green_majority_pit_report_waits_for_full_caution_cycle():
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    results = [
+        {"CarIdx": index, "Position": index}
+        for index in range(20)
+    ]
+    drivers = {
+        index: {"name": f"Driver {index + 1}", "number": str(index + 1)}
+        for index in range(20)
+    }
+    engine.race_director.phase = RacePhase.CAUTION
+    engine._collect_pit_stories(
+        results=results,
+        driver_lookup=drivers,
+        pit_road_status=[index < 15 for index in range(20)],
+        current_lap=5,
+    )
+
+    assert [
+        item for item in engine.broadcast_queue.items
+        if item.dedupe_key.startswith("caution_pit_wave")
+    ] == []
+
+    engine._collect_pit_stories(
+        results=results,
+        driver_lookup=drivers,
+        pit_road_status=[index < 18 for index in range(20)],
+        current_lap=6,
+    )
+    engine.race_director.phase = RacePhase.ONE_TO_GREEN
+    engine._collect_pit_stories(
+        results=results,
+        driver_lookup=drivers,
+        pit_road_status=[False] * 20,
+        current_lap=7,
+    )
+
+    pit_item = next(
+        item for item in engine.broadcast_queue.items
+        if item.dedupe_key.startswith("caution_pit_wave")
+    )
+    assert "18 of 20 cars" in pit_item.message
+    assert pit_item.speaker == "sarah"
 
 
 def test_cool_down_state_airs_checkered_and_suppresses_false_incident():

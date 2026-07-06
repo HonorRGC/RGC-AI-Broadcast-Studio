@@ -41,17 +41,22 @@ class CautionPitReporter:
             if self.is_on_pit_road(car_idx, pit_road_status):
                 self.seen_on_pit_road.add(car_idx)
 
-        field_size = len(valid_results)
+        return None
+
+    def build_majority_report(self):
+        if self.majority_announced:
+            return None
+
+        field_size = len(self.latest_results)
         majority_count = field_size // 2 + 1
-        if (
-            self.majority_announced
-            or field_size < 3
-            or len(self.seen_on_pit_road) < majority_count
-        ):
+        if field_size < 3 or len(self.seen_on_pit_road) < majority_count:
             return None
 
         self.majority_announced = True
-        featured, name_summary = self.featured_pitters(valid_results, driver_lookup)
+        featured, name_summary = self.featured_pitters(
+            self.latest_results,
+            self.latest_driver_lookup,
+        )
         return CautionPitReport(
             message=(
                 "Pit road is busy under this caution. "

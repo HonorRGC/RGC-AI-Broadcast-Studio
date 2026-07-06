@@ -133,6 +133,7 @@ class BroadcastEngine:
             mandatory_rundown_due = self.field_rundown_director.is_due_or_active(
                 current_lap,
                 total_laps,
+                race_state.green_lap_count,
             )
             if mandatory_rundown_due:
                 if self.has_pending_race_control():
@@ -142,6 +143,7 @@ class BroadcastEngine:
                     driver_lookup,
                     current_lap,
                     total_laps,
+                    race_state.green_lap_count,
                 )
                 if queued_field_rundown:
                     return self.broadcast_queue.next_item()
@@ -152,6 +154,7 @@ class BroadcastEngine:
                 driver_lookup,
                 current_lap,
                 total_laps,
+                race_state.green_lap_count,
             )
             if queued_quarter_rundown:
                 return self.broadcast_queue.next_item()
@@ -175,6 +178,8 @@ class BroadcastEngine:
                 race_knowledge,
                 driver_lookup,
             )
+        else:
+            self.field_rundown_director.cancel_active()
 
         return self.broadcast_queue.next_item()
 
@@ -374,34 +379,29 @@ class BroadcastEngine:
             under_caution=under_caution,
         )
         if under_caution:
-            report = self.caution_pit_reporter.update(
+            self.caution_pit_reporter.update(
                 under_caution=True,
                 results=results,
                 driver_lookup=driver_lookup,
                 pit_road_status=pit_road_status,
             )
-            if report:
-                primary_car_idx = report.car_indices[0] if report.car_indices else None
-                self.broadcast_queue.add(
-                    report.message,
-                    priority=max(report.importance, 9),
-                    category="caution_pit_summary",
-                    protected=True,
-                    speaker="sarah",
-                    expires_after=45,
-                    dedupe_key=f"caution_pit_wave:{current_lap}",
-                    camera_target_car_idx=None,
-                    participant_car_indices=report.car_indices,
-                )
-                self._queue_caution_sponsor_read(current_lap)
             if self.race_director.phase == RacePhase.ONE_TO_GREEN:
+                report = self.caution_pit_reporter.build_majority_report()
+                if report:
+                    self.broadcast_queue.add(
+                        report.message,
+                        priority=max(report.importance, 9),
+                        category="caution_pit_summary",
+                        protected=True,
+                        speaker="sarah",
+                        expires_after=45,
+                        dedupe_key=f"caution_pit_wave:{current_lap}",
+                        camera_target_car_idx=None,
+                        participant_car_indices=report.car_indices,
+                    )
+                    self._queue_caution_sponsor_read(current_lap)
                 small_report = self.caution_pit_reporter.build_small_group_report()
                 if small_report:
-                    primary_car_idx = (
-                        small_report.car_indices[0]
-                        if small_report.car_indices
-                        else None
-                    )
                     self.broadcast_queue.add(
                         small_report.message,
                         priority=max(small_report.importance, 9),
@@ -414,6 +414,11 @@ class BroadcastEngine:
                         participant_car_indices=small_report.car_indices,
                     )
                     self._queue_caution_sponsor_read(current_lap)
+                self._queue_caution_top_ten_reset(
+                    results,
+                    driver_lookup,
+                    current_lap,
+                )
             return
 
         self.caution_pit_reporter.update(
@@ -439,12 +444,52 @@ class BroadcastEngine:
             dedupe_key=f"sponsor_read:caution:{current_lap}",
         )
 
+    def _queue_caution_top_ten_reset(self, results, driver_lookup, current_lap):
+        message = self.build_caution_top_ten_reset(results, driver_lookup)
+        if not message:
+            return
+        self.broadcast_queue.add(
+            message,
+            priority=8,
+            category="caution_top_ten_reset",
+            protected=True,
+            speaker="jeff",
+            expires_after=45,
+            dedupe_key=f"caution_top_ten_reset:{current_lap}",
+        )
+
+    def build_caution_top_ten_reset(self, results, driver_lookup):
+        ordered = self.sorted_running_order(results)[:10]
+        if len(ordered) < 3:
+            return ""
+
+        entries = []
+        zero_based = any(
+            self.safe_int(car.get("Position"), 999) == 0
+            for car in ordered
+        )
+        for car in ordered:
+            car_idx = car.get("CarIdx")
+            driver = driver_lookup.get(car_idx, {})
+            position = self.safe_int(car.get("Position"), len(entries) + 1)
+            if zero_based:
+                position += 1
+            name = driver.get("name", f"Car {car_idx}")
+            number = driver.get("number", "?")
+            entries.append(f"{position}: the {number} of {name}")
+
+        return (
+            "Before this restart, here is the top ten: "
+            f"{'; '.join(entries)}."
+        )
+
     def _queue_mandatory_field_rundown(
         self,
         results,
         driver_lookup,
         current_lap,
         total_laps,
+        green_lap_count=0,
     ):
         if not self.broadcast_queue.can_speak():
             return False
@@ -456,6 +501,7 @@ class BroadcastEngine:
             current_lap=current_lap,
             total_laps=total_laps,
             under_green=True,
+            green_lap_count=green_lap_count,
         ):
             queued = True
             self.clear_pending_noncritical_stories()

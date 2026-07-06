@@ -14,12 +14,16 @@ def test_caution_pit_reporter_announces_one_majority_wave_with_leaders():
     assert reporter.update(True, results, drivers, [True, True, False, False, False]) is None
     report = reporter.update(True, results, drivers, [False, False, True, False, False])
     repeated = reporter.update(True, results, drivers, [False, False, False, True, True])
+    restart_report = reporter.build_majority_report()
+    restart_repeated = reporter.build_majority_report()
 
-    assert "A majority of the field" in report.message
-    assert "3 of 5 cars" in report.message
-    assert "Driver 1, Driver 2, and Driver 3" in report.message
-    assert report.car_indices == (0, 1, 2)
+    assert report is None
     assert repeated is None
+    assert "A majority of the field" in restart_report.message
+    assert "5 of 5 cars" in restart_report.message
+    assert "Driver 1, Driver 2, and Driver 3" in restart_report.message
+    assert restart_report.car_indices == (0, 1, 2)
+    assert restart_repeated is None
 
 
 def test_caution_pit_reporter_announces_small_group_before_restart():

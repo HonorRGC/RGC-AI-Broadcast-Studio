@@ -16,6 +16,7 @@ class FieldRundownSegment:
 class FieldRundownDirector:
     GROUP_SIZE = 1
     MAX_RUNNING_ORDER_CARS = 10
+    LONG_GREEN_RUN_LAPS = 20
 
     def __init__(self):
         self.sent_milestones = set()
@@ -23,13 +24,23 @@ class FieldRundownDirector:
         self.active_entries = []
         self.active_next_index = 0
 
-    def update(self, results, driver_lookup, current_lap, total_laps, under_green):
+    def update(
+        self,
+        results,
+        driver_lookup,
+        current_lap,
+        total_laps,
+        under_green,
+        green_lap_count=0,
+    ):
         if not under_green or total_laps < 20 or current_lap <= 0:
+            self.cancel_active()
             return []
 
         milestone = self.active_milestone or self.next_due_milestone(
             current_lap,
             total_laps,
+            green_lap_count,
         )
         if not milestone:
             return []
@@ -41,6 +52,7 @@ class FieldRundownDirector:
             if len(frozen_results) < 3:
                 return []
             self.active_milestone = milestone
+            self.sent_milestones.add(milestone)
             self.active_entries = self.build_entries(frozen_results, driver_lookup)
             self.active_next_index = 0
 
@@ -52,21 +64,23 @@ class FieldRundownDirector:
         )
         return [segment] if segment else []
 
-    def is_due_or_active(self, current_lap, total_laps):
+    def is_due_or_active(self, current_lap, total_laps, green_lap_count=0):
         if self.active_milestone:
             return True
         if total_laps < 20 or current_lap <= 0:
             return False
-        return self.next_due_milestone(current_lap, total_laps) is not None
+        return self.next_due_milestone(
+            current_lap,
+            total_laps,
+            green_lap_count,
+        ) is not None
 
-    def next_due_milestone(self, current_lap, total_laps):
-        milestones = (
-            ("quarter", max(1, round(total_laps * 0.25))),
-            ("three_quarter", max(1, round(total_laps * 0.75))),
-        )
-        for name, lap in milestones:
-            if name not in self.sent_milestones and current_lap >= lap:
-                return name
+    def next_due_milestone(self, current_lap, total_laps, green_lap_count=0):
+        if (
+            "long_green" not in self.sent_milestones
+            and green_lap_count >= self.LONG_GREEN_RUN_LAPS
+        ):
+            return "long_green"
         return None
 
     def build_quarter_rundown(
@@ -185,28 +199,21 @@ class FieldRundownDirector:
         self.active_entries = []
         self.active_next_index = 0
 
+    def cancel_active(self):
+        self.complete_active_milestone()
+
     def segment_intro(self, milestone, group_number, current_lap, total_laps):
         laps_left = max(total_laps - current_lap, 0) if total_laps else 0
         lap_text = f" with {laps_left} laps to go" if laps_left else ""
-        if milestone == "three_quarter":
-            if group_number == 1:
-                return (
-                    f"We are three quarters into this race{lap_text}. "
-                    "Let's do a rundown of the top ten."
-                )
-            return ""
-
         if group_number == 1:
             return (
-                f"We are one quarter into this race{lap_text}. "
+                f"We have had a 20-lap green flag run{lap_text}. "
                 "Let's do a rundown of the top ten."
             )
         return ""
 
     def segment_closing(self, milestone):
-        if milestone == "three_quarter":
-            return " That completes the top-ten reset at the three-quarter mark."
-        return " That completes the top-ten reset at quarter distance."
+        return " That completes the top-ten reset for this long green run."
 
     def build_quarter_camera_steps(self, group):
         steps = []

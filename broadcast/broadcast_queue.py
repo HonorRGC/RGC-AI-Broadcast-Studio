@@ -94,10 +94,21 @@ class BroadcastQueue:
     def estimate_speech_seconds(self, message, category=""):
         words = len(str(message).split())
         if category.startswith("opening_field_rundown"):
-            return max(2.25, min(12.0, words / 3.05))
-        if category.startswith(("quarter_field_rundown", "three_quarter_field_rundown")):
+            return max(1.6, min(10.0, words / 3.35))
+        if category.startswith(
+            ("quarter_field_rundown", "three_quarter_field_rundown", "long_green_field_rundown")
+        ):
             return max(3.0, min(16.0, words / 2.85))
         return max(5.0, min(45.0, words / 2.45))
+
+    def estimate_gap_seconds(self, category=""):
+        if category.startswith("opening_field_rundown"):
+            return 0.75
+        if category.startswith(
+            ("quarter_field_rundown", "three_quarter_field_rundown", "long_green_field_rundown")
+        ):
+            return 1.0
+        return self.minimum_gap_seconds
 
     def next_item(self, now=None):
         now = time.time() if now is None else now
@@ -122,7 +133,9 @@ class BroadcastQueue:
             selected.message,
             selected.category,
         )
-        self.busy_until = now + speech_time + self.minimum_gap_seconds
+        self.busy_until = now + speech_time + self.estimate_gap_seconds(
+            selected.category
+        )
 
         return selected
 

@@ -1,7 +1,7 @@
 from production.field_rundown_director import FieldRundownDirector
 
 
-def test_quarter_rundown_freezes_top_ten_and_airs_one_driver_at_a_time():
+def test_long_green_rundown_freezes_top_ten_and_airs_one_driver_at_a_time():
     director = FieldRundownDirector()
     results = [
         {"CarIdx": index, "Position": index, "StartingPosition": index + 1}
@@ -17,28 +17,31 @@ def test_quarter_rundown_freezes_top_ten_and_airs_one_driver_at_a_time():
     segments = director.update(
         results=results,
         driver_lookup=drivers,
-        current_lap=10,
+        current_lap=20,
         total_laps=40,
         under_green=True,
+        green_lap_count=20,
     )
     second_segment = director.update(
         results=results,
         driver_lookup=drivers,
-        current_lap=11,
+        current_lap=21,
         total_laps=40,
         under_green=True,
+        green_lap_count=21,
     )
     repeated = director.update(
         results=results,
         driver_lookup=drivers,
-        current_lap=12,
+        current_lap=22,
         total_laps=40,
         under_green=True,
+        green_lap_count=22,
     )
 
     assert len(segments) == 1
     assert len(second_segment) == 1
-    assert segments[0].category == "quarter_field_rundown_1"
+    assert segments[0].category == "long_green_field_rundown_1"
     assert segments[0].speaker == "jeff"
     assert segments[0].camera_sequence == (0,)
     assert segments[0].camera_sequence_steps == (
@@ -46,22 +49,22 @@ def test_quarter_rundown_freezes_top_ten_and_airs_one_driver_at_a_time():
         (0, "Cockpit", 0),
     )
     assert second_segment[0].camera_sequence == (1,)
-    assert "one quarter into this race" in segments[0].message
+    assert "20-lap green flag run" in segments[0].message
     assert "top ten" in segments[0].message
     assert "First place" in segments[0].message
     assert "Driver 2" in second_segment[0].message
-    assert repeated[0].category == "quarter_field_rundown_3"
+    assert repeated[0].category == "long_green_field_rundown_3"
 
 
-def test_quarter_rundown_waits_for_green_and_quarter_distance():
+def test_long_green_rundown_waits_for_twenty_green_laps():
     director = FieldRundownDirector()
     results = [{"CarIdx": 1, "Position": 1}]
 
-    assert director.update(results, {}, 9, 40, under_green=True) == []
-    assert director.update(results, {}, 10, 40, under_green=False) == []
+    assert director.update(results, {}, 20, 40, under_green=True, green_lap_count=19) == []
+    assert director.update(results, {}, 20, 40, under_green=False, green_lap_count=20) == []
 
 
-def test_three_quarter_rundown_runs_after_quarter_rundown():
+def test_long_green_rundown_runs_only_once():
     director = FieldRundownDirector()
     results = [
         {"CarIdx": index, "Position": index, "StartingPosition": index + 1}
@@ -72,10 +75,42 @@ def test_three_quarter_rundown_runs_after_quarter_rundown():
         for index in range(10)
     }
 
-    for lap in range(10, 20):
-        director.update(results, drivers, lap, 40, under_green=True)
-    segments = director.update(results, drivers, 30, 40, under_green=True)
+    for lap in range(20, 30):
+        director.update(
+            results,
+            drivers,
+            lap,
+            40,
+            under_green=True,
+            green_lap_count=lap,
+        )
+    segments = director.update(
+        results,
+        drivers,
+        30,
+        40,
+        under_green=True,
+        green_lap_count=30,
+    )
 
-    assert len(segments) == 1
-    assert segments[0].category == "three_quarter_field_rundown_1"
-    assert "three quarters into this race" in segments[0].message
+    assert segments == []
+
+
+def test_active_long_green_rundown_cancels_under_caution():
+    director = FieldRundownDirector()
+    results = [
+        {"CarIdx": index, "Position": index, "StartingPosition": index + 1}
+        for index in range(10)
+    ]
+    drivers = {
+        index: {"name": f"Driver {index + 1}", "number": str(index + 1)}
+        for index in range(10)
+    }
+
+    first = director.update(results, drivers, 20, 40, True, green_lap_count=20)
+    caution = director.update(results, drivers, 21, 40, False, green_lap_count=0)
+    resumed = director.update(results, drivers, 35, 40, True, green_lap_count=30)
+
+    assert first[0].category == "long_green_field_rundown_1"
+    assert caution == []
+    assert resumed == []
