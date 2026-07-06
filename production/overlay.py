@@ -207,9 +207,10 @@ class OverlayStateBuilder:
             return leaderboard[: self.max_entries]
 
         step = int(self.clock() // self.cycle_interval_seconds)
-        start = step % len(rotating)
-        rotated = rotating[start:] + rotating[:start]
-        return fixed + rotated[:cycle_count]
+        page_count = (len(rotating) + cycle_count - 1) // cycle_count
+        page = step % page_count
+        start = page * cycle_count
+        return fixed + rotating[start : start + cycle_count]
 
     def format_interval(self, car):
         if "Time" in car and car.get("Time") not in (None, ""):

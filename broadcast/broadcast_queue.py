@@ -91,8 +91,12 @@ class BroadcastQueue:
         now = time.time() if now is None else now
         return now >= self.busy_until
 
-    def estimate_speech_seconds(self, message):
+    def estimate_speech_seconds(self, message, category=""):
         words = len(str(message).split())
+        if category.startswith("opening_field_rundown"):
+            return max(2.25, min(12.0, words / 3.05))
+        if category.startswith(("quarter_field_rundown", "three_quarter_field_rundown")):
+            return max(3.0, min(16.0, words / 2.85))
         return max(5.0, min(45.0, words / 2.45))
 
     def next_item(self, now=None):
@@ -114,7 +118,10 @@ class BroadcastQueue:
 
         self.items.remove(selected)
 
-        speech_time = self.estimate_speech_seconds(selected.message)
+        speech_time = self.estimate_speech_seconds(
+            selected.message,
+            selected.category,
+        )
         self.busy_until = now + speech_time + self.minimum_gap_seconds
 
         return selected

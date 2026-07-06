@@ -48,3 +48,15 @@ def test_race_control_clear_resets_busy_timer_for_immediate_interrupt():
     item = queue.next_item(now=time.time())
 
     assert item.message == "Trouble on the speedway."
+
+
+def test_one_driver_lineup_items_have_a_shorter_air_gap():
+    queue = BroadcastQueue()
+    queue.add(
+        "Starting twelfth, the 12 of Example Driver.",
+        category="opening_field_rundown_12",
+    )
+
+    queue.next_item(now=100.0)
+
+    assert queue.busy_until < 105.0

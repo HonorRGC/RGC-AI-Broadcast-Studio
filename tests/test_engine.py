@@ -1,6 +1,7 @@
 from broadcast.engine import BroadcastEngine
 from broadcaster.race_director import RacePhase
 from replay.telemetry_snapshot import TelemetrySnapshot
+from types import SimpleNamespace
 import time
 
 
@@ -575,6 +576,56 @@ def test_early_caution_without_candidate_queues_iracing_incident_marker_replay()
     assert incident.replay_use_incident_marker is True
     assert incident.replay_multi_angle is True
     assert incident.camera_target_car_idx is None
+
+
+def test_caution_candidate_prefers_iracing_incident_marker_over_guessed_car():
+    drivers = {0: {"name": "Driver One", "number": "1"}}
+    snapshot = TelemetrySnapshot(
+        lap=3,
+        total_laps=20,
+        session_flags=RaceFlags.CAUTION,
+        session_num=2,
+        session_time=90.0,
+        results=[
+            {"CarIdx": 0, "Position": 0, "LapsComplete": 3, "Incidents": 0}
+        ],
+        driver_lookup=drivers,
+        pit_road_status=[False],
+        track_surface=[3],
+        track_surface_material=[0],
+        lap_dist_pct=[0.4],
+        est_time=[20.0],
+    )
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    engine.race_director.phase = RacePhase.CAUTION
+    engine.race_director.previous_phase = RacePhase.GREEN
+    engine.race_director.phase_changed = True
+    engine.incident_detector.analyze = lambda **_: []
+    engine.incident_detector.build_caution_fallback = lambda current_lap: SimpleNamespace(
+        car_idx=0,
+        trouble_type="caution candidate",
+        incident_delta=0,
+        message="Wrong guessed car caused the caution.",
+        importance=9,
+        lap=current_lap,
+        total_incidents=0,
+    )
+
+    engine._collect_incidents(
+        telemetry=SnapshotSource(snapshot),
+        results=snapshot.results,
+        driver_lookup=drivers,
+        pit_road_status=snapshot.pit_road_status,
+        current_lap=3,
+    )
+
+    incident = next(
+        item for item in engine.broadcast_queue.items if item.category == "incident"
+    )
+    assert incident.replay_use_incident_marker is True
+    assert incident.camera_target_car_idx is None
+    assert incident.replay_session_time is None
+    assert "Wrong guessed car" not in incident.message
 
 
 def test_green_flag_incident_requests_only_one_replay_angle():

@@ -80,6 +80,6 @@ def test_overlay_leaderboard_keeps_top_15_and_cycles_final_5():
     assert [entry.position for entry in first_window[:15]] == list(range(1, 16))
     assert [entry.position for entry in second_window[:15]] == list(range(1, 16))
     assert [entry.position for entry in first_window[15:]] == [16, 17, 18, 19, 20]
-    assert [entry.position for entry in second_window[15:]] == [17, 18, 19, 20, 21]
+    assert [entry.position for entry in second_window[15:]] == [21, 22, 23, 24, 25]
     assert len(first_window) == 20
     assert len(second_window) == 20

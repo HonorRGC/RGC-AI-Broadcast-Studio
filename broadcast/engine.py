@@ -568,8 +568,18 @@ class BroadcastEngine:
                 event.incident_delta >= 2
                 or event.trouble_type == "caution candidate"
             )
+            use_incident_marker_replay = (
+                caution_just_started
+                and event.trouble_type == "caution candidate"
+                and event.incident_delta <= 0
+            )
+            replay_message = (
+                "We are going to take a look at what brought out this caution."
+                if use_incident_marker_replay
+                else event.message
+            )
             self.broadcast_queue.add(
-                self.commentary_cleaner.clean(event.message),
+                self.commentary_cleaner.clean(replay_message),
                 priority=event.importance,
                 category="incident",
                 protected=True,
@@ -579,12 +589,21 @@ class BroadcastEngine:
                     f"incident:{event.car_idx}:{event.trouble_type}:"
                     f"{event.lap}:{event.total_incidents}"
                 ),
-                camera_target_car_idx=event.car_idx,
-                participant_car_indices=(event.car_idx,),
+                camera_target_car_idx=(
+                    None if use_incident_marker_replay else event.car_idx
+                ),
+                participant_car_indices=(
+                    () if use_incident_marker_replay else (event.car_idx,)
+                ),
                 replay_session_num=session_num if replay_eligible else None,
-                replay_session_time=session_time if replay_eligible else None,
+                replay_session_time=(
+                    None
+                    if use_incident_marker_replay
+                    else session_time if replay_eligible else None
+                ),
                 replay_incident_delta=event.incident_delta,
                 replay_multi_angle=replay_eligible and caution_just_started,
+                replay_use_incident_marker=use_incident_marker_replay,
             )
 
     def queue_incident_marker_replay(self, results, telemetry, current_lap, reason):
