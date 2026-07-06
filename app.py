@@ -50,7 +50,7 @@ def parse_args():
     parser.add_argument(
         "--replay-angle-seconds",
         type=float,
-        default=12.0,
+        default=16.0,
         help="Seconds to show each incident replay angle",
     )
     parser.add_argument(

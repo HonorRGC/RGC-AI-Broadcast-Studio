@@ -120,26 +120,18 @@ def test_new_caution_incident_replays_tv1_then_tv2_before_live():
     assert telemetry.live_returns == 1
 
 
-def test_default_caution_replay_package_is_three_angles():
+def test_default_caution_replay_package_uses_one_stable_angle():
     telemetry = ReplayTelemetry()
     camera = ReplayCamera()
-    times = iter([10.0, 23.0, 36.0, 49.0])
+    times = iter([10.0, 23.0])
     director = ReplayDirector(mode="auto", clock=lambda: next(times))
 
     started = director.handle_item(incident_item(multi_angle=True), telemetry, camera)
-    second_angle = director.update(telemetry, camera)
-    third_angle = director.update(telemetry, camera)
     finished = director.update(telemetry, camera)
 
-    assert started.total_angles == 3
-    assert second_angle.angle_group == "TV1"
-    assert third_angle.angle_group == "Chopper"
+    assert started.total_angles == 1
     assert finished.status == "live"
-    assert camera.focuses == [
-        (3, "Far Chase"),
-        (3, "TV1"),
-        (3, "Chopper"),
-    ]
+    assert camera.focuses == [(3, "Far Chase")]
 
 
 def test_green_flag_interrupts_replay_and_returns_live_immediately():
