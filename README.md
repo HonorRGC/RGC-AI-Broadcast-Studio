@@ -111,6 +111,16 @@ SPONSOR_READ_MESSAGE=
 
 When enabled, the broadcast can place short sponsor mentions after the pre-race field rundown and during natural caution breaks after replay or pit-road coverage.
 
+Optional national anthem ceremony:
+
+```text
+USE_NATIONAL_ANTHEM=true
+NATIONAL_ANTHEM_AUDIO=C:\Path\To\national_anthem.mp3
+NATIONAL_ANTHEM_DURATION_SECONDS=90
+```
+
+If you start the program during practice or qualifying, the overlay can show a waving American flag and play the configured local anthem audio file once qualifying begins. The project does not include an anthem recording; use your own recording or a properly licensed/public-domain audio file.
+
 Then start the broadcast with:
 
 ```powershell

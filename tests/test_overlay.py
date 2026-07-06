@@ -83,3 +83,21 @@ def test_overlay_leaderboard_keeps_top_15_and_cycles_final_5():
     assert [entry.position for entry in second_window[15:]] == [21, 22, 23, 24, 25]
     assert len(first_window) == 20
     assert len(second_window) == 20
+
+
+def test_overlay_preserves_special_presentation():
+    from production.overlay import OverlayServer
+
+    server = OverlayServer()
+    server.show_special_presentation(
+        kind="national_anthem",
+        title="Please Rise",
+        subtitle="For the National Anthem",
+        duration=90,
+    )
+
+    server.update_from_telemetry(OverlayTelemetry())
+    state = server.current_state_dict()
+
+    assert state["special_presentation"]["kind"] == "national_anthem"
+    assert state["special_presentation"]["title"] == "Please Rise"

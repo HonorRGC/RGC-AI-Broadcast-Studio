@@ -5,6 +5,7 @@ from broadcast.booth import BroadcastBooth
 from broadcast.engine import BroadcastEngine
 from broadcaster.telemetry import IRacingTelemetry
 from production.camera_director import CameraDirector
+from production.anthem_director import NationalAnthemDirector
 from production.overlay import OverlayServer
 from production.replay_director import ReplayDirector
 
@@ -99,12 +100,16 @@ def run_source(
     booth,
     camera_director,
     replay_director,
+    anthem_director,
     overlay_server,
     tick_seconds,
 ):
     while source.is_connected():
         if overlay_server:
             overlay_server.update_from_telemetry(source)
+        report_anthem_decision(
+            anthem_director.update(source.get_session_type(), overlay_server)
+        )
         report_replay_decision(replay_director.update(source, camera_director))
         report_camera_decision(camera_director.update(source))
         item = engine.tick(source)
@@ -123,6 +128,12 @@ def run_source(
 
         if tick_seconds > 0:
             time.sleep(tick_seconds)
+
+
+def report_anthem_decision(decision):
+    if decision.status == "ignored":
+        return
+    print(f"CEREMONY: {decision.reason}")
 
 
 def report_replay_decision(decision):
@@ -212,6 +223,7 @@ def main():
             max(0.0, args.incident_marker_preroll_seconds) * 60
         ),
     )
+    anthem_director = NationalAnthemDirector()
     overlay_server = OverlayServer(
         host=args.overlay_host,
         port=args.overlay_port,
@@ -277,6 +289,7 @@ def main():
             booth,
             camera_director,
             replay_director,
+            anthem_director,
             overlay_server,
             args.tick_seconds,
         )
@@ -293,12 +306,14 @@ def main():
         engine.reset()
         camera_director.reset()
         replay_director.reset()
+        anthem_director = NationalAnthemDirector()
         run_source(
             source,
             engine,
             booth,
             camera_director,
             replay_director,
+            anthem_director,
             overlay_server,
             args.tick_seconds,
         )

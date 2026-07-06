@@ -57,6 +57,21 @@ class FeaturedDriver:
 
 
 @dataclass
+class SpecialPresentation:
+    kind: str = ""
+    title: str = ""
+    subtitle: str = ""
+    expires_at: float = 0.0
+
+    def to_dict(self):
+        return {
+            "kind": self.kind,
+            "title": self.title,
+            "subtitle": self.subtitle,
+        }
+
+
+@dataclass
 class OverlayState:
     event: OverlayEventConfig = field(default_factory=OverlayEventConfig)
     session_type: str = "Unknown"
@@ -65,6 +80,7 @@ class OverlayState:
     total_laps: int = 0
     caution: bool = False
     featured_driver: FeaturedDriver | None = None
+    special_presentation: SpecialPresentation | None = None
     leaderboard: list[LeaderboardEntry] = field(default_factory=list)
 
     def to_dict(self):
@@ -81,6 +97,11 @@ class OverlayState:
             "caution": self.caution,
             "featured_driver": (
                 self.featured_driver.to_dict() if self.featured_driver else None
+            ),
+            "special_presentation": (
+                self.special_presentation.to_dict()
+                if self.special_presentation
+                else None
             ),
             "leaderboard": [entry.to_dict() for entry in self.leaderboard],
         }
@@ -246,6 +267,7 @@ class OverlayServer:
         self.state = OverlayState(event=self.state_builder.event_config)
         self.lock = threading.Lock()
         self.featured_driver = None
+        self.special_presentation = None
         self.httpd = None
         self.thread = None
 
@@ -280,6 +302,13 @@ class OverlayServer:
                 state.featured_driver = self.featured_driver
             else:
                 self.featured_driver = None
+            if (
+                self.special_presentation
+                and self.special_presentation.expires_at > time.monotonic()
+            ):
+                state.special_presentation = self.special_presentation
+            else:
+                self.special_presentation = None
             self.state = state
 
     def show_featured_driver(self, car_number, driver_name, story="", duration=10.0):
@@ -290,6 +319,19 @@ class OverlayServer:
                 story=str(story or ""),
                 expires_at=time.monotonic() + float(duration),
             )
+
+    def show_special_presentation(self, kind, title, subtitle="", duration=90.0):
+        with self.lock:
+            self.special_presentation = SpecialPresentation(
+                kind=str(kind or ""),
+                title=str(title or ""),
+                subtitle=str(subtitle or ""),
+                expires_at=time.monotonic() + float(duration),
+            )
+
+    def clear_special_presentation(self):
+        with self.lock:
+            self.special_presentation = None
 
     def current_state_dict(self):
         with self.lock:
@@ -536,6 +578,96 @@ OVERLAY_HTML = r"""<!doctype html>
     .hidden {
       display: none;
     }
+
+    .special-presentation {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background:
+        radial-gradient(circle at center, rgba(10, 18, 35, 0.54), rgba(0, 0, 0, 0.86)),
+        linear-gradient(135deg, rgba(5, 8, 13, 0.92), rgba(18, 26, 42, 0.88));
+      z-index: 20;
+      text-transform: uppercase;
+    }
+
+    .special-presentation.hidden {
+      display: none;
+    }
+
+    .ceremony-card {
+      display: grid;
+      grid-template-columns: 440px 1fr;
+      align-items: center;
+      gap: 54px;
+      padding: 52px 64px;
+      background: rgba(5, 8, 13, 0.72);
+      border: 1px solid rgba(255, 255, 255, 0.24);
+      box-shadow: 0 24px 70px rgba(0, 0, 0, 0.62);
+    }
+
+    .flag {
+      position: relative;
+      width: 420px;
+      height: 260px;
+      overflow: hidden;
+      border-radius: 8px;
+      box-shadow: 0 18px 38px rgba(0, 0, 0, 0.55);
+      background: repeating-linear-gradient(
+        to bottom,
+        #b22234 0,
+        #b22234 20px,
+        #fff 20px,
+        #fff 40px
+      );
+      transform-origin: center;
+      animation: flagWave 3.2s ease-in-out infinite;
+    }
+
+    .flag::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 176px;
+      height: 140px;
+      background:
+        radial-gradient(circle, #fff 0 2px, transparent 2px) 0 0 / 22px 20px,
+        #3c3b6e;
+    }
+
+    .flag::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, rgba(255,255,255,0.20), transparent 18%, rgba(0,0,0,0.20) 44%, transparent 72%);
+      animation: flagHighlight 3.2s ease-in-out infinite;
+    }
+
+    @keyframes flagWave {
+      0%, 100% { transform: perspective(900px) rotateY(-5deg) skewY(0.4deg); }
+      50% { transform: perspective(900px) rotateY(5deg) skewY(-0.4deg); }
+    }
+
+    @keyframes flagHighlight {
+      0%, 100% { transform: translateX(-20px); opacity: 0.74; }
+      50% { transform: translateX(24px); opacity: 0.98; }
+    }
+
+    .ceremony-title {
+      font-size: 58px;
+      font-weight: 950;
+      letter-spacing: 0.05em;
+    }
+
+    .ceremony-subtitle {
+      margin-top: 14px;
+      color: var(--rgc-muted);
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+    }
   </style>
 </head>
 <body>
@@ -566,6 +698,16 @@ OVERLAY_HTML = r"""<!doctype html>
     </div>
   </section>
 
+  <section id="special-presentation" class="special-presentation hidden">
+    <div class="ceremony-card">
+      <div class="flag" aria-label="American flag"></div>
+      <div>
+        <div id="ceremony-title" class="ceremony-title">Please Rise</div>
+        <div id="ceremony-subtitle" class="ceremony-subtitle">For the National Anthem</div>
+      </div>
+    </div>
+  </section>
+
   <script>
     async function refreshOverlay() {
       try {
@@ -586,6 +728,7 @@ OVERLAY_HTML = r"""<!doctype html>
       setText("lap", buildLapLine(state));
       document.getElementById("top-banner").classList.toggle("caution", !!state.caution);
       renderDriverCard(state.featured_driver);
+      renderSpecialPresentation(state.special_presentation);
 
       const rows = document.getElementById("leaderboard-rows");
       rows.innerHTML = "";
@@ -601,6 +744,15 @@ OVERLAY_HTML = r"""<!doctype html>
         `;
         rows.appendChild(row);
       }
+    }
+
+    function renderSpecialPresentation(presentation) {
+      const layer = document.getElementById("special-presentation");
+      const active = !!(presentation && presentation.kind);
+      layer.classList.toggle("hidden", !active);
+      if (!active) return;
+      setText("ceremony-title", presentation.title || "Please Rise");
+      setText("ceremony-subtitle", presentation.subtitle || "For the National Anthem");
     }
 
     function renderDriverCard(driver) {

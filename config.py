@@ -38,3 +38,11 @@ USE_SPONSOR_READS = os.getenv("USE_SPONSOR_READS", "true").lower() == "true"
 SPONSOR_READ_NAME = os.getenv("SPONSOR_READ_NAME", OVERLAY_RACE_SPONSOR)
 SPONSOR_READ_CAUSE = os.getenv("SPONSOR_READ_CAUSE", "")
 SPONSOR_READ_MESSAGE = os.getenv("SPONSOR_READ_MESSAGE", "")
+
+
+# Optional pre-race ceremony
+USE_NATIONAL_ANTHEM = os.getenv("USE_NATIONAL_ANTHEM", "false").lower() == "true"
+NATIONAL_ANTHEM_AUDIO = os.getenv("NATIONAL_ANTHEM_AUDIO", "")
+NATIONAL_ANTHEM_DURATION_SECONDS = float(
+    os.getenv("NATIONAL_ANTHEM_DURATION_SECONDS", "90")
+)
