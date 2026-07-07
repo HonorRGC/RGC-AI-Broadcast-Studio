@@ -7,6 +7,7 @@ class OpeningSegment:
     priority: int = 10
     speaker: str = "lead"
     category: str = "opening"
+    delay_seconds: float = 0.0
     camera_sequence: tuple[int, ...] = ()
     camera_sequence_steps: tuple[tuple, ...] = ()
     camera_return_home_after_sequence: bool = False
@@ -108,9 +109,10 @@ class OpeningDirector:
                 "I am fired up for this one. This has all the makings of an "
                 "awesome race, so let's go racing, boys and girls."
             ),
-            priority=9,
+            priority=8,
             speaker="lead",
             category="opening_hype",
+            delay_seconds=1.5,
         )
 
     def build_weather_summary(self, track_info):

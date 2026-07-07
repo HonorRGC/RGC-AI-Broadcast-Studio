@@ -46,6 +46,7 @@ class FeaturedDriver:
     car_number: str = ""
     driver_name: str = ""
     story: str = ""
+    car_image_url: str = ""
     expires_at: float = 0.0
 
     def to_dict(self):
@@ -53,6 +54,7 @@ class FeaturedDriver:
             "car_number": self.car_number,
             "driver_name": self.driver_name,
             "story": self.story,
+            "car_image_url": self.car_image_url,
         }
 
 
@@ -121,6 +123,7 @@ class OverlayStateBuilder:
         self.fixed_entries = int(fixed_entries)
         self.cycle_interval_seconds = max(1, int(cycle_interval_seconds))
         self.clock = clock or time.monotonic
+        self.last_leaderboard = []
 
     def build_from_telemetry(self, telemetry):
         results = telemetry.get_results()
@@ -129,6 +132,12 @@ class OverlayStateBuilder:
         session_type_reader = getattr(telemetry, "get_session_type", None)
         session_type = session_type_reader() if session_type_reader else "Unknown"
 
+        leaderboard = self.build_leaderboard(results, driver_lookup, session_type)
+        if leaderboard:
+            self.last_leaderboard = leaderboard
+        elif self.is_race_session(session_type) and self.last_leaderboard:
+            leaderboard = self.last_leaderboard
+
         return OverlayState(
             event=self.event_config,
             session_type=session_type,
@@ -136,7 +145,7 @@ class OverlayStateBuilder:
             lap=self.best_race_lap(results, telemetry.get_lap()),
             total_laps=self.safe_int(telemetry.get_total_laps()),
             caution=self.is_caution(telemetry),
-            leaderboard=self.build_leaderboard(results, driver_lookup, session_type),
+            leaderboard=leaderboard,
         )
 
     def best_race_lap(self, results, telemetry_lap=0):
@@ -187,6 +196,9 @@ class OverlayStateBuilder:
     def is_timed_session(self, session_type):
         text = str(session_type or "").lower()
         return "practice" in text or "qual" in text
+
+    def is_race_session(self, session_type):
+        return "race" in str(session_type or "").lower()
 
     def best_lap_value(self, car):
         for key in ("FastestTime", "BestLapTime", "FastestLapTime", "BestTime"):
@@ -311,12 +323,20 @@ class OverlayServer:
                 self.special_presentation = None
             self.state = state
 
-    def show_featured_driver(self, car_number, driver_name, story="", duration=10.0):
+    def show_featured_driver(
+        self,
+        car_number,
+        driver_name,
+        story="",
+        duration=10.0,
+        car_image_url="",
+    ):
         with self.lock:
             self.featured_driver = FeaturedDriver(
                 car_number=str(car_number or ""),
                 driver_name=str(driver_name or ""),
                 story=str(story or ""),
+                car_image_url=str(car_image_url or ""),
                 expires_at=time.monotonic() + float(duration),
             )
 
@@ -534,13 +554,17 @@ OVERLAY_HTML = r"""<!doctype html>
       left: 360px;
       bottom: 54px;
       min-width: 430px;
-      max-width: 620px;
+      max-width: 760px;
       display: grid;
-      grid-template-columns: 86px 1fr;
+      grid-template-columns: 86px minmax(0, 160px) 1fr;
       background: linear-gradient(90deg, rgba(7, 9, 13, 0.96), rgba(24, 30, 42, 0.92));
       border-left: 6px solid var(--rgc-red);
       box-shadow: 0 14px 34px rgba(0, 0, 0, 0.42);
       text-transform: uppercase;
+    }
+
+    .driver-card.no-image {
+      grid-template-columns: 86px 1fr;
     }
 
     .driver-card-number {
@@ -551,6 +575,14 @@ OVERLAY_HTML = r"""<!doctype html>
       color: #111;
       font-weight: 950;
       font-size: 36px;
+    }
+
+    .driver-card-image {
+      min-height: 74px;
+      background-size: cover;
+      background-position: center;
+      border-left: 1px solid rgba(0, 0, 0, 0.32);
+      border-right: 1px solid rgba(255, 255, 255, 0.12);
     }
 
     .driver-card-info {
@@ -692,6 +724,7 @@ OVERLAY_HTML = r"""<!doctype html>
 
   <section id="driver-card" class="driver-card hidden">
     <div id="driver-card-number" class="driver-card-number"></div>
+    <div id="driver-card-image" class="driver-card-image hidden"></div>
     <div class="driver-card-info">
       <div id="driver-card-name" class="driver-card-name"></div>
       <div id="driver-card-story" class="driver-card-story"></div>
@@ -763,6 +796,11 @@ OVERLAY_HTML = r"""<!doctype html>
       setText("driver-card-number", driver.car_number || "?");
       setText("driver-card-name", driver.driver_name || "Unknown Driver");
       setText("driver-card-story", driver.story || "Featured driver");
+      const image = document.getElementById("driver-card-image");
+      const imageUrl = driver.car_image_url || "";
+      card.classList.toggle("no-image", !imageUrl);
+      image.classList.toggle("hidden", !imageUrl);
+      image.style.backgroundImage = imageUrl ? `url("${cssEscapeUrl(imageUrl)}")` : "";
     }
 
     function buildTrackLine(state) {
@@ -791,6 +829,10 @@ OVERLAY_HTML = r"""<!doctype html>
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#039;");
+    }
+
+    function cssEscapeUrl(value) {
+      return String(value).replace(/"/g, "%22").replace(/\\/g, "/");
     }
 
     refreshOverlay();

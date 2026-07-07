@@ -160,6 +160,10 @@ def update_overlay_featured_driver(overlay_server, item, source, camera_decision
     if camera_decision.status not in ("suggested", "switched", "held"):
         return
     car_idx = getattr(item, "camera_target_car_idx", None)
+    if car_idx is None and str(getattr(item, "category", "")).startswith(
+        "opening_field_rundown"
+    ):
+        car_idx = camera_decision.car_idx
     if car_idx is None or car_idx != camera_decision.car_idx:
         return
 
@@ -170,11 +174,13 @@ def update_overlay_featured_driver(overlay_server, item, source, camera_decision
         return
 
     story = build_featured_driver_story(driver)
+    car_image_url = build_featured_driver_image(driver)
     overlay_server.show_featured_driver(
         car_number=car_number,
         driver_name=driver_name,
         story=story,
         duration=12.0,
+        car_image_url=car_image_url,
     )
 
 
@@ -185,6 +191,14 @@ def build_featured_driver_story(driver):
         if value and value not in details:
             details.append(value)
     return " | ".join(details[:3]) or "Featured driver"
+
+
+def build_featured_driver_image(driver):
+    for key in ("car_image_url", "car_image", "paint_image_url"):
+        value = str(driver.get(key, "") or "").strip()
+        if value.startswith(("http://", "https://", "/")):
+            return value
+    return ""
 
 
 def report_camera_decision(decision):

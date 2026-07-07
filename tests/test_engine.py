@@ -211,7 +211,7 @@ def test_engine_queues_sponsor_read_after_opening_lineup():
     ]
     assert len(sponsor_items) == 1
     assert sponsor_items[0].message == "Opening sponsor read."
-    assert sponsor_items[0].priority == 10
+    assert sponsor_items[0].priority == 9
 
 
 def test_engine_is_silent_until_the_race_session_begins():
@@ -817,7 +817,9 @@ def test_one_to_green_reports_small_caution_pit_group():
         if item.category == "caution_top_ten_reset"
     )
     assert "Before this restart, here is the top ten" in top_ten.message
-    assert "1: the 1 of Driver 1" in top_ten.message
+    assert "first, the 1 of Driver 1" in top_ten.message
+    assert "second, the 2 of Driver 2" in top_ten.message
+    assert top_ten.delay_seconds == 5.0
 
 
 def test_one_to_green_top_ten_reset_only_queues_once_per_caution():
@@ -893,6 +895,46 @@ def test_restart_caution_marker_replay_uses_extra_preroll():
     assert engine.restart_caution_marker_pre_roll_frames(0) == 2400
     assert engine.restart_caution_marker_pre_roll_frames(2) == 2400
     assert engine.restart_caution_marker_pre_roll_frames(3) is None
+
+
+def test_leader_story_uses_total_laps_led_and_tight_margin_language():
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    drivers = {
+        0: {"name": "Race Leader", "number": "77"},
+        1: {"name": "Chaser", "number": "24"},
+    }
+    results = [
+        {"CarIdx": 0, "Position": 0, "Time": 0.0},
+        {"CarIdx": 1, "Position": 1, "Time": 0.2},
+    ]
+
+    for lap in (1, 2, 3):
+        engine._update_leader_laps_led(results, lap)
+
+    engine._queue_leader_story(results, drivers, current_lap=3, total_laps=50)
+
+    item = engine.broadcast_queue.items[0]
+    assert "has led 3 laps tonight" in item.message
+    assert "tight battle at the front" in item.message
+    assert "0.2 seconds" not in item.message
+
+
+def test_leader_story_uses_singular_lap_word():
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    drivers = {
+        0: {"name": "Race Leader", "number": "77"},
+        1: {"name": "Chaser", "number": "24"},
+    }
+    results = [
+        {"CarIdx": 0, "Position": 0, "Time": 0.0},
+        {"CarIdx": 1, "Position": 1, "Time": 1.2},
+    ]
+
+    engine._update_leader_laps_led(results, 3)
+    engine._queue_leader_story(results, drivers, current_lap=3, total_laps=50)
+
+    assert "has led 1 lap tonight" in engine.broadcast_queue.items[0].message
+    assert "1 laps" not in engine.broadcast_queue.items[0].message
 
 
 def test_final_laps_battle_prioritizes_closest_top_five_gap():

@@ -85,6 +85,34 @@ def test_overlay_leaderboard_keeps_top_15_and_cycles_final_5():
     assert len(second_window) == 20
 
 
+def test_overlay_keeps_qualifying_board_until_race_results_arrive():
+    class QualifyingTelemetry(OverlayTelemetry):
+        def get_session_type(self):
+            return "Qualifying"
+
+        def get_results(self):
+            return [
+                {
+                    "CarIdx": 3,
+                    "Position": 0,
+                    "LapsComplete": 0,
+                    "FastestTime": 30.125,
+                }
+            ]
+
+    class EarlyRaceTelemetry(OverlayTelemetry):
+        def get_results(self):
+            return []
+
+    builder = OverlayStateBuilder()
+    qualifying = builder.build_from_telemetry(QualifyingTelemetry()).to_dict()
+    early_race = builder.build_from_telemetry(EarlyRaceTelemetry()).to_dict()
+
+    assert qualifying["leaderboard"][0]["interval"] == "30.125"
+    assert early_race["session_type"] == "Race"
+    assert early_race["leaderboard"] == qualifying["leaderboard"]
+
+
 def test_overlay_preserves_special_presentation():
     from production.overlay import OverlayServer
 

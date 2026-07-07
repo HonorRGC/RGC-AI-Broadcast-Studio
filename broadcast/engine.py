@@ -55,6 +55,8 @@ class BroadcastEngine:
         self.current_leader_car_idx = None
         self.current_leader_started_lap = 0
         self.last_leader_gap = None
+        self.leader_laps_led = {}
+        self.last_leader_lap_counted = None
 
     def tick(self, telemetry):
         session_type_reader = getattr(telemetry, "get_session_type", None)
@@ -135,6 +137,10 @@ class BroadcastEngine:
             )
 
         if self.race_director.phase == RacePhase.GREEN:
+            self._update_leader_laps_led(
+                story_results,
+                current_lap,
+            )
             mandatory_rundown_due = self.field_rundown_director.is_due_or_active(
                 current_lap,
                 total_laps,
@@ -222,6 +228,7 @@ class BroadcastEngine:
                 category=segment.category,
                 protected=True,
                 speaker=segment.speaker,
+                delay_seconds=getattr(segment, "delay_seconds", 0.0),
                 expires_after=180,
                 dedupe_key=segment.category,
                 camera_sequence=segment.camera_sequence,
@@ -242,7 +249,7 @@ class BroadcastEngine:
             return
         self.broadcast_queue.add(
             message,
-            priority=10,
+            priority=9,
             category="sponsor_read",
             protected=True,
             speaker="lead",
@@ -299,7 +306,8 @@ class BroadcastEngine:
             self.current_leader_started_lap = current_lap
             self.last_leader_gap = None
 
-        laps_led_run = max(1, current_lap - self.current_leader_started_lap + 1)
+        laps_led_total = max(1, self.leader_laps_led.get(leader_idx, 1))
+        lap_word = "lap" if laps_led_total == 1 else "laps"
         second = ordered[1] if len(ordered) > 1 else None
         gap = self.safe_float(second.get("Time")) if second else 0.0
         gap_text = self.leader_gap_phrase(gap)
@@ -309,8 +317,8 @@ class BroadcastEngine:
         name = driver.get("name", f"Car {leader_idx}")
         number = driver.get("number", "?")
         message = (
-            f"{name} in the number {number} has controlled the lead for about "
-            f"{laps_led_run} laps. {gap_text}{trend}"
+            f"{name} in the number {number} has led {laps_led_total} "
+            f"{lap_word} tonight. {gap_text}{trend}"
         )
         self.broadcast_queue.add(
             message,
@@ -325,6 +333,18 @@ class BroadcastEngine:
         )
         self.last_leader_story_lap = current_lap
         self.last_leader_gap = gap if gap > 0 else self.last_leader_gap
+
+    def _update_leader_laps_led(self, results, current_lap):
+        if current_lap <= 0 or self.last_leader_lap_counted == current_lap:
+            return
+        ordered = self.sorted_running_order(results)
+        if not ordered:
+            return
+        leader_idx = ordered[0].get("CarIdx")
+        if leader_idx is None:
+            return
+        self.leader_laps_led[leader_idx] = self.leader_laps_led.get(leader_idx, 0) + 1
+        self.last_leader_lap_counted = current_lap
 
     def _queue_final_laps_battle(self, results, driver_lookup, current_lap, total_laps):
         if self.final_laps_battle_queued:
@@ -416,8 +436,11 @@ class BroadcastEngine:
     def leader_gap_phrase(self, gap):
         if gap <= 0:
             return "The gap behind the leader is still forming. "
-        if gap < 0.35:
-            return f"Second place is right there, only {gap:.1f} seconds back. "
+        if gap < 0.5:
+            return (
+                "It is a tight battle at the front, with second place close "
+                "enough to keep the pressure on. "
+            )
         if gap < 1.0:
             return f"The advantage is slim at about {gap:.1f} seconds. "
         return f"The leader has built a little breathing room at {gap:.1f} seconds. "
@@ -599,6 +622,7 @@ class BroadcastEngine:
             category="caution_top_ten_reset",
             protected=True,
             speaker="jeff",
+            delay_seconds=5.0,
             expires_after=45,
             dedupe_key=f"caution_top_ten_reset:{current_lap}",
         )
@@ -621,12 +645,27 @@ class BroadcastEngine:
                 position += 1
             name = driver.get("name", f"Car {car_idx}")
             number = driver.get("number", "?")
-            entries.append(f"{position}: the {number} of {name}")
+            entries.append(f"{self.position_word(position)}, the {number} of {name}")
 
         return (
             "Before this restart, here is the top ten: "
             f"{'; '.join(entries)}."
         )
+
+    def position_word(self, position):
+        words = {
+            1: "first",
+            2: "second",
+            3: "third",
+            4: "fourth",
+            5: "fifth",
+            6: "sixth",
+            7: "seventh",
+            8: "eighth",
+            9: "ninth",
+            10: "tenth",
+        }
+        return words.get(self.safe_int(position), self.ordinal_position(position))
 
     def _queue_mandatory_field_rundown(
         self,
