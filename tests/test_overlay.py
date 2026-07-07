@@ -28,6 +28,9 @@ class OverlayTelemetry:
     def get_total_laps(self):
         return 80
 
+    def get_session_flags(self):
+        return 0
+
 
 def test_overlay_state_includes_title_sponsor_track_and_lap():
     builder = OverlayStateBuilder(
@@ -58,6 +61,32 @@ def test_overlay_leaderboard_sorts_and_formats_zero_based_positions():
     assert leaderboard[0]["car_number"] == "77"
     assert leaderboard[1]["driver_name"] == "Dean Marsh"
     assert leaderboard[2]["interval"] == "+1.6"
+
+
+def test_overlay_marks_green_flag_state():
+    class GreenTelemetry(OverlayTelemetry):
+        def get_session_flags(self):
+            return 0x00000004
+
+    state = OverlayStateBuilder().build_from_telemetry(GreenTelemetry()).to_dict()
+
+    assert state["green"] is True
+    assert state["caution"] is False
+
+
+def test_overlay_shows_laps_down_before_time_gap():
+    class LappedTelemetry(OverlayTelemetry):
+        def get_results(self):
+            return [
+                {"CarIdx": 3, "Position": 0, "LapsComplete": 20, "Time": 0.0},
+                {"CarIdx": 7, "Position": 1, "LapsComplete": 19, "Time": 4.2},
+                {"CarIdx": 9, "Position": 2, "LapsComplete": 18, "Time": 9.9},
+            ]
+
+    state = OverlayStateBuilder().build_from_telemetry(LappedTelemetry()).to_dict()
+
+    assert state["leaderboard"][1]["interval"] == "-1 lap"
+    assert state["leaderboard"][2]["interval"] == "-2 laps"
 
 
 def test_overlay_leaderboard_keeps_top_15_and_cycles_final_5():

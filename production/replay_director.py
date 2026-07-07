@@ -1,5 +1,9 @@
 from dataclasses import dataclass
+import os
+from pathlib import Path
 import time
+
+from config import CAUTION_REPLAY_AUDIO
 
 
 @dataclass(frozen=True)
@@ -22,6 +26,8 @@ class ReplayDirector:
         pre_roll_seconds=15.0,
         incident_marker_pre_roll_frames=1500,
         angle_seconds=12.0,
+        replay_audio_path=CAUTION_REPLAY_AUDIO,
+        audio_player=None,
         clock=None,
     ):
         if mode not in self.MODES:
@@ -31,6 +37,8 @@ class ReplayDirector:
         self.pre_roll_seconds = float(pre_roll_seconds)
         self.incident_marker_pre_roll_frames = int(incident_marker_pre_roll_frames)
         self.angle_seconds = float(angle_seconds)
+        self.replay_audio_path = str(replay_audio_path or "").strip()
+        self.audio_player = audio_player or getattr(os, "startfile", None)
         self.clock = clock or time.monotonic
         self.reset()
 
@@ -46,6 +54,7 @@ class ReplayDirector:
         self.camera_engaged = False
         self.use_incident_marker = False
         self.marker_pre_roll_override_frames = None
+        self.audio_played_for_story_ids = set()
         self.played_story_ids = set()
 
     def handle_item(self, item, telemetry, camera_director):
@@ -116,6 +125,7 @@ class ReplayDirector:
         self.active = True
         self.angle_started_at = self.clock()
         self.played_story_ids.add(story_id)
+        self.play_replay_audio(story_id)
         return ReplayDecision(
             "started",
             "Incident replay started.",
@@ -201,6 +211,22 @@ class ReplayDirector:
             self.session_num,
             self.current_replay_start_time(),
         )
+
+    def play_replay_audio(self, story_id):
+        if (
+            not self.replay_audio_path
+            or not self.audio_player
+            or story_id in self.audio_played_for_story_ids
+        ):
+            return
+        path = Path(self.replay_audio_path).expanduser()
+        if not path.exists():
+            return
+        try:
+            self.audio_player(str(path.resolve()))
+            self.audio_played_for_story_ids.add(story_id)
+        except Exception:
+            return
 
     def current_replay_start_time(self):
         if getattr(self, "use_incident_marker", False):

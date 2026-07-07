@@ -54,3 +54,12 @@ NATIONAL_ANTHEM_AUDIO = os.getenv("NATIONAL_ANTHEM_AUDIO", "")
 NATIONAL_ANTHEM_DURATION_SECONDS = float(
     os.getenv("NATIONAL_ANTHEM_DURATION_SECONDS", "90")
 )
+
+
+# Optional practice/replay music beds. These open in the default Windows player.
+PRACTICE_MUSIC_PLAYLIST = [
+    item.strip()
+    for item in os.getenv("PRACTICE_MUSIC_PLAYLIST", "").split(";")
+    if item.strip()
+]
+CAUTION_REPLAY_AUDIO = os.getenv("CAUTION_REPLAY_AUDIO", NATIONAL_ANTHEM_AUDIO)

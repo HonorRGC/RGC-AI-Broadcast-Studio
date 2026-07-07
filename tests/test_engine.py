@@ -211,7 +211,8 @@ def test_engine_queues_sponsor_read_after_opening_lineup():
     ]
     assert len(sponsor_items) == 1
     assert sponsor_items[0].message == "Opening sponsor read."
-    assert sponsor_items[0].priority == 9
+    assert sponsor_items[0].priority == 8
+    assert sponsor_items[0].delay_seconds == 3.0
 
 
 def test_engine_is_silent_until_the_race_session_begins():
@@ -819,7 +820,7 @@ def test_one_to_green_reports_small_caution_pit_group():
     assert "Before this restart, here is the top ten" in top_ten.message
     assert "first, the 1 of Driver 1" in top_ten.message
     assert "second, the 2 of Driver 2" in top_ten.message
-    assert top_ten.delay_seconds == 5.0
+    assert top_ten.delay_seconds == 10.0
 
 
 def test_one_to_green_top_ten_reset_only_queues_once_per_caution():
@@ -887,6 +888,38 @@ def test_one_to_green_majority_pit_report_waits_for_full_caution_cycle():
     )
     assert "18 of 20 cars" in pit_item.message
     assert pit_item.speaker == "sarah"
+
+
+def test_one_to_green_can_call_lucky_dog_candidate():
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    results = [
+        {"CarIdx": 0, "Position": 0, "LapsComplete": 20},
+        {"CarIdx": 1, "Position": 1, "LapsComplete": 19},
+        {"CarIdx": 2, "Position": 2, "LapsComplete": 19},
+    ]
+    drivers = {
+        0: {"name": "Leader", "number": "1"},
+        1: {"name": "Lucky Driver", "number": "7"},
+        2: {"name": "Other Driver", "number": "8"},
+    }
+
+    engine._queue_lucky_dog_note(results, drivers, current_lap=20)
+
+    item = next(item for item in engine.broadcast_queue.items if item.category == "lucky_dog")
+    assert "lucky dog should be the 7 of Lucky Driver" in item.message
+    assert item.camera_target_car_idx == 1
+
+
+def test_late_caution_note_mentions_green_white_checkered():
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+
+    engine._queue_late_caution_note(current_lap=49, total_laps=50)
+
+    item = next(
+        item for item in engine.broadcast_queue.items
+        if item.category == "late_caution_note"
+    )
+    assert "green-white-checkered" in item.message
 
 
 def test_restart_caution_marker_replay_uses_extra_preroll():

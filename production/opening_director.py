@@ -109,10 +109,10 @@ class OpeningDirector:
                 "I am fired up for this one. This has all the makings of an "
                 "awesome race, so let's go racing, boys and girls."
             ),
-            priority=8,
+            priority=7,
             speaker="lead",
             category="opening_hype",
-            delay_seconds=1.5,
+            delay_seconds=6.0,
         )
 
     def build_weather_summary(self, track_info):

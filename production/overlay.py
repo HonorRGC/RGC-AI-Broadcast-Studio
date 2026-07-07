@@ -88,6 +88,7 @@ class OverlayState:
     lap: int = 0
     total_laps: int = 0
     caution: bool = False
+    green: bool = False
     featured_driver: FeaturedDriver | None = None
     special_presentation: SpecialPresentation | None = None
     leaderboard: list[LeaderboardEntry] = field(default_factory=list)
@@ -105,6 +106,7 @@ class OverlayState:
             "lap": self.lap,
             "total_laps": self.total_laps,
             "caution": self.caution,
+            "green": self.green,
             "featured_driver": (
                 self.featured_driver.to_dict() if self.featured_driver else None
             ),
@@ -153,6 +155,7 @@ class OverlayStateBuilder:
             lap=self.best_race_lap(results, telemetry.get_lap()),
             total_laps=self.safe_int(telemetry.get_total_laps()),
             caution=self.is_caution(telemetry),
+            green=self.is_green(telemetry),
             leaderboard=leaderboard,
         )
 
@@ -170,6 +173,13 @@ class OverlayStateBuilder:
         ]
         zero_based = any(self.safe_int(car.get("Position"), 999) == 0 for car in valid_results)
         valid_results.sort(key=lambda car: self.safe_int(car.get("Position"), 999))
+        leader_laps = max(
+            [
+                self.safe_int(car.get("LapsComplete", car.get("Lap", 0)))
+                for car in valid_results
+            ],
+            default=0,
+        )
 
         leaderboard = []
         for car in valid_results:
@@ -190,16 +200,31 @@ class OverlayStateBuilder:
                         car,
                         display_position,
                         session_type,
+                        leader_laps,
                     ),
                     fastest_lap=self.format_lap_time(self.best_lap_value(car)),
                 )
             )
         return self.visible_leaderboard_window(leaderboard)
 
-    def format_entry_metric(self, car, display_position, session_type):
+    def format_entry_metric(self, car, display_position, session_type, leader_laps=0):
         if self.is_timed_session(session_type):
             return self.format_lap_time(self.best_lap_value(car))
+        laps_down = self.laps_down(car, leader_laps)
+        if laps_down > 0:
+            lap_word = "lap" if laps_down == 1 else "laps"
+            return f"-{laps_down} {lap_word}"
         return "" if display_position == 1 else self.format_interval(car)
+
+    def laps_down(self, car, leader_laps=0):
+        for key in ("LapsBehind", "LapsDown"):
+            value = self.safe_int(car.get(key), 0)
+            if value > 0:
+                return value
+        car_laps = self.safe_int(car.get("LapsComplete", car.get("Lap", 0)))
+        if leader_laps > 0 and car_laps > 0:
+            return max(leader_laps - car_laps, 0)
+        return 0
 
     def is_timed_session(self, session_type):
         text = str(session_type or "").lower()
@@ -232,6 +257,15 @@ class OverlayStateBuilder:
         except Exception:
             flags = 0
         return bool(flags & (0x00000008 | 0x00000100 | 0x00004000 | 0x00008000))
+
+    def is_green(self, telemetry):
+        flags_reader = getattr(telemetry, "get_session_flags", None)
+        flags = flags_reader() if flags_reader else 0
+        try:
+            flags = int(flags or 0)
+        except Exception:
+            flags = 0
+        return bool(flags & 0x00000004) and not self.is_caution(telemetry)
 
     def visible_leaderboard_window(self, leaderboard):
         if len(leaderboard) <= self.max_entries:
@@ -548,9 +582,19 @@ OVERLAY_HTML = r"""<!doctype html>
       gap: 8px;
       padding: 8px 10px;
       background: var(--rgc-dark);
-      border-bottom: 1px solid var(--rgc-line);
+      border-bottom: 4px solid var(--rgc-line);
       text-transform: uppercase;
       font-weight: 800;
+    }
+
+    .leaderboard.green .leaderboard-header {
+      border-bottom-color: #15c85f;
+      box-shadow: inset 0 -10px 18px rgba(21, 200, 95, 0.18);
+    }
+
+    .leaderboard.caution .leaderboard-header {
+      border-bottom-color: #ffd400;
+      box-shadow: inset 0 -10px 18px rgba(255, 212, 0, 0.22);
     }
 
     .lap {
@@ -736,7 +780,7 @@ OVERLAY_HTML = r"""<!doctype html>
     </div>
   </section>
 
-  <section class="leaderboard">
+  <section id="leaderboard" class="leaderboard">
     <div class="leaderboard-header">
       <span>Leaderboard</span>
       <span id="lap" class="lap">Lap --</span>
@@ -782,6 +826,8 @@ OVERLAY_HTML = r"""<!doctype html>
       setText("sponsor", event.sponsor ? `Presented by ${event.sponsor}` : "");
       setText("lap", buildLapLine(state));
       document.getElementById("top-banner").classList.toggle("caution", !!state.caution);
+      document.getElementById("leaderboard").classList.toggle("green", !!state.green);
+      document.getElementById("leaderboard").classList.toggle("caution", !!state.caution);
       renderBrandGraphic(event.graphics || [], state.session_type);
       renderDriverCard(state.featured_driver);
       renderSpecialPresentation(state.special_presentation);
@@ -847,7 +893,15 @@ OVERLAY_HTML = r"""<!doctype html>
     }
 
     function buildLapLine(state) {
-      if (state.total_laps) return `Lap ${state.lap || 0} / ${state.total_laps}`;
+      if (state.total_laps) {
+        const lap = state.lap || 0;
+        const total = state.total_laps;
+        const toGo = Math.max(total - lap, 0);
+        if (lap >= Math.ceil(total / 2) && toGo > 0) {
+          return `Lap ${lap} / ${total} • ${toGo} to go`;
+        }
+        return `Lap ${lap} / ${total}`;
+      }
       if (state.lap) return `Lap ${state.lap}`;
       return "Lap --";
     }

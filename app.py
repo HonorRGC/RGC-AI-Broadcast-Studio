@@ -6,6 +6,10 @@ from broadcast.engine import BroadcastEngine
 from broadcaster.telemetry import IRacingTelemetry
 from production.camera_director import CameraDirector
 from production.anthem_director import NationalAnthemDirector
+from production.non_race_presentation import (
+    PracticePresentationDirector,
+    QualifyingCameraDirector,
+)
 from production.overlay import OverlayServer
 from production.replay_director import ReplayDirector
 
@@ -101,17 +105,28 @@ def run_source(
     camera_director,
     replay_director,
     anthem_director,
+    practice_presentation_director,
+    qualifying_camera_director,
     overlay_server,
     tick_seconds,
 ):
     while source.is_connected():
         if overlay_server:
             overlay_server.update_from_telemetry(source)
+        report_practice_presentation(
+            practice_presentation_director.update(
+                source.get_session_type(),
+                overlay_server,
+            )
+        )
         report_anthem_decision(
             anthem_director.update(source.get_session_type(), overlay_server)
         )
         report_replay_decision(replay_director.update(source, camera_director))
         report_camera_decision(camera_director.update(source))
+        report_camera_decision(
+            qualifying_camera_director.update(source, camera_director)
+        )
         item = engine.tick(source)
         if item:
             report_replay_decision(
@@ -151,6 +166,11 @@ def report_anthem_decision(decision):
     if decision.status == "ignored":
         return
     print(f"CEREMONY: {decision.reason}")
+
+
+def report_practice_presentation(message):
+    if message:
+        print(f"PRACTICE: {message}")
 
 
 def should_switch_camera_after_voice_starts(item):
@@ -227,6 +247,8 @@ def build_featured_driver_image(driver):
 
 
 def report_camera_decision(decision):
+    if decision is None:
+        return
     if decision.status not in ("suggested", "switched", "failed", "live"):
         return
 
@@ -263,6 +285,8 @@ def main():
         ),
     )
     anthem_director = NationalAnthemDirector()
+    practice_presentation_director = PracticePresentationDirector()
+    qualifying_camera_director = QualifyingCameraDirector()
     overlay_server = OverlayServer(
         host=args.overlay_host,
         port=args.overlay_port,
@@ -329,6 +353,8 @@ def main():
             camera_director,
             replay_director,
             anthem_director,
+            practice_presentation_director,
+            qualifying_camera_director,
             overlay_server,
             args.tick_seconds,
         )
@@ -346,6 +372,8 @@ def main():
         camera_director.reset()
         replay_director.reset()
         anthem_director = NationalAnthemDirector()
+        practice_presentation_director = PracticePresentationDirector()
+        qualifying_camera_director = QualifyingCameraDirector()
         run_source(
             source,
             engine,
@@ -353,6 +381,8 @@ def main():
             camera_director,
             replay_director,
             anthem_director,
+            practice_presentation_director,
+            qualifying_camera_director,
             overlay_server,
             args.tick_seconds,
         )

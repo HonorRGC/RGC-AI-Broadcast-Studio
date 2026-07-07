@@ -53,6 +53,8 @@ class BroadcastEngine:
         self.caution_marker_replay_count = 0
         self.caution_top_ten_reset_queued = False
         self.final_laps_battle_queued = False
+        self.caution_lucky_dog_queued = False
+        self.late_caution_note_queued = False
         self.last_leader_story_lap = 0
         self.current_leader_car_idx = None
         self.current_leader_started_lap = 0
@@ -119,6 +121,9 @@ class BroadcastEngine:
             scheduler=self.broadcast_queue,
         )
 
+        if self.race_director.phase == RacePhase.CAUTION:
+            self._queue_late_caution_note(current_lap, total_laps)
+
         if (
             self.race_director.race_started
             and self.race_director.phase != RacePhase.CHECKERED
@@ -139,6 +144,8 @@ class BroadcastEngine:
             )
 
         if self.race_director.phase == RacePhase.GREEN:
+            self.caution_lucky_dog_queued = False
+            self.late_caution_note_queued = False
             self._update_leader_laps_led(
                 story_results,
                 current_lap,
@@ -256,10 +263,11 @@ class BroadcastEngine:
             return
         self.broadcast_queue.add(
             message,
-            priority=9,
+            priority=8,
             category="sponsor_read",
             protected=True,
             speaker="lead",
+            delay_seconds=3.0,
             expires_after=180,
             dedupe_key="sponsor_read:opening",
         )
@@ -572,6 +580,7 @@ class BroadcastEngine:
                     driver_lookup,
                     current_lap,
                 )
+                self._queue_lucky_dog_note(results, driver_lookup, current_lap)
                 self._queue_caution_race_insight()
             else:
                 self.caution_top_ten_reset_queued = False
@@ -650,9 +659,76 @@ class BroadcastEngine:
             category="caution_top_ten_reset",
             protected=True,
             speaker="jeff",
-            delay_seconds=5.0,
-            expires_after=45,
+            delay_seconds=10.0,
+            expires_after=70,
             dedupe_key=f"caution_top_ten_reset:{current_lap}",
+        )
+
+    def _queue_lucky_dog_note(self, results, driver_lookup, current_lap):
+        if self.caution_lucky_dog_queued:
+            return
+        lucky = self.find_lucky_dog_candidate(results)
+        if not lucky:
+            return
+        car_idx, laps_down = lucky
+        driver = driver_lookup.get(car_idx, {})
+        name = driver.get("name", f"Car {car_idx}")
+        number = driver.get("number", "?")
+        lap_word = "lap" if laps_down == 1 else "laps"
+        self.caution_lucky_dog_queued = True
+        self.broadcast_queue.add(
+            (
+                f"Free pass watch as they double up: the lucky dog should be "
+                f"the {number} of {name}, scored {laps_down} {lap_word} down."
+            ),
+            priority=8,
+            category="lucky_dog",
+            protected=True,
+            speaker="lead",
+            delay_seconds=4.0,
+            expires_after=60,
+            dedupe_key=f"lucky_dog:{current_lap}",
+            camera_target_car_idx=car_idx,
+            participant_car_indices=(car_idx,),
+        )
+
+    def find_lucky_dog_candidate(self, results):
+        valid = [car for car in results or [] if car.get("CarIdx") is not None]
+        if len(valid) < 2:
+            return None
+        leader_laps = max(
+            self.safe_int(car.get("LapsComplete", car.get("Lap", 0)))
+            for car in valid
+        )
+        if leader_laps <= 0:
+            return None
+        ordered = self.sorted_running_order(valid)
+        for car in ordered:
+            laps = self.safe_int(car.get("LapsComplete", car.get("Lap", 0)))
+            laps_down = leader_laps - laps
+            if laps_down > 0:
+                return car.get("CarIdx"), laps_down
+        return None
+
+    def _queue_late_caution_note(self, current_lap, total_laps):
+        if self.late_caution_note_queued or total_laps <= 0 or current_lap <= 0:
+            return
+        laps_to_go = max(total_laps - current_lap, 0)
+        if laps_to_go > 2:
+            return
+        self.late_caution_note_queued = True
+        self.broadcast_queue.add(
+            (
+                "With this caution coming so late, we could be looking at a "
+                "green-white-checkered finish."
+            ),
+            priority=10,
+            category="late_caution_note",
+            protected=True,
+            speaker="lead",
+            delay_seconds=2.0,
+            expires_after=60,
+            dedupe_key=f"late_caution_note:{current_lap}",
         )
 
     def build_caution_top_ten_reset(self, results, driver_lookup):
