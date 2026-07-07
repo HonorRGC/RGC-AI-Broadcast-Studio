@@ -77,6 +77,34 @@ def test_overlay_marks_green_flag_state():
     assert state["caution"] is False
 
 
+def test_overlay_marks_green_when_race_is_underway_without_held_green_flag():
+    state = OverlayStateBuilder().build_from_telemetry(OverlayTelemetry()).to_dict()
+
+    assert state["green"] is True
+    assert state["caution"] is False
+
+
+def test_overlay_does_not_mark_practice_as_green_from_lap_data():
+    class PracticeTelemetry(OverlayTelemetry):
+        def get_session_type(self):
+            return "Practice"
+
+    state = OverlayStateBuilder().build_from_telemetry(PracticeTelemetry()).to_dict()
+
+    assert state["green"] is False
+
+
+def test_overlay_caution_overrides_green_highlight():
+    class CautionTelemetry(OverlayTelemetry):
+        def get_session_flags(self):
+            return 0x00000008
+
+    state = OverlayStateBuilder().build_from_telemetry(CautionTelemetry()).to_dict()
+
+    assert state["green"] is False
+    assert state["caution"] is True
+
+
 def test_overlay_shows_laps_down_before_time_gap():
     class LappedTelemetry(OverlayTelemetry):
         def get_results(self):

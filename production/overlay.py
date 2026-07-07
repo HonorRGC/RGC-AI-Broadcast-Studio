@@ -150,15 +150,18 @@ class OverlayStateBuilder:
         elif self.is_race_session(session_type) and self.last_leaderboard:
             leaderboard = self.last_leaderboard
 
+        lap = self.best_race_lap(results, telemetry.get_lap())
+        caution = self.is_caution(telemetry)
+
         return OverlayState(
             event=self.event_config,
             session_type=session_type,
             track_name=(track_info or {}).get("track_name", ""),
-            lap=self.best_race_lap(results, telemetry.get_lap()),
+            lap=lap,
             total_laps=self.safe_int(telemetry.get_total_laps()),
             session_time_remaining=self.session_time_remaining(telemetry),
-            caution=self.is_caution(telemetry),
-            green=self.is_green(telemetry),
+            caution=caution,
+            green=self.is_green(telemetry, session_type=session_type, lap=lap, caution=caution),
             leaderboard=leaderboard,
         )
 
@@ -270,14 +273,21 @@ class OverlayStateBuilder:
             flags = 0
         return bool(flags & (0x00000008 | 0x00000100 | 0x00004000 | 0x00008000))
 
-    def is_green(self, telemetry):
+    def is_green(self, telemetry, session_type="Race", lap=0, caution=None):
+        if caution is None:
+            caution = self.is_caution(telemetry)
+        if caution:
+            return False
+
         flags_reader = getattr(telemetry, "get_session_flags", None)
         flags = flags_reader() if flags_reader else 0
         try:
             flags = int(flags or 0)
         except Exception:
             flags = 0
-        return bool(flags & 0x00000004) and not self.is_caution(telemetry)
+        if flags & 0x00000004:
+            return True
+        return self.is_race_session(session_type) and self.safe_int(lap) > 0
 
     def visible_leaderboard_window(self, leaderboard):
         if len(leaderboard) <= self.max_entries:
@@ -600,13 +610,22 @@ OVERLAY_HTML = r"""<!doctype html>
     }
 
     .leaderboard.green .leaderboard-header {
+      background: linear-gradient(90deg, rgba(21, 200, 95, 0.38), var(--rgc-dark) 72%);
       border-bottom-color: #15c85f;
-      box-shadow: inset 0 -10px 18px rgba(21, 200, 95, 0.18);
+      box-shadow: inset 0 -10px 18px rgba(21, 200, 95, 0.24), 0 0 18px rgba(21, 200, 95, 0.16);
+    }
+
+    .leaderboard.green {
+      border-left-color: #15c85f;
     }
 
     .leaderboard.caution .leaderboard-header {
       border-bottom-color: #ffd400;
       box-shadow: inset 0 -10px 18px rgba(255, 212, 0, 0.22);
+    }
+
+    .leaderboard.caution {
+      border-left-color: #ffd400;
     }
 
     .lap {
