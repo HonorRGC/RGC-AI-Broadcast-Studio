@@ -10,9 +10,10 @@ from voice.elevenlabs_client import ElevenLabsClient
 
 
 class BroadcastBooth:
-    def __init__(self, enable_voice=True):
+    def __init__(self, enable_voice=True, audio_bed=None):
         self.last_comment = ""
         self.enable_voice = enable_voice
+        self.audio_bed = audio_bed
 
         if enable_voice and USE_ELEVENLABS and ELEVENLABS_API_KEY:
             self.voice_client = ElevenLabsClient(ELEVENLABS_API_KEY)
@@ -55,7 +56,15 @@ class BroadcastBooth:
         voice_id = self.get_voice_id(speaker)
 
         if self.voice_client and voice_id:
-            self.voice_client.speak(commentary, voice_id)
+            if self.audio_bed:
+                self.audio_bed.duck()
+            try:
+                self.voice_client.speak(commentary, voice_id)
+            finally:
+                if self.audio_bed:
+                    self.audio_bed.restore_after(
+                        self.estimate_speech_seconds(commentary)
+                    )
         elif self.voice_client and not voice_id:
             print(f"Voice output skipped: no voice ID is configured for {speaker_label}.")
 
@@ -76,3 +85,7 @@ class BroadcastBooth:
             return PIT_VOICE_ID or LEAD_VOICE_ID
 
         return LEAD_VOICE_ID
+
+    def estimate_speech_seconds(self, commentary):
+        words = len(str(commentary or "").split())
+        return max(3.0, min(35.0, words / 2.65 + 1.25))

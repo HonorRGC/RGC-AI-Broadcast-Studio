@@ -90,6 +90,14 @@ def green_item():
     )
 
 
+class AudioBedSpy:
+    def __init__(self):
+        self.played = []
+
+    def play(self, path):
+        self.played.append(path)
+
+
 def test_ordinary_incident_plays_one_angle_then_returns_live():
     telemetry = ReplayTelemetry()
     camera = ReplayCamera()
@@ -105,6 +113,24 @@ def test_ordinary_incident_plays_one_angle_then_returns_live():
     assert finished.status == "live"
     assert telemetry.live_returns == 1
     assert camera.replay_active is False
+
+
+def test_incident_replay_uses_audio_bed_player(tmp_path):
+    audio = tmp_path / "caution.mp3"
+    audio.write_bytes(b"audio")
+    audio_bed = AudioBedSpy()
+    telemetry = ReplayTelemetry()
+    camera = ReplayCamera()
+    director = ReplayDirector(
+        mode="auto",
+        replay_audio_path=str(audio),
+        audio_player=audio_bed,
+        clock=lambda: 10.0,
+    )
+
+    director.handle_item(incident_item(), telemetry, camera)
+
+    assert audio_bed.played == [str(audio.resolve())]
 
 
 def test_new_caution_incident_replays_tv1_then_tv2_before_live():

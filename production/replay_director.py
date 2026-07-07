@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-import os
 from pathlib import Path
 import time
 
@@ -38,7 +37,7 @@ class ReplayDirector:
         self.incident_marker_pre_roll_frames = int(incident_marker_pre_roll_frames)
         self.angle_seconds = float(angle_seconds)
         self.replay_audio_path = str(replay_audio_path or "").strip()
-        self.audio_player = audio_player or getattr(os, "startfile", None)
+        self.audio_player = audio_player
         self.clock = clock or time.monotonic
         self.reset()
 
@@ -223,7 +222,10 @@ class ReplayDirector:
         if not path.exists():
             return
         try:
-            self.audio_player(str(path.resolve()))
+            if hasattr(self.audio_player, "play"):
+                self.audio_player.play(str(path.resolve()))
+            else:
+                self.audio_player(str(path.resolve()))
             self.audio_played_for_story_ids.add(story_id)
         except Exception:
             return

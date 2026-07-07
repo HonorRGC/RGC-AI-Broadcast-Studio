@@ -5,6 +5,7 @@ from broadcast.booth import BroadcastBooth
 from broadcast.engine import BroadcastEngine
 from broadcaster.telemetry import IRacingTelemetry
 from production.camera_director import CameraDirector
+from production.audio_bed import AudioBedPlayer
 from production.anthem_director import NationalAnthemDirector
 from production.non_race_presentation import (
     PracticePresentationDirector,
@@ -270,7 +271,8 @@ def report_camera_decision(decision):
 def main():
     args = parse_args()
     engine = BroadcastEngine(incident_debug=args.incident_debug)
-    booth = BroadcastBooth(enable_voice=not args.no_voice)
+    caution_audio_bed = AudioBedPlayer()
+    booth = BroadcastBooth(enable_voice=not args.no_voice, audio_bed=caution_audio_bed)
     camera_director = CameraDirector(
         mode=args.camera_mode,
         preferred_group=args.camera_group,
@@ -283,6 +285,7 @@ def main():
         incident_marker_pre_roll_frames=round(
             max(0.0, args.incident_marker_preroll_seconds) * 60
         ),
+        audio_player=caution_audio_bed,
     )
     anthem_director = NationalAnthemDirector()
     practice_presentation_director = PracticePresentationDirector()
