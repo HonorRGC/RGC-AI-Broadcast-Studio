@@ -87,6 +87,7 @@ class OverlayState:
     track_name: str = ""
     lap: int = 0
     total_laps: int = 0
+    session_time_remaining: float = 0.0
     caution: bool = False
     green: bool = False
     featured_driver: FeaturedDriver | None = None
@@ -105,6 +106,7 @@ class OverlayState:
             "track_name": self.track_name,
             "lap": self.lap,
             "total_laps": self.total_laps,
+            "session_time_remaining": self.session_time_remaining,
             "caution": self.caution,
             "green": self.green,
             "featured_driver": (
@@ -154,6 +156,7 @@ class OverlayStateBuilder:
             track_name=(track_info or {}).get("track_name", ""),
             lap=self.best_race_lap(results, telemetry.get_lap()),
             total_laps=self.safe_int(telemetry.get_total_laps()),
+            session_time_remaining=self.session_time_remaining(telemetry),
             caution=self.is_caution(telemetry),
             green=self.is_green(telemetry),
             leaderboard=leaderboard,
@@ -164,6 +167,15 @@ class OverlayStateBuilder:
         for car in results or []:
             laps.append(self.safe_int(car.get("LapsComplete", car.get("Lap", 0))))
         return max(laps, default=0)
+
+    def session_time_remaining(self, telemetry):
+        reader = getattr(telemetry, "get_session_time_remaining", None)
+        if not reader:
+            return 0.0
+        try:
+            return max(float(reader() or 0.0), 0.0)
+        except (TypeError, ValueError):
+            return 0.0
 
     def build_leaderboard(self, results, driver_lookup, session_type="Race"):
         valid_results = [
@@ -893,6 +905,11 @@ OVERLAY_HTML = r"""<!doctype html>
     }
 
     function buildLapLine(state) {
+      if (isTimedSession(state.session_type)) {
+        const remaining = Number(state.session_time_remaining || 0);
+        if (remaining > 0) return `${sessionLabel(state.session_type)} • ${formatClock(remaining)} left`;
+        return sessionLabel(state.session_type);
+      }
       if (state.total_laps) {
         const lap = state.lap || 0;
         const total = state.total_laps;
@@ -904,6 +921,29 @@ OVERLAY_HTML = r"""<!doctype html>
       }
       if (state.lap) return `Lap ${state.lap}`;
       return "Lap --";
+    }
+
+    function isTimedSession(sessionType) {
+      const text = String(sessionType || "").toLowerCase();
+      return text.includes("practice") || text.includes("qual");
+    }
+
+    function sessionLabel(sessionType) {
+      const text = String(sessionType || "");
+      if (text.toLowerCase().includes("qual")) return "Qualifying";
+      if (text.toLowerCase().includes("practice")) return "Practice";
+      return text || "Session";
+    }
+
+    function formatClock(seconds) {
+      seconds = Math.max(0, Math.floor(Number(seconds) || 0));
+      const hours = Math.floor(seconds / 3600);
+      const minutes = Math.floor((seconds % 3600) / 60);
+      const secs = seconds % 60;
+      if (hours > 0) {
+        return `${hours}:${String(minutes).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+      }
+      return `${minutes}:${String(secs).padStart(2, "0")}`;
     }
 
     function setText(id, text) {

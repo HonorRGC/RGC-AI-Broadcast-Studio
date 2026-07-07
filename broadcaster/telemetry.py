@@ -65,6 +65,20 @@ class IRacingTelemetry:
         except Exception:
             return 0.0
 
+    def get_session_time_remaining(self):
+        remaining = self.safe_duration_seconds(self.safe_read("SessionTimeRemain"))
+        if remaining > 0:
+            return remaining
+
+        session = self.get_current_session()
+        session_duration = self.safe_duration_seconds(
+            session.get("SessionTime") or session.get("SessionTimeRemain")
+        )
+        if session_duration <= 0:
+            return 0.0
+
+        return max(session_duration - self.get_session_time(), 0.0)
+
     def seek_replay_session_time(self, session_num, session_time_seconds):
         try:
             seek_sent = self.ir.replay_search_session_time(
@@ -356,3 +370,16 @@ class IRacingTelemetry:
             return list(data)
         except Exception:
             return []
+
+    def safe_duration_seconds(self, value):
+        if value in (None, "", "unlimited", "unlimited time"):
+            return 0.0
+        text = str(value).strip().lower()
+        if not text or "unlimited" in text:
+            return 0.0
+        if text.startswith("0x"):
+            return 0.0
+        try:
+            return max(float(text.split()[0]), 0.0)
+        except (TypeError, ValueError):
+            return 0.0

@@ -31,6 +31,9 @@ class OverlayTelemetry:
     def get_session_flags(self):
         return 0
 
+    def get_session_time_remaining(self):
+        return 0.0
+
 
 def test_overlay_state_includes_title_sponsor_track_and_lap():
     builder = OverlayStateBuilder(
@@ -112,6 +115,33 @@ def test_overlay_leaderboard_keeps_top_15_and_cycles_final_5():
     assert [entry.position for entry in second_window[15:]] == [21, 22, 23, 24, 25]
     assert len(first_window) == 20
     assert len(second_window) == 20
+
+
+def test_overlay_state_includes_practice_session_countdown():
+    class PracticeTelemetry(OverlayTelemetry):
+        def get_session_type(self):
+            return "Practice"
+
+        def get_session_time_remaining(self):
+            return 754.6
+
+    state = OverlayStateBuilder().build_from_telemetry(PracticeTelemetry()).to_dict()
+
+    assert state["session_type"] == "Practice"
+    assert state["session_time_remaining"] == 754.6
+
+
+def test_overlay_state_includes_qualifying_session_countdown():
+    class QualifyingTelemetry(OverlayTelemetry):
+        def get_session_type(self):
+            return "Lone Qualify"
+
+        def get_session_time_remaining(self):
+            return 245
+
+    state = OverlayStateBuilder().build_from_telemetry(QualifyingTelemetry()).to_dict()
+
+    assert state["session_time_remaining"] == 245
 
 
 def test_overlay_keeps_qualifying_board_until_race_results_arrive():

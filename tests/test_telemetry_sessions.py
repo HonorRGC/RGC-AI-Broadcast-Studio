@@ -48,6 +48,32 @@ def test_starting_grid_falls_back_to_qualifying_results():
     assert telemetry.get_starting_grid() == qualifying_grid
 
 
+def test_live_telemetry_reads_session_time_remaining_directly():
+    telemetry = IRacingTelemetry.__new__(IRacingTelemetry)
+    telemetry.ir = {"SessionTimeRemain": 612.4}
+
+    assert telemetry.get_session_time_remaining() == 612.4
+
+
+def test_live_telemetry_falls_back_to_session_duration_minus_elapsed_time():
+    telemetry = IRacingTelemetry.__new__(IRacingTelemetry)
+    telemetry.ir = {
+        "SessionNum": 0,
+        "SessionTime": 120.0,
+        "SessionInfo": {
+            "Sessions": [
+                {
+                    "SessionNum": 0,
+                    "SessionType": "Practice",
+                    "SessionTime": "900 sec",
+                },
+            ],
+        },
+    }
+
+    assert telemetry.get_session_time_remaining() == 780.0
+
+
 def test_live_telemetry_exposes_camera_groups_and_switches_by_car_number():
     class FakeIR(dict):
         def __init__(self):
