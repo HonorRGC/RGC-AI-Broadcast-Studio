@@ -56,5 +56,10 @@ NATIONAL_ANTHEM_DURATION_SECONDS = float(
 )
 
 
-# Optional caution replay music bed.
+# Optional practice/replay music beds.
+PRACTICE_MUSIC_PLAYLIST = [
+    item.strip()
+    for item in os.getenv("PRACTICE_MUSIC_PLAYLIST", "").split(";")
+    if item.strip()
+]
 CAUTION_REPLAY_AUDIO = os.getenv("CAUTION_REPLAY_AUDIO", NATIONAL_ANTHEM_AUDIO)

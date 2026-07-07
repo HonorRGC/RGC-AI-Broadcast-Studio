@@ -58,6 +58,7 @@ class ReplayDirector:
 
     def handle_item(self, item, telemetry, camera_director):
         if self.is_live_interrupt(item):
+            self.stop_replay_audio()
             if self.active:
                 return self.finish(telemetry, camera_director, interrupted=True)
             return ReplayDecision("ignored", "No replay is active.")
@@ -228,6 +229,15 @@ class ReplayDirector:
             else:
                 self.audio_player(str(path.resolve()))
             self.audio_played_for_story_ids.add(story_id)
+        except Exception:
+            return
+
+    def stop_replay_audio(self):
+        stopper = getattr(self.audio_player, "stop", None)
+        if not stopper:
+            return
+        try:
+            stopper()
         except Exception:
             return
 

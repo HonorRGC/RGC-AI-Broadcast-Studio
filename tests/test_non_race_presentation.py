@@ -34,6 +34,18 @@ def test_practice_presentation_shows_race_sponsors_and_clears_after_practice():
     assert overlay.cleared == 1
 
 
+def test_practice_presentation_can_start_practice_music(tmp_path):
+    song = tmp_path / "practice.mp3"
+    song.write_bytes(b"audio")
+    played = []
+    director = PracticePresentationDirector(playlist=[str(song)], player=played.append)
+
+    message = director.update("Practice", OverlaySpy())
+
+    assert played == [str(song.resolve())]
+    assert "Practice music started" in message
+
+
 class QualifyingTelemetry:
     def get_session_type(self):
         return "Qualifying"
