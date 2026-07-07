@@ -6,6 +6,7 @@ from production.caution_pit_reporter import CautionPitReporter
 from production.action_detector import ActionDetector
 from production.editorial_producer import EditorialDecisionType, EditorialProducer
 from production.field_rundown_director import FieldRundownDirector
+from production.fastest_lap_tracker import FastestLapTracker
 from production.incident_detector import IncidentDetector
 from production.league_context import LeagueContext
 from production.openai_director import OpenAIDirector
@@ -45,6 +46,7 @@ class BroadcastEngine:
         self.incident_detector = IncidentDetector()
         self.incident_detector.debug = self.incident_debug
         self.field_rundown_director = FieldRundownDirector()
+        self.fastest_lap_tracker = FastestLapTracker()
         self.opening_director = OpeningDirector()
         self.sponsor_read_director = SponsorReadDirector()
         self.broadcast_queue = BroadcastQueue()
@@ -184,6 +186,11 @@ class BroadcastEngine:
             if queued_insight:
                 return self.broadcast_queue.next_item()
             self.editorial_producer.submit_race_knowledge(race_knowledge)
+            self._queue_fastest_lap_story(
+                story_results,
+                driver_lookup,
+                current_lap,
+            )
             self._queue_leader_story(
                 story_results,
                 driver_lookup,
@@ -333,6 +340,27 @@ class BroadcastEngine:
         )
         self.last_leader_story_lap = current_lap
         self.last_leader_gap = gap if gap > 0 else self.last_leader_gap
+
+    def _queue_fastest_lap_story(self, results, driver_lookup, current_lap):
+        event = self.fastest_lap_tracker.analyze(
+            results,
+            driver_lookup,
+            current_lap,
+        )
+        if not event:
+            return False
+        self.broadcast_queue.add(
+            event.message,
+            priority=7,
+            category="fastest_lap",
+            protected=False,
+            speaker="lead",
+            expires_after=40,
+            dedupe_key=f"fastest_lap:{event.car_idx}:{event.lap_time:.3f}",
+            camera_target_car_idx=event.car_idx,
+            participant_car_indices=(event.car_idx,),
+        )
+        return True
 
     def _update_leader_laps_led(self, results, current_lap):
         if current_lap <= 0 or self.last_leader_lap_counted == current_lap:

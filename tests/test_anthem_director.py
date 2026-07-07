@@ -15,7 +15,7 @@ class OverlaySpy:
         self.cleared += 1
 
 
-def test_national_anthem_starts_once_during_qualifying(tmp_path):
+def test_rgc_anthem_starts_once_during_qualifying(tmp_path):
     audio = tmp_path / "anthem.mp3"
     audio.write_bytes(b"audio")
     played = []
@@ -33,11 +33,12 @@ def test_national_anthem_starts_once_during_qualifying(tmp_path):
     assert first.status == "played"
     assert repeated.status == "ignored"
     assert played == [str(audio.resolve())]
-    assert overlay.presentations[0]["kind"] == "national_anthem"
+    assert overlay.presentations[0]["kind"] == "rgc_anthem"
+    assert overlay.presentations[0]["title"] == "RGC Anthem"
     assert overlay.presentations[0]["duration"] == 88
 
 
-def test_national_anthem_can_show_without_audio_file():
+def test_rgc_anthem_can_show_without_audio_file():
     overlay = OverlaySpy()
     director = NationalAnthemDirector(enabled=True, audio_path="")
 
@@ -47,7 +48,7 @@ def test_national_anthem_can_show_without_audio_file():
     assert overlay.presentations
 
 
-def test_national_anthem_clears_when_race_starts(tmp_path):
+def test_rgc_anthem_clears_when_race_starts(tmp_path):
     audio = tmp_path / "anthem.mp3"
     audio.write_bytes(b"audio")
     overlay = OverlaySpy()
@@ -64,11 +65,10 @@ def test_national_anthem_clears_when_race_starts(tmp_path):
     assert overlay.cleared == 1
 
 
-def test_national_anthem_reports_missing_audio(tmp_path):
+def test_rgc_anthem_reports_missing_audio(tmp_path):
     missing = Path(tmp_path) / "missing.mp3"
     director = NationalAnthemDirector(enabled=True, audio_path=str(missing))
 
     decision = director.update("Qualifying")
 
     assert decision.status == "missing_audio"
-

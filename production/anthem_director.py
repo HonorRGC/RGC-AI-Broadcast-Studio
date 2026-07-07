@@ -42,9 +42,9 @@ class NationalAnthemDirector:
             self.active = True
             if overlay_server:
                 overlay_server.show_special_presentation(
-                    kind="national_anthem",
-                    title="Please Rise",
-                    subtitle="For the National Anthem",
+                    kind="rgc_anthem",
+                    title="RGC Anthem",
+                    subtitle="Presented by RGC Motorsports",
                     duration=self.duration_seconds,
                 )
             return self.play_audio()
@@ -61,14 +61,14 @@ class NationalAnthemDirector:
         if not self.audio_path:
             return AnthemDecision(
                 "shown",
-                "National anthem overlay shown; no audio file is configured.",
+                "RGC Anthem overlay shown; no audio file is configured.",
             )
 
         path = Path(self.audio_path).expanduser()
         if not path.exists():
             return AnthemDecision(
                 "missing_audio",
-                f"National anthem audio file was not found: {path}",
+                f"RGC Anthem audio file was not found: {path}",
             )
 
         try:
@@ -76,10 +76,10 @@ class NationalAnthemDirector:
         except Exception as error:
             return AnthemDecision(
                 "audio_failed",
-                f"National anthem audio could not be played: {error}",
+                f"RGC Anthem audio could not be played: {error}",
             )
 
-        return AnthemDecision("played", "National anthem presentation started.")
+        return AnthemDecision("played", "RGC Anthem presentation started.")
 
     @staticmethod
     def no_audio_player(_):

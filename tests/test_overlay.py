@@ -118,14 +118,15 @@ def test_overlay_preserves_special_presentation():
 
     server = OverlayServer()
     server.show_special_presentation(
-        kind="national_anthem",
-        title="Please Rise",
-        subtitle="For the National Anthem",
+        kind="rgc_anthem",
+        title="RGC Anthem",
+        subtitle="Presented by RGC Motorsports",
         duration=90,
     )
 
     server.update_from_telemetry(OverlayTelemetry())
     state = server.current_state_dict()
 
-    assert state["special_presentation"]["kind"] == "national_anthem"
-    assert state["special_presentation"]["title"] == "Please Rise"
+    assert state["special_presentation"]["kind"] == "rgc_anthem"
+    assert state["special_presentation"]["title"] == "RGC Anthem"
+    assert state["special_presentation"]["graphics"]

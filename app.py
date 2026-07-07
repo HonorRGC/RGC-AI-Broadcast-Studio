@@ -117,11 +117,28 @@ def run_source(
             report_replay_decision(
                 replay_director.handle_item(item, source, camera_director)
             )
-            camera_decision = camera_director.follow(item, source)
-            report_camera_decision(camera_decision)
-            if overlay_server:
-                update_overlay_featured_driver(overlay_server, item, source, camera_decision)
-            booth.broadcast(item.message, speaker=item.speaker)
+            if should_switch_camera_after_voice_starts(item):
+                booth.broadcast(item.message, speaker=item.speaker)
+                camera_decision = camera_director.follow(item, source)
+                report_camera_decision(camera_decision)
+                if overlay_server:
+                    update_overlay_featured_driver(
+                        overlay_server,
+                        item,
+                        source,
+                        camera_decision,
+                    )
+            else:
+                camera_decision = camera_director.follow(item, source)
+                report_camera_decision(camera_decision)
+                if overlay_server:
+                    update_overlay_featured_driver(
+                        overlay_server,
+                        item,
+                        source,
+                        camera_decision,
+                    )
+                booth.broadcast(item.message, speaker=item.speaker)
 
         if hasattr(source, "next_snapshot"):
             source.next_snapshot()
@@ -134,6 +151,14 @@ def report_anthem_decision(decision):
     if decision.status == "ignored":
         return
     print(f"CEREMONY: {decision.reason}")
+
+
+def should_switch_camera_after_voice_starts(item):
+    category = str(getattr(item, "category", "") or "")
+    return (
+        category.startswith("opening_field_rundown")
+        or getattr(item, "camera_target_car_idx", None) is not None
+    )
 
 
 def report_replay_decision(decision):

@@ -31,6 +31,14 @@ LEAGUE_DRIVERS_CSV = os.getenv("LEAGUE_DRIVERS_CSV", "league/drivers.csv")
 OVERLAY_EVENT_TITLE = os.getenv("OVERLAY_EVENT_TITLE", "RGC AI Broadcast")
 OVERLAY_RACE_SPONSOR = os.getenv("OVERLAY_RACE_SPONSOR", "")
 OVERLAY_SERIES_NAME = os.getenv("OVERLAY_SERIES_NAME", "")
+OVERLAY_BRAND_GRAPHICS = [
+    item.strip()
+    for item in os.getenv(
+        "OVERLAY_BRAND_GRAPHICS",
+        "/assets/rgc_motorsports.png,/assets/autism_awareness.png,/assets/keep_it_real.webp",
+    ).split(",")
+    if item.strip()
+]
 
 
 # Sponsor reads

@@ -1,11 +1,15 @@
 import json
+import mimetypes
 import threading
 import time
 from dataclasses import dataclass, field
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
 from typing import Any
+from urllib.parse import unquote
 
 from config import (
+    OVERLAY_BRAND_GRAPHICS,
     OVERLAY_EVENT_TITLE,
     OVERLAY_RACE_SPONSOR,
     OVERLAY_SERIES_NAME,
@@ -17,6 +21,7 @@ class OverlayEventConfig:
     title: str = OVERLAY_EVENT_TITLE
     sponsor: str = OVERLAY_RACE_SPONSOR
     series: str = OVERLAY_SERIES_NAME
+    graphics: list[str] = field(default_factory=lambda: list(OVERLAY_BRAND_GRAPHICS))
 
 
 @dataclass
@@ -63,6 +68,7 @@ class SpecialPresentation:
     kind: str = ""
     title: str = ""
     subtitle: str = ""
+    graphics: list[str] = field(default_factory=list)
     expires_at: float = 0.0
 
     def to_dict(self):
@@ -70,6 +76,7 @@ class SpecialPresentation:
             "kind": self.kind,
             "title": self.title,
             "subtitle": self.subtitle,
+            "graphics": list(self.graphics),
         }
 
 
@@ -91,6 +98,7 @@ class OverlayState:
                 "title": self.event.title,
                 "sponsor": self.event.sponsor,
                 "series": self.event.series,
+                "graphics": list(self.event.graphics),
             },
             "session_type": self.session_type,
             "track_name": self.track_name,
@@ -282,6 +290,7 @@ class OverlayServer:
         self.special_presentation = None
         self.httpd = None
         self.thread = None
+        self.static_dir = Path(__file__).resolve().parent / "static"
 
     @property
     def url(self):
@@ -340,12 +349,20 @@ class OverlayServer:
                 expires_at=time.monotonic() + float(duration),
             )
 
-    def show_special_presentation(self, kind, title, subtitle="", duration=90.0):
+    def show_special_presentation(
+        self,
+        kind,
+        title,
+        subtitle="",
+        duration=90.0,
+        graphics=None,
+    ):
         with self.lock:
             self.special_presentation = SpecialPresentation(
                 kind=str(kind or ""),
                 title=str(title or ""),
                 subtitle=str(subtitle or ""),
+                graphics=list(graphics or self.state_builder.event_config.graphics),
                 expires_at=time.monotonic() + float(duration),
             )
 
@@ -370,6 +387,10 @@ class OverlayServer:
                     self.send_json(server.current_state_dict())
                     return
 
+                if self.path.startswith("/assets/"):
+                    self.send_asset(self.path.removeprefix("/assets/"))
+                    return
+
                 self.send_error(404)
 
             def send_json(self, data: dict[str, Any]):
@@ -386,6 +407,27 @@ class OverlayServer:
                 self.send_response(200)
                 self.send_header("Content-Type", content_type)
                 self.send_header("Cache-Control", "no-store")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+            def send_asset(self, raw_name):
+                name = unquote(raw_name).replace("\\", "/").split("/")[-1]
+                path = (server.static_dir / name).resolve()
+                try:
+                    path.relative_to(server.static_dir.resolve())
+                except ValueError:
+                    self.send_error(404)
+                    return
+                if not path.exists() or not path.is_file():
+                    self.send_error(404)
+                    return
+
+                body = path.read_bytes()
+                content_type = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
+                self.send_response(200)
+                self.send_header("Content-Type", content_type)
+                self.send_header("Cache-Control", "public, max-age=3600")
                 self.send_header("Content-Length", str(len(body)))
                 self.end_headers()
                 self.wfile.write(body)
@@ -457,6 +499,21 @@ OVERLAY_HTML = r"""<!doctype html>
       font-weight: 800;
       text-transform: uppercase;
       white-space: nowrap;
+    }
+
+    .title-side {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      min-width: 0;
+    }
+
+    .brand-graphic {
+      max-width: 170px;
+      max-height: 56px;
+      object-fit: contain;
+      filter: drop-shadow(0 7px 12px rgba(0, 0, 0, 0.55));
+      opacity: 0.94;
     }
 
     .event-meta {
@@ -613,15 +670,16 @@ OVERLAY_HTML = r"""<!doctype html>
 
     .special-presentation {
       position: absolute;
-      inset: 0;
+      left: 324px;
+      right: 24px;
+      top: 112px;
+      height: 170px;
       display: flex;
       align-items: center;
       justify-content: center;
-      background:
-        radial-gradient(circle at center, rgba(10, 18, 35, 0.54), rgba(0, 0, 0, 0.86)),
-        linear-gradient(135deg, rgba(5, 8, 13, 0.92), rgba(18, 26, 42, 0.88));
       z-index: 20;
       text-transform: uppercase;
+      pointer-events: none;
     }
 
     .special-presentation.hidden {
@@ -630,65 +688,26 @@ OVERLAY_HTML = r"""<!doctype html>
 
     .ceremony-card {
       display: grid;
-      grid-template-columns: 440px 1fr;
+      grid-template-columns: 220px 1fr;
       align-items: center;
-      gap: 54px;
-      padding: 52px 64px;
-      background: rgba(5, 8, 13, 0.72);
+      gap: 32px;
+      width: min(850px, 100%);
+      padding: 18px 28px;
+      background: linear-gradient(90deg, rgba(7, 9, 13, 0.94), rgba(24, 30, 42, 0.88));
       border: 1px solid rgba(255, 255, 255, 0.24);
-      box-shadow: 0 24px 70px rgba(0, 0, 0, 0.62);
+      border-left: 6px solid var(--rgc-red);
+      box-shadow: 0 18px 42px rgba(0, 0, 0, 0.48);
     }
 
-    .flag {
-      position: relative;
-      width: 420px;
-      height: 260px;
-      overflow: hidden;
-      border-radius: 8px;
-      box-shadow: 0 18px 38px rgba(0, 0, 0, 0.55);
-      background: repeating-linear-gradient(
-        to bottom,
-        #b22234 0,
-        #b22234 20px,
-        #fff 20px,
-        #fff 40px
-      );
-      transform-origin: center;
-      animation: flagWave 3.2s ease-in-out infinite;
-    }
-
-    .flag::before {
-      content: "";
-      position: absolute;
-      left: 0;
-      top: 0;
-      width: 176px;
-      height: 140px;
-      background:
-        radial-gradient(circle, #fff 0 2px, transparent 2px) 0 0 / 22px 20px,
-        #3c3b6e;
-    }
-
-    .flag::after {
-      content: "";
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(90deg, rgba(255,255,255,0.20), transparent 18%, rgba(0,0,0,0.20) 44%, transparent 72%);
-      animation: flagHighlight 3.2s ease-in-out infinite;
-    }
-
-    @keyframes flagWave {
-      0%, 100% { transform: perspective(900px) rotateY(-5deg) skewY(0.4deg); }
-      50% { transform: perspective(900px) rotateY(5deg) skewY(-0.4deg); }
-    }
-
-    @keyframes flagHighlight {
-      0%, 100% { transform: translateX(-20px); opacity: 0.74; }
-      50% { transform: translateX(24px); opacity: 0.98; }
+    .ceremony-logo {
+      width: 210px;
+      height: 116px;
+      object-fit: contain;
+      filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.62));
     }
 
     .ceremony-title {
-      font-size: 58px;
+      font-size: 40px;
       font-weight: 950;
       letter-spacing: 0.05em;
     }
@@ -696,7 +715,7 @@ OVERLAY_HTML = r"""<!doctype html>
     .ceremony-subtitle {
       margin-top: 14px;
       color: var(--rgc-muted);
-      font-size: 24px;
+      font-size: 18px;
       font-weight: 800;
       letter-spacing: 0.08em;
     }
@@ -704,9 +723,12 @@ OVERLAY_HTML = r"""<!doctype html>
 </head>
 <body>
   <section id="top-banner" class="top-banner">
-    <div>
-      <div id="event-title" class="event-title">RGC AI Broadcast</div>
-      <div id="series" class="event-meta"></div>
+    <div class="title-side">
+      <img id="brand-graphic" class="brand-graphic hidden" alt="" />
+      <div>
+        <div id="event-title" class="event-title">RGC AI Broadcast</div>
+        <div id="series" class="event-meta"></div>
+      </div>
     </div>
     <div class="event-meta">
       <span id="track">Waiting for iRacing</span>
@@ -733,10 +755,10 @@ OVERLAY_HTML = r"""<!doctype html>
 
   <section id="special-presentation" class="special-presentation hidden">
     <div class="ceremony-card">
-      <div class="flag" aria-label="American flag"></div>
+      <img id="ceremony-logo" class="ceremony-logo" alt="" />
       <div>
-        <div id="ceremony-title" class="ceremony-title">Please Rise</div>
-        <div id="ceremony-subtitle" class="ceremony-subtitle">For the National Anthem</div>
+        <div id="ceremony-title" class="ceremony-title">RGC Anthem</div>
+        <div id="ceremony-subtitle" class="ceremony-subtitle">Presented by RGC Motorsports</div>
       </div>
     </div>
   </section>
@@ -760,6 +782,7 @@ OVERLAY_HTML = r"""<!doctype html>
       setText("sponsor", event.sponsor ? `Presented by ${event.sponsor}` : "");
       setText("lap", buildLapLine(state));
       document.getElementById("top-banner").classList.toggle("caution", !!state.caution);
+      renderBrandGraphic(event.graphics || [], state.session_type);
       renderDriverCard(state.featured_driver);
       renderSpecialPresentation(state.special_presentation);
 
@@ -785,7 +808,20 @@ OVERLAY_HTML = r"""<!doctype html>
       layer.classList.toggle("hidden", !active);
       if (!active) return;
       setText("ceremony-title", presentation.title || "Please Rise");
-      setText("ceremony-subtitle", presentation.subtitle || "For the National Anthem");
+      setText("ceremony-subtitle", presentation.subtitle || "Presented by RGC Motorsports");
+      const logo = document.getElementById("ceremony-logo");
+      const graphics = presentation.graphics || [];
+      const src = pickRotatingGraphic(graphics, 3.5);
+      logo.classList.toggle("hidden", !src);
+      logo.src = src || "";
+    }
+
+    function renderBrandGraphic(graphics, sessionType) {
+      const img = document.getElementById("brand-graphic");
+      const isRace = String(sessionType || "").toLowerCase().includes("race");
+      const src = isRace ? pickRotatingGraphic(graphics || [], 4.5) : "";
+      img.classList.toggle("hidden", !src);
+      img.src = src || "";
     }
 
     function renderDriverCard(driver) {
@@ -833,6 +869,12 @@ OVERLAY_HTML = r"""<!doctype html>
 
     function cssEscapeUrl(value) {
       return String(value).replace(/"/g, "%22").replace(/\\/g, "/");
+    }
+
+    function pickRotatingGraphic(graphics, seconds) {
+      if (!graphics || !graphics.length) return "";
+      const index = Math.floor(Date.now() / (seconds * 1000)) % graphics.length;
+      return graphics[index];
     }
 
     refreshOverlay();
