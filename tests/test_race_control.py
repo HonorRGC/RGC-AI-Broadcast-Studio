@@ -274,6 +274,26 @@ def test_two_to_go_is_called_before_white_flag():
     assert any(item.dedupe_key == "race_control:two_to_go" for item in queue.items)
 
 
+def test_final_six_laps_can_each_be_called():
+    expected = {
+        44: ("Six laps to go", "race_control:six_to_go"),
+        45: ("Five laps to go", "race_control:five_to_go"),
+        46: ("Four laps to go", "race_control:four_to_go"),
+        47: ("Three laps to go", "race_control:three_to_go"),
+        48: ("Two laps to go", "race_control:two_to_go"),
+    }
+
+    for current_lap, (text, key) in expected.items():
+        director = RaceDirector()
+        director.race_started = True
+        queue = BroadcastQueue()
+
+        director.handle_lap_calls(current_lap=current_lap, total_laps=50, scheduler=queue)
+
+        assert any(text in item.message for item in queue.items)
+        assert any(item.dedupe_key == key for item in queue.items)
+
+
 def test_long_race_reports_quarter_half_and_three_quarter_progress():
     director = RaceDirector()
     director.race_started = True

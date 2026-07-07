@@ -44,6 +44,7 @@ class RaceDirector:
         self.five_to_go_announced = False
         self.two_to_go_announced = False
         self.white_flag_announced = False
+        self.final_lap_calls_announced = set()
         self.checkered_announced = False
         self.post_race_results_queued = False
         self.checkered_stabilization_ticks = 0
@@ -352,35 +353,8 @@ class RaceDirector:
             )
             self.ten_to_go_announced = True
 
-        if total_laps > 5 and 1 < laps_to_go <= 5 and not self.five_to_go_announced:
-            scheduler.clear_for_race_control(
-                preserve_categories=("caution_pit_summary", "sponsor_read")
-            )
-            scheduler.add(
-                "Five laps to go. The pressure is about to ramp up.",
-                priority=12,
-                category="race_control",
-                protected=True,
-                speaker="lead",
-                expires_after=15,
-                dedupe_key="race_control:five_to_go",
-            )
-            self.five_to_go_announced = True
-
-        if total_laps > 5 and laps_to_go == 2 and not self.two_to_go_announced:
-            scheduler.clear_for_race_control(
-                preserve_categories=("caution_pit_summary", "sponsor_read")
-            )
-            scheduler.add(
-                "Two laps to go. This race is coming down to the final miles.",
-                priority=12,
-                category="race_control",
-                protected=True,
-                speaker="lead",
-                expires_after=10,
-                dedupe_key="race_control:two_to_go",
-            )
-            self.two_to_go_announced = True
+        if total_laps > 5 and 1 < laps_to_go <= 6:
+            self.handle_final_lap_countdown(laps_to_go, scheduler)
 
         white_flag_is_out = self.has_flag(session_flags, self.WHITE_FLAG)
         if (
@@ -398,6 +372,49 @@ class RaceDirector:
                 dedupe_key="race_control:white_flag",
             )
             self.white_flag_announced = True
+
+    def handle_final_lap_countdown(self, laps_to_go, scheduler):
+        if laps_to_go in self.final_lap_calls_announced:
+            return
+
+        messages = {
+            6: "Six laps to go. The finish is coming fast now.",
+            5: "Five laps to go. The pressure is about to ramp up.",
+            4: "Four laps to go. Every move matters from here.",
+            3: "Three laps to go. The leaders are running out of time.",
+            2: "Two laps to go. This race is coming down to the final miles.",
+        }
+        message = messages.get(laps_to_go)
+        if not message:
+            return
+
+        scheduler.clear_for_race_control(
+            preserve_categories=("caution_pit_summary", "sponsor_read")
+        )
+        scheduler.add(
+            message,
+            priority=12,
+            category="race_control",
+            protected=True,
+            speaker="lead",
+            expires_after=15,
+            dedupe_key=f"race_control:{self.final_lap_key(laps_to_go)}_to_go",
+        )
+        self.final_lap_calls_announced.add(laps_to_go)
+        if laps_to_go == 5:
+            self.five_to_go_announced = True
+        if laps_to_go == 2:
+            self.two_to_go_announced = True
+
+    def final_lap_key(self, laps_to_go):
+        words = {
+            6: "six",
+            5: "five",
+            4: "four",
+            3: "three",
+            2: "two",
+        }
+        return words.get(laps_to_go, str(laps_to_go))
 
     def handle_progress_milestone(
         self,

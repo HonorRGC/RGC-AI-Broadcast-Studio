@@ -53,7 +53,7 @@ class NationalAnthemDirector:
             self.active = False
             if overlay_server:
                 overlay_server.clear_special_presentation()
-            return AnthemDecision("ended", "National anthem presentation ended.")
+            return AnthemDecision("ended", "RGC Anthem presentation ended.")
 
         return AnthemDecision("ignored", "No anthem action is due.")
 

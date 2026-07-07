@@ -907,7 +907,7 @@ OVERLAY_HTML = r"""<!doctype html>
     function buildLapLine(state) {
       if (isTimedSession(state.session_type)) {
         const remaining = Number(state.session_time_remaining || 0);
-        if (remaining > 0) return `${sessionLabel(state.session_type)} • ${formatClock(remaining)} left`;
+        if (remaining > 0) return `${sessionLabel(state.session_type)} ${formatClock(remaining)}`;
         return sessionLabel(state.session_type);
       }
       if (state.total_laps) {
@@ -915,7 +915,7 @@ OVERLAY_HTML = r"""<!doctype html>
         const total = state.total_laps;
         const toGo = Math.max(total - lap, 0);
         if (lap >= Math.ceil(total / 2) && toGo > 0) {
-          return `Lap ${lap} / ${total} • ${toGo} to go`;
+          return `${toGo} to go`;
         }
         return `Lap ${lap} / ${total}`;
       }
