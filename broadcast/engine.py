@@ -11,6 +11,7 @@ from production.league_context import LeagueContext
 from production.openai_director import OpenAIDirector
 from production.opening_director import OpeningDirector
 from production.pit_strategy_detector import PitStrategyDetector
+from production.race_insight_director import RaceInsightDirector
 from production.race_intelligence import RaceIntelligence
 from production.session_tracker import SessionTracker
 from production.sponsor_reads import SponsorReadDirector
@@ -36,6 +37,7 @@ class BroadcastEngine:
         self.race_brain = RaceBrain()
         self.race_director = RaceDirector()
         self.race_intelligence = RaceIntelligence()
+        self.race_insight_director = RaceInsightDirector()
         self.action_detector = ActionDetector()
         self.editorial_producer = EditorialProducer()
         self.pit_strategy_detector = PitStrategyDetector()
@@ -168,6 +170,12 @@ class BroadcastEngine:
                 total_laps,
             )
             if queued_final_battle:
+                return self.broadcast_queue.next_item()
+            queued_insight = self._queue_long_green_insight(
+                race_state,
+                current_lap,
+            )
+            if queued_insight:
                 return self.broadcast_queue.next_item()
             self.editorial_producer.submit_race_knowledge(race_knowledge)
             self._queue_leader_story(
@@ -513,6 +521,7 @@ class BroadcastEngine:
                     driver_lookup,
                     current_lap,
                 )
+                self._queue_caution_race_insight()
             else:
                 self.caution_top_ten_reset_queued = False
             return
@@ -525,6 +534,43 @@ class BroadcastEngine:
         )
         for event in events:
             self.editorial_producer.submit_pit_event(event)
+
+    def _queue_long_green_insight(self, race_state, current_lap):
+        if self.broadcast_queue.items:
+            return False
+        insight = self.race_insight_director.long_green_insight(
+            race_state,
+            current_lap,
+        )
+        if not insight:
+            return False
+        self.broadcast_queue.add(
+            insight.message,
+            priority=insight.priority,
+            category=insight.category,
+            protected=False,
+            speaker=insight.speaker,
+            expires_after=45,
+            dedupe_key=insight.category,
+        )
+        return True
+
+    def _queue_caution_race_insight(self):
+        insight = self.race_insight_director.caution_insight(
+            self.race_intelligence.get_race_state()
+        )
+        if not insight:
+            return False
+        self.broadcast_queue.add(
+            insight.message,
+            priority=insight.priority,
+            category=insight.category,
+            protected=False,
+            speaker=insight.speaker,
+            expires_after=45,
+            dedupe_key=insight.category,
+        )
+        return True
 
     def _queue_caution_sponsor_read(self, current_lap):
         message = self.sponsor_read_director.caution_read(current_lap)

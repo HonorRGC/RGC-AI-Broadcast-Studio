@@ -88,6 +88,8 @@ Incident replay is auto by default and requires `--camera-mode auto`. Cautions r
 
 Race-flow resets are intentionally conservative. The pre-race starting lineup moves quickly from driver to driver, then returns the camera to the TV Mixed leader/home shot when the lineup closes. During a race, Jeff gives one long-run top-ten reset only after 20 consecutive green-flag laps; if a caution interrupts that feature, it does not resume with stale positions. Under caution, Sarah waits until one-to-green to summarize pit-road activity so the field has time to finish the pit cycle, and Jeff can add one quick current top-ten reset before the restart. If a caution flies immediately after a restart, the replay backs up farther to include more of the restart stack-up.
 
+During long green runs, the booth can add one-time racing insight about tire wear, throttle technique, drafting, or fuel saving. These notes are non-repeating and only air when the race has enough natural space. On a late caution before a short run to the finish, Jeff can also frame the restart as a sprint where track position and execution matter more than saving tires.
+
 ## Browser-source overlay
 
 The first overlay layer is a local browser page for Streamlabs, OBS, or any tool that supports browser sources.
