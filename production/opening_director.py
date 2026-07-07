@@ -19,6 +19,7 @@ class OpeningDirector:
         self.welcome_sent = False
         self.track_info_sent = False
         self.lineup_sent = False
+        self.hype_sent = False
         self.lineup_ready_ticks = 0
 
     def update(self, telemetry, results, driver_lookup, current_lap=0):
@@ -48,11 +49,19 @@ class OpeningDirector:
                 )
             )
             self.lineup_sent = True
+            if not self.hype_sent:
+                segments.append(self.build_hype())
+                self.hype_sent = True
 
         return segments
 
     def is_complete(self):
-        return self.welcome_sent and self.track_info_sent and self.lineup_sent
+        return (
+            self.welcome_sent
+            and self.track_info_sent
+            and self.lineup_sent
+            and self.hype_sent
+        )
 
     def has_valid_lineup(self, results):
         valid = [car for car in results or [] if car.get("CarIdx") is not None]
@@ -91,6 +100,17 @@ class OpeningDirector:
             " ".join(parts),
             priority=10,
             category="opening_track_info",
+        )
+
+    def build_hype(self):
+        return OpeningSegment(
+            (
+                "I am fired up for this one. This has all the makings of an "
+                "awesome race, so let's go racing, boys and girls."
+            ),
+            priority=9,
+            speaker="lead",
+            category="opening_hype",
         )
 
     def build_weather_summary(self, track_info):
