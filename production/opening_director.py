@@ -9,6 +9,7 @@ class OpeningSegment:
     category: str = "opening"
     camera_sequence: tuple[int, ...] = ()
     camera_sequence_steps: tuple[tuple, ...] = ()
+    camera_return_home_after_sequence: bool = False
 
 
 class OpeningDirector:
@@ -175,7 +176,8 @@ class OpeningDirector:
                 else ""
             )
             closing = ""
-            if start + self.LINEUP_GROUP_SIZE >= len(entries) and track_name:
+            is_final_segment = start + self.LINEUP_GROUP_SIZE >= len(entries)
+            if is_final_segment and track_name:
                 lap_text = f" for {total_laps} laps" if total_laps else ""
                 closing = (
                     f" That is your {len(entries)}-car field{lap_text} "
@@ -191,6 +193,7 @@ class OpeningDirector:
                     camera_sequence_steps=tuple(
                         (car_idx, "Rear Chase", 0) for car_idx in group_car_indices
                     ),
+                    camera_return_home_after_sequence=is_final_segment,
                 )
             )
         return segments

@@ -42,6 +42,7 @@ class RaceDirector:
 
         self.ten_to_go_announced = False
         self.five_to_go_announced = False
+        self.two_to_go_announced = False
         self.white_flag_announced = False
         self.checkered_announced = False
         self.post_race_results_queued = False
@@ -365,6 +366,21 @@ class RaceDirector:
                 dedupe_key="race_control:five_to_go",
             )
             self.five_to_go_announced = True
+
+        if total_laps > 5 and laps_to_go == 2 and not self.two_to_go_announced:
+            scheduler.clear_for_race_control(
+                preserve_categories=("caution_pit_summary", "sponsor_read")
+            )
+            scheduler.add(
+                "Two laps to go. This race is coming down to the final miles.",
+                priority=12,
+                category="race_control",
+                protected=True,
+                speaker="lead",
+                expires_after=10,
+                dedupe_key="race_control:two_to_go",
+            )
+            self.two_to_go_announced = True
 
         white_flag_is_out = self.has_flag(session_flags, self.WHITE_FLAG)
         if (

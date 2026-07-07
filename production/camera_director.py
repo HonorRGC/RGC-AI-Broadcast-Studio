@@ -46,6 +46,7 @@ class CameraDirector:
         self.last_live_sync_at = None
         self.replay_active = False
         self.clear_sequence()
+        self.sequence_return_home = False
 
     def update(self, telemetry):
         if self.mode == "off" or not self.is_race_session(telemetry):
@@ -79,6 +80,9 @@ class CameraDirector:
                 )
             if self.current_role == "lineup":
                 self.clear_sequence()
+                if self.sequence_return_home:
+                    self.sequence_return_home = False
+                    return self.focus_home(telemetry, now, force=True)
                 return CameraDecision(
                     "held",
                     "Lineup camera holds until the next driver or green flag.",
@@ -150,6 +154,9 @@ class CameraDirector:
         if sequence:
             self.return_home_at = None
             self.sequence = sequence
+            self.sequence_return_home = bool(
+                getattr(item, "camera_return_home_after_sequence", False)
+            )
             self.sequence_index = 1
             self.sequence_interval = self.estimate_sequence_interval(item, sequence)
             self.next_sequence_at = now + self.sequence_interval

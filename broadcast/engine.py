@@ -47,6 +47,8 @@ class BroadcastEngine:
         self.sponsor_read_director = SponsorReadDirector()
         self.broadcast_queue = BroadcastQueue()
         self.caution_marker_replay_count = 0
+        self.caution_top_ten_reset_queued = False
+        self.final_laps_battle_queued = False
         self.last_leader_story_lap = 0
         self.current_leader_car_idx = None
         self.current_leader_started_lap = 0
@@ -127,6 +129,7 @@ class BroadcastEngine:
                 driver_lookup,
                 pit_road_status,
                 current_lap,
+                race_state.green_lap_count,
             )
 
         if self.race_director.phase == RacePhase.GREEN:
@@ -157,6 +160,14 @@ class BroadcastEngine:
                 race_state.green_lap_count,
             )
             if queued_quarter_rundown:
+                return self.broadcast_queue.next_item()
+            queued_final_battle = self._queue_final_laps_battle(
+                story_results,
+                driver_lookup,
+                current_lap,
+                total_laps,
+            )
+            if queued_final_battle:
                 return self.broadcast_queue.next_item()
             self.editorial_producer.submit_race_knowledge(race_knowledge)
             self._queue_leader_story(
@@ -207,6 +218,11 @@ class BroadcastEngine:
                 dedupe_key=segment.category,
                 camera_sequence=segment.camera_sequence,
                 camera_sequence_steps=getattr(segment, "camera_sequence_steps", ()),
+                camera_return_home_after_sequence=getattr(
+                    segment,
+                    "camera_return_home_after_sequence",
+                    False,
+                ),
             )
 
         if self.opening_director.is_complete():
@@ -301,6 +317,84 @@ class BroadcastEngine:
         )
         self.last_leader_story_lap = current_lap
         self.last_leader_gap = gap if gap > 0 else self.last_leader_gap
+
+    def _queue_final_laps_battle(self, results, driver_lookup, current_lap, total_laps):
+        if self.final_laps_battle_queued:
+            return False
+        if total_laps <= 0 or current_lap <= 0:
+            return False
+        laps_to_go = total_laps - current_lap
+        if laps_to_go < 0 or laps_to_go > 3:
+            return False
+        if self.broadcast_queue.items:
+            return False
+
+        battle = self.closest_top_five_battle(results)
+        if not battle:
+            return False
+
+        front, chasing, gap = battle
+        front_idx = front.get("CarIdx")
+        chasing_idx = chasing.get("CarIdx")
+        front_driver = driver_lookup.get(front_idx, {})
+        chasing_driver = driver_lookup.get(chasing_idx, {})
+        front_name = front_driver.get("name", f"Car {front_idx}")
+        chasing_name = chasing_driver.get("name", f"Car {chasing_idx}")
+        front_number = front_driver.get("number", "?")
+        chasing_number = chasing_driver.get("number", "?")
+        position = self.safe_int(chasing.get("Position"), 0)
+        if any(self.safe_int(car.get("Position"), 999) == 0 for car in results or []):
+            position += 1
+        message = (
+            f"Inside the final three laps, the closest battle in the top five is "
+            f"for {self.ordinal_position(position)}. {chasing_name} in the number "
+            f"{chasing_number} is only {gap:.1f} seconds behind {front_name} "
+            f"in the number {front_number}."
+        )
+        self.broadcast_queue.add(
+            message,
+            priority=11,
+            category="final_laps_battle",
+            protected=True,
+            speaker="jeff",
+            expires_after=12,
+            dedupe_key=f"final_laps_battle:{current_lap}",
+            camera_target_car_idx=chasing_idx,
+            participant_car_indices=tuple(
+                car_idx for car_idx in (front_idx, chasing_idx) if car_idx is not None
+            ),
+        )
+        self.final_laps_battle_queued = True
+        return True
+
+    def closest_top_five_battle(self, results):
+        ordered = self.sorted_running_order(results)[:5]
+        if len(ordered) < 2:
+            return None
+
+        best = None
+        for index in range(1, len(ordered)):
+            front = ordered[index - 1]
+            chasing = ordered[index]
+            gap = self.gap_between_adjacent(front, chasing)
+            if gap <= 0:
+                continue
+            if best is None or gap < best[2]:
+                best = (front, chasing, gap)
+        return best
+
+    def gap_between_adjacent(self, front, chasing):
+        chasing_gap = self.safe_float(chasing.get("Time", chasing.get("Gap", 0)))
+        front_gap = self.safe_float(front.get("Time", front.get("Gap", 0)))
+        if chasing_gap > 0:
+            return max(0.0, chasing_gap - max(front_gap, 0.0))
+        return 0.0
+
+    def ordinal_position(self, position):
+        suffix = "th"
+        if position % 100 not in (11, 12, 13):
+            suffix = {1: "st", 2: "nd", 3: "rd"}.get(position % 10, "th")
+        return f"{position}{suffix}"
 
     def sorted_running_order(self, results):
         valid = [car for car in results or [] if car.get("CarIdx") is not None]
@@ -419,6 +513,8 @@ class BroadcastEngine:
                     driver_lookup,
                     current_lap,
                 )
+            else:
+                self.caution_top_ten_reset_queued = False
             return
 
         self.caution_pit_reporter.update(
@@ -445,9 +541,12 @@ class BroadcastEngine:
         )
 
     def _queue_caution_top_ten_reset(self, results, driver_lookup, current_lap):
+        if self.caution_top_ten_reset_queued:
+            return
         message = self.build_caution_top_ten_reset(results, driver_lookup)
         if not message:
             return
+        self.caution_top_ten_reset_queued = True
         self.broadcast_queue.add(
             message,
             priority=8,
@@ -556,6 +655,7 @@ class BroadcastEngine:
         driver_lookup,
         pit_road_status,
         current_lap,
+        green_lap_count=0,
     ):
         caution_just_started = (
             self.race_director.phase == RacePhase.CAUTION
@@ -568,6 +668,7 @@ class BroadcastEngine:
                     results,
                     telemetry,
                     current_lap,
+                    green_lap_count,
                     reason=(
                         "caution started before scoring had enough laps "
                         "to build a replay candidate"
@@ -596,6 +697,7 @@ class BroadcastEngine:
                     results,
                     telemetry,
                     current_lap,
+                    green_lap_count,
                     reason="caution started but no replay candidate was found",
                 )
             return
@@ -650,9 +752,21 @@ class BroadcastEngine:
                 replay_incident_delta=event.incident_delta,
                 replay_multi_angle=replay_eligible and caution_just_started,
                 replay_use_incident_marker=use_incident_marker_replay,
+                replay_marker_pre_roll_frames=(
+                    self.restart_caution_marker_pre_roll_frames(green_lap_count)
+                    if use_incident_marker_replay
+                    else None
+                ),
             )
 
-    def queue_incident_marker_replay(self, results, telemetry, current_lap, reason):
+    def queue_incident_marker_replay(
+        self,
+        results,
+        telemetry,
+        current_lap,
+        green_lap_count,
+        reason,
+    ):
         self.report_incident_debug(reason, results, telemetry)
         session_num_reader = getattr(telemetry, "get_current_session_num", None)
         session_num = session_num_reader() if session_num_reader else 0
@@ -672,7 +786,19 @@ class BroadcastEngine:
             replay_incident_delta=0,
             replay_multi_angle=True,
             replay_use_incident_marker=True,
+            replay_marker_pre_roll_frames=self.restart_caution_marker_pre_roll_frames(
+                green_lap_count
+            ),
         )
+
+    def restart_caution_marker_pre_roll_frames(self, green_lap_count):
+        try:
+            green_lap_count = int(green_lap_count)
+        except Exception:
+            green_lap_count = 99
+        if green_lap_count <= 2:
+            return 40 * 60
+        return None
 
     def should_suppress_soft_incidents(self):
         # Soft telemetry signals such as estimated-time loss, lap-distance loss,

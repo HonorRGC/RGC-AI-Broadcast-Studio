@@ -22,6 +22,8 @@ class ScheduledBroadcast:
     replay_incident_delta: int = 0
     replay_multi_angle: bool = False
     replay_use_incident_marker: bool = False
+    replay_marker_pre_roll_frames: int | None = None
+    camera_return_home_after_sequence: bool = False
     created_at: float = field(default_factory=time.time)
 
     @property
@@ -57,6 +59,8 @@ class BroadcastQueue:
         replay_incident_delta=0,
         replay_multi_angle=False,
         replay_use_incident_marker=False,
+        replay_marker_pre_roll_frames=None,
+        camera_return_home_after_sequence=False,
     ):
         if not commentary:
             return
@@ -84,6 +88,10 @@ class BroadcastQueue:
                 replay_incident_delta=replay_incident_delta,
                 replay_multi_angle=bool(replay_multi_angle),
                 replay_use_incident_marker=bool(replay_use_incident_marker),
+                replay_marker_pre_roll_frames=replay_marker_pre_roll_frames,
+                camera_return_home_after_sequence=bool(
+                    camera_return_home_after_sequence
+                ),
             )
         )
 

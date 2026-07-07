@@ -45,6 +45,7 @@ class ReplayDirector:
         self.angle_started_at = None
         self.camera_engaged = False
         self.use_incident_marker = False
+        self.marker_pre_roll_override_frames = None
         self.played_story_ids = set()
 
     def handle_item(self, item, telemetry, camera_director):
@@ -80,6 +81,11 @@ class ReplayDirector:
         self.replay_session_time = float(session_time or 0.0)
         self.replay_start_time = self.current_replay_start_time()
         self.use_incident_marker = use_incident_marker
+        self.marker_pre_roll_override_frames = getattr(
+            item,
+            "replay_marker_pre_roll_frames",
+            None,
+        )
         self.active_groups = groups
         self.angle_index = 0
 
@@ -205,6 +211,8 @@ class ReplayDirector:
         return self.pre_roll_seconds
 
     def current_incident_marker_pre_roll_frames(self):
+        if self.marker_pre_roll_override_frames:
+            return int(self.marker_pre_roll_override_frames)
         return self.incident_marker_pre_roll_frames
 
     def restore_live_after_failure(self, telemetry, camera_director):

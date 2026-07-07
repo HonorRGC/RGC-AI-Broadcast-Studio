@@ -263,6 +263,17 @@ def test_white_flag_can_be_called_from_flag_even_if_lap_count_lags():
     assert any("White flag" in item.message for item in queue.items)
 
 
+def test_two_to_go_is_called_before_white_flag():
+    director = RaceDirector()
+    director.race_started = True
+    queue = BroadcastQueue()
+
+    director.handle_lap_calls(current_lap=48, total_laps=50, scheduler=queue)
+
+    assert any("Two laps to go" in item.message for item in queue.items)
+    assert any(item.dedupe_key == "race_control:two_to_go" for item in queue.items)
+
+
 def test_long_race_reports_quarter_half_and_three_quarter_progress():
     director = RaceDirector()
     director.race_started = True

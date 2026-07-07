@@ -77,6 +77,12 @@ def incident_marker_item():
     )
 
 
+def restart_incident_marker_item():
+    item = incident_marker_item()
+    item.replay_marker_pre_roll_frames = 2400
+    return item
+
+
 def green_item():
     return SimpleNamespace(
         category="race_control",
@@ -228,3 +234,17 @@ def test_incident_marker_replay_pre_roll_frames_are_configurable():
     director.handle_item(incident_marker_item(), telemetry, camera)
 
     assert telemetry.seeks == [("previous_incident", 480)]
+
+
+def test_incident_marker_replay_can_use_per_item_restart_preroll():
+    telemetry = ReplayTelemetry()
+    camera = ReplayCamera()
+    director = ReplayDirector(
+        mode="auto",
+        incident_marker_pre_roll_frames=1500,
+        clock=lambda: 10.0,
+    )
+
+    director.handle_item(restart_incident_marker_item(), telemetry, camera)
+
+    assert telemetry.seeks == [("previous_incident", 2400)]

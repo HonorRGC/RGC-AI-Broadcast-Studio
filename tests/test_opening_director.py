@@ -58,6 +58,8 @@ def test_opening_waits_for_lineup_after_welcome_and_weather():
     assert "Starting 12th, the 12 of Driver 12" in lineup_segments[-1].message
     assert lineup_segments[0].camera_sequence == (0,)
     assert lineup_segments[0].camera_sequence_steps == ((0, "Rear Chase", 0),)
+    assert lineup_segments[0].camera_return_home_after_sequence is False
+    assert lineup_segments[-1].camera_return_home_after_sequence is True
     assert lineup_segments[0].speaker == "jeff"
     assert (
         "That is your 12-car field for 80 laps at Nashville Superspeedway"

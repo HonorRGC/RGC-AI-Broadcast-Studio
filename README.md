@@ -86,7 +86,7 @@ Camera direction is auto by default. `observe` prints the car and camera group t
 
 Incident replay is auto by default and requires `--camera-mode auto`. Cautions receive one stable Far Chase replay using iRacing's previous-incident marker with 25 seconds of pre-roll, held for 20 seconds, then the broadcast returns to the live leader. Live-edge enforcement pauses while replay is active, and green or checkered immediately aborts replay and returns live. Use `--incident-replay observe` to preview replay decisions without sending replay or camera commands.
 
-Race-flow resets are intentionally conservative. The pre-race starting lineup moves quickly from driver to driver. During a race, Jeff gives one long-run top-ten reset only after 20 consecutive green-flag laps; if a caution interrupts that feature, it does not resume with stale positions. Under caution, Sarah waits until one-to-green to summarize pit-road activity so the field has time to finish the pit cycle, and Jeff can add a quick current top-ten reset before the restart.
+Race-flow resets are intentionally conservative. The pre-race starting lineup moves quickly from driver to driver, then returns the camera to the TV Mixed leader/home shot when the lineup closes. During a race, Jeff gives one long-run top-ten reset only after 20 consecutive green-flag laps; if a caution interrupts that feature, it does not resume with stale positions. Under caution, Sarah waits until one-to-green to summarize pit-road activity so the field has time to finish the pit cycle, and Jeff can add one quick current top-ten reset before the restart. If a caution flies immediately after a restart, the replay backs up farther to include more of the restart stack-up.
 
 ## Browser-source overlay
 

@@ -183,6 +183,31 @@ def test_single_driver_lineup_holds_shot_instead_of_returning_home():
     assert telemetry.switches == [("14", 8, 0)]
 
 
+def test_final_lineup_driver_returns_to_tv_mixed_home():
+    telemetry = CameraTelemetry()
+    telemetry.get_camera_groups = lambda: [
+        {"GroupNum": 8, "GroupName": "Rear Chase"},
+        {"GroupNum": 9, "GroupName": "TV Mixed"},
+    ]
+    times = iter([100.0, 106.0])
+    director = CameraDirector(mode="auto", clock=lambda: next(times))
+    lineup = SimpleNamespace(
+        camera_target_car_idx=None,
+        camera_sequence=(),
+        camera_sequence_steps=((3, "Rear Chase", 0),),
+        camera_return_home_after_sequence=True,
+        dedupe_key="opening_field_rundown_25",
+        message="Starting 25th, the 25 of Final Driver. That is your field.",
+    )
+
+    first = director.follow(lineup, telemetry)
+    home = director.update(telemetry)
+
+    assert first.status == "switched"
+    assert home.status == "switched"
+    assert telemetry.switches == [("14", 8, 0), ("77", 9, 0)]
+
+
 def test_story_shot_returns_to_leader_on_tv_mixed_after_ten_seconds():
     telemetry = CameraTelemetry()
     times = iter([100.0, 111.0])

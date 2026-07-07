@@ -820,6 +820,28 @@ def test_one_to_green_reports_small_caution_pit_group():
     assert "1: the 1 of Driver 1" in top_ten.message
 
 
+def test_one_to_green_top_ten_reset_only_queues_once_per_caution():
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    results = [
+        {"CarIdx": index, "Position": index}
+        for index in range(10)
+    ]
+    drivers = {
+        index: {"name": f"Driver {index + 1}", "number": str(index + 1)}
+        for index in range(10)
+    }
+    engine.race_director.phase = RacePhase.ONE_TO_GREEN
+
+    engine._collect_pit_stories(results, drivers, [False] * 10, current_lap=20)
+    engine._collect_pit_stories(results, drivers, [False] * 10, current_lap=21)
+
+    resets = [
+        item for item in engine.broadcast_queue.items
+        if item.category == "caution_top_ten_reset"
+    ]
+    assert len(resets) == 1
+
+
 def test_one_to_green_majority_pit_report_waits_for_full_caution_cycle():
     engine = BroadcastEngine(openai_director=SilentOpenAI())
     results = [
@@ -863,6 +885,43 @@ def test_one_to_green_majority_pit_report_waits_for_full_caution_cycle():
     )
     assert "18 of 20 cars" in pit_item.message
     assert pit_item.speaker == "sarah"
+
+
+def test_restart_caution_marker_replay_uses_extra_preroll():
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+
+    assert engine.restart_caution_marker_pre_roll_frames(0) == 2400
+    assert engine.restart_caution_marker_pre_roll_frames(2) == 2400
+    assert engine.restart_caution_marker_pre_roll_frames(3) is None
+
+
+def test_final_laps_battle_prioritizes_closest_top_five_gap():
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    results = [
+        {"CarIdx": 0, "Position": 0, "Time": 0.0},
+        {"CarIdx": 1, "Position": 1, "Time": 1.5},
+        {"CarIdx": 2, "Position": 2, "Time": 1.8},
+        {"CarIdx": 3, "Position": 3, "Time": 4.0},
+        {"CarIdx": 4, "Position": 4, "Time": 5.0},
+    ]
+    drivers = {
+        index: {"name": f"Driver {index + 1}", "number": str(index + 1)}
+        for index in range(5)
+    }
+
+    queued = engine._queue_final_laps_battle(
+        results,
+        drivers,
+        current_lap=48,
+        total_laps=50,
+    )
+
+    item = engine.broadcast_queue.items[0]
+    assert queued is True
+    assert item.category == "final_laps_battle"
+    assert item.camera_target_car_idx == 2
+    assert "for 3rd" in item.message
+    assert "0.3 seconds" in item.message
 
 
 def test_cool_down_state_airs_checkered_and_suppresses_false_incident():
