@@ -124,7 +124,8 @@ class ReplayDirector:
         self.active = True
         self.angle_started_at = self.clock()
         self.played_story_ids.add(story_id)
-        self.play_replay_audio(story_id)
+        if getattr(item, "replay_multi_angle", False):
+            self.play_replay_audio(story_id)
         return ReplayDecision(
             "started",
             "Incident replay started.",

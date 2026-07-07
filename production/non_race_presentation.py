@@ -1,25 +1,17 @@
-from pathlib import Path
-import os
-
-from config import PRACTICE_MUSIC_PLAYLIST, SPONSOR_READ_CAUSE, SPONSOR_READ_NAME
+from config import SPONSOR_READ_CAUSE, SPONSOR_READ_NAME
 from production.session_tracker import SessionTracker, WeekendSession
 
 
 class PracticePresentationDirector:
     def __init__(
         self,
-        playlist=None,
-        player=None,
         sponsor_name=SPONSOR_READ_NAME,
         sponsor_cause=SPONSOR_READ_CAUSE,
     ):
-        self.playlist = list(playlist if playlist is not None else PRACTICE_MUSIC_PLAYLIST)
-        self.player = player or getattr(os, "startfile", None)
         self.sponsor_name = sponsor_name
         self.sponsor_cause = sponsor_cause
         self.session_tracker = SessionTracker()
         self.presentation_shown = False
-        self.music_started = False
 
     def update(self, session_type, overlay_server=None):
         session = self.session_tracker.normalize(session_type)
@@ -38,30 +30,11 @@ class PracticePresentationDirector:
             )
             self.presentation_shown = True
 
-        if self.playlist and not self.music_started:
-            self.music_started = True
-            return self.play_first_available_song()
-
         return None
 
     def subtitle(self):
         parts = [part for part in [self.sponsor_name, self.sponsor_cause] if part]
         return " • ".join(parts) if parts else "RGC AI Broadcast Studio"
-
-    def play_first_available_song(self):
-        if not self.player:
-            return "Practice music is configured, but no desktop audio player is available."
-        for raw_path in self.playlist:
-            path = Path(raw_path).expanduser()
-            if not path.exists():
-                continue
-            try:
-                self.player(str(path.resolve()))
-            except Exception as error:
-                return f"Practice music could not be played: {error}"
-            return f"Practice music started: {path.name}"
-        return "Practice music playlist is configured, but no listed file was found."
-
 
 class QualifyingCameraDirector:
     def __init__(self, hold_seconds=8.0, clock=None):

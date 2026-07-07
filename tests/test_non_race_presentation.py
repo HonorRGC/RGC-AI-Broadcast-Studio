@@ -21,7 +21,6 @@ class OverlaySpy:
 def test_practice_presentation_shows_race_sponsors_and_clears_after_practice():
     overlay = OverlaySpy()
     director = PracticePresentationDirector(
-        playlist=[],
         sponsor_name="RGC Motorsports",
         sponsor_cause="Autism Awareness",
     )

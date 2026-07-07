@@ -115,7 +115,7 @@ def test_ordinary_incident_plays_one_angle_then_returns_live():
     assert camera.replay_active is False
 
 
-def test_incident_replay_uses_audio_bed_player(tmp_path):
+def test_green_flag_incident_replay_does_not_use_caution_audio_bed(tmp_path):
     audio = tmp_path / "caution.mp3"
     audio.write_bytes(b"audio")
     audio_bed = AudioBedSpy()
@@ -129,6 +129,24 @@ def test_incident_replay_uses_audio_bed_player(tmp_path):
     )
 
     director.handle_item(incident_item(), telemetry, camera)
+
+    assert audio_bed.played == []
+
+
+def test_caution_incident_replay_uses_audio_bed_player(tmp_path):
+    audio = tmp_path / "caution.mp3"
+    audio.write_bytes(b"audio")
+    audio_bed = AudioBedSpy()
+    telemetry = ReplayTelemetry()
+    camera = ReplayCamera()
+    director = ReplayDirector(
+        mode="auto",
+        replay_audio_path=str(audio),
+        audio_player=audio_bed,
+        clock=lambda: 10.0,
+    )
+
+    director.handle_item(incident_item(multi_angle=True), telemetry, camera)
 
     assert audio_bed.played == [str(audio.resolve())]
 

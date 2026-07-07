@@ -124,14 +124,13 @@ NATIONAL_ANTHEM_DURATION_SECONDS=90
 
 If you start the program during practice or qualifying, the overlay can show the RGC Anthem graphics near the top of the screen and play the configured local audio file once qualifying begins. The qualifying board stays visible underneath. Once the race session starts, the same brand graphics cycle cleanly in the title banner. The project does not include an anthem recording; use your own recording or a properly licensed audio file.
 
-Optional music beds:
+Optional caution replay music bed:
 
 ```text
-PRACTICE_MUSIC_PLAYLIST=C:\Path\To\song1.mp3;C:\Path\To\song2.mp3
 CAUTION_REPLAY_AUDIO=C:\Path\To\rgc_anthem.mp3
 ```
 
-Practice music starts only if a playlist is configured. Caution replay audio starts when an incident replay package begins. Leave these blank to keep all music disabled.
+Caution replay audio starts only when a caution replay package begins. The app keeps that music bed playing under replay coverage and ducks it while Mike, Jeff, or Sarah talk. Leave this blank to keep caution music disabled.
 
 Then start the broadcast with:
 
