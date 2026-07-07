@@ -890,7 +890,7 @@ def test_one_to_green_majority_pit_report_waits_for_full_caution_cycle():
     assert pit_item.speaker == "sarah"
 
 
-def test_one_to_green_can_call_lucky_dog_candidate():
+def test_one_to_green_does_not_call_lucky_dog_candidate_for_now():
     engine = BroadcastEngine(openai_director=SilentOpenAI())
     results = [
         {"CarIdx": 0, "Position": 0, "LapsComplete": 20},
@@ -902,12 +902,16 @@ def test_one_to_green_can_call_lucky_dog_candidate():
         1: {"name": "Lucky Driver", "number": "7"},
         2: {"name": "Other Driver", "number": "8"},
     }
+    engine.race_director.phase = RacePhase.ONE_TO_GREEN
 
-    engine._queue_lucky_dog_note(results, drivers, current_lap=20)
+    engine._collect_pit_stories(
+        results=results,
+        driver_lookup=drivers,
+        pit_road_status=[False] * 3,
+        current_lap=20,
+    )
 
-    item = next(item for item in engine.broadcast_queue.items if item.category == "lucky_dog")
-    assert "lucky dog should be the 7 of Lucky Driver" in item.message
-    assert item.camera_target_car_idx == 1
+    assert not any(item.category == "lucky_dog" for item in engine.broadcast_queue.items)
 
 
 def test_late_caution_note_mentions_green_white_checkered():

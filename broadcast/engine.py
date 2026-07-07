@@ -580,7 +580,6 @@ class BroadcastEngine:
                     driver_lookup,
                     current_lap,
                 )
-                self._queue_lucky_dog_note(results, driver_lookup, current_lap)
                 self._queue_caution_race_insight()
             else:
                 self.caution_top_ten_reset_queued = False
