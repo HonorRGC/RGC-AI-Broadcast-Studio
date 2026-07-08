@@ -19,6 +19,7 @@ class OpeningDirector:
     def __init__(self):
         self.welcome_sent = False
         self.track_info_sent = False
+        self.race_outlook_sent = False
         self.lineup_sent = False
         self.hype_sent = False
         self.lineup_ready_ticks = 0
@@ -35,9 +36,13 @@ class OpeningDirector:
             segments.append(self.build_track_info(track_info))
             self.track_info_sent = True
 
+        if not self.race_outlook_sent:
+            segments.append(self.build_race_outlook(track_info))
+            self.race_outlook_sent = True
+
         if not self.lineup_sent and self.has_valid_lineup(results):
             self.lineup_ready_ticks += 1
-            if self.lineup_ready_ticks < 3:
+            if self.lineup_ready_ticks < 5:
                 return segments
             total_laps_reader = getattr(telemetry, "get_total_laps", None)
             total_laps = total_laps_reader() if total_laps_reader else 0
@@ -60,6 +65,7 @@ class OpeningDirector:
         return (
             self.welcome_sent
             and self.track_info_sent
+            and self.race_outlook_sent
             and self.lineup_sent
             and self.hype_sent
         )
@@ -103,6 +109,20 @@ class OpeningDirector:
             category="opening_track_info",
         )
 
+    def build_race_outlook(self, track_info):
+        track_name = track_info.get("track_name", "this place")
+        return OpeningSegment(
+            (
+                f"As this race unfolds at {track_name}, watch how the opening "
+                "laps settle in. Track position will matter, but the drivers "
+                "who keep the tires underneath them and stay patient in traffic "
+                "could be the ones with something left when it is time to race "
+                "for the win."
+            ),
+            priority=9,
+            category="opening_race_outlook",
+        )
+
     def build_hype(self):
         return OpeningSegment(
             (
@@ -112,7 +132,7 @@ class OpeningDirector:
             priority=7,
             speaker="lead",
             category="opening_hype",
-            delay_seconds=6.0,
+            delay_seconds=7.0,
         )
 
     def build_weather_summary(self, track_info):

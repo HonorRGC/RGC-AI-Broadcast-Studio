@@ -7,6 +7,7 @@ from broadcaster.telemetry import IRacingTelemetry
 from production.camera_director import CameraDirector
 from production.audio_bed import AudioBedPlayer
 from production.anthem_director import NationalAnthemDirector
+from production.caution_presentation import CautionPresentationDirector
 from production.non_race_presentation import (
     PracticePresentationDirector,
     QualifyingCameraDirector,
@@ -107,8 +108,10 @@ def run_source(
     replay_director,
     anthem_director,
     practice_presentation_director,
+    caution_presentation_director,
     qualifying_camera_director,
     overlay_server,
+    caution_audio_bed,
     tick_seconds,
 ):
     while source.is_connected():
@@ -129,6 +132,13 @@ def run_source(
             qualifying_camera_director.update(source, camera_director)
         )
         item = engine.tick(source)
+        report_caution_presentation(
+            caution_presentation_director.update(
+                engine.race_director.phase,
+                overlay_server,
+                caution_audio_bed,
+            )
+        )
         if item:
             report_replay_decision(
                 replay_director.handle_item(item, source, camera_director)
@@ -172,6 +182,11 @@ def report_anthem_decision(decision):
 def report_practice_presentation(message):
     if message:
         print(f"PRACTICE: {message}")
+
+
+def report_caution_presentation(message):
+    if message:
+        print(f"CAUTION: {message}")
 
 
 def should_switch_camera_after_voice_starts(item):
@@ -289,6 +304,7 @@ def main():
     )
     anthem_director = NationalAnthemDirector()
     practice_presentation_director = PracticePresentationDirector()
+    caution_presentation_director = CautionPresentationDirector()
     qualifying_camera_director = QualifyingCameraDirector()
     overlay_server = OverlayServer(
         host=args.overlay_host,
@@ -357,8 +373,10 @@ def main():
             replay_director,
             anthem_director,
             practice_presentation_director,
+            caution_presentation_director,
             qualifying_camera_director,
             overlay_server,
+            caution_audio_bed,
             args.tick_seconds,
         )
         return
@@ -376,6 +394,7 @@ def main():
         replay_director.reset()
         anthem_director = NationalAnthemDirector()
         practice_presentation_director = PracticePresentationDirector()
+        caution_presentation_director = CautionPresentationDirector()
         qualifying_camera_director = QualifyingCameraDirector()
         run_source(
             source,
@@ -385,8 +404,10 @@ def main():
             replay_director,
             anthem_director,
             practice_presentation_director,
+            caution_presentation_director,
             qualifying_camera_director,
             overlay_server,
+            caution_audio_bed,
             args.tick_seconds,
         )
         print("Disconnected from iRacing. Resetting broadcast session.")

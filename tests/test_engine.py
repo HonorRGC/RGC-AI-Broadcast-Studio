@@ -104,7 +104,6 @@ def test_engine_queues_exactly_one_initial_green_flag():
     emitted = engine.tick(source)
     engine.tick(source)
     engine.tick(source)
-    engine.tick(source)
     pending_green = [
         item for item in engine.broadcast_queue.items if "green" in item.dedupe_key
     ]
@@ -163,6 +162,8 @@ def test_initial_one_to_green_keeps_the_opening_package_available():
     emitted = engine.tick(source)
     engine.tick(source)
     engine.tick(source)
+    engine.tick(source)
+    engine.tick(source)
 
     assert emitted.category == "opening_welcome"
     assert any(
@@ -204,6 +205,8 @@ def test_engine_queues_sponsor_read_after_opening_lineup():
     engine.tick(source)
     engine.tick(source)
     engine.tick(source)
+    engine.tick(source)
+    engine.tick(source)
 
     sponsor_items = [
         item for item in engine.broadcast_queue.items
@@ -212,7 +215,7 @@ def test_engine_queues_sponsor_read_after_opening_lineup():
     assert len(sponsor_items) == 1
     assert sponsor_items[0].message == "Opening sponsor read."
     assert sponsor_items[0].priority == 8
-    assert sponsor_items[0].delay_seconds == 3.0
+    assert sponsor_items[0].delay_seconds == 6.0
 
 
 def test_engine_is_silent_until_the_race_session_begins():
@@ -278,6 +281,8 @@ def test_engine_uses_qualifying_grid_when_race_results_are_not_ready():
     engine = BroadcastEngine(openai_director=SilentOpenAI())
 
     source = SnapshotSource(snapshot)
+    engine.tick(source)
+    engine.tick(source)
     engine.tick(source)
     engine.tick(source)
     engine.tick(source)

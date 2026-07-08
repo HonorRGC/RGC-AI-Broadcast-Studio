@@ -42,12 +42,16 @@ def test_opening_waits_for_lineup_after_welcome_and_weather():
     assert [segment.category for segment in first_segments] == [
         "opening_welcome",
         "opening_track_info",
+        "opening_race_outlook",
     ]
     assert "partly cloudy" in first_segments[1].message.lower()
     assert "81 degrees Fahrenheit" in first_segments[1].message
+    assert "opening laps" in first_segments[2].message
     assert director.is_complete() is False
 
     results, drivers = build_lineup()
+    assert director.update(TrackTelemetry(), results, drivers) == []
+    assert director.update(TrackTelemetry(), results, drivers) == []
     assert director.update(TrackTelemetry(), results, drivers) == []
     assert director.update(TrackTelemetry(), results, drivers) == []
     lineup_segments = director.update(TrackTelemetry(), results, drivers)
@@ -63,7 +67,7 @@ def test_opening_waits_for_lineup_after_welcome_and_weather():
     assert lineup_segments[-2].camera_return_home_after_sequence is True
     assert lineup_segments[0].speaker == "jeff"
     assert lineup_segments[-1].speaker == "lead"
-    assert lineup_segments[-1].delay_seconds == 6.0
+    assert lineup_segments[-1].delay_seconds == 7.0
     assert "let's go racing, boys and girls" in lineup_segments[-1].message
     assert (
         "That is your 12-car field for 80 laps at Nashville Superspeedway"
@@ -76,6 +80,8 @@ def test_lineup_supports_one_based_positions():
     director = OpeningDirector()
     results, drivers = build_lineup(count=5, zero_based=False)
 
+    director.update(TrackTelemetry(), results, drivers)
+    director.update(TrackTelemetry(), results, drivers)
     director.update(TrackTelemetry(), results, drivers)
     director.update(TrackTelemetry(), results, drivers)
     segments = director.update(TrackTelemetry(), results, drivers)
@@ -104,5 +110,5 @@ def test_opening_hype_follows_the_lineup():
 
     assert segment.category == "opening_hype"
     assert segment.speaker == "lead"
-    assert segment.delay_seconds == 6.0
+    assert segment.delay_seconds == 7.0
     assert "awesome race" in segment.message
