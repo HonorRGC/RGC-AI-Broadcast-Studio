@@ -805,6 +805,18 @@ def test_one_to_green_reports_small_caution_pit_group():
         pit_road_status=[False, False, False, False, False, False],
         current_lap=6,
     )
+    engine._collect_pit_stories(
+        results=results,
+        driver_lookup=drivers,
+        pit_road_status=[False, False, False, False, False, False],
+        current_lap=6,
+    )
+    engine._collect_pit_stories(
+        results=results,
+        driver_lookup=drivers,
+        pit_road_status=[False, False, False, False, False, False],
+        current_lap=6,
+    )
 
     pit_item = next(
         item for item in engine.broadcast_queue.items
@@ -840,14 +852,49 @@ def test_one_to_green_top_ten_reset_only_queues_once_per_caution():
     }
     engine.race_director.phase = RacePhase.ONE_TO_GREEN
 
-    engine._collect_pit_stories(results, drivers, [False] * 10, current_lap=20)
-    engine._collect_pit_stories(results, drivers, [False] * 10, current_lap=21)
+    for lap in (20, 21, 22, 23):
+        engine._collect_pit_stories(results, drivers, [False] * 10, current_lap=lap)
 
     resets = [
         item for item in engine.broadcast_queue.items
         if item.category == "caution_top_ten_reset"
     ]
     assert len(resets) == 1
+
+
+def test_one_to_green_top_ten_waits_for_stable_running_order():
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    drivers = {
+        index: {"name": f"Driver {index + 1}", "number": str(index + 1)}
+        for index in range(10)
+    }
+    first_order = [
+        {"CarIdx": index, "Position": index}
+        for index in range(10)
+    ]
+    settled_order = [
+        {"CarIdx": car_idx, "Position": position}
+        for position, car_idx in enumerate([0, 2, 1, 3, 4, 5, 6, 7, 8, 9])
+    ]
+    engine.race_director.phase = RacePhase.ONE_TO_GREEN
+
+    engine._collect_pit_stories(first_order, drivers, [False] * 10, current_lap=20)
+    engine._collect_pit_stories(settled_order, drivers, [False] * 10, current_lap=20)
+    engine._collect_pit_stories(settled_order, drivers, [False] * 10, current_lap=20)
+
+    assert not any(
+        item.category == "caution_top_ten_reset"
+        for item in engine.broadcast_queue.items
+    )
+
+    engine._collect_pit_stories(settled_order, drivers, [False] * 10, current_lap=20)
+
+    reset = next(
+        item for item in engine.broadcast_queue.items
+        if item.category == "caution_top_ten_reset"
+    )
+    assert "second, the 3 of Driver 3" in reset.message
+    assert "third, the 2 of Driver 2" in reset.message
 
 
 def test_one_to_green_majority_pit_report_waits_for_full_caution_cycle():
@@ -1052,7 +1099,7 @@ def test_cool_down_state_airs_checkered_and_suppresses_false_incident():
     assert "incident" not in categories
     assert "post_race" not in categories
 
-    for _ in range(3):
+    for _ in range(8):
         engine.tick(source)
 
     categories = [item.category for item in engine.broadcast_queue.items]

@@ -343,7 +343,7 @@ def test_checkered_queues_finish_rundown_then_signoff():
         queue,
         {"track_name": "Homestead Miami Speedway"},
     )
-    for _ in range(4):
+    for _ in range(8):
         director.handle_post_race_results(
             results,
             drivers,
@@ -357,6 +357,60 @@ def test_checkered_queues_finish_rundown_then_signoff():
     assert "Thank you for watching" in queue.items[2].message
     assert "Homestead Miami Speedway" in queue.items[2].message
     assert "Jeff and Sarah" in queue.items[2].message
+
+
+def test_checkered_finish_rundown_waits_for_stable_order():
+    director = RaceDirector()
+    queue = BroadcastQueue()
+    drivers = {
+        0: {"name": "Winner", "number": "1"},
+        1: {"name": "Second Early", "number": "2"},
+        2: {"name": "Second Final", "number": "3"},
+    }
+    early_results = [
+        {"CarIdx": 0, "Position": 0},
+        {"CarIdx": 1, "Position": 1},
+        {"CarIdx": 2, "Position": 2},
+    ]
+    final_results = [
+        {"CarIdx": 0, "Position": 0},
+        {"CarIdx": 2, "Position": 1},
+        {"CarIdx": 1, "Position": 2},
+    ]
+
+    director.handle_checkered(
+        early_results,
+        drivers,
+        queue,
+        {"track_name": "Homestead Miami Speedway"},
+    )
+    for _ in range(6):
+        director.handle_post_race_results(
+            early_results,
+            drivers,
+            queue,
+            {"track_name": "Homestead Miami Speedway"},
+        )
+    for _ in range(2):
+        director.handle_post_race_results(
+            final_results,
+            drivers,
+            queue,
+            {"track_name": "Homestead Miami Speedway"},
+        )
+
+    assert not any(item.category == "post_race" for item in queue.items)
+
+    director.handle_post_race_results(
+        final_results,
+        drivers,
+        queue,
+        {"track_name": "Homestead Miami Speedway"},
+    )
+
+    rundown = next(item for item in queue.items if item.category == "post_race")
+    assert "second, the 3 of Second Final" in rundown.message
+    assert "third, the 2 of Second Early" in rundown.message
 
 
 def test_finish_rundown_formats_zero_based_positions():

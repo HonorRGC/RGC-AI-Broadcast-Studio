@@ -48,6 +48,8 @@ class RaceDirector:
         self.checkered_announced = False
         self.post_race_results_queued = False
         self.checkered_stabilization_ticks = 0
+        self.finish_order_signature = ()
+        self.finish_order_stable_ticks = 0
         self.progress_milestones_announced = set()
         self.last_results = []
         self.last_driver_lookup = {}
@@ -286,13 +288,18 @@ class RaceDirector:
 
         self.checkered_announced = True
         self.checkered_stabilization_ticks = 0
+        self.finish_order_signature = ()
+        self.finish_order_stable_ticks = 0
 
     def handle_post_race_results(self, results, driver_lookup, scheduler, track_info):
         if not self.checkered_announced or self.post_race_results_queued:
             return
 
         self.checkered_stabilization_ticks += 1
-        if self.checkered_stabilization_ticks < 4:
+        if self.checkered_stabilization_ticks < 6:
+            return
+
+        if not self.finish_order_is_stable(results):
             return
 
         track_name = self.get_track_name(track_info)
@@ -320,6 +327,20 @@ class RaceDirector:
         )
 
         self.post_race_results_queued = True
+
+    def finish_order_is_stable(self, results, required_ticks=3, max_cars=10):
+        ordered = self.sort_results(results or [])[:max_cars]
+        signature = tuple(car.get("CarIdx") for car in ordered)
+        if len(signature) < 1:
+            self.finish_order_signature = ()
+            self.finish_order_stable_ticks = 0
+            return False
+        if signature == self.finish_order_signature:
+            self.finish_order_stable_ticks += 1
+        else:
+            self.finish_order_signature = signature
+            self.finish_order_stable_ticks = 1
+        return self.finish_order_stable_ticks >= required_ticks
 
     def handle_lap_calls(self, current_lap, total_laps, scheduler, session_flags=0):
         if not self.race_started or total_laps <= 0 or current_lap <= 0:

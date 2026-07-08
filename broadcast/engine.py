@@ -52,6 +52,8 @@ class BroadcastEngine:
         self.broadcast_queue = BroadcastQueue()
         self.caution_marker_replay_count = 0
         self.caution_top_ten_reset_queued = False
+        self.caution_top_ten_order_signature = ()
+        self.caution_top_ten_stable_ticks = 0
         self.final_laps_battle_queued = False
         self.caution_lucky_dog_queued = False
         self.late_caution_note_queued = False
@@ -583,6 +585,8 @@ class BroadcastEngine:
                 self._queue_caution_race_insight()
             else:
                 self.caution_top_ten_reset_queued = False
+                self.caution_top_ten_order_signature = ()
+                self.caution_top_ten_stable_ticks = 0
             return
 
         self.caution_pit_reporter.update(
@@ -648,6 +652,8 @@ class BroadcastEngine:
     def _queue_caution_top_ten_reset(self, results, driver_lookup, current_lap):
         if self.caution_top_ten_reset_queued:
             return
+        if not self.caution_top_ten_order_is_stable(results):
+            return
         message = self.build_caution_top_ten_reset(results, driver_lookup)
         if not message:
             return
@@ -662,6 +668,20 @@ class BroadcastEngine:
             expires_after=70,
             dedupe_key=f"caution_top_ten_reset:{current_lap}",
         )
+
+    def caution_top_ten_order_is_stable(self, results, required_ticks=3):
+        ordered = self.sorted_running_order(results)[:10]
+        signature = tuple(car.get("CarIdx") for car in ordered)
+        if len(signature) < 3:
+            self.caution_top_ten_order_signature = ()
+            self.caution_top_ten_stable_ticks = 0
+            return False
+        if signature == self.caution_top_ten_order_signature:
+            self.caution_top_ten_stable_ticks += 1
+        else:
+            self.caution_top_ten_order_signature = signature
+            self.caution_top_ten_stable_ticks = 1
+        return self.caution_top_ten_stable_ticks >= required_ticks
 
     def _queue_lucky_dog_note(self, results, driver_lookup, current_lap):
         if self.caution_lucky_dog_queued:
