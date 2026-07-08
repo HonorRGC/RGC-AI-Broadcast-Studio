@@ -657,7 +657,7 @@ class BroadcastEngine:
 
     def build_crank_it_up_camera_steps(self, results, max_cars=6):
         ordered = self.sorted_running_order(results)[:max_cars]
-        groups = ("TV Mixed", "TV1", "TV2", "Scenic", "TV1", "TV Mixed")
+        groups = ("Fixed", "Static", "Scenic", "TV Static", "Fixed", "Scenic")
         steps = []
         for index, car in enumerate(ordered):
             car_idx = car.get("CarIdx")

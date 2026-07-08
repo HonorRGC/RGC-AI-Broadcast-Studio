@@ -376,6 +376,8 @@ def test_engine_queues_silent_crank_it_up_after_ten_green_laps():
     assert item.silent is True
     assert item.feature_duration_seconds == 28.0
     assert len(item.camera_sequence_steps) == 6
+    assert item.camera_sequence_steps[0][1] == "Fixed"
+    assert item.camera_sequence_steps[1][1] == "Static"
     assert item.camera_return_home_after_sequence is True
 
 

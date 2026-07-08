@@ -435,6 +435,10 @@ class CameraDirector:
             "cockpit": ("cockpit", "in car", "driver", "tv1"),
             "chopper": ("chopper", "blimp", "aerial", "gyro", "tv3", "tv1"),
             "tv mixed": ("tv mixed", "tv3", "tv 3", "tv1"),
+            "fixed": ("fixed", "static", "scenic", "spectator", "turn", "tv mixed", "tv3", "tv1"),
+            "static": ("static", "fixed", "scenic", "spectator", "turn", "tv mixed", "tv3", "tv1"),
+            "tv static": ("static", "fixed", "scenic", "spectator", "turn", "tv mixed", "tv3", "tv1"),
+            "scenic": ("scenic", "static", "fixed", "spectator", "turn", "tv mixed", "tv3", "tv1"),
             "tv3": ("tv3", "tv 3", "tv1"),
             "tv2": ("tv2", "tv 2", "tv1"),
         }

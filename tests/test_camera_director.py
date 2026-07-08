@@ -29,6 +29,8 @@ class CameraTelemetry:
     def get_camera_groups(self):
         return [
             {"GroupNum": 1, "GroupName": "Scenic"},
+            {"GroupNum": 2, "GroupName": "Fixed"},
+            {"GroupNum": 3, "GroupName": "Static"},
             {"GroupNum": 4, "GroupName": "TV1"},
             {"GroupNum": 5, "GroupName": "TV Mixed"},
             {"GroupNum": 6, "GroupName": "Cockpit"},
@@ -285,7 +287,7 @@ def test_silent_feature_sequence_uses_feature_duration_for_timing():
     feature = SimpleNamespace(
         camera_target_car_idx=None,
         camera_sequence=(),
-        camera_sequence_steps=((3, "TV1", 0), (4, "TV Mixed", 0)),
+        camera_sequence_steps=((3, "Fixed", 0), (4, "Static", 0)),
         dedupe_key="crank_it_up:10",
         category="crank_it_up",
         message="Crank It Up",
@@ -301,7 +303,22 @@ def test_silent_feature_sequence_uses_feature_duration_for_timing():
     assert first.status == "switched"
     assert held.status == "held"
     assert second.status == "switched"
-    assert telemetry.switches == [("14", 4, 0), ("24", 5, 0)]
+    assert telemetry.switches == [("14", 2, 0), ("24", 3, 0)]
+
+
+def test_fixed_camera_request_falls_back_to_scenic_or_tv_when_missing():
+    telemetry = CameraTelemetry()
+    telemetry.get_camera_groups = lambda: [
+        {"GroupNum": 1, "GroupName": "Scenic"},
+        {"GroupNum": 4, "GroupName": "TV1"},
+    ]
+    director = CameraDirector(mode="auto", preferred_group="Fixed")
+
+    decision = director.follow(target_item(3), telemetry)
+
+    assert decision.status == "switched"
+    assert decision.group_name == "Scenic"
+    assert telemetry.switches == [("14", 1, 0)]
 
 
 def test_incident_camera_can_interrupt_the_minimum_hold():
