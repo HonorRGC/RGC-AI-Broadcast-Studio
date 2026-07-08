@@ -25,6 +25,17 @@ def parse_args():
         action="store_true",
         help="Play one Lead voice sample and exit without connecting to iRacing",
     )
+    parser.add_argument(
+        "--crank-it-up-test",
+        action="store_true",
+        help="Preview the sponsored Crank It Up voice call and overlay without connecting to iRacing",
+    )
+    parser.add_argument(
+        "--crank-it-up-test-seconds",
+        type=float,
+        default=28.0,
+        help="Seconds to keep the Crank It Up overlay visible during --crank-it-up-test",
+    )
     parser.add_argument("--tick-seconds", type=float, default=1.0)
     parser.add_argument(
         "--camera-mode",
@@ -213,6 +224,28 @@ def show_overlay_feature(item, overlay_server):
     )
 
 
+def run_crank_it_up_test(booth, overlay_server, duration_seconds=28.0):
+    intro = "It is time to Crank It Up. Crank It Up is presented by RGC Motorsports."
+    feature_seconds = max(1.0, float(duration_seconds or 28.0))
+
+    booth.broadcast(intro, speaker="lead")
+
+    if overlay_server:
+        overlay_server.show_special_presentation(
+            kind="crank_it_up",
+            title="Crank It Up",
+            subtitle="Presented by RGC Motorsports",
+            duration=feature_seconds,
+            graphics=[],
+        )
+        print(f"Crank It Up overlay preview is active for {feature_seconds:.0f} seconds.")
+        print(f"Preview URL: {overlay_server.url}")
+        time.sleep(feature_seconds)
+        overlay_server.clear_special_presentation()
+    else:
+        print("Overlay is OFF, so only the voice preview was played.")
+
+
 def should_switch_camera_after_voice_starts(item):
     category = str(getattr(item, "category", "") or "")
     return (
@@ -381,6 +414,16 @@ def main():
             speaker="lead",
         )
         print("Voice test requested. Check your Windows audio output and media player.")
+        return
+
+    if args.crank_it_up_test:
+        if not voice_ready:
+            print("Voice preview skipped because the ElevenLabs status above is OFF.")
+        run_crank_it_up_test(
+            booth,
+            overlay_server,
+            duration_seconds=args.crank_it_up_test_seconds,
+        )
         return
 
     if args.replay:
