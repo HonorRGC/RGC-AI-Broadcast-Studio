@@ -800,31 +800,52 @@ OVERLAY_HTML = r"""<!doctype html>
       right: 24px;
       top: auto;
       bottom: 34px;
-      height: 180px;
-      justify-content: center;
+      height: 190px;
+      justify-content: space-between;
+      gap: 34px;
     }
 
-    .special-presentation.crank_it_up::before,
-    .special-presentation.crank_it_up::after {
-      content: "";
-      width: 150px;
-      height: 128px;
+    .crank-speaker {
+      display: none;
+      flex: 0 0 170px;
+      width: 170px;
+      height: 142px;
       border-radius: 18px;
       background:
-        radial-gradient(circle at 50% 28%, #151922 0 18px, #050608 19px 34px, transparent 35px),
-        radial-gradient(circle at 50% 72%, #1c2430 0 34px, #050608 35px 56px, transparent 57px),
-        linear-gradient(145deg, rgba(32, 38, 48, 0.98), rgba(5, 6, 8, 0.96));
-      border: 3px solid rgba(255, 255, 255, 0.22);
-      box-shadow: 0 0 28px rgba(165, 20, 30, 0.48);
+        radial-gradient(circle at 50% 28%, #272f3d 0 19px, #050608 20px 38px, transparent 39px),
+        radial-gradient(circle at 50% 73%, #2d394b 0 38px, #050608 39px 64px, transparent 65px),
+        linear-gradient(145deg, rgba(49, 57, 70, 0.99), rgba(5, 6, 8, 0.98));
+      border: 4px solid rgba(255, 255, 255, 0.30);
+      box-shadow: 0 0 34px rgba(165, 20, 30, 0.62), inset 0 0 18px rgba(255, 255, 255, 0.10);
       animation: speakerPulse 0.42s infinite alternate;
+      position: relative;
     }
 
-    .special-presentation.crank_it_up::before {
-      margin-right: 42px;
+    .crank-speaker::before,
+    .crank-speaker::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      border-radius: 50%;
+      border: 3px solid rgba(255, 255, 255, 0.22);
+      box-shadow: inset 0 0 18px rgba(255, 255, 255, 0.10);
     }
 
-    .special-presentation.crank_it_up::after {
-      margin-left: 42px;
+    .crank-speaker::before {
+      top: 18px;
+      width: 48px;
+      height: 48px;
+    }
+
+    .crank-speaker::after {
+      bottom: 17px;
+      width: 84px;
+      height: 84px;
+    }
+
+    .special-presentation.crank_it_up .crank-speaker {
+      display: block;
     }
 
     .special-presentation.crank_it_up .ceremony-card {
@@ -898,6 +919,7 @@ OVERLAY_HTML = r"""<!doctype html>
   </section>
 
   <section id="special-presentation" class="special-presentation hidden">
+    <div class="crank-speaker crank-speaker-left"></div>
     <div class="ceremony-card">
       <img id="ceremony-logo" class="ceremony-logo" alt="" />
       <div>
@@ -905,6 +927,7 @@ OVERLAY_HTML = r"""<!doctype html>
         <div id="ceremony-subtitle" class="ceremony-subtitle">Presented by RGC Motorsports</div>
       </div>
     </div>
+    <div class="crank-speaker crank-speaker-right"></div>
   </section>
 
   <script>

@@ -1,4 +1,4 @@
-from production.overlay import OverlayEventConfig, OverlayStateBuilder
+from production.overlay import OVERLAY_HTML, OverlayEventConfig, OverlayStateBuilder
 
 
 class OverlayTelemetry:
@@ -217,3 +217,9 @@ def test_overlay_preserves_special_presentation():
     assert state["special_presentation"]["kind"] == "rgc_anthem"
     assert state["special_presentation"]["title"] == "RGC Anthem"
     assert state["special_presentation"]["graphics"]
+
+
+def test_crank_it_up_overlay_has_visible_speaker_elements():
+    assert "crank-speaker-left" in OVERLAY_HTML
+    assert "crank-speaker-right" in OVERLAY_HTML
+    assert ".special-presentation.crank_it_up .crank-speaker" in OVERLAY_HTML
