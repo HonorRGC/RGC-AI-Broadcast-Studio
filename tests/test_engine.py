@@ -372,7 +372,47 @@ def test_engine_queues_silent_crank_it_up_after_ten_green_laps():
 
     item = engine.broadcast_queue.next_item(now=time.time())
     assert queued is True
-    assert item.category == "crank_it_up"
+    assert item.category == "crank_it_up_intro"
+    assert item.silent is False
+    assert "Crank It Up is presented by RGC Motorsports" in item.message
+
+    engine.broadcast_queue.busy_until = 0
+    silent_item = engine.broadcast_queue.next_item(now=time.time())
+    assert silent_item.category == "crank_it_up"
+    assert silent_item.message == "Crank It Up"
+    assert silent_item.silent is True
+    assert silent_item.feature_duration_seconds == 28.0
+    assert silent_item.camera_sequence_steps == ((0, "TV Fixed", 0),)
+    assert silent_item.camera_return_home_after_sequence is True
+
+
+def test_crank_it_up_intro_airs_before_silent_feature():
+    results = [
+        {"CarIdx": index, "Position": index + 1, "LapsComplete": 10}
+        for index in range(3)
+    ]
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+
+    engine._queue_crank_it_up(results, green_lap_count=10)
+
+    categories = [item.category for item in engine.broadcast_queue.items]
+    assert categories == ["crank_it_up_intro", "crank_it_up"]
+    assert engine.broadcast_queue.items[0].priority > engine.broadcast_queue.items[1].priority
+
+
+def test_crank_it_up_silent_feature_uses_tv_fixed_camera():
+    results = [
+        {"CarIdx": index, "Position": index + 1, "LapsComplete": 10}
+        for index in range(8)
+    ]
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+
+    engine._queue_crank_it_up(results, green_lap_count=10)
+
+    item = next(
+        item for item in engine.broadcast_queue.items
+        if item.category == "crank_it_up"
+    )
     assert item.silent is True
     assert item.feature_duration_seconds == 28.0
     assert item.camera_sequence_steps == ((0, "TV Fixed", 0),)
