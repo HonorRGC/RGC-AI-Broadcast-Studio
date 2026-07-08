@@ -655,16 +655,14 @@ class BroadcastEngine:
         )
         return True
 
-    def build_crank_it_up_camera_steps(self, results, max_cars=6):
-        ordered = self.sorted_running_order(results)[:max_cars]
-        groups = ("Fixed", "Static", "Scenic", "TV Static", "Fixed", "Scenic")
-        steps = []
-        for index, car in enumerate(ordered):
-            car_idx = car.get("CarIdx")
-            if car_idx is None:
-                continue
-            steps.append((car_idx, groups[index % len(groups)], 0))
-        return tuple(steps)
+    def build_crank_it_up_camera_steps(self, results):
+        ordered = self.sorted_running_order(results)
+        if not ordered:
+            return ()
+        leader_idx = ordered[0].get("CarIdx")
+        if leader_idx is None:
+            return ()
+        return ((leader_idx, "TV Fixed", 0),)
 
     def _queue_caution_race_insight(self):
         insight = self.race_insight_director.caution_insight(
