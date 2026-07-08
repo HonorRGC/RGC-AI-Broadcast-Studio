@@ -361,6 +361,41 @@ def test_engine_queues_long_green_field_rundown_under_green():
     assert "20-lap green flag run" in rundown.message
 
 
+def test_engine_queues_silent_crank_it_up_after_ten_green_laps():
+    results = [
+        {"CarIdx": index, "Position": index + 1, "LapsComplete": 10}
+        for index in range(8)
+    ]
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+
+    queued = engine._queue_crank_it_up(results, green_lap_count=10)
+
+    item = engine.broadcast_queue.next_item(now=time.time())
+    assert queued is True
+    assert item.category == "crank_it_up"
+    assert item.silent is True
+    assert item.feature_duration_seconds == 28.0
+    assert len(item.camera_sequence_steps) == 6
+    assert item.camera_return_home_after_sequence is True
+
+
+def test_crank_it_up_runs_once_per_green_run_until_caution_reset():
+    results = [
+        {"CarIdx": index, "Position": index + 1, "LapsComplete": 10}
+        for index in range(6)
+    ]
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+
+    assert engine._queue_crank_it_up(results, green_lap_count=10) is True
+    engine.broadcast_queue.items.clear()
+    engine.broadcast_queue.busy_until = 0
+    assert engine._queue_crank_it_up(results, green_lap_count=11) is False
+
+    engine.crank_it_up_sent_this_green_run = False
+
+    assert engine._queue_crank_it_up(results, green_lap_count=10) is True
+
+
 def test_due_field_rundown_blocks_normal_stories_until_booth_is_clear():
     results = [
         {"CarIdx": index, "Position": index, "LapsComplete": 20}

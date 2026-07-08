@@ -404,6 +404,9 @@ class CameraDirector:
         return (step, self.preferred_group, self.lineup_camera_number)
 
     def estimate_sequence_interval(self, item, sequence):
+        feature_duration = float(getattr(item, "feature_duration_seconds", 0.0) or 0.0)
+        if getattr(item, "silent", False) and feature_duration > 0:
+            return max(2.5, feature_duration / max(len(sequence), 1))
         words = len(str(getattr(item, "message", "")).split())
         speech_seconds = max(5.0, min(45.0, words / 2.45))
         return max(3.0, speech_seconds / max(len(sequence), 1))

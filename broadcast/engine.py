@@ -57,6 +57,7 @@ class BroadcastEngine:
         self.final_laps_battle_queued = False
         self.caution_lucky_dog_queued = False
         self.late_caution_note_queued = False
+        self.crank_it_up_sent_this_green_run = False
         self.last_leader_story_lap = 0
         self.current_leader_car_idx = None
         self.current_leader_started_lap = 0
@@ -188,6 +189,12 @@ class BroadcastEngine:
             )
             if queued_final_battle:
                 return self.broadcast_queue.next_item()
+            queued_crank_it_up = self._queue_crank_it_up(
+                story_results,
+                race_state.green_lap_count,
+            )
+            if queued_crank_it_up:
+                return self.broadcast_queue.next_item()
             queued_insight = self._queue_long_green_insight(
                 race_state,
                 current_lap,
@@ -221,6 +228,8 @@ class BroadcastEngine:
             )
         else:
             self.field_rundown_director.cancel_active()
+            if self.race_director.phase in (RacePhase.CAUTION, RacePhase.ONE_TO_GREEN):
+                self.crank_it_up_sent_this_green_run = False
 
         return self.broadcast_queue.next_item()
 
@@ -617,6 +626,45 @@ class BroadcastEngine:
             dedupe_key=insight.category,
         )
         return True
+
+    def _queue_crank_it_up(self, results, green_lap_count):
+        if self.crank_it_up_sent_this_green_run:
+            return False
+        if green_lap_count < 10:
+            return False
+        if self.broadcast_queue.items or not self.broadcast_queue.can_speak():
+            return False
+
+        steps = self.build_crank_it_up_camera_steps(results)
+        if not steps:
+            return False
+
+        self.crank_it_up_sent_this_green_run = True
+        self.broadcast_queue.add(
+            "Crank It Up",
+            priority=8,
+            category="crank_it_up",
+            protected=False,
+            speaker="lead",
+            expires_after=20,
+            dedupe_key=f"crank_it_up:{green_lap_count}",
+            camera_sequence_steps=steps,
+            camera_return_home_after_sequence=True,
+            silent=True,
+            feature_duration_seconds=28.0,
+        )
+        return True
+
+    def build_crank_it_up_camera_steps(self, results, max_cars=6):
+        ordered = self.sorted_running_order(results)[:max_cars]
+        groups = ("TV Mixed", "TV1", "TV2", "Scenic", "TV1", "TV Mixed")
+        steps = []
+        for index, car in enumerate(ordered):
+            car_idx = car.get("CarIdx")
+            if car_idx is None:
+                continue
+            steps.append((car_idx, groups[index % len(groups)], 0))
+        return tuple(steps)
 
     def _queue_caution_race_insight(self):
         insight = self.race_insight_director.caution_insight(

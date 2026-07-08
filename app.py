@@ -140,11 +140,16 @@ def run_source(
             )
         )
         if item:
+            if overlay_server:
+                show_overlay_feature(item, overlay_server)
             report_replay_decision(
                 replay_director.handle_item(item, source, camera_director)
             )
             if should_switch_camera_after_voice_starts(item):
-                booth.broadcast(item.message, speaker=item.speaker)
+                if not getattr(item, "silent", False):
+                    booth.broadcast(item.message, speaker=item.speaker)
+                else:
+                    report_silent_feature(item)
                 camera_decision = camera_director.follow(item, source)
                 report_camera_decision(camera_decision)
                 if overlay_server:
@@ -164,7 +169,10 @@ def run_source(
                         source,
                         camera_decision,
                     )
-                booth.broadcast(item.message, speaker=item.speaker)
+                if not getattr(item, "silent", False):
+                    booth.broadcast(item.message, speaker=item.speaker)
+                else:
+                    report_silent_feature(item)
 
         if hasattr(source, "next_snapshot"):
             source.next_snapshot()
@@ -187,6 +195,22 @@ def report_practice_presentation(message):
 def report_caution_presentation(message):
     if message:
         print(f"CAUTION: {message}")
+
+
+def report_silent_feature(item):
+    print(f"FEATURE: {item.message}")
+
+
+def show_overlay_feature(item, overlay_server):
+    if getattr(item, "category", "") != "crank_it_up":
+        return
+    overlay_server.show_special_presentation(
+        kind="crank_it_up",
+        title="Crank It Up",
+        subtitle="No booth. Just race cars.",
+        duration=getattr(item, "feature_duration_seconds", 28.0) or 28.0,
+        graphics=[],
+    )
 
 
 def should_switch_camera_after_voice_starts(item):

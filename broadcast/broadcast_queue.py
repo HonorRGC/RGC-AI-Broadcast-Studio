@@ -24,6 +24,8 @@ class ScheduledBroadcast:
     replay_use_incident_marker: bool = False
     replay_marker_pre_roll_frames: int | None = None
     camera_return_home_after_sequence: bool = False
+    silent: bool = False
+    feature_duration_seconds: float = 0.0
     created_at: float = field(default_factory=time.time)
 
     @property
@@ -61,11 +63,13 @@ class BroadcastQueue:
         replay_use_incident_marker=False,
         replay_marker_pre_roll_frames=None,
         camera_return_home_after_sequence=False,
+        silent=False,
+        feature_duration_seconds=0.0,
     ):
-        if not commentary:
+        if not commentary and not silent:
             return
 
-        key = dedupe_key or f"{category}:{speaker}:{commentary.strip().lower()}"
+        key = dedupe_key or f"{category}:{speaker}:{str(commentary).strip().lower()}"
         if any(item.dedupe_key == key for item in self.items):
             return
 
@@ -92,6 +96,8 @@ class BroadcastQueue:
                 camera_return_home_after_sequence=bool(
                     camera_return_home_after_sequence
                 ),
+                silent=bool(silent),
+                feature_duration_seconds=float(feature_duration_seconds or 0.0),
             )
         )
 
@@ -100,6 +106,8 @@ class BroadcastQueue:
         return now >= self.busy_until
 
     def estimate_speech_seconds(self, message, category=""):
+        if category == "crank_it_up":
+            return 28.0
         words = len(str(message).split())
         if category.startswith("opening_field_rundown"):
             return max(1.6, min(10.0, words / 3.35))
@@ -137,9 +145,10 @@ class BroadcastQueue:
 
         self.items.remove(selected)
 
-        speech_time = self.estimate_speech_seconds(
-            selected.message,
-            selected.category,
+        speech_time = (
+            selected.feature_duration_seconds
+            if selected.silent and selected.feature_duration_seconds > 0
+            else self.estimate_speech_seconds(selected.message, selected.category)
         )
         self.busy_until = now + speech_time + self.estimate_gap_seconds(
             selected.category

@@ -794,6 +794,75 @@ OVERLAY_HTML = r"""<!doctype html>
       font-weight: 800;
       letter-spacing: 0.08em;
     }
+
+    .special-presentation.crank_it_up {
+      left: 24px;
+      right: 24px;
+      top: auto;
+      bottom: 34px;
+      height: 180px;
+      justify-content: center;
+    }
+
+    .special-presentation.crank_it_up::before,
+    .special-presentation.crank_it_up::after {
+      content: "";
+      width: 150px;
+      height: 128px;
+      border-radius: 18px;
+      background:
+        radial-gradient(circle at 50% 28%, #151922 0 18px, #050608 19px 34px, transparent 35px),
+        radial-gradient(circle at 50% 72%, #1c2430 0 34px, #050608 35px 56px, transparent 57px),
+        linear-gradient(145deg, rgba(32, 38, 48, 0.98), rgba(5, 6, 8, 0.96));
+      border: 3px solid rgba(255, 255, 255, 0.22);
+      box-shadow: 0 0 28px rgba(165, 20, 30, 0.48);
+      animation: speakerPulse 0.42s infinite alternate;
+    }
+
+    .special-presentation.crank_it_up::before {
+      margin-right: 42px;
+    }
+
+    .special-presentation.crank_it_up::after {
+      margin-left: 42px;
+    }
+
+    .special-presentation.crank_it_up .ceremony-card {
+      display: block;
+      width: auto;
+      min-width: 520px;
+      padding: 24px 44px;
+      text-align: center;
+      border-left: 0;
+      border-bottom: 6px solid var(--rgc-red);
+      background: linear-gradient(90deg, rgba(7, 9, 13, 0.92), rgba(36, 12, 18, 0.9), rgba(7, 9, 13, 0.92));
+    }
+
+    .special-presentation.crank_it_up .ceremony-logo {
+      display: none;
+    }
+
+    .special-presentation.crank_it_up .ceremony-title {
+      font-size: 58px;
+      letter-spacing: 0.08em;
+      text-shadow: 0 0 22px rgba(255, 255, 255, 0.28);
+    }
+
+    .special-presentation.crank_it_up .ceremony-subtitle {
+      color: #ffffff;
+      opacity: 0.82;
+    }
+
+    @keyframes speakerPulse {
+      from {
+        transform: scale(0.98);
+        filter: brightness(0.9);
+      }
+      to {
+        transform: scale(1.04);
+        filter: brightness(1.2);
+      }
+    }
   </style>
 </head>
 <body>
@@ -883,6 +952,7 @@ OVERLAY_HTML = r"""<!doctype html>
       const layer = document.getElementById("special-presentation");
       const active = !!(presentation && presentation.kind);
       layer.classList.toggle("hidden", !active);
+      layer.classList.toggle("crank_it_up", active && presentation.kind === "crank_it_up");
       if (!active) return;
       setText("ceremony-title", presentation.title || "Please Rise");
       setText("ceremony-subtitle", presentation.subtitle || "Presented by RGC Motorsports");

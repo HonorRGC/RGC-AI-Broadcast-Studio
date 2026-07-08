@@ -60,3 +60,22 @@ def test_one_driver_lineup_items_have_a_shorter_air_gap():
     queue.next_item(now=100.0)
 
     assert queue.busy_until < 105.0
+
+
+def test_silent_feature_reserves_its_runtime_without_commentary():
+    queue = BroadcastQueue()
+    queue.add(
+        "",
+        category="crank_it_up",
+        silent=True,
+        feature_duration_seconds=28.0,
+        dedupe_key="crank_it_up:test",
+    )
+    now = 100.0
+    queue.items[0].created_at = now
+
+    item = queue.next_item(now=now)
+
+    assert item.silent is True
+    assert item.message == ""
+    assert queue.busy_until == now + 30.5

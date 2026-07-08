@@ -278,6 +278,32 @@ def test_custom_sequence_can_switch_tv1_then_cockpit_for_same_driver():
     assert telemetry.switches == [("14", 4, 0), ("14", 6, 0)]
 
 
+def test_silent_feature_sequence_uses_feature_duration_for_timing():
+    telemetry = CameraTelemetry()
+    times = iter([100.0, 104.0, 105.0])
+    director = CameraDirector(mode="auto", clock=lambda: next(times))
+    feature = SimpleNamespace(
+        camera_target_car_idx=None,
+        camera_sequence=(),
+        camera_sequence_steps=((3, "TV1", 0), (4, "TV Mixed", 0)),
+        dedupe_key="crank_it_up:10",
+        category="crank_it_up",
+        message="Crank It Up",
+        silent=True,
+        feature_duration_seconds=10.0,
+        camera_return_home_after_sequence=True,
+    )
+
+    first = director.follow(feature, telemetry)
+    held = director.update(telemetry)
+    second = director.update(telemetry)
+
+    assert first.status == "switched"
+    assert held.status == "held"
+    assert second.status == "switched"
+    assert telemetry.switches == [("14", 4, 0), ("24", 5, 0)]
+
+
 def test_incident_camera_can_interrupt_the_minimum_hold():
     telemetry = CameraTelemetry()
     times = iter([100.0, 101.0])
