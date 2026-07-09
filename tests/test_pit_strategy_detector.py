@@ -88,3 +88,49 @@ def test_pit_detector_remembers_position_when_car_enters_pit_road():
     )
 
     assert detector.driver_states[0].pit_entry_position == 4
+
+
+def test_pit_detector_tracks_pit_lane_and_estimated_service_time():
+    detector = PitStrategyDetector()
+    drivers = {0: {"name": "Driver One", "number": "11"}}
+
+    detector.analyze(
+        results=[{"CarIdx": 0, "Position": 5, "LapsComplete": 10}],
+        driver_lookup=drivers,
+        pit_road_status=[False],
+        current_lap=10,
+        under_caution=False,
+        session_time=100.0,
+        lap_dist_pct=[0.1000],
+    )
+    detector.analyze(
+        results=[{"CarIdx": 0, "Position": 4, "LapsComplete": 11}],
+        driver_lookup=drivers,
+        pit_road_status=[True],
+        current_lap=11,
+        under_caution=False,
+        session_time=110.0,
+        lap_dist_pct=[0.2000],
+    )
+    detector.analyze(
+        results=[{"CarIdx": 0, "Position": 4, "LapsComplete": 11}],
+        driver_lookup=drivers,
+        pit_road_status=[True],
+        current_lap=11,
+        under_caution=False,
+        session_time=115.0,
+        lap_dist_pct=[0.20002],
+    )
+    detector.analyze(
+        results=[{"CarIdx": 0, "Position": 4, "LapsComplete": 11}],
+        driver_lookup=drivers,
+        pit_road_status=[False],
+        current_lap=11,
+        under_caution=False,
+        session_time=132.0,
+        lap_dist_pct=[0.2500],
+    )
+
+    state = detector.driver_states[0]
+    assert state.last_pit_lane_seconds == 22.0
+    assert state.last_pit_stop_seconds == 5.0

@@ -23,6 +23,13 @@ class PitDriverState:
     on_pit_road: bool = False
     last_pit_lap: int = 0
     pit_entry_position: int = 0
+    pit_entry_time: float = 0.0
+    last_pit_lane_seconds: float = 0.0
+    current_pit_lane_seconds: float = 0.0
+    last_pit_stop_seconds: float = 0.0
+    current_pit_stop_seconds: float = 0.0
+    previous_pit_update_time: float = 0.0
+    previous_lap_dist_pct: float | None = None
     last_reported_at: float = 0.0
     initialized: bool = False
     started_from_pit_road: bool = False
@@ -40,8 +47,11 @@ class PitStrategyDetector:
         pit_road_status,
         current_lap=0,
         under_caution=False,
+        session_time=None,
+        lap_dist_pct=None,
     ) -> List[PitStrategyEvent]:
         events = []
+        session_time = self.safe_float(session_time, time.time())
 
         if not results:
             return events
@@ -64,11 +74,13 @@ class PitStrategyDetector:
             )
 
             on_pit_road = self.is_car_on_pit_road(car_idx, pit_road_status)
+            lap_pct = self.array_value(lap_dist_pct, car_idx)
 
             if not state.initialized:
                 state.initialized = True
                 if on_pit_road and not under_caution and current_lap <= 1:
                     state.started_from_pit_road = True
+                    self.start_pit_timer(state, session_time, current_position, lap_pct)
                     event = self.build_pit_road_start_event(
                         state=state,
                         current_lap=current_lap,
@@ -79,10 +91,12 @@ class PitStrategyDetector:
                     state.last_pit_lap = current_lap
 
                 state.on_pit_road = on_pit_road
+                if on_pit_road:
+                    self.update_pit_timer(state, session_time, lap_pct)
                 continue
 
             if on_pit_road and not state.on_pit_road:
-                state.pit_entry_position = current_position
+                self.start_pit_timer(state, session_time, current_position, lap_pct)
                 event = self.build_pit_entry_event(
                     state=state,
                     current_lap=current_lap,
@@ -94,10 +108,56 @@ class PitStrategyDetector:
                     state.last_reported_at = time.time()
 
                 state.last_pit_lap = current_lap
+            elif on_pit_road:
+                self.update_pit_timer(state, session_time, lap_pct)
+            elif state.on_pit_road and not on_pit_road:
+                self.finish_pit_timer(state, session_time)
 
             state.on_pit_road = on_pit_road
 
         return events
+
+    def start_pit_timer(self, state, session_time, current_position, lap_pct):
+        state.pit_entry_position = current_position
+        state.pit_entry_time = session_time
+        state.current_pit_lane_seconds = 0.0
+        state.current_pit_stop_seconds = 0.0
+        state.previous_pit_update_time = session_time
+        state.previous_lap_dist_pct = self.safe_float_or_none(lap_pct)
+
+    def update_pit_timer(self, state, session_time, lap_pct):
+        if state.pit_entry_time <= 0:
+            state.pit_entry_time = session_time
+        state.current_pit_lane_seconds = max(session_time - state.pit_entry_time, 0.0)
+
+        previous_time = state.previous_pit_update_time or session_time
+        delta_seconds = max(session_time - previous_time, 0.0)
+        current_lap_pct = self.safe_float_or_none(lap_pct)
+        if delta_seconds > 0 and self.is_stationary_on_pit_road(
+            state.previous_lap_dist_pct,
+            current_lap_pct,
+        ):
+            state.current_pit_stop_seconds += delta_seconds
+
+        state.previous_pit_update_time = session_time
+        state.previous_lap_dist_pct = current_lap_pct
+
+    def finish_pit_timer(self, state, session_time):
+        if state.pit_entry_time > 0:
+            state.current_pit_lane_seconds = max(session_time - state.pit_entry_time, 0.0)
+        state.last_pit_lane_seconds = state.current_pit_lane_seconds
+        state.last_pit_stop_seconds = state.current_pit_stop_seconds
+        state.current_pit_lane_seconds = 0.0
+        state.current_pit_stop_seconds = 0.0
+        state.pit_entry_time = 0.0
+        state.previous_pit_update_time = 0.0
+        state.previous_lap_dist_pct = None
+
+    @staticmethod
+    def is_stationary_on_pit_road(previous_lap_pct, current_lap_pct):
+        if previous_lap_pct is None or current_lap_pct is None:
+            return False
+        return abs(float(current_lap_pct) - float(previous_lap_pct)) < 0.00008
 
     def get_or_create_state(self, car_idx, driver_name, car_number):
         if car_idx not in self.driver_states:
@@ -118,6 +178,14 @@ class PitStrategyDetector:
             return bool(pit_road_status[int(car_idx)])
         except Exception:
             return False
+
+    def array_value(self, values, index):
+        try:
+            if values is None:
+                return None
+            return values[int(index)]
+        except Exception:
+            return None
 
     def build_pit_entry_event(self, state, current_lap, under_caution):
         if under_caution:
@@ -170,3 +238,19 @@ class PitStrategyDetector:
             return int(value)
         except (TypeError, ValueError):
             return default
+
+    @staticmethod
+    def safe_float(value, default=0.0):
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return default
+
+    @staticmethod
+    def safe_float_or_none(value):
+        try:
+            if value is None:
+                return None
+            return float(value)
+        except (TypeError, ValueError):
+            return None

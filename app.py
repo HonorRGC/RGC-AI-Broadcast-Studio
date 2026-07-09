@@ -334,10 +334,28 @@ def build_pit_update_rows(source, engine, limit=5):
             detail_parts.append(f"entered P{state.pit_entry_position}")
         if current_position:
             detail_parts.append(f"now P{current_position}")
+        lane_seconds = (
+            state.current_pit_lane_seconds
+            if state.on_pit_road
+            else state.last_pit_lane_seconds
+        )
+        stop_seconds = (
+            state.current_pit_stop_seconds
+            if state.on_pit_road
+            else state.last_pit_stop_seconds
+        )
+        if lane_seconds > 0:
+            detail_parts.append(f"pit lane {format_seconds(lane_seconds)}")
+        if stop_seconds > 0:
+            detail_parts.append(f"service {format_seconds(stop_seconds)}")
         rows.append(
             {
                 "label": f"#{state.car_number} {state.driver_name}",
-                "value": f"Lap {state.last_pit_lap}",
+                "value": (
+                    format_seconds(lane_seconds)
+                    if lane_seconds > 0
+                    else f"Lap {state.last_pit_lap}"
+                ),
                 "detail": " | ".join(detail_parts),
             }
         )
@@ -372,6 +390,11 @@ def ordinal(number):
     else:
         suffix = {1: "st", 2: "nd", 3: "rd"}.get(number % 10, "th")
     return f"{number}{suffix}"
+
+
+def format_seconds(seconds):
+    seconds = max(float(seconds or 0.0), 0.0)
+    return f"{seconds:.1f}s"
 
 
 def safe_int(value, default=0):

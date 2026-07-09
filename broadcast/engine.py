@@ -136,6 +136,8 @@ class BroadcastEngine:
                 driver_lookup,
                 pit_road_status,
                 current_lap,
+                session_time=getattr(telemetry, "get_session_time", lambda: 0.0)(),
+                lap_dist_pct=getattr(telemetry, "get_car_idx_lap_dist_pct", lambda: [])(),
             )
             self._collect_incidents(
                 telemetry,
@@ -538,6 +540,8 @@ class BroadcastEngine:
         driver_lookup,
         pit_road_status,
         current_lap,
+        session_time=0.0,
+        lap_dist_pct=None,
     ):
         under_caution = self.race_director.phase in (
             RacePhase.CAUTION,
@@ -549,6 +553,8 @@ class BroadcastEngine:
             pit_road_status=pit_road_status,
             current_lap=current_lap,
             under_caution=under_caution,
+            session_time=session_time,
+            lap_dist_pct=lap_dist_pct,
         )
         if under_caution:
             self.caution_pit_reporter.update(
