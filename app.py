@@ -278,8 +278,6 @@ def run_crank_it_up_test(booth, overlay_server, duration_seconds=28.0):
     intro = "It is time to Crank It Up. Crank It Up is presented by RGC Motorsports."
     feature_seconds = max(1.0, float(duration_seconds or 28.0))
 
-    booth.broadcast(intro, speaker="lead")
-
     if overlay_server:
         overlay_server.show_special_presentation(
             kind="crank_it_up",
@@ -290,9 +288,11 @@ def run_crank_it_up_test(booth, overlay_server, duration_seconds=28.0):
         )
         print(f"Crank It Up overlay preview is active for {feature_seconds:.0f} seconds.")
         print(f"Preview URL: {overlay_server.url}")
+        booth.broadcast(intro, speaker="lead")
         time.sleep(feature_seconds)
         overlay_server.clear_special_presentation()
     else:
+        booth.broadcast(intro, speaker="lead")
         print("Overlay is OFF, so only the voice preview was played.")
 
 
