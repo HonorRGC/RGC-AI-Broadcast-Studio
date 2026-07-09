@@ -141,9 +141,17 @@ def run_source(
         )
         report_replay_decision(replay_director.update(source, camera_director))
         report_camera_decision(camera_director.update(source))
-        report_camera_decision(
-            qualifying_camera_director.update(source, camera_director)
+        non_race_camera_decision = qualifying_camera_director.update(
+            source, camera_director
         )
+        report_camera_decision(non_race_camera_decision)
+        if overlay_server:
+            update_overlay_focused_driver(
+                overlay_server,
+                source,
+                non_race_camera_decision,
+                duration=9.0,
+            )
         item = engine.tick(source)
         report_caution_presentation(
             caution_presentation_director.update(
@@ -234,7 +242,7 @@ def show_overlay_feature(item, overlay_server, source=None, engine=None):
             title="Crank It Up",
             subtitle="No booth. Just race cars.",
             duration=getattr(item, "feature_duration_seconds", 28.0) or 28.0,
-            graphics=[],
+            graphics=["/assets/rgc_motorsports.png"],
         )
         return
 
@@ -278,7 +286,7 @@ def run_crank_it_up_test(booth, overlay_server, duration_seconds=28.0):
             title="Crank It Up",
             subtitle="Presented by RGC Motorsports",
             duration=feature_seconds,
-            graphics=[],
+            graphics=["/assets/rgc_motorsports.png"],
         )
         print(f"Crank It Up overlay preview is active for {feature_seconds:.0f} seconds.")
         print(f"Preview URL: {overlay_server.url}")
@@ -447,6 +455,8 @@ def report_replay_decision(decision):
 
 
 def update_overlay_featured_driver(overlay_server, item, source, camera_decision):
+    if camera_decision is None:
+        return
     if camera_decision.status not in ("suggested", "switched", "held"):
         return
     car_idx = getattr(item, "camera_target_car_idx", None)
@@ -455,6 +465,23 @@ def update_overlay_featured_driver(overlay_server, item, source, camera_decision
     ):
         car_idx = camera_decision.car_idx
     if car_idx is None or car_idx != camera_decision.car_idx:
+        return
+
+    update_overlay_focused_driver(overlay_server, source, camera_decision)
+
+
+def update_overlay_focused_driver(
+    overlay_server,
+    source,
+    camera_decision,
+    duration=12.0,
+):
+    if camera_decision is None:
+        return
+    if camera_decision.status not in ("suggested", "switched", "held"):
+        return
+    car_idx = camera_decision.car_idx
+    if car_idx is None:
         return
 
     driver = source.get_driver_lookup().get(car_idx, {})
@@ -469,7 +496,7 @@ def update_overlay_featured_driver(overlay_server, item, source, camera_decision
         car_number=car_number,
         driver_name=driver_name,
         story=story,
-        duration=12.0,
+        duration=duration,
         car_image_url=car_image_url,
     )
 

@@ -271,3 +271,21 @@ def test_crank_it_up_overlay_has_visible_speaker_elements():
     assert "crank-speaker-left" in OVERLAY_HTML
     assert "crank-speaker-right" in OVERLAY_HTML
     assert ".special-presentation.crank_it_up .crank-speaker" in OVERLAY_HTML
+
+
+def test_overlay_has_center_session_clock():
+    assert 'id="session-center"' in OVERLAY_HTML
+    assert "buildSessionCenterLine" in OVERLAY_HTML
+    assert "formatClock" in OVERLAY_HTML
+
+
+def test_race_sponsor_banner_is_compact():
+    assert ".special-presentation.race_sponsors" in OVERLAY_HTML
+    assert "height: 112px" in OVERLAY_HTML
+    assert "width: min(660px, 100%)" in OVERLAY_HTML
+
+
+def test_crank_it_up_overlay_uses_logo_and_racing_speaker_style():
+    assert ".special-presentation.crank_it_up .ceremony-logo" in OVERLAY_HTML
+    assert "repeating-linear-gradient" in OVERLAY_HTML
+    assert "clip-path" in OVERLAY_HTML

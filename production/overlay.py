@@ -648,6 +648,26 @@ OVERLAY_HTML = r"""<!doctype html>
       letter-spacing: 0.02em;
     }
 
+    .session-center {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      min-width: 300px;
+      padding: 8px 22px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, rgba(215, 25, 32, 0.92), rgba(7, 9, 13, 0.88));
+      border: 1px solid rgba(255, 255, 255, 0.26);
+      box-shadow: 0 0 22px rgba(215, 25, 32, 0.34);
+      color: #ffffff;
+      text-align: center;
+      font-size: 22px;
+      font-weight: 950;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      white-space: nowrap;
+    }
+
     .top-banner.caution {
       border: 4px solid #ffd400;
       border-bottom-width: 5px;
@@ -968,6 +988,13 @@ OVERLAY_HTML = r"""<!doctype html>
       pointer-events: none;
     }
 
+    .special-presentation.race_sponsors {
+      left: 390px;
+      right: 150px;
+      top: 116px;
+      height: 112px;
+    }
+
     .special-presentation.hidden {
       display: none;
     }
@@ -985,6 +1012,15 @@ OVERLAY_HTML = r"""<!doctype html>
       box-shadow: 0 18px 42px rgba(0, 0, 0, 0.48);
     }
 
+    .special-presentation.race_sponsors .ceremony-card {
+      grid-template-columns: 150px 1fr;
+      gap: 22px;
+      width: min(660px, 100%);
+      padding: 12px 20px;
+      border-left-width: 4px;
+      background: linear-gradient(90deg, rgba(7, 9, 13, 0.88), rgba(24, 30, 42, 0.78));
+    }
+
     .ceremony-logo {
       width: 210px;
       height: 116px;
@@ -992,10 +1028,20 @@ OVERLAY_HTML = r"""<!doctype html>
       filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.62));
     }
 
+    .special-presentation.race_sponsors .ceremony-logo {
+      width: 145px;
+      height: 74px;
+    }
+
     .ceremony-title {
       font-size: 40px;
       font-weight: 950;
       letter-spacing: 0.05em;
+    }
+
+    .special-presentation.race_sponsors .ceremony-title {
+      font-size: 26px;
+      letter-spacing: 0.04em;
     }
 
     .ceremony-subtitle {
@@ -1006,30 +1052,40 @@ OVERLAY_HTML = r"""<!doctype html>
       letter-spacing: 0.08em;
     }
 
+    .special-presentation.race_sponsors .ceremony-subtitle {
+      margin-top: 7px;
+      font-size: 13px;
+      letter-spacing: 0.06em;
+    }
+
     .special-presentation.crank_it_up {
       left: 24px;
       right: 24px;
       top: auto;
       bottom: 34px;
-      height: 190px;
+      height: 168px;
       justify-content: space-between;
-      gap: 34px;
+      gap: 26px;
     }
 
     .crank-speaker {
       display: none;
-      flex: 0 0 170px;
-      width: 170px;
-      height: 142px;
-      border-radius: 18px;
+      flex: 0 0 190px;
+      width: 190px;
+      height: 150px;
+      border-radius: 30px;
       background:
-        radial-gradient(circle at 50% 28%, #272f3d 0 19px, #050608 20px 38px, transparent 39px),
-        radial-gradient(circle at 50% 73%, #2d394b 0 38px, #050608 39px 64px, transparent 65px),
-        linear-gradient(145deg, rgba(49, 57, 70, 0.99), rgba(5, 6, 8, 0.98));
+        linear-gradient(135deg, transparent 0 18%, rgba(255, 255, 255, 0.96) 18% 31%, rgba(5, 6, 8, 0.98) 31% 44%, rgba(255, 255, 255, 0.96) 44% 57%, rgba(5, 6, 8, 0.98) 57% 70%, transparent 70%),
+        radial-gradient(circle at 50% 60%, #353b45 0 42px, #050608 43px 69px, #b9c0cc 70px 76px, transparent 77px),
+        linear-gradient(145deg, rgba(55, 10, 14, 0.99), rgba(5, 6, 8, 0.98));
       border: 4px solid rgba(255, 255, 255, 0.30);
-      box-shadow: 0 0 34px rgba(165, 20, 30, 0.62), inset 0 0 18px rgba(255, 255, 255, 0.10);
+      box-shadow:
+        0 0 38px rgba(255, 192, 0, 0.40),
+        0 0 52px rgba(215, 25, 32, 0.55),
+        inset 0 0 22px rgba(255, 255, 255, 0.12);
       animation: speakerPulse 0.42s infinite alternate;
       position: relative;
+      overflow: visible;
     }
 
     .crank-speaker::before,
@@ -1039,43 +1095,68 @@ OVERLAY_HTML = r"""<!doctype html>
       left: 50%;
       transform: translateX(-50%);
       border-radius: 50%;
-      border: 3px solid rgba(255, 255, 255, 0.22);
-      box-shadow: inset 0 0 18px rgba(255, 255, 255, 0.10);
+      border: 4px solid rgba(255, 255, 255, 0.24);
+      box-shadow:
+        inset 0 0 20px rgba(255, 255, 255, 0.12),
+        0 0 22px rgba(255, 192, 0, 0.40);
     }
 
     .crank-speaker::before {
-      top: 18px;
-      width: 48px;
-      height: 48px;
+      top: 13px;
+      width: 44px;
+      height: 44px;
+      background: radial-gradient(circle, #d9dee7 0 8px, #10141b 9px 22px);
     }
 
     .crank-speaker::after {
-      bottom: 17px;
-      width: 84px;
-      height: 84px;
+      bottom: 14px;
+      width: 92px;
+      height: 92px;
+      background: radial-gradient(circle, #111 0 20px, #1e242d 21px 43px, #050608 44px);
+    }
+
+    .crank-speaker-left {
+      --speaker-tilt: -3deg;
+    }
+
+    .crank-speaker-right {
+      --speaker-tilt: 3deg;
     }
 
     .special-presentation.crank_it_up .crank-speaker {
       display: block;
     }
 
+    .special-presentation.crank_it_up .crank-speaker-left {
+      clip-path: polygon(0 14%, 100% 0, 100% 100%, 0 86%);
+    }
+
+    .special-presentation.crank_it_up .crank-speaker-right {
+      clip-path: polygon(0 0, 100% 14%, 100% 86%, 0 100%);
+    }
+
     .special-presentation.crank_it_up .ceremony-card {
       display: block;
       width: auto;
-      min-width: 520px;
-      padding: 24px 44px;
+      min-width: 420px;
+      padding: 16px 34px;
       text-align: center;
       border-left: 0;
       border-bottom: 6px solid var(--rgc-red);
-      background: linear-gradient(90deg, rgba(7, 9, 13, 0.92), rgba(36, 12, 18, 0.9), rgba(7, 9, 13, 0.92));
+      background:
+        linear-gradient(90deg, rgba(7, 9, 13, 0.92), rgba(36, 12, 18, 0.9), rgba(7, 9, 13, 0.92)),
+        repeating-linear-gradient(135deg, rgba(255,255,255,0.12) 0 8px, transparent 8px 16px);
     }
 
     .special-presentation.crank_it_up .ceremony-logo {
-      display: none;
+      display: block;
+      width: 170px;
+      height: 58px;
+      margin: 0 auto 4px;
     }
 
     .special-presentation.crank_it_up .ceremony-title {
-      font-size: 58px;
+      font-size: 46px;
       letter-spacing: 0.08em;
       text-shadow: 0 0 22px rgba(255, 255, 255, 0.28);
     }
@@ -1087,11 +1168,11 @@ OVERLAY_HTML = r"""<!doctype html>
 
     @keyframes speakerPulse {
       from {
-        transform: scale(0.98);
+        transform: rotate(var(--speaker-tilt, 0deg)) scale(0.98);
         filter: brightness(0.9);
       }
       to {
-        transform: scale(1.04);
+        transform: rotate(var(--speaker-tilt, 0deg)) scale(1.04);
         filter: brightness(1.2);
       }
     }
@@ -1110,6 +1191,7 @@ OVERLAY_HTML = r"""<!doctype html>
       <span id="track">Waiting for iRacing</span>
       <span id="sponsor" class="sponsor"></span>
     </div>
+    <div id="session-center" class="session-center hidden"></div>
   </section>
 
   <section id="leaderboard" class="leaderboard">
@@ -1168,6 +1250,7 @@ OVERLAY_HTML = r"""<!doctype html>
       setText("track", buildTrackLine(state));
       setText("sponsor", event.sponsor ? `Presented by ${event.sponsor}` : "");
       setText("lap", buildLapLine(state));
+      setText("session-center", buildSessionCenterLine(state));
       document.getElementById("top-banner").classList.toggle("caution", !!state.caution);
       document.getElementById("leaderboard").classList.toggle("green", !!state.green);
       document.getElementById("leaderboard").classList.toggle("caution", !!state.caution);
@@ -1198,6 +1281,7 @@ OVERLAY_HTML = r"""<!doctype html>
       const active = !!(presentation && presentation.kind);
       layer.classList.toggle("hidden", !active);
       layer.classList.toggle("crank_it_up", active && presentation.kind === "crank_it_up");
+      layer.classList.toggle("race_sponsors", active && presentation.kind === "race_sponsors");
       if (!active) return;
       setText("ceremony-title", presentation.title || "Please Rise");
       setText("ceremony-subtitle", presentation.subtitle || "Presented by RGC Motorsports");
@@ -1302,6 +1386,13 @@ OVERLAY_HTML = r"""<!doctype html>
       }
       if (state.lap) return `Lap ${state.lap}`;
       return "Lap --";
+    }
+
+    function buildSessionCenterLine(state) {
+      if (!isTimedSession(state.session_type)) return "";
+      const remaining = Number(state.session_time_remaining || 0);
+      const label = sessionLabel(state.session_type);
+      return remaining > 0 ? `${label}  ${formatClock(remaining)}` : label;
     }
 
     function isTimedSession(sessionType) {

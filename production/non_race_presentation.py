@@ -72,7 +72,9 @@ class QualifyingCameraDirector:
 
     def update(self, telemetry, camera_director):
         session_type = str(telemetry.get_session_type() or "").lower()
-        if "qual" not in session_type:
+        is_practice = "practice" in session_type
+        is_qualifying = "qual" in session_type
+        if not (is_practice or is_qualifying):
             self.last_car_idx = None
             return None
 
@@ -91,12 +93,15 @@ class QualifyingCameraDirector:
         ):
             return None
 
+        group_name = "Cockpit" if is_qualifying else "TV1"
+        role = "qualifying" if is_qualifying else "practice"
+
         decision = camera_director.focus_car(
             car_idx,
-            "Cockpit",
+            group_name,
             telemetry,
             now,
-            role="qualifying",
+            role=role,
             force=self.last_car_idx is None,
         )
         if decision.status in ("suggested", "switched", "held"):

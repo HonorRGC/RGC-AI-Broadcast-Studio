@@ -92,3 +92,17 @@ def test_qualifying_camera_uses_cockpit_for_active_qualifier():
 
     assert decision.status == "switched"
     assert camera.calls == [(7, "Cockpit", "qualifying", True)]
+
+
+def test_practice_camera_uses_tv1_for_active_driver():
+    class PracticeTelemetry(QualifyingTelemetry):
+        def get_session_type(self):
+            return "Practice"
+
+    director = QualifyingCameraDirector()
+    camera = CameraSpy()
+
+    decision = director.update(PracticeTelemetry(), camera)
+
+    assert decision.status == "switched"
+    assert camera.calls == [(7, "TV1", "practice", True)]
