@@ -53,6 +53,13 @@ class BroadcastStoryProducer:
                 "clean air, lap traffic, or what the challenger must do next."
             )
 
+        if story_type.startswith("formation_"):
+            notes.append(
+                "This is a pack-formation call. Do not claim inside or outside "
+                "lane unless explicitly stated. Describe the pack shape, tension, "
+                "draft momentum, and why this can create runs or risk."
+            )
+
         if getattr(item, "category", "") == "pit_strategy":
             notes.append(
                 "Focus on consequence: timing, track position, tire/fuel window, "
@@ -111,6 +118,14 @@ class BroadcastStoryProducer:
             return "fight for control of the race"
         if story_type in {"battle_for_top_five", "battle_for_top_ten", "side_by_side", "three_car_battle"}:
             return "localized battle with consequences"
+        if story_type == "formation_three_wide":
+            return "three-wide pressure in the draft"
+        if story_type == "formation_two_wide":
+            return "pack is doubled up and momentum is building"
+        if story_type == "formation_single_file":
+            return "single-file draft train setting up the next move"
+        if story_type == "formation_compressed_pack":
+            return "lead pack compression"
         if getattr(item, "category", "") == "pit_strategy":
             return "strategy consequence"
         if priority >= 9:

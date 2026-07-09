@@ -8,6 +8,7 @@ from production.broadcast_story_producer import BroadcastStoryProducer
 from production.editorial_producer import EditorialDecisionType, EditorialProducer
 from production.field_rundown_director import FieldRundownDirector
 from production.fastest_lap_tracker import FastestLapTracker
+from production.formation_detector import FormationDetector
 from production.incident_detector import IncidentDetector
 from production.league_context import LeagueContext
 from production.openai_director import OpenAIDirector
@@ -41,6 +42,7 @@ class BroadcastEngine:
         self.race_intelligence = RaceIntelligence()
         self.race_insight_director = RaceInsightDirector()
         self.action_detector = ActionDetector()
+        self.formation_detector = FormationDetector()
         self.editorial_producer = EditorialProducer()
         self.broadcast_story_producer = BroadcastStoryProducer()
         self.pit_strategy_detector = PitStrategyDetector()
@@ -218,6 +220,13 @@ class BroadcastEngine:
                 total_laps,
             )
             self._collect_action_stories(
+                telemetry,
+                story_results,
+                driver_lookup,
+                pit_road_status,
+                current_lap,
+            )
+            self._collect_formation_stories(
                 telemetry,
                 story_results,
                 driver_lookup,
@@ -533,6 +542,36 @@ class BroadcastEngine:
                 car_number=primary.get("number", ""),
                 speaker="lead",
                 camera_target_car_idx=event.camera_target_car_idx,
+                participant_car_indices=event.participant_car_indices,
+            )
+
+    def _collect_formation_stories(
+        self,
+        telemetry,
+        results,
+        driver_lookup,
+        pit_road_status,
+        current_lap,
+    ):
+        events = self.formation_detector.analyze(
+            results=results,
+            driver_lookup=driver_lookup,
+            lap_dist_pct_status=telemetry.get_car_idx_lap_dist_pct(),
+            pit_road_status=pit_road_status,
+            current_lap=current_lap,
+        )
+        for event in events:
+            primary = driver_lookup.get(event.primary_car_idx, {})
+            self.editorial_producer.submit_story(
+                story_type=event.story_type,
+                headline=event.headline,
+                summary=event.summary,
+                priority=event.importance,
+                source="formation_detector",
+                driver_name=primary.get("name", ""),
+                car_number=primary.get("number", ""),
+                speaker="jeff",
+                camera_target_car_idx=event.primary_car_idx,
                 participant_car_indices=event.participant_car_indices,
             )
 

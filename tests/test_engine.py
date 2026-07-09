@@ -326,6 +326,41 @@ def test_engine_preserves_camera_target_for_close_action():
     assert action_items[0].participant_car_indices == (0, 1, 2)
 
 
+def test_engine_submits_pack_formation_story():
+    results = [
+        {"CarIdx": index, "Position": index, "LapsComplete": 8}
+        for index in range(6)
+    ]
+    drivers = {
+        index: {"name": f"Driver {index + 1}", "number": str(index + 1)}
+        for index in range(6)
+    }
+    snapshot = TelemetrySnapshot(
+        lap=8,
+        total_laps=30,
+        session_flags=RaceFlags.GREEN,
+        results=results,
+        driver_lookup=drivers,
+        pit_road_status=[False] * 6,
+        track_surface=[3] * 6,
+        lap_dist_pct=[0.5000, 0.5040, 0.5080, 0.5120, 0.5160, 0.5200],
+    )
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    engine.session_tracker.update("Race")
+    engine.race_director.race_started = True
+    engine.race_director.phase = RacePhase.GREEN
+
+    engine.tick(SnapshotSource(snapshot))
+
+    formation_items = [
+        item for item in engine.editorial_producer.items
+        if item.story_type == "formation_single_file"
+    ]
+    assert len(formation_items) == 1
+    assert "draft train" in formation_items[0].summary
+    assert formation_items[0].speaker == "jeff"
+
+
 def test_engine_queues_long_green_field_rundown_under_green():
     results = [
         {"CarIdx": index, "Position": index, "LapsComplete": 20}
