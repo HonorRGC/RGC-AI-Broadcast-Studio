@@ -105,6 +105,34 @@ def test_overlay_caution_overrides_green_highlight():
     assert state["caution"] is True
 
 
+def test_overlay_tracks_green_and_caution_laps_for_race_bar():
+    class MutableTelemetry(OverlayTelemetry):
+        flags = 0
+        lap = 1
+
+        def get_lap(self):
+            return self.lap
+
+        def get_results(self):
+            return [{"CarIdx": 3, "Position": 0, "LapsComplete": self.lap}]
+
+        def get_session_flags(self):
+            return self.flags
+
+    telemetry = MutableTelemetry()
+    builder = OverlayStateBuilder()
+
+    telemetry.lap = 1
+    telemetry.flags = 0x00000004
+    builder.build_from_telemetry(telemetry)
+    telemetry.lap = 2
+    telemetry.flags = 0x00000008
+    state = builder.build_from_telemetry(telemetry).to_dict()
+
+    assert state["lap_history"][0] == {"lap": 1, "status": "green"}
+    assert state["lap_history"][1] == {"lap": 2, "status": "caution"}
+
+
 def test_overlay_shows_laps_down_before_time_gap():
     class LappedTelemetry(OverlayTelemetry):
         def get_results(self):
@@ -217,6 +245,26 @@ def test_overlay_preserves_special_presentation():
     assert state["special_presentation"]["kind"] == "rgc_anthem"
     assert state["special_presentation"]["title"] == "RGC Anthem"
     assert state["special_presentation"]["graphics"]
+
+
+def test_overlay_preserves_stat_panel():
+    from production.overlay import OverlayServer
+
+    server = OverlayServer()
+    shown = server.show_stat_panel(
+        kind="biggest_movers",
+        title="Biggest Movers",
+        subtitle="Positions gained",
+        rows=[{"label": "#24 Dean Marsh", "value": "+7", "detail": "Started 12th"}],
+        duration=90,
+    )
+
+    server.update_from_telemetry(OverlayTelemetry())
+    state = server.current_state_dict()
+
+    assert shown is True
+    assert state["stat_panel"]["kind"] == "biggest_movers"
+    assert state["stat_panel"]["rows"][0]["value"] == "+7"
 
 
 def test_crank_it_up_overlay_has_visible_speaker_elements():

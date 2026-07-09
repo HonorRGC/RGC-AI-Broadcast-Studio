@@ -22,6 +22,7 @@ class PitDriverState:
     car_idx: int
     on_pit_road: bool = False
     last_pit_lap: int = 0
+    pit_entry_position: int = 0
     last_reported_at: float = 0.0
     initialized: bool = False
     started_from_pit_road: bool = False
@@ -50,6 +51,7 @@ class PitStrategyDetector:
 
             if car_idx is None:
                 continue
+            current_position = self.safe_int(car.get("Position", 0))
 
             driver_info = driver_lookup.get(car_idx, {})
             driver_name = driver_info.get("name", f"Car {car_idx}")
@@ -80,6 +82,7 @@ class PitStrategyDetector:
                 continue
 
             if on_pit_road and not state.on_pit_road:
+                state.pit_entry_position = current_position
                 event = self.build_pit_entry_event(
                     state=state,
                     current_lap=current_lap,
@@ -160,3 +163,10 @@ class PitStrategyDetector:
 
     def can_report(self, state):
         return time.time() - state.last_reported_at >= self.report_cooldown_seconds
+
+    @staticmethod
+    def safe_int(value, default=0):
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return default

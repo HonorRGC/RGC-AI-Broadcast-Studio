@@ -81,6 +81,37 @@ class SpecialPresentation:
 
 
 @dataclass
+class StatPanelRow:
+    label: str = ""
+    value: str = ""
+    detail: str = ""
+
+    def to_dict(self):
+        return {
+            "label": self.label,
+            "value": self.value,
+            "detail": self.detail,
+        }
+
+
+@dataclass
+class StatPanel:
+    kind: str = ""
+    title: str = ""
+    subtitle: str = ""
+    rows: list[StatPanelRow] = field(default_factory=list)
+    expires_at: float = 0.0
+
+    def to_dict(self):
+        return {
+            "kind": self.kind,
+            "title": self.title,
+            "subtitle": self.subtitle,
+            "rows": [row.to_dict() for row in self.rows],
+        }
+
+
+@dataclass
 class OverlayState:
     event: OverlayEventConfig = field(default_factory=OverlayEventConfig)
     session_type: str = "Unknown"
@@ -92,7 +123,9 @@ class OverlayState:
     green: bool = False
     featured_driver: FeaturedDriver | None = None
     special_presentation: SpecialPresentation | None = None
+    stat_panel: StatPanel | None = None
     leaderboard: list[LeaderboardEntry] = field(default_factory=list)
+    lap_history: list[dict[str, Any]] = field(default_factory=list)
 
     def to_dict(self):
         return {
@@ -117,7 +150,9 @@ class OverlayState:
                 if self.special_presentation
                 else None
             ),
+            "stat_panel": self.stat_panel.to_dict() if self.stat_panel else None,
             "leaderboard": [entry.to_dict() for entry in self.leaderboard],
+            "lap_history": list(self.lap_history),
         }
 
 
@@ -136,6 +171,7 @@ class OverlayStateBuilder:
         self.cycle_interval_seconds = max(1, int(cycle_interval_seconds))
         self.clock = clock or time.monotonic
         self.last_leaderboard = []
+        self.lap_status_by_lap = {}
 
     def build_from_telemetry(self, telemetry):
         results = telemetry.get_results()
@@ -152,6 +188,8 @@ class OverlayStateBuilder:
 
         lap = self.best_race_lap(results, telemetry.get_lap())
         caution = self.is_caution(telemetry)
+        green = self.is_green(telemetry, session_type=session_type, lap=lap, caution=caution)
+        self.update_lap_history(session_type, lap, caution, green)
 
         return OverlayState(
             event=self.event_config,
@@ -161,8 +199,9 @@ class OverlayStateBuilder:
             total_laps=self.safe_int(telemetry.get_total_laps()),
             session_time_remaining=self.session_time_remaining(telemetry),
             caution=caution,
-            green=self.is_green(telemetry, session_type=session_type, lap=lap, caution=caution),
+            green=green,
             leaderboard=leaderboard,
+            lap_history=self.build_lap_history(self.safe_int(telemetry.get_total_laps())),
         )
 
     def best_race_lap(self, results, telemetry_lap=0):
@@ -289,6 +328,30 @@ class OverlayStateBuilder:
             return True
         return self.is_race_session(session_type) and self.safe_int(lap) > 0
 
+    def update_lap_history(self, session_type, lap, caution, green):
+        lap = self.safe_int(lap)
+        if not self.is_race_session(session_type) or lap <= 0:
+            if not self.is_race_session(session_type):
+                self.lap_status_by_lap = {}
+            return
+        status = "caution" if caution else "green" if green else ""
+        if not status:
+            return
+        existing = self.lap_status_by_lap.get(lap)
+        if existing == "caution":
+            return
+        self.lap_status_by_lap[lap] = status
+
+    def build_lap_history(self, total_laps=0):
+        if not self.lap_status_by_lap:
+            return []
+        total_laps = self.safe_int(total_laps)
+        last_lap = max(max(self.lap_status_by_lap), total_laps)
+        return [
+            {"lap": lap, "status": self.lap_status_by_lap.get(lap, "pending")}
+            for lap in range(1, last_lap + 1)
+        ]
+
     def visible_leaderboard_window(self, leaderboard):
         if len(leaderboard) <= self.max_entries:
             return leaderboard[: self.max_entries]
@@ -344,6 +407,9 @@ class OverlayServer:
         self.lock = threading.Lock()
         self.featured_driver = None
         self.special_presentation = None
+        self.stat_panel = None
+        self.last_stat_panel_key = ""
+        self.last_stat_panel_at = 0.0
         self.httpd = None
         self.thread = None
         self.static_dir = Path(__file__).resolve().parent / "static"
@@ -386,6 +452,10 @@ class OverlayServer:
                 state.special_presentation = self.special_presentation
             else:
                 self.special_presentation = None
+            if self.stat_panel and self.stat_panel.expires_at > time.monotonic():
+                state.stat_panel = self.stat_panel
+            else:
+                self.stat_panel = None
             self.state = state
 
     def show_featured_driver(
@@ -425,6 +495,45 @@ class OverlayServer:
     def clear_special_presentation(self):
         with self.lock:
             self.special_presentation = None
+
+    def show_stat_panel(
+        self,
+        kind,
+        title,
+        subtitle="",
+        rows=None,
+        duration=10.0,
+        dedupe_key="",
+        minimum_interval=12.0,
+    ):
+        now = time.monotonic()
+        key = str(dedupe_key or f"{kind}:{title}:{subtitle}")
+        with self.lock:
+            if (
+                key
+                and key == self.last_stat_panel_key
+                and now - self.last_stat_panel_at < float(minimum_interval)
+            ):
+                return False
+            self.last_stat_panel_key = key
+            self.last_stat_panel_at = now
+            self.stat_panel = StatPanel(
+                kind=str(kind or ""),
+                title=str(title or ""),
+                subtitle=str(subtitle or ""),
+                rows=[
+                    row
+                    if isinstance(row, StatPanelRow)
+                    else StatPanelRow(
+                        label=str((row or {}).get("label", "")),
+                        value=str((row or {}).get("value", "")),
+                        detail=str((row or {}).get("detail", "")),
+                    )
+                    for row in (rows or [])
+                ],
+                expires_at=now + float(duration),
+            )
+        return True
 
     def current_state_dict(self):
         with self.lock:
@@ -654,6 +763,36 @@ OVERLAY_HTML = r"""<!doctype html>
       box-shadow: 0 3px 0 rgba(0, 0, 0, 0.28);
     }
 
+    .lap-history {
+      display: flex;
+      gap: 2px;
+      padding: 7px 8px 8px;
+      background: rgba(0, 0, 0, 0.28);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .lap-history-segment {
+      height: 8px;
+      flex: 1 1 0;
+      min-width: 2px;
+      border-radius: 3px;
+      background: rgba(255, 255, 255, 0.18);
+    }
+
+    .lap-history-segment.green {
+      background: #15c85f;
+      box-shadow: 0 0 6px rgba(21, 200, 95, 0.36);
+    }
+
+    .lap-history-segment.caution {
+      background: #ffd400;
+      box-shadow: 0 0 6px rgba(255, 212, 0, 0.42);
+    }
+
+    .lap-history-segment.pending {
+      opacity: 0.35;
+    }
+
     .pos {
       color: #fff;
       font-weight: 900;
@@ -733,6 +872,78 @@ OVERLAY_HTML = r"""<!doctype html>
       margin-top: 4px;
       color: var(--rgc-muted);
       font-size: 13px;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .stat-panel {
+      position: absolute;
+      right: 34px;
+      bottom: 54px;
+      width: 390px;
+      background: linear-gradient(90deg, rgba(7, 9, 13, 0.96), rgba(24, 30, 42, 0.94));
+      border-left: 6px solid var(--rgc-red);
+      box-shadow: 0 14px 34px rgba(0, 0, 0, 0.42);
+      text-transform: uppercase;
+      overflow: hidden;
+    }
+
+    .stat-panel.biggest_movers {
+      border-left-color: #15c85f;
+    }
+
+    .stat-panel.pit_update {
+      border-left-color: #ffd400;
+    }
+
+    .stat-panel-header {
+      padding: 12px 16px 10px;
+      background: rgba(0, 0, 0, 0.32);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+    }
+
+    .stat-panel-title {
+      font-size: 24px;
+      font-weight: 950;
+      letter-spacing: 0.04em;
+    }
+
+    .stat-panel-subtitle {
+      margin-top: 3px;
+      color: var(--rgc-muted);
+      font-size: 12px;
+      font-weight: 750;
+    }
+
+    .stat-panel-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      padding: 9px 14px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .stat-panel-label {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 14px;
+      font-weight: 850;
+    }
+
+    .stat-panel-value {
+      color: #fff;
+      font-size: 18px;
+      font-weight: 950;
+    }
+
+    .stat-panel-detail {
+      grid-column: 1 / -1;
+      color: var(--rgc-muted);
+      font-size: 11px;
       font-weight: 700;
       white-space: nowrap;
       overflow: hidden;
@@ -906,6 +1117,7 @@ OVERLAY_HTML = r"""<!doctype html>
       <span>Leaderboard</span>
       <span id="lap" class="lap">Lap --</span>
     </div>
+    <div id="lap-history" class="lap-history hidden"></div>
     <div id="leaderboard-rows"></div>
   </section>
 
@@ -916,6 +1128,14 @@ OVERLAY_HTML = r"""<!doctype html>
       <div id="driver-card-name" class="driver-card-name"></div>
       <div id="driver-card-story" class="driver-card-story"></div>
     </div>
+  </section>
+
+  <section id="stat-panel" class="stat-panel hidden">
+    <div class="stat-panel-header">
+      <div id="stat-panel-title" class="stat-panel-title"></div>
+      <div id="stat-panel-subtitle" class="stat-panel-subtitle"></div>
+    </div>
+    <div id="stat-panel-rows"></div>
   </section>
 
   <section id="special-presentation" class="special-presentation hidden">
@@ -952,8 +1172,10 @@ OVERLAY_HTML = r"""<!doctype html>
       document.getElementById("leaderboard").classList.toggle("green", !!state.green);
       document.getElementById("leaderboard").classList.toggle("caution", !!state.caution);
       renderBrandGraphic(event.graphics || [], state.session_type);
+      renderLapHistory(state.lap_history || []);
       renderDriverCard(state.featured_driver);
       renderSpecialPresentation(state.special_presentation);
+      renderStatPanel(state.stat_panel);
 
       const rows = document.getElementById("leaderboard-rows");
       rows.innerHTML = "";
@@ -984,6 +1206,53 @@ OVERLAY_HTML = r"""<!doctype html>
       const src = pickRotatingGraphic(graphics, 3.5);
       logo.classList.toggle("hidden", !src);
       logo.src = src || "";
+    }
+
+    function renderStatPanel(panel) {
+      const layer = document.getElementById("stat-panel");
+      const active = !!(panel && panel.kind);
+      layer.className = `stat-panel ${active ? panel.kind : "hidden"}`;
+      if (!active) return;
+      setText("stat-panel-title", panel.title || "Race Update");
+      setText("stat-panel-subtitle", panel.subtitle || "");
+      const rows = document.getElementById("stat-panel-rows");
+      rows.innerHTML = "";
+      for (const row of (panel.rows || []).slice(0, 6)) {
+        const item = document.createElement("div");
+        item.className = "stat-panel-row";
+        item.innerHTML = `
+          <span class="stat-panel-label">${escapeHtml(row.label || "")}</span>
+          <span class="stat-panel-value">${escapeHtml(row.value || "")}</span>
+          <span class="stat-panel-detail">${escapeHtml(row.detail || "")}</span>
+        `;
+        rows.appendChild(item);
+      }
+    }
+
+    function renderLapHistory(history) {
+      const bar = document.getElementById("lap-history");
+      const active = !!(history && history.length);
+      bar.classList.toggle("hidden", !active);
+      if (!active) return;
+      const maxSegments = 80;
+      const step = Math.max(1, Math.ceil(history.length / maxSegments));
+      const compacted = [];
+      for (let index = 0; index < history.length; index += step) {
+        const chunk = history.slice(index, index + step);
+        const status = chunk.some((lap) => lap.status === "caution")
+          ? "caution"
+          : chunk.some((lap) => lap.status === "green")
+            ? "green"
+            : "pending";
+        compacted.push({ lap: chunk[0].lap, status });
+      }
+      bar.innerHTML = "";
+      for (const lap of compacted) {
+        const segment = document.createElement("span");
+        segment.className = `lap-history-segment ${lap.status || "pending"}`;
+        segment.title = `Lap ${lap.lap}: ${lap.status || "pending"}`;
+        bar.appendChild(segment);
+      }
     }
 
     function renderBrandGraphic(graphics, sessionType) {

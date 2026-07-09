@@ -152,7 +152,7 @@ def run_source(
         )
         if item:
             if overlay_server:
-                show_overlay_feature(item, overlay_server)
+                show_overlay_feature(item, overlay_server, source, engine)
             report_replay_decision(
                 replay_director.handle_item(item, source, camera_director)
             )
@@ -212,16 +212,44 @@ def report_silent_feature(item):
     print(f"FEATURE: {item.message}")
 
 
-def show_overlay_feature(item, overlay_server):
-    if getattr(item, "category", "") != "crank_it_up":
+def show_overlay_feature(item, overlay_server, source=None, engine=None):
+    category = str(getattr(item, "category", "") or "")
+    if category == "crank_it_up":
+        overlay_server.show_special_presentation(
+            kind="crank_it_up",
+            title="Crank It Up",
+            subtitle="No booth. Just race cars.",
+            duration=getattr(item, "feature_duration_seconds", 28.0) or 28.0,
+            graphics=[],
+        )
         return
-    overlay_server.show_special_presentation(
-        kind="crank_it_up",
-        title="Crank It Up",
-        subtitle="No booth. Just race cars.",
-        duration=getattr(item, "feature_duration_seconds", 28.0) or 28.0,
-        graphics=[],
-    )
+
+    if category in ("pit_strategy", "caution_pit_summary"):
+        rows = build_pit_update_rows(source, engine)
+        if rows:
+            overlay_server.show_stat_panel(
+                kind="pit_update",
+                title="Pit Road Update",
+                subtitle="Last stop information",
+                rows=rows,
+                duration=12.0,
+                dedupe_key=f"pit_update:{latest_pit_lap(engine)}",
+                minimum_interval=18.0,
+            )
+        return
+
+    if should_show_movers_graphic(item, engine):
+        rows = build_biggest_movers_rows(engine)
+        if rows:
+            overlay_server.show_stat_panel(
+                kind="biggest_movers",
+                title="Biggest Movers",
+                subtitle="Positions gained from the start",
+                rows=rows,
+                duration=11.0,
+                dedupe_key=f"movers:{getattr(item, 'camera_target_car_idx', None)}",
+                minimum_interval=35.0,
+            )
 
 
 def run_crank_it_up_test(booth, overlay_server, duration_seconds=28.0):
@@ -244,6 +272,113 @@ def run_crank_it_up_test(booth, overlay_server, duration_seconds=28.0):
         overlay_server.clear_special_presentation()
     else:
         print("Overlay is OFF, so only the voice preview was played.")
+
+
+def should_show_movers_graphic(item, engine):
+    if not engine:
+        return False
+    category = str(getattr(item, "category", "") or "")
+    if category not in ("race_story", "fastest_lap"):
+        return False
+    message = str(getattr(item, "message", "") or "").lower()
+    target = getattr(item, "camera_target_car_idx", None)
+    movers = getattr(engine.race_intelligence, "get_biggest_movers", lambda *_: [])(5)
+    if target is not None:
+        for mover in movers:
+            if mover.car_idx == target and getattr(mover, "positions_gained", 0) >= 3:
+                return True
+    return any(
+        phrase in message
+        for phrase in (
+            "moved into",
+            "gained",
+            "from",
+            "up to",
+            "climbed",
+            "biggest mover",
+        )
+    )
+
+
+def build_biggest_movers_rows(engine, limit=5):
+    if not engine:
+        return []
+    movers = getattr(engine.race_intelligence, "get_biggest_movers", lambda *_: [])(limit)
+    rows = []
+    for mover in movers:
+        gained = int(getattr(mover, "positions_gained", 0) or 0)
+        if gained <= 0:
+            continue
+        rows.append(
+            {
+                "label": f"P{mover.current_position}  #{mover.car_number} {mover.driver_name}",
+                "value": f"+{gained}",
+                "detail": f"Started {ordinal(mover.starting_position)}",
+            }
+        )
+    return rows
+
+
+def build_pit_update_rows(source, engine, limit=5):
+    if not source or not engine:
+        return []
+    current_positions = build_current_position_lookup(source.get_results())
+    states = list(getattr(engine.pit_strategy_detector, "driver_states", {}).values())
+    states = [state for state in states if getattr(state, "last_pit_lap", 0) > 0]
+    states.sort(key=lambda state: getattr(state, "last_pit_lap", 0), reverse=True)
+    rows = []
+    for state in states[:limit]:
+        current_position = current_positions.get(state.car_idx, 0)
+        detail_parts = [f"Last stop lap {state.last_pit_lap}"]
+        if state.pit_entry_position:
+            detail_parts.append(f"entered P{state.pit_entry_position}")
+        if current_position:
+            detail_parts.append(f"now P{current_position}")
+        rows.append(
+            {
+                "label": f"#{state.car_number} {state.driver_name}",
+                "value": f"Lap {state.last_pit_lap}",
+                "detail": " | ".join(detail_parts),
+            }
+        )
+    return rows
+
+
+def build_current_position_lookup(results):
+    valid = [car for car in results or [] if car.get("CarIdx") is not None]
+    zero_based = any(safe_int(car.get("Position"), 999) == 0 for car in valid)
+    positions = {}
+    for car in valid:
+        position = safe_int(car.get("Position"), 0)
+        if zero_based:
+            position += 1
+        positions[car.get("CarIdx")] = position
+    return positions
+
+
+def latest_pit_lap(engine):
+    if not engine:
+        return 0
+    states = getattr(engine.pit_strategy_detector, "driver_states", {}).values()
+    return max((getattr(state, "last_pit_lap", 0) for state in states), default=0)
+
+
+def ordinal(number):
+    number = safe_int(number)
+    if number <= 0:
+        return "--"
+    if 10 <= number % 100 <= 20:
+        suffix = "th"
+    else:
+        suffix = {1: "st", 2: "nd", 3: "rd"}.get(number % 10, "th")
+    return f"{number}{suffix}"
+
+
+def safe_int(value, default=0):
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
 
 
 def should_switch_camera_after_voice_starts(item):
