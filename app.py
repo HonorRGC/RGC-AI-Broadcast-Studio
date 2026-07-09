@@ -242,7 +242,7 @@ def show_overlay_feature(item, overlay_server, source=None, engine=None):
             title="Crank It Up",
             subtitle="No booth. Just race cars.",
             duration=getattr(item, "feature_duration_seconds", 28.0) or 28.0,
-            graphics=["/assets/rgc_motorsports.png"],
+            graphics=["/assets/crank_it_up.png"],
         )
         return
 
@@ -286,7 +286,7 @@ def run_crank_it_up_test(booth, overlay_server, duration_seconds=28.0):
             title="Crank It Up",
             subtitle="Presented by RGC Motorsports",
             duration=feature_seconds,
-            graphics=["/assets/rgc_motorsports.png"],
+            graphics=["/assets/crank_it_up.png"],
         )
         print(f"Crank It Up overlay preview is active for {feature_seconds:.0f} seconds.")
         print(f"Preview URL: {overlay_server.url}")

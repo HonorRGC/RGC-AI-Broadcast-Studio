@@ -267,10 +267,10 @@ def test_overlay_preserves_stat_panel():
     assert state["stat_panel"]["rows"][0]["value"] == "+7"
 
 
-def test_crank_it_up_overlay_has_visible_speaker_elements():
+def test_crank_it_up_overlay_has_animated_hero_graphic():
     assert "crank-speaker-left" in OVERLAY_HTML
     assert "crank-speaker-right" in OVERLAY_HTML
-    assert ".special-presentation.crank_it_up .crank-speaker" in OVERLAY_HTML
+    assert "crankHeroPulse" in OVERLAY_HTML
 
 
 def test_overlay_has_center_session_clock():
@@ -288,4 +288,4 @@ def test_race_sponsor_banner_is_compact():
 def test_crank_it_up_overlay_uses_logo_and_racing_speaker_style():
     assert ".special-presentation.crank_it_up .ceremony-logo" in OVERLAY_HTML
     assert "repeating-linear-gradient" in OVERLAY_HTML
-    assert "clip-path" in OVERLAY_HTML
+    assert "drop-shadow(0 0 14px" in OVERLAY_HTML

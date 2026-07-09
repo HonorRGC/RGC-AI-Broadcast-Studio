@@ -1063,9 +1063,9 @@ OVERLAY_HTML = r"""<!doctype html>
       right: 24px;
       top: auto;
       bottom: 34px;
-      height: 168px;
-      justify-content: space-between;
-      gap: 26px;
+      height: 184px;
+      justify-content: center;
+      gap: 18px;
     }
 
     .crank-speaker {
@@ -1124,7 +1124,7 @@ OVERLAY_HTML = r"""<!doctype html>
     }
 
     .special-presentation.crank_it_up .crank-speaker {
-      display: block;
+      display: none;
     }
 
     .special-presentation.crank_it_up .crank-speaker-left {
@@ -1138,25 +1138,33 @@ OVERLAY_HTML = r"""<!doctype html>
     .special-presentation.crank_it_up .ceremony-card {
       display: block;
       width: auto;
-      min-width: 420px;
-      padding: 16px 34px;
+      min-width: 360px;
+      padding: 10px 26px 12px;
       text-align: center;
       border-left: 0;
       border-bottom: 6px solid var(--rgc-red);
       background:
-        linear-gradient(90deg, rgba(7, 9, 13, 0.92), rgba(36, 12, 18, 0.9), rgba(7, 9, 13, 0.92)),
+        linear-gradient(90deg, rgba(7, 9, 13, 0.78), rgba(36, 12, 18, 0.82), rgba(7, 9, 13, 0.78)),
         repeating-linear-gradient(135deg, rgba(255,255,255,0.12) 0 8px, transparent 8px 16px);
+      box-shadow:
+        0 0 34px rgba(215, 25, 32, 0.42),
+        0 0 62px rgba(255, 192, 0, 0.18);
     }
 
     .special-presentation.crank_it_up .ceremony-logo {
       display: block;
-      width: 170px;
-      height: 58px;
-      margin: 0 auto 4px;
+      width: 260px;
+      height: 130px;
+      margin: -20px auto -8px;
+      object-fit: contain;
+      animation: crankHeroPulse 0.68s infinite alternate ease-in-out;
+      filter:
+        drop-shadow(0 0 14px rgba(255, 192, 0, 0.36))
+        drop-shadow(0 0 24px rgba(215, 25, 32, 0.52));
     }
 
     .special-presentation.crank_it_up .ceremony-title {
-      font-size: 46px;
+      font-size: 24px;
       letter-spacing: 0.08em;
       text-shadow: 0 0 22px rgba(255, 255, 255, 0.28);
     }
@@ -1164,6 +1172,23 @@ OVERLAY_HTML = r"""<!doctype html>
     .special-presentation.crank_it_up .ceremony-subtitle {
       color: #ffffff;
       opacity: 0.82;
+      margin-top: 4px;
+      font-size: 14px;
+    }
+
+    @keyframes crankHeroPulse {
+      0% {
+        transform: translateX(-2px) rotate(-0.9deg) scale(0.98);
+      }
+      35% {
+        transform: translateX(2px) rotate(0.8deg) scale(1.025);
+      }
+      70% {
+        transform: translateX(-1px) rotate(-0.4deg) scale(1.045);
+      }
+      100% {
+        transform: translateX(1px) rotate(0.6deg) scale(1.06);
+      }
     }
 
     @keyframes speakerPulse {
