@@ -12,6 +12,7 @@ from production.non_race_presentation import (
     PracticePresentationDirector,
     QualifyingCameraDirector,
 )
+from production.live_broadcast_validator import LiveBroadcastValidator
 from production.overlay import OverlayServer
 from production.replay_director import ReplayDirector
 
@@ -121,6 +122,7 @@ def run_source(
     practice_presentation_director,
     caution_presentation_director,
     qualifying_camera_director,
+    live_broadcast_validator,
     overlay_server,
     caution_audio_bed,
     tick_seconds,
@@ -151,6 +153,14 @@ def run_source(
             )
         )
         if item:
+            validation = live_broadcast_validator.validate(item, source)
+            if not validation.valid:
+                report_producer_skip(validation.reason)
+                if hasattr(source, "next_snapshot"):
+                    source.next_snapshot()
+                if tick_seconds > 0:
+                    time.sleep(tick_seconds)
+                continue
             if overlay_server:
                 show_overlay_feature(item, overlay_server, source, engine)
             report_replay_decision(
@@ -210,6 +220,10 @@ def report_caution_presentation(message):
 
 def report_silent_feature(item):
     print(f"FEATURE: {item.message}")
+
+
+def report_producer_skip(reason):
+    print(f"PRODUCER: skipped stale story ({reason}).")
 
 
 def show_overlay_feature(item, overlay_server, source=None, engine=None):
@@ -521,6 +535,7 @@ def main():
     practice_presentation_director = PracticePresentationDirector()
     caution_presentation_director = CautionPresentationDirector()
     qualifying_camera_director = QualifyingCameraDirector()
+    live_broadcast_validator = LiveBroadcastValidator()
     overlay_server = OverlayServer(
         host=args.overlay_host,
         port=args.overlay_port,
@@ -600,6 +615,7 @@ def main():
             practice_presentation_director,
             caution_presentation_director,
             qualifying_camera_director,
+            live_broadcast_validator,
             overlay_server,
             caution_audio_bed,
             args.tick_seconds,
@@ -621,6 +637,7 @@ def main():
         practice_presentation_director = PracticePresentationDirector()
         caution_presentation_director = CautionPresentationDirector()
         qualifying_camera_director = QualifyingCameraDirector()
+        live_broadcast_validator = LiveBroadcastValidator()
         run_source(
             source,
             engine,
@@ -631,6 +648,7 @@ def main():
             practice_presentation_director,
             caution_presentation_director,
             qualifying_camera_director,
+            live_broadcast_validator,
             overlay_server,
             caution_audio_bed,
             args.tick_seconds,

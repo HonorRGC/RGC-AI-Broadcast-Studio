@@ -49,6 +49,14 @@ class PromptBuilder:
         lines.append(f"Headline: {getattr(assignment, 'headline', '')}")
         lines.append(f"Summary: {getattr(assignment, 'summary', '')}")
         lines.append(f"Priority: {getattr(assignment, 'priority', '')}")
+        broadcast_angle = getattr(assignment, "broadcast_angle", "")
+        if broadcast_angle:
+            lines.append(f"Broadcast Angle: {broadcast_angle}")
+        producer_notes = tuple(getattr(assignment, "producer_notes", ()) or ())
+        if producer_notes:
+            lines.append("Producer Notes:")
+            for note in producer_notes[:5]:
+                lines.append(f"- {note}")
         if getattr(assignment, "story_type", "") in (
             "side_by_side",
             "three_car_battle",
@@ -102,6 +110,10 @@ class PromptBuilder:
         lines.append("DELIVERY INSTRUCTIONS")
         lines.append("---------------------")
         lines.append(self.delivery_instruction(speaker))
+        lines.append(
+            "Sound like you are following a race-long story, not reading a timing screen. "
+            "If a position-gain fact is included, use it as supporting context, not the whole call."
+        )
 
         return "\n".join(lines)
 

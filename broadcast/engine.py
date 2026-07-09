@@ -4,6 +4,7 @@ from broadcaster.race_director import RaceDirector, RacePhase
 from production.commentary_cleaner import CommentaryCleaner
 from production.caution_pit_reporter import CautionPitReporter
 from production.action_detector import ActionDetector
+from production.broadcast_story_producer import BroadcastStoryProducer
 from production.editorial_producer import EditorialDecisionType, EditorialProducer
 from production.field_rundown_director import FieldRundownDirector
 from production.fastest_lap_tracker import FastestLapTracker
@@ -41,6 +42,7 @@ class BroadcastEngine:
         self.race_insight_director = RaceInsightDirector()
         self.action_detector = ActionDetector()
         self.editorial_producer = EditorialProducer()
+        self.broadcast_story_producer = BroadcastStoryProducer()
         self.pit_strategy_detector = PitStrategyDetector()
         self.caution_pit_reporter = CautionPitReporter()
         self.incident_detector = IncidentDetector()
@@ -1166,6 +1168,11 @@ class BroadcastEngine:
             return
 
         item = decision.item
+        self.broadcast_story_producer.frame(
+            item,
+            race_state=race_state,
+            race_knowledge=race_knowledge,
+        )
         fallback = self.commentary_cleaner.clean(item.summary)
         enriched_knowledge = dict(race_knowledge or {})
         league_driver_context = self.league_context.context_for_item(

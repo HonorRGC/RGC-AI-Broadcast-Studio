@@ -28,6 +28,8 @@ class EditorialItem:
     category: str = "editorial"
     camera_target_car_idx: int | None = None
     participant_car_indices: Tuple[int, ...] = ()
+    broadcast_angle: str = ""
+    producer_notes: Tuple[str, ...] = ()
 
     created_at: float = field(default_factory=time.time)
     last_aired_at: float = 0.0

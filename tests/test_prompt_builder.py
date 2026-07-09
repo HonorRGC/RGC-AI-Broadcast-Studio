@@ -38,3 +38,20 @@ def test_prompt_includes_verified_league_driver_notes():
     assert "Verified League Driver Notes:" in prompt["user"]
     assert "RGC Motorsports" in prompt["user"]
     assert "use at most one" in prompt["user"]
+
+
+def test_prompt_includes_producer_notes_and_broadcast_angle():
+    assignment = EditorialItem(
+        story_type="biggest_mover",
+        headline="Big mover",
+        summary="The 24 is moving forward.",
+        priority=8,
+        broadcast_angle="quiet charge through traffic",
+        producer_notes=("Do not make this only a position-gain read.",),
+    )
+
+    prompt = PromptBuilder().build_prompt("jeff", assignment)
+
+    assert "Broadcast Angle: quiet charge through traffic" in prompt["user"]
+    assert "Do not make this only a position-gain read" in prompt["user"]
+    assert "not reading a timing screen" in prompt["user"]
