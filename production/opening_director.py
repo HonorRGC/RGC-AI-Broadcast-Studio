@@ -143,17 +143,21 @@ class OpeningDirector:
         humidity = self.format_humidity(track_info.get("humidity"))
         wind = self.format_wind(track_info.get("wind_speed"))
         wetness = self.format_track_wetness(track_info.get("track_wetness"))
+        rain_chance = self.format_rain_chance(track_info)
+        grip_note = self.grip_note(track_info)
 
         if skies:
             parts.append(f"Skies are {skies}")
         if air_temp:
-            parts.append(f"the air temperature is {air_temp}")
+            parts.append(f"air temperature is {air_temp}")
         if track_temp:
-            parts.append(f"the track temperature is {track_temp}")
+            parts.append(f"track temperature is {track_temp}")
+        if rain_chance:
+            parts.append(f"rain chance is {rain_chance}")
         if humidity:
             parts.append(f"humidity is {humidity}")
         if wind:
-            parts.append(f"winds are around {wind}")
+            parts.append(f"wind is around {wind}")
 
         if not parts and not wetness:
             return ""
@@ -163,6 +167,8 @@ class OpeningDirector:
             sentence = sentence[0].upper() + sentence[1:] + "."
         if wetness:
             sentence = f"{sentence} The racing surface is {wetness}.".strip()
+        if grip_note:
+            sentence = f"{sentence} {grip_note}".strip()
         return sentence
 
     def build_field_rundown(
@@ -321,6 +327,77 @@ class OpeningDirector:
             return f"{round(float(value) * 2.23694)} miles per hour"
         except (TypeError, ValueError):
             return ""
+
+    def format_rain_chance(self, track_info):
+        for key in (
+            "rain_chance",
+            "chance_of_rain",
+            "precipitation_chance",
+            "forecast_rain_chance",
+        ):
+            if key not in track_info:
+                continue
+            try:
+                value = float(track_info.get(key))
+                if value <= 1:
+                    value *= 100
+                return f"{round(value)} percent"
+            except (TypeError, ValueError):
+                text = str(track_info.get(key, "") or "").strip()
+                if text:
+                    return text
+        wetness = self.safe_int(track_info.get("track_wetness"), 0)
+        weather = str(track_info.get("weather", "") or "").lower()
+        skies = self.format_skies(track_info.get("skies")).lower()
+        if wetness == 0 and "rain" not in weather and "overcast" not in skies:
+            return "0 percent"
+        return ""
+
+    def grip_note(self, track_info):
+        track_temp_f = self.temperature_to_fahrenheit(track_info.get("track_temp"))
+        air_temp_f = self.temperature_to_fahrenheit(track_info.get("air_temp"))
+        skies = self.format_skies(track_info.get("skies")).lower()
+        session_time = str(
+            track_info.get("time_of_day")
+            or track_info.get("session_time_of_day")
+            or track_info.get("track_time")
+            or ""
+        ).lower()
+        is_night = any(word in session_time for word in ("night", "pm", "evening"))
+        is_day = any(word in session_time for word in ("day", "afternoon", "am"))
+
+        if track_temp_f and track_temp_f <= 80:
+            return (
+                "With that cooler racing surface, the cars should have a little "
+                "more grip, especially early in a run."
+            )
+        if is_night and track_temp_f and track_temp_f <= 95:
+            return (
+                "Because this is a cooler night race, grip should come in quicker "
+                "and drivers may be able to attack harder on restarts."
+            )
+        if track_temp_f and track_temp_f >= 105:
+            return (
+                "That hotter track should make the tires give up faster, so the "
+                "drivers who manage throttle and corner entry may have the advantage later in a run."
+            )
+        if is_day and air_temp_f and air_temp_f >= 85:
+            return (
+                "With daytime heat in the air, expect the track to get slicker "
+                "as the run goes on."
+            )
+        if "cloud" in skies or "overcast" in skies:
+            return (
+                "Cloud cover can help keep the surface more consistent, which "
+                "usually gives drivers a more predictable balance."
+            )
+        return ""
+
+    def temperature_to_fahrenheit(self, value):
+        try:
+            return (float(value) * 9 / 5) + 32
+        except (TypeError, ValueError):
+            return 0.0
 
     def format_track_wetness(self, value):
         labels = {

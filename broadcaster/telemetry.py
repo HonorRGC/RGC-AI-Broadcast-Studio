@@ -341,6 +341,12 @@ class IRacingTelemetry:
             "track_wetness": self.safe_read("TrackWetness"),
             "wind_speed": self.safe_read("WindVel"),
             "humidity": self.safe_read("RelativeHumidity"),
+            "rain_chance": weekend_info.get("ChanceOfRain")
+            or weekend_info.get("ForecastRainChance")
+            or weekend_info.get("TrackPrecipitationChance"),
+            "time_of_day": weekend_info.get("SessionTimeOfDay")
+            or weekend_info.get("TrackTimeOfDay")
+            or weekend_info.get("TrackTime"),
         }
 
     def debug_weekend_info(self):

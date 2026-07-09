@@ -44,8 +44,12 @@ def test_opening_waits_for_lineup_after_welcome_and_weather():
         "opening_track_info",
         "opening_race_outlook",
     ]
-    assert "partly cloudy" in first_segments[1].message.lower()
-    assert "81 degrees Fahrenheit" in first_segments[1].message
+    track_message = first_segments[1].message
+    assert "partly cloudy" in track_message.lower()
+    assert "81 degrees Fahrenheit" in track_message
+    assert "rain chance is 0 percent" in track_message
+    assert "dynamic" not in track_message.lower()
+    assert "hotter track should make the tires give up faster" in track_message
     assert "opening laps" in first_segments[2].message
     assert director.is_complete() is False
 
@@ -112,3 +116,64 @@ def test_opening_hype_follows_the_lineup():
     assert segment.speaker == "lead"
     assert segment.delay_seconds == 7.0
     assert "awesome race" in segment.message
+
+
+def test_track_info_explains_hot_daytime_track_grip():
+    director = OpeningDirector()
+    segment = director.build_track_info(
+        {
+            "track_name": "Homestead Miami Speedway",
+            "track_length": "1.5 mi",
+            "track_type": "oval",
+            "skies": "clear",
+            "air_temp": 31.0,
+            "track_temp": 43.5,
+            "humidity": 0.40,
+            "wind_speed": 2.0,
+            "track_wetness": 0,
+            "rain_chance": 0,
+            "time_of_day": "afternoon",
+        }
+    )
+
+    assert "rain chance is 0 percent" in segment.message
+    assert "hotter track should make the tires give up faster" in segment.message
+    assert "drivers who manage throttle and corner entry" in segment.message
+
+
+def test_track_info_explains_cool_night_race_grip():
+    director = OpeningDirector()
+    segment = director.build_track_info(
+        {
+            "track_name": "Nashville Superspeedway",
+            "track_length": "2.14 km",
+            "track_type": "oval",
+            "skies": "clear",
+            "air_temp": 18.0,
+            "track_temp": 24.0,
+            "track_wetness": 0,
+            "rain_chance": 0.0,
+            "time_of_day": "night",
+        }
+    )
+
+    assert "cooler racing surface" in segment.message
+    assert "more grip" in segment.message
+
+
+def test_track_info_uses_supplied_rain_chance():
+    director = OpeningDirector()
+    segment = director.build_track_info(
+        {
+            "track_name": "Daytona International Speedway",
+            "track_length": "2.5 mi",
+            "track_type": "oval",
+            "skies": "mostly cloudy",
+            "air_temp": 27.0,
+            "track_temp": 33.0,
+            "track_wetness": 0,
+            "rain_chance": 0.25,
+        }
+    )
+
+    assert "rain chance is 25 percent" in segment.message
