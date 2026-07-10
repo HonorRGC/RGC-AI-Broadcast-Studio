@@ -248,17 +248,6 @@ def show_overlay_feature(item, overlay_server, source=None, engine=None):
         return
 
     if category in ("pit_strategy", "caution_pit_summary"):
-        rows = build_pit_update_rows(source, engine)
-        if rows:
-            overlay_server.show_stat_panel(
-                kind="pit_update",
-                title="Pit Road Update",
-                subtitle="Last stop information",
-                rows=rows,
-                duration=12.0,
-                dedupe_key=f"pit_update:{latest_pit_lap(engine)}",
-                minimum_interval=18.0,
-            )
         return
 
     if should_show_movers_graphic(item, engine):
@@ -270,8 +259,8 @@ def show_overlay_feature(item, overlay_server, source=None, engine=None):
                 subtitle="Positions gained from the start",
                 rows=rows,
                 duration=11.0,
-                dedupe_key=f"movers:{getattr(item, 'camera_target_car_idx', None)}",
-                minimum_interval=35.0,
+                dedupe_key="biggest_movers",
+                minimum_interval=180.0,
             )
 
 
@@ -311,23 +300,13 @@ def should_show_movers_graphic(item, engine):
     category = str(getattr(item, "category", "") or "")
     if category not in ("race_story", "fastest_lap"):
         return False
-    message = str(getattr(item, "message", "") or "").lower()
     target = getattr(item, "camera_target_car_idx", None)
-    movers = getattr(engine.race_intelligence, "get_biggest_movers", lambda *_: [])(5)
-    if target is not None:
-        for mover in movers:
-            if mover.car_idx == target and getattr(mover, "positions_gained", 0) >= 3:
-                return True
+    if target is None:
+        return False
+    movers = getattr(engine.race_intelligence, "get_biggest_movers", lambda *_: [])(3)
     return any(
-        phrase in message
-        for phrase in (
-            "moved into",
-            "gained",
-            "from",
-            "up to",
-            "climbed",
-            "biggest mover",
-        )
+        mover.car_idx == target and getattr(mover, "positions_gained", 0) >= 5
+        for mover in movers
     )
 
 
