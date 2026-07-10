@@ -79,3 +79,20 @@ def test_silent_feature_reserves_its_runtime_without_commentary():
     assert item.silent is True
     assert item.message == ""
     assert queue.busy_until == now + 52.5
+
+
+def test_spoken_feature_reserves_its_runtime():
+    queue = BroadcastQueue()
+    queue.add(
+        "Top ten rundown for one driver.",
+        category="long_green_field_rundown_1",
+        feature_duration_seconds=20.0,
+        dedupe_key="long_green_field_rundown_1",
+    )
+    now = 100.0
+    queue.items[0].created_at = now
+
+    item = queue.next_item(now=now)
+
+    assert item.silent is False
+    assert queue.busy_until == now + 21.0

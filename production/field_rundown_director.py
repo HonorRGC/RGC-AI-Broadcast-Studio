@@ -11,6 +11,7 @@ class FieldRundownSegment:
     category: str
     camera_sequence: tuple[int, ...] = ()
     camera_sequence_steps: tuple[tuple, ...] = ()
+    feature_duration_seconds: float = 0.0
 
 
 class FieldRundownDirector:
@@ -162,6 +163,7 @@ class FieldRundownDirector:
                         if entry["car_idx"] is not None
                     ),
                     camera_sequence_steps=self.build_quarter_camera_steps(group),
+                    feature_duration_seconds=self.segment_feature_duration(milestone),
                 )
             )
 
@@ -192,6 +194,7 @@ class FieldRundownDirector:
                 entry["car_idx"] for entry in group if entry["car_idx"] is not None
             ),
             camera_sequence_steps=self.build_quarter_camera_steps(group),
+            feature_duration_seconds=self.segment_feature_duration(milestone),
         )
 
         if is_final:
@@ -250,6 +253,11 @@ class FieldRundownDirector:
             steps.append((car_idx, "TV1", 0))
             steps.append((car_idx, "Cockpit", 0))
         return tuple(steps)
+
+    def segment_feature_duration(self, milestone):
+        if milestone == "long_green":
+            return 20.0
+        return 0.0
 
     def freeze_running_order(self, results):
         valid = [dict(car) for car in results or [] if car.get("CarIdx") is not None]

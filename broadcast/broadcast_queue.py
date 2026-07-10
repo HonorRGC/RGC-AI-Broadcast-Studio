@@ -147,7 +147,7 @@ class BroadcastQueue:
 
         speech_time = (
             selected.feature_duration_seconds
-            if selected.silent and selected.feature_duration_seconds > 0
+            if selected.feature_duration_seconds > 0
             else self.estimate_speech_seconds(selected.message, selected.category)
         )
         self.busy_until = now + speech_time + self.estimate_gap_seconds(

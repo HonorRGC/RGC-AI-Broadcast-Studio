@@ -928,6 +928,11 @@ class BroadcastEngine:
                 dedupe_key=segment.category,
                 camera_sequence=segment.camera_sequence,
                 camera_sequence_steps=getattr(segment, "camera_sequence_steps", ()),
+                feature_duration_seconds=getattr(
+                    segment,
+                    "feature_duration_seconds",
+                    0.0,
+                ),
             )
         return queued
 

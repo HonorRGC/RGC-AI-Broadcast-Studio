@@ -393,6 +393,7 @@ def test_engine_queues_long_green_field_rundown_under_green():
     assert rundown.category == "long_green_field_rundown_1"
     assert rundown.camera_sequence == (0,)
     assert rundown.protected is True
+    assert rundown.feature_duration_seconds == 20.0
     assert "20-lap green flag run" in rundown.message
 
 

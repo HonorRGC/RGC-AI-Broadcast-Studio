@@ -305,6 +305,32 @@ def test_silent_feature_sequence_uses_feature_duration_for_timing():
     assert telemetry.switches == [("14", 7, 0)]
 
 
+def test_spoken_feature_sequence_uses_feature_duration_for_timing():
+    telemetry = CameraTelemetry()
+    times = iter([100.0, 109.0, 110.0])
+    director = CameraDirector(mode="auto", clock=lambda: next(times))
+    rundown = SimpleNamespace(
+        camera_target_car_idx=None,
+        camera_sequence=(),
+        camera_sequence_steps=((3, "TV1", 0), (3, "Cockpit", 0)),
+        dedupe_key="long_green_field_rundown_1",
+        category="long_green_field_rundown_1",
+        message="Long green top ten rundown.",
+        silent=False,
+        feature_duration_seconds=20.0,
+        camera_return_home_after_sequence=False,
+    )
+
+    first = director.follow(rundown, telemetry)
+    held = director.update(telemetry)
+    second = director.update(telemetry)
+
+    assert first.status == "switched"
+    assert held.status == "held"
+    assert second.status == "switched"
+    assert telemetry.switches == [("14", 4, 0), ("14", 6, 0)]
+
+
 def test_crank_fixed_does_not_fall_back_to_moving_tv_cameras():
     telemetry = CameraTelemetry()
     telemetry.get_camera_groups = lambda: [
