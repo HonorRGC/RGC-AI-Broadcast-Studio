@@ -1063,25 +1063,26 @@ OVERLAY_HTML = r"""<!doctype html>
     }
 
     .special-presentation.crank_it_up {
-      left: 24px;
-      right: 24px;
+      left: 0;
+      right: 0;
       top: auto;
-      bottom: 34px;
-      height: 188px;
+      bottom: 24px;
+      height: 124px;
       justify-content: center;
-      gap: 42px;
+      gap: 0;
     }
 
     .crank-speaker {
       display: none;
-      flex: 0 0 232px;
-      width: 232px;
-      height: 156px;
+      flex: none;
+      width: 190px;
+      height: 112px;
       background-repeat: no-repeat;
       background-position: center;
       background-size: contain;
       animation: crankSidePulse 0.58s infinite alternate ease-in-out;
-      position: relative;
+      position: absolute;
+      top: 6px;
       overflow: visible;
       filter:
         drop-shadow(0 0 18px rgba(255, 192, 0, 0.42))
@@ -1089,10 +1090,12 @@ OVERLAY_HTML = r"""<!doctype html>
     }
 
     .crank-speaker-left {
+      left: 34px;
       --speaker-tilt: -2.5deg;
     }
 
     .crank-speaker-right {
+      right: 34px;
       --speaker-tilt: 2.5deg;
     }
 
@@ -1102,12 +1105,12 @@ OVERLAY_HTML = r"""<!doctype html>
 
     .special-presentation.crank_it_up .ceremony-card {
       display: block;
-      width: auto;
-      min-width: 430px;
-      padding: 14px 34px 16px;
+      width: min(620px, 48vw);
+      min-width: 500px;
+      padding: 8px 34px 10px;
       text-align: center;
       border-left: 0;
-      border-bottom: 6px solid var(--rgc-red);
+      border-bottom: 5px solid var(--rgc-red);
       background:
         linear-gradient(90deg, rgba(7, 9, 13, 0.78), rgba(36, 12, 18, 0.82), rgba(7, 9, 13, 0.78)),
         repeating-linear-gradient(135deg, rgba(255,255,255,0.12) 0 8px, transparent 8px 16px);
@@ -1118,9 +1121,9 @@ OVERLAY_HTML = r"""<!doctype html>
 
     .special-presentation.crank_it_up .ceremony-logo {
       display: block;
-      width: 330px;
-      height: 92px;
-      margin: 0 auto 2px;
+      width: min(460px, 100%);
+      height: 66px;
+      margin: 0 auto;
       object-fit: contain;
       filter:
         drop-shadow(0 0 12px rgba(255, 255, 255, 0.22))
@@ -1128,7 +1131,7 @@ OVERLAY_HTML = r"""<!doctype html>
     }
 
     .special-presentation.crank_it_up .ceremony-title {
-      font-size: 24px;
+      font-size: 18px;
       letter-spacing: 0.08em;
       text-shadow: 0 0 22px rgba(255, 255, 255, 0.28);
     }
@@ -1136,8 +1139,8 @@ OVERLAY_HTML = r"""<!doctype html>
     .special-presentation.crank_it_up .ceremony-subtitle {
       color: #ffffff;
       opacity: 0.82;
-      margin-top: 4px;
-      font-size: 14px;
+      margin-top: 2px;
+      font-size: 12px;
     }
 
     @keyframes crankSidePulse {
@@ -1271,13 +1274,17 @@ OVERLAY_HTML = r"""<!doctype html>
       layer.classList.toggle("hidden", !active);
       layer.classList.toggle("crank_it_up", active && presentation.kind === "crank_it_up");
       layer.classList.toggle("race_sponsors", active && presentation.kind === "race_sponsors");
-      if (!active) return;
+      if (!active) {
+        setCrankSideGraphic("crank-speaker-left", "");
+        setCrankSideGraphic("crank-speaker-right", "");
+        return;
+      }
       setText("ceremony-title", presentation.title || "Please Rise");
       setText("ceremony-subtitle", presentation.subtitle || "Presented by RGC Motorsports");
       const logo = document.getElementById("ceremony-logo");
       const graphics = presentation.graphics || [];
       const isCrank = presentation.kind === "crank_it_up";
-      const src = isCrank ? (graphics[0] || "") : pickRotatingGraphic(graphics, 3.5);
+      const src = isCrank ? String(graphics[0] || "") : pickRotatingGraphic(graphics, 3.5);
       const sideSrc = isCrank ? (graphics[1] || graphics[0] || "") : "";
       setCrankSideGraphic("crank-speaker-left", sideSrc);
       setCrankSideGraphic("crank-speaker-right", sideSrc);
