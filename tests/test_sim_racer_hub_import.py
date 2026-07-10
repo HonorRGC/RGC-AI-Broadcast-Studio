@@ -1,6 +1,7 @@
 import csv
 
 from tools.sim_racer_hub_import import (
+    clean_driver_name,
     merge_stats_row,
     merge_stats_rows,
     normalize_sim_racer_hub_source,
@@ -188,3 +189,10 @@ def test_series_seasons_url_normalizes_to_league_stats_url():
     )
 
     assert url == "https://simracerhub.com/league_stats.php?series_id=3872"
+
+
+def test_clean_driver_name_removes_sim_racer_hub_duplicate_suffix():
+    assert clean_driver_name("Richard Holland2") == "Richard Holland"
+    assert clean_driver_name("Travis Smith6") == "Travis Smith"
+    assert clean_driver_name("T.J. Lee") == "T.J. Lee"
+    assert clean_driver_name("Dale Earnhardt Jr.") == "Dale Earnhardt Jr."

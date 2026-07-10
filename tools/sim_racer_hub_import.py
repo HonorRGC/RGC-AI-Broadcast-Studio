@@ -76,7 +76,7 @@ def extract_driver_name(page_html):
     match = re.search(r"<h1[^>]*>(.*?)</h1>", page_html, re.IGNORECASE | re.DOTALL)
     if not match:
         return ""
-    return html.unescape(strip_tags(match.group(1))).strip()
+    return clean_driver_name(html.unescape(strip_tags(match.group(1))).strip())
 
 
 def extract_json_object(page_html, key):
@@ -221,7 +221,7 @@ def summarize_bulk_driver_stats(
         rows.append(
             summarize_races(
                 driver_races,
-                driver_name=driver_info.get("driver_name", ""),
+                driver_name=clean_driver_name(driver_info.get("driver_name", "")),
                 track_ids=track_ids,
             )
         )
@@ -425,6 +425,11 @@ def float_or_large(value):
 
 def normalize(value):
     return str(value or "").strip().casefold()
+
+
+def clean_driver_name(value):
+    name = str(value or "").strip()
+    return re.sub(r"(?<=[A-Za-z])\d+$", "", name).strip()
 
 
 def normalize_number(value):
