@@ -34,20 +34,32 @@ Copy-Item .env.example .env
 
 Add the desired API keys and voice IDs to `.env`. Generated audio and telemetry recordings are intentionally ignored by Git.
 
-## Optional league driver notes
+## Early desktop launcher
 
-To let the broadcast use real league details, copy the example driver file and edit it for your league:
+An early Windows-friendly launcher is available:
+
+```powershell
+python studio_launcher.py
+```
+
+The launcher can save the main `.env` settings, create `league\drivers.csv` and `league\stats.csv` from the examples, and start either a full AI broadcast or a broadcast-helper run with OpenAI and ElevenLabs disabled.
+
+## Optional league driver notes and stats
+
+To let the broadcast use real league details, copy the example driver and stats files and edit them for your league:
 
 ```powershell
 New-Item -ItemType Directory -Force league
 Copy-Item league.example\drivers.csv league\drivers.csv
+Copy-Item league.example\stats.csv league\stats.csv
 ```
 
-Then enable driver notes in `.env`:
+Then enable league context in `.env`:
 
 ```text
 USE_LEAGUE_DRIVER_NOTES=true
 LEAGUE_DRIVERS_CSV=league/drivers.csv
+LEAGUE_STATS_CSV=league/stats.csv
 ```
 
 For official races or unknown fields, leave this off:
@@ -56,9 +68,13 @@ For official races or unknown fields, leave this off:
 USE_LEAGUE_DRIVER_NOTES=false
 ```
 
-Fill in hometown, state, country, driving style, sponsor, and notes for the drivers you know. The real `league\` folder is ignored by Git so private league notes do not get published by accident.
+Fill in hometown, state, country, driving style, sponsor, and notes for the drivers you know. The stats file can include starts, wins, top fives, last finish, points position, points to the next spot, and prior history at the current track. The real `league\` folder is ignored by Git so private league notes do not get published by accident.
 
 When OpenAI is enabled, race-story commentary can use one verified league detail when it naturally fits. For example, it may mention a driver’s hometown, driving style, or sponsor during a pass, battle, pit call, or momentum update. It should not invent missing facts or force a sponsor mention into every call.
+
+League stats are also treated as verified context. For example, the broadcast may mention points position, last finish, wins, average finish, or prior track history when it naturally fits the current story.
+
+See [docs/V1_LEAGUE_MODE.md](docs/V1_LEAGUE_MODE.md) for the league-mode and Sim Racer Hub importer plan.
 
 ## Run a live broadcast
 

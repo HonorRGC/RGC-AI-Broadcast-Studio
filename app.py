@@ -576,9 +576,10 @@ def main():
     print("=" * 60)
     print(f"OpenAI: {'ON' if engine.openai_director.is_enabled() else 'OFF'}")
     print(
-        "League driver notes: "
+        "League context: "
         f"{'ON' if engine.league_context.is_configured() else 'OFF'} "
-        f"({engine.league_context.drivers_csv_path})"
+        f"(drivers={engine.league_context.drivers_csv_path}, "
+        f"stats={engine.league_context.stats_csv_path})"
     )
     voice_ready, voice_reason = booth.voice_status()
     voice_ids = booth.voice_id_status()

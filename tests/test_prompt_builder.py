@@ -40,6 +40,31 @@ def test_prompt_includes_verified_league_driver_notes():
     assert "use at most one" in prompt["user"]
 
 
+def test_prompt_includes_verified_league_stats():
+    assignment = EditorialItem(
+        story_type="battle",
+        headline="Austin Peterson is under pressure",
+        summary="Austin Peterson is defending the lead.",
+    )
+
+    prompt = PromptBuilder().build_prompt(
+        "jeff",
+        assignment,
+        race_knowledge={
+            "league_driver_context": [
+                (
+                    "Austin Peterson in the number 77 stats: points: 1st; "
+                    "season wins: 4; track starts: 5, track wins: 2"
+                )
+            ]
+        },
+    )
+
+    assert "Verified League Driver Notes:" in prompt["user"]
+    assert "season wins: 4" in prompt["user"]
+    assert "track wins: 2" in prompt["user"]
+
+
 def test_prompt_includes_producer_notes_and_broadcast_angle():
     assignment = EditorialItem(
         story_type="biggest_mover",

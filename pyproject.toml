@@ -17,6 +17,7 @@ dependencies = [
 
 [project.scripts]
 rgc-broadcast = "app:main"
+rgc-studio = "studio_launcher:main"
 
 [project.optional-dependencies]
 dev = [
@@ -28,7 +29,7 @@ testpaths = ["tests"]
 addopts = "-q"
 
 [tool.setuptools]
-py-modules = ["app", "config"]
+py-modules = ["app", "config", "studio_launcher"]
 
 [tool.setuptools.packages.find]
 include = [
