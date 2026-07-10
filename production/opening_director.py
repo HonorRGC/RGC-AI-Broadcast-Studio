@@ -310,8 +310,25 @@ class OpeningDirector:
         try:
             return labels.get(int(value), "")
         except (TypeError, ValueError):
-            text = str(value).strip().lower()
+            text = self.broadcast_weather_text(value)
             return "" if text in ("", "unknown", "none") else text
+
+    def broadcast_weather_text(self, value):
+        text = str(value or "").strip().lower()
+        replacements = (
+            ("dynamic sky", ""),
+            ("dynamic skies", ""),
+            ("dynamic weather", ""),
+            ("dynamic", ""),
+        )
+        for old, new in replacements:
+            text = text.replace(old, new)
+        text = " ".join(text.replace("_", " ").replace("-", " ").split())
+        if text in ("partly cloudy skies", "partly clouds"):
+            return "partly cloudy"
+        if text in ("mostly cloudy skies",):
+            return "mostly cloudy"
+        return text
 
     def format_humidity(self, value):
         try:

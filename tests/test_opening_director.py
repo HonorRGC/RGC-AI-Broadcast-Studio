@@ -177,3 +177,22 @@ def test_track_info_uses_supplied_rain_chance():
     )
 
     assert "rain chance is 25 percent" in segment.message
+
+
+def test_track_info_removes_simulator_weather_mode_wording():
+    director = OpeningDirector()
+    segment = director.build_track_info(
+        {
+            "track_name": "Daytona International Speedway",
+            "track_length": "2.5 mi",
+            "track_type": "oval",
+            "skies": "dynamic partly cloudy",
+            "air_temp": 27.0,
+            "track_temp": 33.0,
+            "track_wetness": 0,
+            "rain_chance": 0,
+        }
+    )
+
+    assert "dynamic" not in segment.message.lower()
+    assert "partly cloudy" in segment.message.lower()
