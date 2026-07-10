@@ -34,6 +34,8 @@ Copy-Item .env.example .env
 
 Add the desired API keys and voice IDs to `.env`. Generated audio and telemetry recordings are intentionally ignored by Git.
 
+For outside testers, see [docs/TESTER_QUICKSTART.md](docs/TESTER_QUICKSTART.md). The current pre-installer flow is: download the GitHub ZIP, run `setup_windows.bat`, then launch with `launch_studio.bat` or create the desktop shortcut.
+
 ## Early desktop launcher
 
 An early Windows-friendly launcher is available:
