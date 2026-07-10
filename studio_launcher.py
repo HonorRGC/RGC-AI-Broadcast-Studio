@@ -10,6 +10,7 @@ from tkinter import messagebox
 
 ROOT = Path(__file__).resolve().parent
 ENV_PATH = ROOT / ".env"
+BROADCAST_PROCESS = None
 
 LAUNCHER_FIELDS = [
     ("USE_OPENAI", "true"),
@@ -91,6 +92,10 @@ def broadcast_command():
     ]
 
 
+def is_process_running(process):
+    return process is not None and process.poll() is None
+
+
 def sim_racer_hub_import_command(
     source,
     league_id="",
@@ -166,11 +171,27 @@ def run_sim_racer_hub_import(
 
 
 def launch_broadcast(helper_mode=False):
+    global BROADCAST_PROCESS
+    if is_process_running(BROADCAST_PROCESS):
+        return BROADCAST_PROCESS
+
     env = os.environ.copy()
     if helper_mode:
         env["USE_OPENAI"] = "false"
         env["USE_ELEVENLABS"] = "false"
-    subprocess.Popen(broadcast_command(), cwd=ROOT, env=env)
+    BROADCAST_PROCESS = subprocess.Popen(broadcast_command(), cwd=ROOT, env=env)
+    return BROADCAST_PROCESS
+
+
+def stop_broadcast():
+    global BROADCAST_PROCESS
+    if not is_process_running(BROADCAST_PROCESS):
+        BROADCAST_PROCESS = None
+        return False
+
+    BROADCAST_PROCESS.terminate()
+    BROADCAST_PROCESS = None
+    return True
 
 
 def run_gui():
@@ -241,13 +262,24 @@ def run_gui():
 
     def start_full_ai():
         save_settings()
-        launch_broadcast(helper_mode=False)
-        status.set("Started full AI broadcast.")
+        process = launch_broadcast(helper_mode=False)
+        if process:
+            status.set("Started full AI broadcast with overlay, cameras, and incident replay.")
 
     def start_helper():
         save_settings()
-        launch_broadcast(helper_mode=True)
-        status.set("Started broadcast helper mode. OpenAI and ElevenLabs are disabled.")
+        process = launch_broadcast(helper_mode=True)
+        if process:
+            status.set(
+                "Started broadcast helper mode with overlay and cameras. "
+                "OpenAI and ElevenLabs are disabled."
+            )
+
+    def stop_running_broadcast():
+        if stop_broadcast():
+            status.set("Stopped broadcast.")
+        else:
+            status.set("No running broadcast found from this launcher.")
 
     buttons = tk.Frame(root)
     buttons.pack(fill="x", padx=18, pady=16)
@@ -259,11 +291,15 @@ def run_gui():
         side="left",
         padx=4,
     )
-    tk.Button(buttons, text="Start Full AI Broadcast", command=start_full_ai).pack(
+    tk.Button(buttons, text="Start Broadcast", command=start_full_ai).pack(
         side="left",
         padx=4,
     )
-    tk.Button(buttons, text="Start Broadcast Helper", command=start_helper).pack(
+    tk.Button(buttons, text="Start Helper Mode", command=start_helper).pack(
+        side="left",
+        padx=4,
+    )
+    tk.Button(buttons, text="Stop Broadcast", command=stop_running_broadcast).pack(
         side="left",
         padx=4,
     )

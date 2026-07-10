@@ -2,6 +2,7 @@ import sys
 
 from studio_launcher import (
     broadcast_command,
+    is_process_running,
     launcher_defaults,
     load_env_file,
     save_env_file,
@@ -60,6 +61,20 @@ def test_launcher_builds_default_broadcast_command():
     assert "--overlay" in command
     assert "--camera-mode" in command
     assert "--incident-replay" in command
+
+
+def test_launcher_detects_running_process():
+    class RunningProcess:
+        def poll(self):
+            return None
+
+    class StoppedProcess:
+        def poll(self):
+            return 0
+
+    assert is_process_running(RunningProcess())
+    assert not is_process_running(StoppedProcess())
+    assert not is_process_running(None)
 
 
 def test_launcher_builds_sim_racer_hub_season_import_command():
