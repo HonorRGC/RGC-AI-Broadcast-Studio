@@ -17,6 +17,8 @@ from production.live_broadcast_validator import LiveBroadcastValidator
 from production.overlay import OverlayServer
 from production.replay_director import ReplayDirector
 
+DEFAULT_CRANK_IT_UP_SECONDS = 50.0
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description="RGC AI Broadcast Studio")
@@ -35,7 +37,7 @@ def parse_args():
     parser.add_argument(
         "--crank-it-up-test-seconds",
         type=float,
-        default=28.0,
+        default=DEFAULT_CRANK_IT_UP_SECONDS,
         help="Seconds to keep the Crank It Up overlay visible during --crank-it-up-test",
     )
     parser.add_argument("--tick-seconds", type=float, default=1.0)
@@ -242,7 +244,10 @@ def show_overlay_feature(item, overlay_server, source=None, engine=None):
             kind="crank_it_up",
             title="Crank It Up",
             subtitle="No booth. Just race cars.",
-            duration=getattr(item, "feature_duration_seconds", 28.0) or 28.0,
+            duration=(
+                getattr(item, "feature_duration_seconds", DEFAULT_CRANK_IT_UP_SECONDS)
+                or DEFAULT_CRANK_IT_UP_SECONDS
+            ),
             graphics=crank_it_up_graphics(),
         )
         return
@@ -264,9 +269,9 @@ def show_overlay_feature(item, overlay_server, source=None, engine=None):
             )
 
 
-def run_crank_it_up_test(booth, overlay_server, duration_seconds=28.0):
+def run_crank_it_up_test(booth, overlay_server, duration_seconds=DEFAULT_CRANK_IT_UP_SECONDS):
     intro = "It is time to Crank It Up. Crank It Up is presented by RGC Motorsports."
-    feature_seconds = max(1.0, float(duration_seconds or 28.0))
+    feature_seconds = max(1.0, float(duration_seconds or DEFAULT_CRANK_IT_UP_SECONDS))
 
     if overlay_server:
         overlay_server.show_special_presentation(

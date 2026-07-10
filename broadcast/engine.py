@@ -693,25 +693,25 @@ class BroadcastEngine:
         self.crank_it_up_sent_this_green_run = True
         self.broadcast_queue.add(
             "It is time to Crank It Up. Crank It Up is presented by RGC Motorsports.",
-            priority=8,
+            priority=10,
             category="crank_it_up_intro",
-            protected=False,
+            protected=True,
             speaker="lead",
-            expires_after=20,
+            expires_after=30,
             dedupe_key=f"crank_it_up:intro:{green_lap_count}",
         )
         self.broadcast_queue.add(
             "Crank It Up",
-            priority=7,
+            priority=9,
             category="crank_it_up",
-            protected=False,
+            protected=True,
             speaker="lead",
-            expires_after=20,
+            expires_after=90,
             dedupe_key=f"crank_it_up:{green_lap_count}",
             camera_sequence_steps=steps,
             camera_return_home_after_sequence=True,
             silent=True,
-            feature_duration_seconds=28.0,
+            feature_duration_seconds=50.0,
         )
         return True
 

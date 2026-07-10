@@ -68,7 +68,7 @@ def test_silent_feature_reserves_its_runtime_without_commentary():
         "",
         category="crank_it_up",
         silent=True,
-        feature_duration_seconds=28.0,
+        feature_duration_seconds=50.0,
         dedupe_key="crank_it_up:test",
     )
     now = 100.0
@@ -78,4 +78,4 @@ def test_silent_feature_reserves_its_runtime_without_commentary():
 
     assert item.silent is True
     assert item.message == ""
-    assert queue.busy_until == now + 30.5
+    assert queue.busy_until == now + 52.5

@@ -409,6 +409,7 @@ def test_engine_queues_silent_crank_it_up_after_ten_green_laps():
     assert queued is True
     assert item.category == "crank_it_up_intro"
     assert item.silent is False
+    assert item.protected is True
     assert "Crank It Up is presented by RGC Motorsports" in item.message
 
     engine.broadcast_queue.busy_until = 0
@@ -416,7 +417,8 @@ def test_engine_queues_silent_crank_it_up_after_ten_green_laps():
     assert silent_item.category == "crank_it_up"
     assert silent_item.message == "Crank It Up"
     assert silent_item.silent is True
-    assert silent_item.feature_duration_seconds == 28.0
+    assert silent_item.protected is True
+    assert silent_item.feature_duration_seconds == 50.0
     assert silent_item.camera_sequence_steps == ((0, "Crank Fixed", 0),)
     assert silent_item.camera_return_home_after_sequence is True
 
@@ -449,7 +451,8 @@ def test_crank_it_up_silent_feature_uses_tv_fixed_camera():
         if item.category == "crank_it_up"
     )
     assert item.silent is True
-    assert item.feature_duration_seconds == 28.0
+    assert item.protected is True
+    assert item.feature_duration_seconds == 50.0
     assert item.camera_sequence_steps == ((0, "Crank Fixed", 0),)
     assert item.camera_return_home_after_sequence is True
 

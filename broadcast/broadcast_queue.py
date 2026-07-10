@@ -107,7 +107,7 @@ class BroadcastQueue:
 
     def estimate_speech_seconds(self, message, category=""):
         if category == "crank_it_up":
-            return 28.0
+            return 50.0
         words = len(str(message).split())
         if category.startswith("opening_field_rundown"):
             return max(1.6, min(10.0, words / 3.35))
