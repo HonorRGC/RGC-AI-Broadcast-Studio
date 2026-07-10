@@ -54,26 +54,32 @@ def fetch_url(url):
         return response.read().decode("utf-8", errors="replace")
 
 
-def load_source(source):
+def load_source(source, series_id="", season_id=""):
     if source.startswith("http://") or source.startswith("https://"):
-        source = normalize_sim_racer_hub_source(source)
+        source = normalize_sim_racer_hub_source(source, series_id=series_id, season_id=season_id)
         return fetch_url(source)
     return Path(source).read_text(encoding="utf-8")
 
 
-def normalize_sim_racer_hub_source(source):
+def normalize_sim_racer_hub_source(source, series_id="", season_id=""):
     parsed = urlparse(source)
     if not parsed.netloc.endswith("simracerhub.com"):
         return source
-    if not parsed.path.endswith("/series_seasons.php") and parsed.path != "series_seasons.php":
-        return source
 
     query = parse_qs(parsed.query)
+    selected_series_id = query.get("series_id", [series_id])[0]
+    selected_season_id = query.get("season_id", [season_id])[0]
+    path = parsed.path or "/"
+    is_home_page = path in ("", "/")
+    is_series_page = path.endswith("/series_seasons.php") or path == "series_seasons.php"
+    if not is_home_page and not is_series_page:
+        return source
+
     replacement_query = {}
-    if query.get("series_id"):
-        replacement_query["series_id"] = query["series_id"][0]
-    if query.get("season_id"):
-        replacement_query["season_id"] = query["season_id"][0]
+    if selected_series_id:
+        replacement_query["series_id"] = selected_series_id
+    if selected_season_id:
+        replacement_query["season_id"] = selected_season_id
 
     return urlunparse(
         parsed._replace(
@@ -618,7 +624,7 @@ def build_parser():
 
 def main(argv=None):
     args = build_parser().parse_args(argv)
-    page_html = load_source(args.source)
+    page_html = load_source(args.source, series_id=args.series_id, season_id=args.season_id)
 
     if args.bulk:
         if args.drivers_only:

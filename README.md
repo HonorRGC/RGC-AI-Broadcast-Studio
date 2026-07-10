@@ -50,6 +50,8 @@ The launcher also includes a `League / Sim Racer Hub` tab. Paste a Sim Racer Hub
 
 The same tab can import a driver roster into `league\drivers.csv`. Roster import is safe for manual edits: it adds missing drivers and fills empty basics, but keeps your hometown, sponsor, driving-style, and notes fields.
 
+For a cleaner Sim Racer Hub setup, the URL can simply be `https://simracerhub.com`; the launcher uses the Series ID and optional Season ID to open the correct stats page. The Track History field is optional. It does not tell the live broadcast what track iRacing is at; it only pre-loads stats like prior starts, wins, and best finish at a specific track.
+
 ## Optional league driver notes and stats
 
 To let the broadcast use real league details, copy the example driver and stats files and edit them for your league:

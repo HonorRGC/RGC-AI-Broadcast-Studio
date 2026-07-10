@@ -285,6 +285,16 @@ def test_series_seasons_url_normalizes_to_league_stats_url():
     assert url == "https://simracerhub.com/league_stats.php?series_id=3872"
 
 
+def test_sim_racer_hub_home_url_uses_series_and_season_filters():
+    url = normalize_sim_racer_hub_source(
+        "https://simracerhub.com",
+        series_id="3872",
+        season_id="29247",
+    )
+
+    assert url == "https://simracerhub.com/league_stats.php?series_id=3872&season_id=29247"
+
+
 def test_clean_driver_name_removes_sim_racer_hub_duplicate_suffix():
     assert clean_driver_name("Richard Holland2") == "Richard Holland"
     assert clean_driver_name("Travis Smith6") == "Travis Smith"

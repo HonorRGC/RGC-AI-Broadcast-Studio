@@ -104,7 +104,7 @@ def test_launcher_detects_running_process():
 
 def test_launcher_builds_sim_racer_hub_season_import_command():
     command = sim_racer_hub_import_command(
-        "https://simracerhub.com/series_seasons.php?series_id=3872&reset_series=y",
+        "https://simracerhub.com",
         league_id="1598",
         series_id="3872",
         season_id="29247",
@@ -115,6 +115,7 @@ def test_launcher_builds_sim_racer_hub_season_import_command():
 
     assert command[0] == sys.executable
     assert "tools\\sim_racer_hub_import.py" in command[1] or "tools/sim_racer_hub_import.py" in command[1]
+    assert "https://simracerhub.com" in command
     assert "--bulk" in command
     assert ["--league-id", "1598"] == command[command.index("--league-id") : command.index("--league-id") + 2]
     assert ["--season-id", "29247"] == command[command.index("--season-id") : command.index("--season-id") + 2]

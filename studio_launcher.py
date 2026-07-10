@@ -475,8 +475,9 @@ def build_league_tab(parent, status, label, frame, entry, button):
     import tkinter as tk
 
     intro = (
-        "Import league stats from Sim Racer Hub. Use Season Mode for the current season, "
-        "or Career Mode for all seasons on the series page."
+        "Import league stats from Sim Racer Hub. You can use the clean URL "
+        "https://simracerhub.com with League, Series, and Season IDs. "
+        "Track history is optional and only helps pre-load driver stats for an upcoming track."
     )
     label(parent, text=intro, anchor="w", justify="left", wraplength=900, bg=PANEL_BG, fg=MUTED_FG).pack(
         fill="x",
@@ -488,7 +489,7 @@ def build_league_tab(parent, status, label, frame, entry, button):
     form.pack(fill="x", padx=14)
 
     defaults = {
-        "source": "https://simracerhub.com/series_seasons.php?series_id=3872&reset_series=y",
+        "source": "https://simracerhub.com",
         "league_id": "1598",
         "series_id": "3872",
         "season_id": "29247",
@@ -503,7 +504,7 @@ def build_league_tab(parent, status, label, frame, entry, button):
         ("League ID", "league_id"),
         ("Series ID", "series_id"),
         ("Season ID", "season_id"),
-        ("Upcoming Track Name", "track_name"),
+        ("Track History Filter", "track_name"),
         ("Minimum Starts", "min_starts"),
         ("Stats Output CSV", "output"),
         ("Drivers Output CSV", "drivers_output"),
@@ -609,7 +610,7 @@ def build_league_tab(parent, status, label, frame, entry, button):
     )
     label(
         buttons,
-        text="Tip: leave Season ID blank or check Career Mode to use all seasons.",
+        text="Tip: leave Track History blank for general stats; use Career Mode for all seasons.",
         anchor="w",
         bg=PANEL_BG,
         fg=MUTED_FG,
