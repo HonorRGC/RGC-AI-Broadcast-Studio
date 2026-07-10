@@ -5,6 +5,7 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
+from tkinter import messagebox
 
 
 ROOT = Path(__file__).resolve().parent
@@ -90,6 +91,71 @@ def broadcast_command():
     ]
 
 
+def sim_racer_hub_import_command(
+    source,
+    league_id="",
+    series_id="",
+    season_id="",
+    track_name="",
+    min_starts="1",
+    output="league/stats.csv",
+    career_mode=False,
+    dry_run=False,
+):
+    command = [
+        sys.executable,
+        str(ROOT / "tools" / "sim_racer_hub_import.py"),
+        source,
+        "--bulk",
+    ]
+    if league_id:
+        command.extend(["--league-id", str(league_id)])
+    if series_id:
+        command.extend(["--series-id", str(series_id)])
+    if season_id and not career_mode:
+        command.extend(["--season-id", str(season_id)])
+    if track_name:
+        command.extend(["--track-name", str(track_name)])
+    if min_starts:
+        command.extend(["--min-starts", str(min_starts)])
+    if output:
+        command.extend(["--output", str(output)])
+    if dry_run:
+        command.append("--dry-run")
+    return command
+
+
+def run_sim_racer_hub_import(
+    source,
+    league_id="",
+    series_id="",
+    season_id="",
+    track_name="",
+    min_starts="1",
+    output="league/stats.csv",
+    career_mode=False,
+    dry_run=False,
+):
+    command = sim_racer_hub_import_command(
+        source=source,
+        league_id=league_id,
+        series_id=series_id,
+        season_id=season_id,
+        track_name=track_name,
+        min_starts=min_starts,
+        output=output,
+        career_mode=career_mode,
+        dry_run=dry_run,
+    )
+    return subprocess.run(
+        command,
+        cwd=ROOT,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+
 def launch_broadcast(helper_mode=False):
     env = os.environ.copy()
     if helper_mode:
@@ -100,12 +166,12 @@ def launch_broadcast(helper_mode=False):
 
 def run_gui():
     import tkinter as tk
-    from tkinter import messagebox
+    from tkinter import ttk
 
     existing = launcher_defaults(load_env_file())
     root = tk.Tk()
     root.title("RGC AI Broadcast Studio")
-    root.geometry("760x720")
+    root.geometry("940x780")
 
     tk.Label(
         root,
@@ -118,8 +184,16 @@ def run_gui():
         font=("Segoe UI", 10),
     ).pack(pady=(0, 10))
 
-    frame = tk.Frame(root)
-    frame.pack(fill="both", expand=True, padx=18)
+    notebook = ttk.Notebook(root)
+    notebook.pack(fill="both", expand=True, padx=18)
+
+    settings_tab = tk.Frame(notebook)
+    league_tab = tk.Frame(notebook)
+    notebook.add(settings_tab, text="Broadcast Settings")
+    notebook.add(league_tab, text="League / Sim Racer Hub")
+
+    frame = tk.Frame(settings_tab)
+    frame.pack(fill="both", expand=True, padx=4, pady=8)
 
     entries = {}
     for row, (key, _default) in enumerate(LAUNCHER_FIELDS):
@@ -185,7 +259,120 @@ def run_gui():
         padx=4,
     )
 
+    build_league_tab(league_tab, status)
+
     root.mainloop()
+
+
+def build_league_tab(parent, status):
+    import tkinter as tk
+    from tkinter import ttk
+
+    intro = (
+        "Import league stats from Sim Racer Hub. Use Season Mode for the current season, "
+        "or Career Mode for all seasons on the series page."
+    )
+    tk.Label(parent, text=intro, anchor="w", justify="left", wraplength=860).pack(
+        fill="x",
+        padx=8,
+        pady=(10, 8),
+    )
+
+    form = tk.Frame(parent)
+    form.pack(fill="x", padx=8)
+
+    defaults = {
+        "source": "https://simracerhub.com/series_seasons.php?series_id=3872&reset_series=y",
+        "league_id": "1598",
+        "series_id": "3872",
+        "season_id": "29247",
+        "track_name": "",
+        "min_starts": "2",
+        "output": "league/stats.csv",
+    }
+    entries = {}
+    rows = [
+        ("Sim Racer Hub URL", "source"),
+        ("League ID", "league_id"),
+        ("Series ID", "series_id"),
+        ("Season ID", "season_id"),
+        ("Upcoming Track Name", "track_name"),
+        ("Minimum Starts", "min_starts"),
+        ("Output CSV", "output"),
+    ]
+    for row_number, (label, key) in enumerate(rows):
+        tk.Label(form, text=label, anchor="w", width=22).grid(
+            row=row_number,
+            column=0,
+            sticky="w",
+            pady=4,
+        )
+        entry = tk.Entry(form, width=86)
+        entry.insert(0, defaults[key])
+        entry.grid(row=row_number, column=1, sticky="ew", pady=4)
+        entries[key] = entry
+    form.columnconfigure(1, weight=1)
+
+    career_mode = tk.BooleanVar(value=False)
+    tk.Checkbutton(
+        form,
+        text="Career Mode: import all seasons in this series instead of one season",
+        variable=career_mode,
+    ).grid(row=len(rows), column=1, sticky="w", pady=(4, 8))
+
+    output_box = tk.Text(parent, height=18, wrap="none")
+    output_box.pack(fill="both", expand=True, padx=8, pady=(8, 0))
+
+    def values():
+        return {key: entry.get().strip() for key, entry in entries.items()}
+
+    def set_output(text):
+        output_box.delete("1.0", "end")
+        output_box.insert("1.0", text)
+
+    def run_import(dry_run):
+        data = values()
+        if not data["source"]:
+            messagebox.showerror("Missing URL", "Paste a Sim Racer Hub URL first.")
+            return
+
+        result = run_sim_racer_hub_import(
+            source=data["source"],
+            league_id=data["league_id"],
+            series_id=data["series_id"],
+            season_id=data["season_id"],
+            track_name=data["track_name"],
+            min_starts=data["min_starts"],
+            output=data["output"],
+            career_mode=career_mode.get(),
+            dry_run=dry_run,
+        )
+        combined_output = result.stdout
+        if result.stderr:
+            combined_output += "\n" + result.stderr
+        set_output(combined_output or "(No output)")
+        if result.returncode == 0:
+            action = "Previewed" if dry_run else "Imported"
+            mode = "career" if career_mode.get() else "season"
+            status.set(f"{action} Sim Racer Hub {mode} stats.")
+        else:
+            status.set("Sim Racer Hub import failed. Check the output panel.")
+
+    buttons = tk.Frame(parent)
+    buttons.pack(fill="x", padx=8, pady=10)
+    tk.Button(buttons, text="Preview Import", command=lambda: run_import(True)).pack(
+        side="left",
+        padx=4,
+    )
+    tk.Button(buttons, text="Import to league/stats.csv", command=lambda: run_import(False)).pack(
+        side="left",
+        padx=4,
+    )
+    tk.Label(
+        buttons,
+        text="Tip: leave Season ID blank or check Career Mode to use all seasons.",
+        anchor="w",
+    ).pack(side="left", padx=12)
 
 
 def main():
@@ -194,4 +381,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

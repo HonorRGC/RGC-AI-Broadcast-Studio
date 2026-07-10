@@ -5,6 +5,7 @@ from studio_launcher import (
     launcher_defaults,
     load_env_file,
     save_env_file,
+    sim_racer_hub_import_command,
 )
 
 
@@ -60,3 +61,35 @@ def test_launcher_builds_default_broadcast_command():
     assert "--camera-mode" in command
     assert "--incident-replay" in command
 
+
+def test_launcher_builds_sim_racer_hub_season_import_command():
+    command = sim_racer_hub_import_command(
+        "https://simracerhub.com/series_seasons.php?series_id=3872&reset_series=y",
+        league_id="1598",
+        series_id="3872",
+        season_id="29247",
+        track_name="Nashville",
+        min_starts="2",
+        output="league/stats.csv",
+    )
+
+    assert command[0] == sys.executable
+    assert "tools\\sim_racer_hub_import.py" in command[1] or "tools/sim_racer_hub_import.py" in command[1]
+    assert "--bulk" in command
+    assert ["--league-id", "1598"] == command[command.index("--league-id") : command.index("--league-id") + 2]
+    assert ["--season-id", "29247"] == command[command.index("--season-id") : command.index("--season-id") + 2]
+    assert ["--track-name", "Nashville"] == command[command.index("--track-name") : command.index("--track-name") + 2]
+
+
+def test_launcher_career_import_command_omits_season_id():
+    command = sim_racer_hub_import_command(
+        "https://simracerhub.com/league_stats.php?series_id=3872",
+        league_id="1598",
+        series_id="3872",
+        season_id="29247",
+        career_mode=True,
+        dry_run=True,
+    )
+
+    assert "--season-id" not in command
+    assert "--dry-run" in command

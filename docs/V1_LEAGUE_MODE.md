@@ -99,3 +99,12 @@ The desktop app should become a setup shell around the existing engine:
 - league stats importer
 - overlay preview
 - start broadcast button
+
+The first league-stats workflow now exists in the launcher under `League / Sim Racer Hub`:
+
+- paste a Sim Racer Hub URL
+- enter league and series IDs
+- choose season mode or career mode
+- add the upcoming track name for track-history stats
+- preview the import
+- write stats into `league/stats.csv`

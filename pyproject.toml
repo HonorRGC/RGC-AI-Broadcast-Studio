@@ -38,5 +38,6 @@ include = [
     "helpers*",
     "production*",
     "replay*",
+    "tools*",
     "voice*",
 ]
