@@ -99,8 +99,10 @@ def sim_racer_hub_import_command(
     track_name="",
     min_starts="1",
     output="league/stats.csv",
+    drivers_output="league/drivers.csv",
     career_mode=False,
     dry_run=False,
+    drivers_only=False,
 ):
     command = [
         sys.executable,
@@ -120,6 +122,9 @@ def sim_racer_hub_import_command(
         command.extend(["--min-starts", str(min_starts)])
     if output:
         command.extend(["--output", str(output)])
+    if drivers_only:
+        command.append("--drivers-only")
+        command.extend(["--drivers-output", str(drivers_output)])
     if dry_run:
         command.append("--dry-run")
     return command
@@ -133,8 +138,10 @@ def run_sim_racer_hub_import(
     track_name="",
     min_starts="1",
     output="league/stats.csv",
+    drivers_output="league/drivers.csv",
     career_mode=False,
     dry_run=False,
+    drivers_only=False,
 ):
     command = sim_racer_hub_import_command(
         source=source,
@@ -144,8 +151,10 @@ def run_sim_racer_hub_import(
         track_name=track_name,
         min_starts=min_starts,
         output=output,
+        drivers_output=drivers_output,
         career_mode=career_mode,
         dry_run=dry_run,
+        drivers_only=drivers_only,
     )
     return subprocess.run(
         command,
@@ -289,6 +298,7 @@ def build_league_tab(parent, status):
         "track_name": "",
         "min_starts": "2",
         "output": "league/stats.csv",
+        "drivers_output": "league/drivers.csv",
     }
     entries = {}
     rows = [
@@ -298,7 +308,8 @@ def build_league_tab(parent, status):
         ("Season ID", "season_id"),
         ("Upcoming Track Name", "track_name"),
         ("Minimum Starts", "min_starts"),
-        ("Output CSV", "output"),
+        ("Stats Output CSV", "output"),
+        ("Drivers Output CSV", "drivers_output"),
     ]
     for row_number, (label, key) in enumerate(rows):
         tk.Label(form, text=label, anchor="w", width=22).grid(
@@ -330,7 +341,7 @@ def build_league_tab(parent, status):
         output_box.delete("1.0", "end")
         output_box.insert("1.0", text)
 
-    def run_import(dry_run):
+    def run_import(dry_run, drivers_only=False):
         data = values()
         if not data["source"]:
             messagebox.showerror("Missing URL", "Paste a Sim Racer Hub URL first.")
@@ -344,8 +355,10 @@ def build_league_tab(parent, status):
             track_name=data["track_name"],
             min_starts=data["min_starts"],
             output=data["output"],
+            drivers_output=data["drivers_output"],
             career_mode=career_mode.get(),
             dry_run=dry_run,
+            drivers_only=drivers_only,
         )
         combined_output = result.stdout
         if result.stderr:
@@ -354,19 +367,31 @@ def build_league_tab(parent, status):
         if result.returncode == 0:
             action = "Previewed" if dry_run else "Imported"
             mode = "career" if career_mode.get() else "season"
-            target = data["output"] or "league/stats.csv"
+            if drivers_only:
+                target = data["drivers_output"] or "league/drivers.csv"
+            else:
+                target = data["output"] or "league/stats.csv"
+            data_type = "driver roster" if drivers_only else "stats"
             suffix = "" if dry_run else f" to {target}"
-            status.set(f"{action} Sim Racer Hub {mode} stats{suffix}.")
+            status.set(f"{action} Sim Racer Hub {mode} {data_type}{suffix}.")
         else:
             status.set("Sim Racer Hub import failed. Check the output panel.")
 
     buttons = tk.Frame(parent)
     buttons.pack(fill="x", padx=8, pady=10)
-    tk.Button(buttons, text="Preview Import", command=lambda: run_import(True)).pack(
+    tk.Button(buttons, text="Preview Stats", command=lambda: run_import(True)).pack(
         side="left",
         padx=4,
     )
-    tk.Button(buttons, text="Import to league/stats.csv", command=lambda: run_import(False)).pack(
+    tk.Button(buttons, text="Import Stats", command=lambda: run_import(False)).pack(
+        side="left",
+        padx=4,
+    )
+    tk.Button(buttons, text="Preview Driver Roster", command=lambda: run_import(True, True)).pack(
+        side="left",
+        padx=4,
+    )
+    tk.Button(buttons, text="Import Driver Roster", command=lambda: run_import(False, True)).pack(
         side="left",
         padx=4,
     )

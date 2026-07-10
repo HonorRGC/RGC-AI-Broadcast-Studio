@@ -46,6 +46,8 @@ The launcher can save the main `.env` settings, create `league\drivers.csv` and 
 
 The launcher also includes a `League / Sim Racer Hub` tab. Paste a Sim Racer Hub series or stats URL, choose season mode or career mode, optionally enter the upcoming track name, preview the import, and then write the results to `league\stats.csv`.
 
+The same tab can import a driver roster into `league\drivers.csv`. Roster import is safe for manual edits: it adds missing drivers and fills empty basics, but keeps your hometown, sponsor, driving-style, and notes fields.
+
 ## Optional league driver notes and stats
 
 To let the broadcast use real league details, copy the example driver and stats files and edit them for your league:

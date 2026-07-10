@@ -93,3 +93,19 @@ def test_launcher_career_import_command_omits_season_id():
 
     assert "--season-id" not in command
     assert "--dry-run" in command
+
+
+def test_launcher_builds_sim_racer_hub_driver_roster_command():
+    command = sim_racer_hub_import_command(
+        "https://simracerhub.com/league_stats.php?series_id=3872",
+        league_id="1598",
+        series_id="3872",
+        season_id="29247",
+        drivers_output="league/drivers.csv",
+        drivers_only=True,
+    )
+
+    assert "--drivers-only" in command
+    assert ["--drivers-output", "league/drivers.csv"] == command[
+        command.index("--drivers-output") : command.index("--drivers-output") + 2
+    ]

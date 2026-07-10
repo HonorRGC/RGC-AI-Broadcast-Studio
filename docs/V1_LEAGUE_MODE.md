@@ -108,3 +108,5 @@ The first league-stats workflow now exists in the launcher under `League / Sim R
 - add the upcoming track name for track-history stats
 - preview the import
 - write stats into `league/stats.csv`
+
+The launcher can also import a safe driver roster into `league/drivers.csv`. It adds missing drivers and cleans Sim Racer Hub suffixes, but preserves manual fields such as hometown, driving style, sponsor, and notes.

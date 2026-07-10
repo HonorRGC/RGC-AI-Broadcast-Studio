@@ -28,6 +28,17 @@ STATS_FIELDS = [
     "notes",
 ]
 
+DRIVER_FIELDS = [
+    "name",
+    "car_number",
+    "hometown",
+    "state",
+    "country",
+    "driving_style",
+    "sponsor",
+    "notes",
+]
+
 
 def fetch_url(url):
     request = Request(
@@ -236,6 +247,49 @@ def summarize_bulk_driver_stats(
     )
 
 
+def summarize_driver_roster(
+    page_html,
+    league_id="",
+    series_id="",
+    season_id="",
+    min_starts=1,
+):
+    race_map = extract_json_object(page_html, "rps")
+    drivers = extract_json_object(page_html, "drivers")
+    races = filter_races(race_map.values(), league_id, series_id, season_id)
+
+    grouped = {}
+    for race in races:
+        driver_id = str(race.get("driver_id") or "").strip()
+        if not driver_id:
+            continue
+        grouped.setdefault(driver_id, []).append(race)
+
+    rows = []
+    for driver_id, driver_races in grouped.items():
+        if len(driver_races) < int(min_starts or 1):
+            continue
+        driver_info = drivers.get(driver_id, {})
+        name = clean_driver_name(driver_info.get("driver_name", ""))
+        if not name:
+            continue
+        most_recent = sorted(driver_races, key=race_sort_key, reverse=True)[0]
+        rows.append(
+            {
+                "name": name,
+                "car_number": str(most_recent.get("driver_number") or ""),
+                "hometown": "",
+                "state": "",
+                "country": country_name(driver_info.get("flair_country_code")),
+                "driving_style": "",
+                "sponsor": "",
+                "notes": "",
+            }
+        )
+
+    return sorted(rows, key=lambda row: normalize(row.get("name")))
+
+
 def summarize_races(
     races,
     driver_name="",
@@ -371,6 +425,48 @@ def merge_stats_rows(output_path, new_rows):
         merge_stats_row(output_path, row)
 
 
+def merge_driver_roster(output_path, new_rows):
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    existing_rows = []
+
+    if output_path.exists():
+        with output_path.open(newline="", encoding="utf-8-sig") as csv_file:
+            reader = csv.DictReader(csv_file)
+            for row in reader:
+                existing_rows.append({field: row.get(field, "") for field in DRIVER_FIELDS})
+
+    merged_by_name = {}
+    order = []
+    for row in existing_rows:
+        key = normalize_driver_name(row.get("name"))
+        if not key:
+            continue
+        if key not in merged_by_name:
+            order.append(key)
+        row["name"] = clean_driver_name(row.get("name"))
+        merged_by_name[key] = {field: row.get(field, "") for field in DRIVER_FIELDS}
+
+    for new_row in new_rows:
+        key = normalize_driver_name(new_row.get("name"))
+        if not key:
+            continue
+        if key not in merged_by_name:
+            order.append(key)
+            merged_by_name[key] = {field: "" for field in DRIVER_FIELDS}
+
+        current = merged_by_name[key]
+        current["name"] = clean_driver_name(current.get("name") or new_row.get("name"))
+        for field in ("car_number", "country"):
+            if new_row.get(field) and not current.get(field):
+                current[field] = new_row.get(field, "")
+
+    with output_path.open("w", newline="", encoding="utf-8") as csv_file:
+        writer = csv.DictWriter(csv_file, fieldnames=DRIVER_FIELDS)
+        writer.writeheader()
+        writer.writerows(merged_by_name[key] for key in order)
+
+
 def count_finishes_at_or_better(values, threshold):
     return sum(1 for value in values if value <= threshold)
 
@@ -455,6 +551,20 @@ def plural(count, singular, plural_text=None):
     return singular if int(count) == 1 else (plural_text or f"{singular}s")
 
 
+def country_name(value):
+    code = str(value or "").strip().upper()
+    if not code:
+        return ""
+    return {
+        "US": "USA",
+        "CA": "Canada",
+        "GB": "United Kingdom",
+        "AU": "Australia",
+        "NZ": "New Zealand",
+        "MX": "Mexico",
+    }.get(code, code)
+
+
 def build_parser():
     parser = argparse.ArgumentParser(
         description="Import Sim Racer Hub stats into league/stats.csv."
@@ -489,6 +599,16 @@ def build_parser():
         help="Treat source as a Sim Racer Hub league_stats page and import all matching drivers.",
     )
     parser.add_argument(
+        "--drivers-only",
+        action="store_true",
+        help="Import a driver roster CSV instead of stats.",
+    )
+    parser.add_argument(
+        "--drivers-output",
+        default="league/drivers.csv",
+        help="Driver roster CSV to update when --drivers-only is used.",
+    )
+    parser.add_argument(
         "--min-starts",
         default="1",
         help="Bulk mode only: only import drivers with at least this many starts.",
@@ -501,6 +621,23 @@ def main(argv=None):
     page_html = load_source(args.source)
 
     if args.bulk:
+        if args.drivers_only:
+            rows = summarize_driver_roster(
+                page_html,
+                league_id=args.league_id,
+                series_id=args.series_id,
+                season_id=args.season_id,
+                min_starts=args.min_starts,
+            )
+            if args.dry_run:
+                writer = csv.DictWriter(sys.stdout, fieldnames=DRIVER_FIELDS)
+                writer.writeheader()
+                writer.writerows(rows)
+                return 0
+            merge_driver_roster(args.drivers_output, rows)
+            print(f"Imported {len(rows)} driver roster rows -> {args.drivers_output}")
+            return 0
+
         rows = summarize_bulk_driver_stats(
             page_html,
             league_id=args.league_id,

@@ -2,11 +2,13 @@ import csv
 
 from tools.sim_racer_hub_import import (
     clean_driver_name,
+    merge_driver_roster,
     merge_stats_row,
     merge_stats_rows,
     normalize_sim_racer_hub_source,
     resolve_track_ids,
     summarize_bulk_driver_stats,
+    summarize_driver_roster,
     summarize_driver_stats,
 )
 
@@ -165,6 +167,66 @@ def test_bulk_import_summarizes_all_matching_drivers():
     assert rows[1]["starts"] == "1"
     assert rows[1]["top_fives"] == "1"
     assert "37 race points" in rows[1]["notes"]
+
+
+def test_summarize_driver_roster_from_bulk_page():
+    rows = summarize_driver_roster(
+        BULK_HTML,
+        league_id="1598",
+        series_id="3872",
+        season_id="29247",
+    )
+
+    assert [row["name"] for row in rows] == ["Justin Gledhill", "T.J. Lee"]
+    assert rows[0]["country"] == "USA"
+    assert rows[0]["driving_style"] == ""
+    assert rows[0]["notes"] == ""
+
+
+def test_merge_driver_roster_preserves_manual_notes(tmp_path):
+    output = tmp_path / "drivers.csv"
+    output.write_text(
+        "name,car_number,hometown,state,country,driving_style,sponsor,notes\n"
+        "Richard Holland2,51,Richmond,VA,USA,tire saver,RGC Motorsports,Great on long runs\n",
+        encoding="utf-8",
+    )
+
+    merge_driver_roster(
+        output,
+        [
+            {
+                "name": "Richard Holland",
+                "car_number": "",
+                "hometown": "",
+                "state": "",
+                "country": "USA",
+                "driving_style": "",
+                "sponsor": "",
+                "notes": "",
+            },
+            {
+                "name": "T.J. Lee",
+                "car_number": "34",
+                "hometown": "",
+                "state": "",
+                "country": "USA",
+                "driving_style": "",
+                "sponsor": "",
+                "notes": "",
+            },
+        ],
+    )
+
+    with output.open(newline="", encoding="utf-8") as csv_file:
+        rows = list(csv.DictReader(csv_file))
+
+    assert rows[0]["name"] == "Richard Holland"
+    assert rows[0]["car_number"] == "51"
+    assert rows[0]["driving_style"] == "tire saver"
+    assert rows[0]["sponsor"] == "RGC Motorsports"
+    assert rows[0]["notes"] == "Great on long runs"
+    assert rows[1]["name"] == "T.J. Lee"
+    assert rows[1]["car_number"] == "34"
 
 
 def test_bulk_import_resolves_track_history_by_track_name():
