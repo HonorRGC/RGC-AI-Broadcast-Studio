@@ -10,7 +10,7 @@ The v1 league goal is to let a league admin configure a broadcast without editin
 2. Set broadcast settings in the app or `.env`.
 3. Start the race broadcast in one of two modes:
    - Full AI broadcast: OpenAI + ElevenLabs speak the show.
-   - Broadcast helper: camera, overlays, and suggested talking points without AI voices.
+   - Producer Assist: camera, overlays, and suggested talking points without AI voices for a human broadcaster calling the race.
 
 ## Stats currently supported
 
@@ -93,7 +93,7 @@ This keeps the broadcast engine stable while we learn the exact Sim Racer Hub da
 The desktop app should become a setup shell around the existing engine:
 
 - API keys and voice IDs
-- full AI broadcast vs broadcast helper mode
+- full AI broadcast vs Producer Assist mode
 - race title, sponsor, and graphics
 - league driver editor
 - league stats importer

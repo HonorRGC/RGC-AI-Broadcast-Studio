@@ -217,13 +217,13 @@ def run_sim_racer_hub_import(
     )
 
 
-def launch_broadcast(helper_mode=False):
+def launch_broadcast(producer_assist=False):
     global BROADCAST_PROCESS
     if is_process_running(BROADCAST_PROCESS):
         return BROADCAST_PROCESS
 
     env = os.environ.copy()
-    if helper_mode:
+    if producer_assist:
         env["USE_OPENAI"] = "false"
         env["USE_ELEVENLABS"] = "false"
     BROADCAST_PROCESS = subprocess.Popen(broadcast_command(), cwd=ROOT, env=env)
@@ -399,17 +399,17 @@ def run_gui():
 
     def start_full_ai():
         save_settings()
-        process = launch_broadcast(helper_mode=False)
+        process = launch_broadcast(producer_assist=False)
         if process:
             status.set("Started full AI broadcast with overlay, cameras, and incident replay.")
 
-    def start_helper():
+    def start_producer_assist():
         save_settings()
-        process = launch_broadcast(helper_mode=True)
+        process = launch_broadcast(producer_assist=True)
         if process:
             status.set(
-                "Started broadcast helper mode with overlay and cameras. "
-                "OpenAI and ElevenLabs are disabled."
+                "Started Producer Assist broadcast with overlay and cameras. "
+                "AI voices are disabled so a human broadcaster can call the race."
             )
 
     def stop_running_broadcast():
@@ -433,7 +433,7 @@ def run_gui():
         padx=6,
         pady=8,
     )
-    button(action_bar, text="Start Helper Mode", command=start_helper, color=ACCENT).pack(
+    button(action_bar, text="Start Producer Assist", command=start_producer_assist, color=ACCENT).pack(
         side="left",
         padx=6,
         pady=8,
