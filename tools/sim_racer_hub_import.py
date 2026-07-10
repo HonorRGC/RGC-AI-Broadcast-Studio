@@ -5,6 +5,7 @@ import json
 import re
 import sys
 from pathlib import Path
+from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 from urllib.request import Request, urlopen
 
 
@@ -43,8 +44,31 @@ def fetch_url(url):
 
 def load_source(source):
     if source.startswith("http://") or source.startswith("https://"):
+        source = normalize_sim_racer_hub_source(source)
         return fetch_url(source)
     return Path(source).read_text(encoding="utf-8")
+
+
+def normalize_sim_racer_hub_source(source):
+    parsed = urlparse(source)
+    if not parsed.netloc.endswith("simracerhub.com"):
+        return source
+    if not parsed.path.endswith("/series_seasons.php") and parsed.path != "series_seasons.php":
+        return source
+
+    query = parse_qs(parsed.query)
+    replacement_query = {}
+    if query.get("series_id"):
+        replacement_query["series_id"] = query["series_id"][0]
+    if query.get("season_id"):
+        replacement_query["season_id"] = query["season_id"][0]
+
+    return urlunparse(
+        parsed._replace(
+            path="/league_stats.php",
+            query=urlencode(replacement_query),
+        )
+    )
 
 
 def extract_driver_name(page_html):
@@ -127,6 +151,72 @@ def summarize_driver_stats(
     if not races:
         raise ValueError("No Sim Racer Hub races matched the requested filters.")
 
+    return summarize_races(
+        races,
+        driver_name=driver_name,
+        track_id=track_id,
+        track_config_id=track_config_id,
+    )
+
+
+def summarize_bulk_driver_stats(
+    page_html,
+    league_id="",
+    series_id="",
+    season_id="",
+    track_id="",
+    track_config_id="",
+    min_starts=1,
+):
+    race_map = extract_json_object(page_html, "rps")
+    drivers = extract_json_object(page_html, "drivers")
+    races = filter_races(race_map.values(), league_id, series_id, season_id)
+
+    grouped = {}
+    for race in races:
+        driver_id = str(race.get("driver_id") or "").strip()
+        if not driver_id:
+            continue
+        grouped.setdefault(driver_id, []).append(race)
+
+    rows = []
+    for driver_id, driver_races in grouped.items():
+        if len(driver_races) < int(min_starts or 1):
+            continue
+        driver_info = drivers.get(driver_id, {})
+        rows.append(
+            summarize_races(
+                driver_races,
+                driver_name=driver_info.get("driver_name", ""),
+                track_id=track_id,
+                track_config_id=track_config_id,
+            )
+        )
+
+    return sorted(
+        rows,
+        key=lambda row: (
+            -int_or_zero(row.get("starts")),
+            float_or_large(row.get("avg_finish")),
+            normalize(row.get("name")),
+        ),
+    )
+
+
+def summarize_races(
+    races,
+    driver_name="",
+    track_id="",
+    track_config_id="",
+):
+    races = sorted(
+        races,
+        key=lambda race: int_or_zero(race.get("race_timestamp")),
+        reverse=True,
+    )
+    if not races:
+        raise ValueError("Cannot summarize an empty race list.")
+
     finishes = [int_or_none(race.get("finish_pos_class") or race.get("finish_pos")) for race in races]
     finishes = [finish for finish in finishes if finish is not None]
     qualify_positions = [
@@ -154,6 +244,7 @@ def summarize_driver_stats(
     total_passes = sum(int_or_zero(race.get("passes")) for race in races)
     quality_passes = sum(int_or_zero(race.get("quality_passes")) for race in races)
     closing_passes = sum(int_or_zero(race.get("closing_passes")) for race in races)
+    total_points = sum(int_or_zero(race.get("race_points")) for race in races)
     avg_start = average(qualify_positions)
     avg_pos_values = [
         float_or_none(race.get("avg_pos")) for race in races if race.get("avg_pos") not in (None, "")
@@ -167,6 +258,8 @@ def summarize_driver_stats(
         f"Sim Racer Hub import from {len(races)} race(s)",
         f"last race {most_recent.get('race_date_str') or most_recent.get('race_date')}",
     ]
+    if total_points:
+        notes.append(f"{total_points} race points")
     if total_laps_led:
         notes.append(f"{total_laps_led} {plural(total_laps_led, 'lap')} led")
     if total_passes:
@@ -231,6 +324,11 @@ def merge_stats_row(output_path, new_row):
         writer.writerows(merged)
 
 
+def merge_stats_rows(output_path, new_rows):
+    for row in new_rows:
+        merge_stats_row(output_path, row)
+
+
 def count_finishes_at_or_better(values, threshold):
     return sum(1 for value in values if value <= threshold)
 
@@ -261,6 +359,11 @@ def float_or_none(value):
         return None
 
 
+def float_or_large(value):
+    number = float_or_none(value)
+    return number if number is not None else 999999.0
+
+
 def normalize(value):
     return str(value or "").strip().casefold()
 
@@ -275,9 +378,12 @@ def plural(count, singular, plural_text=None):
 
 def build_parser():
     parser = argparse.ArgumentParser(
-        description="Import one Sim Racer Hub driver stats page into league/stats.csv."
+        description="Import Sim Racer Hub stats into league/stats.csv."
     )
-    parser.add_argument("source", help="Sim Racer Hub driver_stats URL or saved HTML file.")
+    parser.add_argument(
+        "source",
+        help="Sim Racer Hub driver_stats or league_stats URL, or a saved HTML file.",
+    )
     parser.add_argument("--output", default="league/stats.csv", help="Stats CSV to update.")
     parser.add_argument("--league-id", default="", help="Only include this Sim Racer Hub league ID.")
     parser.add_argument("--series-id", default="", help="Only include this Sim Racer Hub series ID.")
@@ -293,12 +399,44 @@ def build_parser():
         action="store_true",
         help="Print the imported row without writing the output CSV.",
     )
+    parser.add_argument(
+        "--bulk",
+        action="store_true",
+        help="Treat source as a Sim Racer Hub league_stats page and import all matching drivers.",
+    )
+    parser.add_argument(
+        "--min-starts",
+        default="1",
+        help="Bulk mode only: only import drivers with at least this many starts.",
+    )
     return parser
 
 
 def main(argv=None):
     args = build_parser().parse_args(argv)
     page_html = load_source(args.source)
+
+    if args.bulk:
+        rows = summarize_bulk_driver_stats(
+            page_html,
+            league_id=args.league_id,
+            series_id=args.series_id,
+            season_id=args.season_id,
+            track_id=args.track_id,
+            track_config_id=args.track_config_id,
+            min_starts=args.min_starts,
+        )
+
+        if args.dry_run:
+            writer = csv.DictWriter(sys.stdout, fieldnames=STATS_FIELDS)
+            writer.writeheader()
+            writer.writerows(rows)
+            return 0
+
+        merge_stats_rows(args.output, rows)
+        print(f"Imported {len(rows)} drivers -> {args.output}")
+        return 0
+
     row = summarize_driver_stats(
         page_html,
         league_id=args.league_id,

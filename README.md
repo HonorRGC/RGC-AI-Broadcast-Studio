@@ -86,6 +86,14 @@ python tools\sim_racer_hub_import.py "https://simracerhub.com/driver_stats.php?d
 
 Use `--dry-run` first if you want to preview the row before updating the CSV.
 
+To import the current WFO Truck season from the series stats page:
+
+```powershell
+python tools\sim_racer_hub_import.py "https://simracerhub.com/league_stats.php?series_id=3872" --bulk --league-id 1598 --series-id 3872 --season-id 29247 --output league\stats.csv
+```
+
+The same bulk command also accepts the Sim Racer Hub series seasons URL and automatically follows it to the matching stats page.
+
 ## Run a live broadcast
 
 ```powershell

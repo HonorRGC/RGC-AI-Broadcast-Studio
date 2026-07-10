@@ -50,10 +50,24 @@ Useful WFO examples from the public driver page:
 
 The importer currently reads one driver page at a time and updates `league/stats.csv` with starts, wins, top fives, top tens, poles, average finish, last finish, optional track-history stats, and a stat note containing Sim Racer Hub values like laps led, passes, quality passes, closing passes, incidents, average start, and average running position.
 
+It can also bulk import a whole season from a Sim Racer Hub `league_stats.php` page:
+
+```powershell
+python tools\sim_racer_hub_import.py "https://simracerhub.com/league_stats.php?series_id=3872" --bulk --league-id 1598 --series-id 3872 --season-id 29247 --output league\stats.csv
+```
+
+You can also pass the Sim Racer Hub series seasons URL; bulk mode automatically follows it to the matching stats page:
+
+```powershell
+python tools\sim_racer_hub_import.py "https://simracerhub.com/series_seasons.php?series_id=3872&reset_series=y" --bulk --league-id 1598 --series-id 3872 --season-id 29247 --output league\stats.csv
+```
+
+Use `--min-starts 2` or higher if you want to skip one-off substitute drivers.
+
 The next integration path is:
 
-1. Import each known league driver from their Sim Racer Hub driver page.
-2. Add a roster/standings importer so a league admin can pull the whole series at once.
+1. Import each known league driver from a full Sim Racer Hub series stats page.
+2. Add standings-page support for official points position and points-to-next.
 3. Add a launcher button for importing Sim Racer Hub stats without typing commands.
 
 This keeps the broadcast engine stable while we learn the exact Sim Racer Hub data shape.
