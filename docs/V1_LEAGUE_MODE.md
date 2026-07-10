@@ -34,11 +34,27 @@ These stats are added to the verified driver context OpenAI receives, so the bro
 
 ## Sim Racer Hub integration plan
 
-The safe integration path is:
+The first Sim Racer Hub importer is available as a command-line bridge:
 
-1. Import or export Sim Racer Hub league data into `league/stats.csv`.
-2. Confirm the exact fields available for the league.
-3. Add a dedicated importer that converts Sim Racer Hub standings/results/track history into the same internal stats format.
+```powershell
+python tools\sim_racer_hub_import.py "https://simracerhub.com/driver_stats.php?driver_id=90223" --league-id 1598 --season-id 29247 --output league\stats.csv
+```
+
+Useful WFO examples from the public driver page:
+
+- `--league-id 1598` filters to WFO Racing League.
+- `--series-id 3872` filters to WFO Racing League Wicked Wednesday Truck Series.
+- `--series-id 4737` filters to WFO X Series Xfinity Cars.
+- `--season-id 29247` filters to WFO Burn't Bacon Truck Series Season 17.
+- `--season-id 29222` filters to RGC O'Reillys Series Season 17.
+
+The importer currently reads one driver page at a time and updates `league/stats.csv` with starts, wins, top fives, top tens, poles, average finish, last finish, optional track-history stats, and a stat note containing Sim Racer Hub values like laps led, passes, quality passes, closing passes, incidents, average start, and average running position.
+
+The next integration path is:
+
+1. Import each known league driver from their Sim Racer Hub driver page.
+2. Add a roster/standings importer so a league admin can pull the whole series at once.
+3. Add a launcher button for importing Sim Racer Hub stats without typing commands.
 
 This keeps the broadcast engine stable while we learn the exact Sim Racer Hub data shape.
 
@@ -53,4 +69,3 @@ The desktop app should become a setup shell around the existing engine:
 - league stats importer
 - overlay preview
 - start broadcast button
-

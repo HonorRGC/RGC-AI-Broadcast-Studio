@@ -76,6 +76,16 @@ League stats are also treated as verified context. For example, the broadcast ma
 
 See [docs/V1_LEAGUE_MODE.md](docs/V1_LEAGUE_MODE.md) for the league-mode and Sim Racer Hub importer plan.
 
+### Import Sim Racer Hub driver stats
+
+Public Sim Racer Hub driver stat pages can be imported into `league\stats.csv`:
+
+```powershell
+python tools\sim_racer_hub_import.py "https://simracerhub.com/driver_stats.php?driver_id=90223" --league-id 1598 --season-id 29247 --output league\stats.csv
+```
+
+Use `--dry-run` first if you want to preview the row before updating the CSV.
+
 ## Run a live broadcast
 
 ```powershell
