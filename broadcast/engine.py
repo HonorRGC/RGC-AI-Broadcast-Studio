@@ -291,7 +291,7 @@ class BroadcastEngine:
             category="sponsor_read",
             protected=True,
             speaker="lead",
-            delay_seconds=6.0,
+            delay_seconds=10.0,
             expires_after=180,
             dedupe_key="sponsor_read:opening",
         )

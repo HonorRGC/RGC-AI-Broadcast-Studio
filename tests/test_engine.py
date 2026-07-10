@@ -215,7 +215,7 @@ def test_engine_queues_sponsor_read_after_opening_lineup():
     assert len(sponsor_items) == 1
     assert sponsor_items[0].message == "Opening sponsor read."
     assert sponsor_items[0].priority == 8
-    assert sponsor_items[0].delay_seconds == 6.0
+    assert sponsor_items[0].delay_seconds == 10.0
 
 
 def test_engine_is_silent_until_the_race_session_begins():

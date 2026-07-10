@@ -23,6 +23,8 @@ class FieldRundownDirector:
         self.active_milestone = None
         self.active_entries = []
         self.active_next_index = 0
+        self.active_entry_count = 0
+        self.active_called_car_indices = set()
 
     def update(
         self,
@@ -54,11 +56,17 @@ class FieldRundownDirector:
             self.active_milestone = milestone
             self.sent_milestones.add(milestone)
             self.active_entries = self.build_entries(frozen_results, driver_lookup)
+            self.active_entry_count = len(self.active_entries)
+            self.active_called_car_indices = set()
             self.active_next_index = 0
 
+        live_entries = self.build_entries(
+            self.freeze_running_order(results)[: self.active_entry_count],
+            driver_lookup,
+        )
         segment = self.build_next_segment(
             milestone=self.active_milestone,
-            entries=self.active_entries,
+            entries=live_entries,
             current_lap=current_lap,
             total_laps=total_laps,
         )
@@ -161,14 +169,14 @@ class FieldRundownDirector:
 
     def build_next_segment(self, milestone, entries, current_lap, total_laps):
         start = self.active_next_index
-        if start >= len(entries):
+        if start >= self.active_entry_count:
             self.complete_active_milestone()
             return None
 
         group_number = start // self.GROUP_SIZE + 1
-        group = entries[start:start + self.GROUP_SIZE]
-        self.active_next_index += len(group)
-        is_final = self.active_next_index >= len(entries)
+        group = self.next_live_group(entries, start)
+        self.active_next_index += self.GROUP_SIZE
+        is_final = self.active_next_index >= self.active_entry_count
         if is_final:
             self.sent_milestones.add(milestone)
 
@@ -190,6 +198,22 @@ class FieldRundownDirector:
             self.complete_active_milestone()
         return segment
 
+    def next_live_group(self, entries, start):
+        group = []
+        for entry in entries[start:start + self.GROUP_SIZE]:
+            if entry["car_idx"] not in self.active_called_car_indices:
+                group.append(entry)
+
+        if not group:
+            for entry in entries:
+                if entry["car_idx"] not in self.active_called_car_indices:
+                    group.append(entry)
+                    break
+
+        for entry in group:
+            self.active_called_car_indices.add(entry["car_idx"])
+        return group
+
     def combine_message(self, intro, lines, closing):
         parts = [part for part in [intro, " ".join(lines)] if part]
         return f"{' '.join(parts)}{closing}".strip()
@@ -198,6 +222,8 @@ class FieldRundownDirector:
         self.active_milestone = None
         self.active_entries = []
         self.active_next_index = 0
+        self.active_entry_count = 0
+        self.active_called_car_indices = set()
 
     def cancel_active(self):
         self.complete_active_milestone()

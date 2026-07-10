@@ -126,13 +126,13 @@ class OpeningDirector:
     def build_hype(self):
         return OpeningSegment(
             (
-                "I am fired up for this one. This has all the makings of an "
-                "awesome race, so let's go racing, boys and girls."
+                "The field is set, the pace car is ready, and the next flag "
+                "will start this one. Let's settle in and go racing."
             ),
             priority=7,
             speaker="lead",
             category="opening_hype",
-            delay_seconds=7.0,
+            delay_seconds=8.0,
         )
 
     def build_weather_summary(self, track_info):

@@ -96,6 +96,45 @@ def test_long_green_rundown_runs_only_once():
     assert segments == []
 
 
+def test_long_green_rundown_refreshes_live_order_during_passes():
+    director = FieldRundownDirector()
+    results = [
+        {"CarIdx": index, "Position": index, "StartingPosition": index + 1}
+        for index in range(10)
+    ]
+    drivers = {
+        index: {"name": f"Driver {index + 1}", "number": str(index + 1)}
+        for index in range(10)
+    }
+
+    for lap in range(20, 24):
+        director.update(
+            results,
+            drivers,
+            lap,
+            60,
+            under_green=True,
+            green_lap_count=lap,
+        )
+
+    changed = [dict(car) for car in results]
+    changed[4]["Position"] = 5
+    changed[5]["Position"] = 4
+    fifth_call = director.update(
+        changed,
+        drivers,
+        24,
+        60,
+        under_green=True,
+        green_lap_count=24,
+    )
+
+    assert fifth_call[0].category == "long_green_field_rundown_5"
+    assert fifth_call[0].camera_sequence == (5,)
+    assert "fifth" in fifth_call[0].message.lower()
+    assert "Driver 6" in fifth_call[0].message
+
+
 def test_active_long_green_rundown_cancels_under_caution():
     director = FieldRundownDirector()
     results = [
