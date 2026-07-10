@@ -1067,83 +1067,44 @@ OVERLAY_HTML = r"""<!doctype html>
       right: 24px;
       top: auto;
       bottom: 34px;
-      height: 184px;
+      height: 188px;
       justify-content: center;
-      gap: 18px;
+      gap: 42px;
     }
 
     .crank-speaker {
       display: none;
-      flex: 0 0 190px;
-      width: 190px;
-      height: 150px;
-      border-radius: 30px;
-      background:
-        linear-gradient(135deg, transparent 0 18%, rgba(255, 255, 255, 0.96) 18% 31%, rgba(5, 6, 8, 0.98) 31% 44%, rgba(255, 255, 255, 0.96) 44% 57%, rgba(5, 6, 8, 0.98) 57% 70%, transparent 70%),
-        radial-gradient(circle at 50% 60%, #353b45 0 42px, #050608 43px 69px, #b9c0cc 70px 76px, transparent 77px),
-        linear-gradient(145deg, rgba(55, 10, 14, 0.99), rgba(5, 6, 8, 0.98));
-      border: 4px solid rgba(255, 255, 255, 0.30);
-      box-shadow:
-        0 0 38px rgba(255, 192, 0, 0.40),
-        0 0 52px rgba(215, 25, 32, 0.55),
-        inset 0 0 22px rgba(255, 255, 255, 0.12);
-      animation: speakerPulse 0.42s infinite alternate;
+      flex: 0 0 232px;
+      width: 232px;
+      height: 156px;
+      background-repeat: no-repeat;
+      background-position: center;
+      background-size: contain;
+      animation: crankSidePulse 0.58s infinite alternate ease-in-out;
       position: relative;
       overflow: visible;
-    }
-
-    .crank-speaker::before,
-    .crank-speaker::after {
-      content: "";
-      position: absolute;
-      left: 50%;
-      transform: translateX(-50%);
-      border-radius: 50%;
-      border: 4px solid rgba(255, 255, 255, 0.24);
-      box-shadow:
-        inset 0 0 20px rgba(255, 255, 255, 0.12),
-        0 0 22px rgba(255, 192, 0, 0.40);
-    }
-
-    .crank-speaker::before {
-      top: 13px;
-      width: 44px;
-      height: 44px;
-      background: radial-gradient(circle, #d9dee7 0 8px, #10141b 9px 22px);
-    }
-
-    .crank-speaker::after {
-      bottom: 14px;
-      width: 92px;
-      height: 92px;
-      background: radial-gradient(circle, #111 0 20px, #1e242d 21px 43px, #050608 44px);
+      filter:
+        drop-shadow(0 0 18px rgba(255, 192, 0, 0.42))
+        drop-shadow(0 0 28px rgba(215, 25, 32, 0.55));
     }
 
     .crank-speaker-left {
-      --speaker-tilt: -3deg;
+      --speaker-tilt: -2.5deg;
     }
 
     .crank-speaker-right {
-      --speaker-tilt: 3deg;
+      --speaker-tilt: 2.5deg;
     }
 
     .special-presentation.crank_it_up .crank-speaker {
-      display: none;
-    }
-
-    .special-presentation.crank_it_up .crank-speaker-left {
-      clip-path: polygon(0 14%, 100% 0, 100% 100%, 0 86%);
-    }
-
-    .special-presentation.crank_it_up .crank-speaker-right {
-      clip-path: polygon(0 0, 100% 14%, 100% 86%, 0 100%);
+      display: block;
     }
 
     .special-presentation.crank_it_up .ceremony-card {
       display: block;
       width: auto;
-      min-width: 360px;
-      padding: 10px 26px 12px;
+      min-width: 430px;
+      padding: 14px 34px 16px;
       text-align: center;
       border-left: 0;
       border-bottom: 6px solid var(--rgc-red);
@@ -1157,14 +1118,13 @@ OVERLAY_HTML = r"""<!doctype html>
 
     .special-presentation.crank_it_up .ceremony-logo {
       display: block;
-      width: 260px;
-      height: 130px;
-      margin: -20px auto -8px;
+      width: 330px;
+      height: 92px;
+      margin: 0 auto 2px;
       object-fit: contain;
-      animation: crankHeroPulse 0.68s infinite alternate ease-in-out;
       filter:
-        drop-shadow(0 0 14px rgba(255, 192, 0, 0.36))
-        drop-shadow(0 0 24px rgba(215, 25, 32, 0.52));
+        drop-shadow(0 0 12px rgba(255, 255, 255, 0.22))
+        drop-shadow(0 0 24px rgba(215, 25, 32, 0.40));
     }
 
     .special-presentation.crank_it_up .ceremony-title {
@@ -1180,18 +1140,18 @@ OVERLAY_HTML = r"""<!doctype html>
       font-size: 14px;
     }
 
-    @keyframes crankHeroPulse {
+    @keyframes crankSidePulse {
       0% {
-        transform: translateX(-2px) rotate(-0.9deg) scale(0.98);
+        transform: translateX(-3px) rotate(var(--speaker-tilt, 0deg)) scale(0.96);
       }
       35% {
-        transform: translateX(2px) rotate(0.8deg) scale(1.025);
+        transform: translateX(2px) rotate(0.8deg) scale(1.02);
       }
       70% {
-        transform: translateX(-1px) rotate(-0.4deg) scale(1.045);
+        transform: translateX(-1px) rotate(var(--speaker-tilt, 0deg)) scale(1.05);
       }
       100% {
-        transform: translateX(1px) rotate(0.6deg) scale(1.06);
+        transform: translateX(2px) rotate(-0.8deg) scale(1.08);
       }
     }
 
@@ -1316,9 +1276,19 @@ OVERLAY_HTML = r"""<!doctype html>
       setText("ceremony-subtitle", presentation.subtitle || "Presented by RGC Motorsports");
       const logo = document.getElementById("ceremony-logo");
       const graphics = presentation.graphics || [];
-      const src = pickRotatingGraphic(graphics, 3.5);
+      const isCrank = presentation.kind === "crank_it_up";
+      const src = isCrank ? (graphics[0] || "") : pickRotatingGraphic(graphics, 3.5);
+      const sideSrc = isCrank ? (graphics[1] || graphics[0] || "") : "";
+      setCrankSideGraphic("crank-speaker-left", sideSrc);
+      setCrankSideGraphic("crank-speaker-right", sideSrc);
       logo.classList.toggle("hidden", !src);
       logo.src = src || "";
+    }
+
+    function setCrankSideGraphic(className, src) {
+      const element = document.querySelector(`.${className}`);
+      if (!element) return;
+      element.style.backgroundImage = src ? `url("${src}")` : "";
     }
 
     function renderStatPanel(panel) {

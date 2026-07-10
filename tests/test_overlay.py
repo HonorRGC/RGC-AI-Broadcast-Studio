@@ -256,13 +256,16 @@ def test_overlay_special_presentation_updates_state_immediately():
         kind="crank_it_up",
         title="Crank It Up",
         subtitle="Presented by RGC Motorsports",
-        graphics=["/assets/crank_it_up.png"],
+        graphics=["/assets/rgc_motorsports.png", "/assets/crank_it_up.png"],
         duration=28,
     )
     state = server.current_state_dict()
 
     assert state["special_presentation"]["kind"] == "crank_it_up"
-    assert state["special_presentation"]["graphics"] == ["/assets/crank_it_up.png"]
+    assert state["special_presentation"]["graphics"] == [
+        "/assets/rgc_motorsports.png",
+        "/assets/crank_it_up.png",
+    ]
 
 
 def test_overlay_preserves_stat_panel():
@@ -288,7 +291,8 @@ def test_overlay_preserves_stat_panel():
 def test_crank_it_up_overlay_has_animated_hero_graphic():
     assert "crank-speaker-left" in OVERLAY_HTML
     assert "crank-speaker-right" in OVERLAY_HTML
-    assert "crankHeroPulse" in OVERLAY_HTML
+    assert "crankSidePulse" in OVERLAY_HTML
+    assert "setCrankSideGraphic" in OVERLAY_HTML
 
 
 def test_overlay_has_center_session_clock():
@@ -306,4 +310,13 @@ def test_race_sponsor_banner_is_compact():
 def test_crank_it_up_overlay_uses_logo_and_racing_speaker_style():
     assert ".special-presentation.crank_it_up .ceremony-logo" in OVERLAY_HTML
     assert "repeating-linear-gradient" in OVERLAY_HTML
-    assert "drop-shadow(0 0 14px" in OVERLAY_HTML
+    assert "drop-shadow(0 0 18px" in OVERLAY_HTML
+
+
+def test_crank_it_up_graphics_default_to_sponsor_then_side_icon():
+    from app import crank_it_up_graphics
+
+    assert crank_it_up_graphics() == [
+        "/assets/rgc_motorsports.png",
+        "/assets/crank_it_up.png",
+    ]

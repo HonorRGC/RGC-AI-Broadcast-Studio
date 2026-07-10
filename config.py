@@ -39,6 +39,14 @@ OVERLAY_BRAND_GRAPHICS = [
     ).split(",")
     if item.strip()
 ]
+CRANK_IT_UP_SPONSOR_GRAPHIC = os.getenv(
+    "CRANK_IT_UP_SPONSOR_GRAPHIC",
+    "/assets/rgc_motorsports.png",
+)
+CRANK_IT_UP_ICON_GRAPHIC = os.getenv(
+    "CRANK_IT_UP_ICON_GRAPHIC",
+    "/assets/crank_it_up.png",
+)
 
 
 # Sponsor reads

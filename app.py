@@ -1,6 +1,7 @@
 import argparse
 import time
 
+from config import CRANK_IT_UP_ICON_GRAPHIC, CRANK_IT_UP_SPONSOR_GRAPHIC
 from broadcast.booth import BroadcastBooth
 from broadcast.engine import BroadcastEngine
 from broadcaster.telemetry import IRacingTelemetry
@@ -242,7 +243,7 @@ def show_overlay_feature(item, overlay_server, source=None, engine=None):
             title="Crank It Up",
             subtitle="No booth. Just race cars.",
             duration=getattr(item, "feature_duration_seconds", 28.0) or 28.0,
-            graphics=["/assets/crank_it_up.png"],
+            graphics=crank_it_up_graphics(),
         )
         return
 
@@ -284,7 +285,7 @@ def run_crank_it_up_test(booth, overlay_server, duration_seconds=28.0):
             title="Crank It Up",
             subtitle="Presented by RGC Motorsports",
             duration=feature_seconds,
-            graphics=["/assets/crank_it_up.png"],
+            graphics=crank_it_up_graphics(),
         )
         print(f"Crank It Up overlay preview is active for {feature_seconds:.0f} seconds.")
         print(f"Preview URL: {overlay_server.url}")
@@ -294,6 +295,14 @@ def run_crank_it_up_test(booth, overlay_server, duration_seconds=28.0):
     else:
         booth.broadcast(intro, speaker="lead")
         print("Overlay is OFF, so only the voice preview was played.")
+
+
+def crank_it_up_graphics():
+    return [
+        graphic
+        for graphic in (CRANK_IT_UP_SPONSOR_GRAPHIC, CRANK_IT_UP_ICON_GRAPHIC)
+        if graphic
+    ]
 
 
 def should_show_movers_graphic(item, engine):
