@@ -1,5 +1,6 @@
 from enum import Enum
 
+from config import SPONSOR_READ_CAUSE, USE_SPONSOR_READS
 from helpers.position_formatter import PositionFormatter
 
 
@@ -51,6 +52,11 @@ class RaceDirector:
         self.finish_order_signature = ()
         self.finish_order_stable_ticks = 0
         self.progress_milestones_announced = set()
+        self.progress_sponsor_cause = (
+            (SPONSOR_READ_CAUSE or "Autism Awareness").strip()
+            if USE_SPONSOR_READS
+            else ""
+        )
         self.last_results = []
         self.last_driver_lookup = {}
 
@@ -474,8 +480,9 @@ class RaceDirector:
                 f"{laps_to_go} laps to go as we enter the final quarter of the race."
             ),
         }
+        message = self.with_progress_sponsor(messages[latest_name])
         scheduler.add(
-            messages[latest_name],
+            message,
             priority=9,
             category="race_progress",
             protected=True,
@@ -484,6 +491,14 @@ class RaceDirector:
             dedupe_key=f"race_progress:{latest_name}",
         )
         self.progress_milestones_announced.add(latest_name)
+
+    def with_progress_sponsor(self, message):
+        if not self.progress_sponsor_cause:
+            return message
+        return (
+            f"{message} This race update is presented in support of "
+            f"{self.progress_sponsor_cause}."
+        )
 
     def get_track_name(self, track_info):
         if not track_info:

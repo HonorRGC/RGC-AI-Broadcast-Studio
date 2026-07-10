@@ -307,6 +307,20 @@ def test_long_race_reports_quarter_half_and_three_quarter_progress():
     assert any("60 laps remain" in message for message in messages)
     assert any("Halfway" in message and "40 laps remain" in message for message in messages)
     assert any("20 laps to go" in message for message in messages)
+    assert all("Autism Awareness" in message for message in messages)
+    assert all("This race update is presented" in message for message in messages)
+
+
+def test_progress_milestone_sponsor_can_be_disabled():
+    director = RaceDirector()
+    director.race_started = True
+    director.progress_sponsor_cause = ""
+    queue = BroadcastQueue()
+
+    director.handle_lap_calls(current_lap=20, total_laps=80, scheduler=queue)
+
+    assert queue.items
+    assert "Autism Awareness" not in queue.items[0].message
 
 
 def test_finish_rundown_is_limited_to_top_ten():
