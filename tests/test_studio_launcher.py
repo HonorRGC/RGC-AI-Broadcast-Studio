@@ -1,6 +1,8 @@
 import sys
 
 from studio_launcher import (
+    RGC_DISCORD_URL,
+    RGC_WEBSITE_URL,
     broadcast_command,
     install_overlay_brand_graphics,
     is_process_running,
@@ -29,6 +31,11 @@ def test_launcher_loads_simple_env_file(tmp_path):
 
     assert values["USE_OPENAI"] == "false"
     assert values["OVERLAY_EVENT_TITLE"] == "Friday Night 100"
+
+
+def test_launcher_includes_rgc_links():
+    assert RGC_DISCORD_URL == "https://discord.gg/Axwwa8CUqt"
+    assert RGC_WEBSITE_URL == "https://www.realisticgamingcrew.com"
 
 
 def test_launcher_defaults_include_league_stats_csv():

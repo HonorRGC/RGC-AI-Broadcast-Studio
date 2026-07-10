@@ -5,6 +5,7 @@ import re
 import shutil
 import subprocess
 import sys
+import webbrowser
 from pathlib import Path
 from tkinter import messagebox
 
@@ -13,6 +14,8 @@ ROOT = Path(__file__).resolve().parent
 ENV_PATH = ROOT / ".env"
 STATIC_ASSET_DIR = ROOT / "production" / "static"
 BROADCAST_PROCESS = None
+RGC_DISCORD_URL = "https://discord.gg/Axwwa8CUqt"
+RGC_WEBSITE_URL = "https://www.realisticgamingcrew.com"
 
 DARK_BG = "#071018"
 PANEL_BG = "#101a24"
@@ -125,6 +128,10 @@ def install_overlay_brand_graphics(paths, static_dir=STATIC_ASSET_DIR):
         asset_paths.append(f"/assets/{target.name}")
 
     return asset_paths
+
+
+def open_external_link(url):
+    webbrowser.open(url)
 
 
 def broadcast_command():
@@ -318,6 +325,21 @@ def run_gui():
         font=("Segoe UI", 10),
         fg=MUTED_FG,
     ).pack(pady=(0, 8))
+
+    link_bar = frame(root)
+    link_bar.pack(pady=(0, 8))
+    button(
+        link_bar,
+        text="RGC Discord",
+        command=lambda: open_external_link(RGC_DISCORD_URL),
+        color="#5865f2",
+    ).pack(side="left", padx=5)
+    button(
+        link_bar,
+        text="RGC Website",
+        command=lambda: open_external_link(RGC_WEBSITE_URL),
+        color="#334b64",
+    ).pack(side="left", padx=5)
 
     status = tk.StringVar(value=f"Settings file: {ENV_PATH}")
 
