@@ -137,6 +137,37 @@ def filter_races(races, league_id="", series_id="", season_id=""):
     )
 
 
+def resolve_track_ids(page_html, track_name="", track_id="", track_config_id=""):
+    track_ids = {
+        "track_ids": set(),
+        "track_config_ids": set(),
+    }
+
+    if track_id:
+        track_ids["track_ids"].add(str(track_id))
+    if track_config_id:
+        track_ids["track_config_ids"].add(str(track_config_id))
+    if not track_name:
+        return track_ids
+
+    configs = extract_json_object(page_html, "configs")
+    wanted = normalize(track_name)
+    for config_id, config in configs.items():
+        names = [
+            config.get("track_name"),
+            config.get("track_config_name"),
+            config.get("track_config_short"),
+            config.get("type_name"),
+        ]
+        searchable = " ".join(str(name or "") for name in names)
+        if wanted and wanted in normalize(searchable):
+            track_ids["track_config_ids"].add(str(config_id))
+            if config.get("track_id"):
+                track_ids["track_ids"].add(str(config.get("track_id")))
+
+    return track_ids
+
+
 def summarize_driver_stats(
     page_html,
     league_id="",
@@ -144,6 +175,7 @@ def summarize_driver_stats(
     season_id="",
     track_id="",
     track_config_id="",
+    track_name="",
 ):
     driver_name = extract_driver_name(page_html)
     race_map = extract_json_object(page_html, "rps")
@@ -155,8 +187,7 @@ def summarize_driver_stats(
     return summarize_races(
         races,
         driver_name=driver_name,
-        track_id=track_id,
-        track_config_id=track_config_id,
+        track_ids=resolve_track_ids(page_html, track_name, track_id, track_config_id),
     )
 
 
@@ -167,11 +198,13 @@ def summarize_bulk_driver_stats(
     season_id="",
     track_id="",
     track_config_id="",
+    track_name="",
     min_starts=1,
 ):
     race_map = extract_json_object(page_html, "rps")
     drivers = extract_json_object(page_html, "drivers")
     races = filter_races(race_map.values(), league_id, series_id, season_id)
+    track_ids = resolve_track_ids(page_html, track_name, track_id, track_config_id)
 
     grouped = {}
     for race in races:
@@ -189,8 +222,7 @@ def summarize_bulk_driver_stats(
             summarize_races(
                 driver_races,
                 driver_name=driver_info.get("driver_name", ""),
-                track_id=track_id,
-                track_config_id=track_config_id,
+                track_ids=track_ids,
             )
         )
 
@@ -207,8 +239,7 @@ def summarize_bulk_driver_stats(
 def summarize_races(
     races,
     driver_name="",
-    track_id="",
-    track_config_id="",
+    track_ids=None,
 ):
     races = sorted(
         races,
@@ -226,18 +257,22 @@ def summarize_races(
     qualify_positions = [position for position in qualify_positions if position is not None]
 
     track_races = []
-    if track_config_id:
-        track_races = [
-            race for race in races if str(race.get("track_config_id")) == str(track_config_id)
-        ]
-    elif track_id:
-        track_races = [race for race in races if str(race.get("track_id")) == str(track_id)]
+    track_ids = track_ids or {}
+    track_config_ids = {str(value) for value in track_ids.get("track_config_ids", set()) if value}
+    base_track_ids = {str(value) for value in track_ids.get("track_ids", set()) if value}
+    if track_config_ids or base_track_ids:
+        for race in races:
+            if str(race.get("track_config_id")) in track_config_ids:
+                track_races.append(race)
+            elif str(race.get("track_id")) in base_track_ids:
+                track_races.append(race)
 
     track_finishes = [
         int_or_none(race.get("finish_pos_class") or race.get("finish_pos"))
         for race in track_races
     ]
     track_finishes = [finish for finish in track_finishes if finish is not None]
+    most_recent_track = track_races[0] if track_races else None
 
     most_recent = races[0]
     total_laps_led = sum(int_or_zero(race.get("laps_led")) for race in races)
@@ -271,6 +306,12 @@ def summarize_races(
         notes.append(f"average start {avg_start}")
     if avg_running_position:
         notes.append(f"average running position {avg_running_position}")
+    if most_recent_track and track_finishes:
+        notes.append(
+            "last track race "
+            f"{most_recent_track.get('race_date_str') or most_recent_track.get('race_date')}: "
+            f"finished {ordinal(track_finishes[0])}"
+        )
 
     return {
         "name": driver_name,
@@ -390,6 +431,17 @@ def normalize_number(value):
     return str(value or "").strip().lstrip("#").casefold()
 
 
+def ordinal(value):
+    number = int_or_none(value)
+    if number is None:
+        return str(value or "")
+    if 10 <= number % 100 <= 20:
+        suffix = "th"
+    else:
+        suffix = {1: "st", 2: "nd", 3: "rd"}.get(number % 10, "th")
+    return f"{number}{suffix}"
+
+
 def plural(count, singular, plural_text=None):
     return singular if int(count) == 1 else (plural_text or f"{singular}s")
 
@@ -407,6 +459,11 @@ def build_parser():
     parser.add_argument("--series-id", default="", help="Only include this Sim Racer Hub series ID.")
     parser.add_argument("--season-id", default="", help="Only include this Sim Racer Hub season ID.")
     parser.add_argument("--track-id", default="", help="Optional current track ID for track-history stats.")
+    parser.add_argument(
+        "--track-name",
+        default="",
+        help="Optional track name, such as Nashville or Michigan, for track-history stats.",
+    )
     parser.add_argument(
         "--track-config-id",
         default="",
@@ -442,6 +499,7 @@ def main(argv=None):
             season_id=args.season_id,
             track_id=args.track_id,
             track_config_id=args.track_config_id,
+            track_name=args.track_name,
             min_starts=args.min_starts,
         )
 
@@ -462,6 +520,7 @@ def main(argv=None):
         season_id=args.season_id,
         track_id=args.track_id,
         track_config_id=args.track_config_id,
+        track_name=args.track_name,
     )
 
     if args.dry_run:

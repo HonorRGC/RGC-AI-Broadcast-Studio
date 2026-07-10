@@ -72,6 +72,14 @@ python tools\sim_racer_hub_import.py "https://simracerhub.com/series_seasons.php
 
 That produces series-career totals for each driver, including total starts, wins, top fives, top tens, poles, average finish, laps led, passes, quality passes, closing passes, and incidents. Use a higher `--min-starts` value if you only want regular WFO drivers.
 
+To add track-history stats for the race you are about to broadcast, include `--track-name`:
+
+```powershell
+python tools\sim_racer_hub_import.py "https://simracerhub.com/league_stats.php?series_id=3872" --bulk --league-id 1598 --series-id 3872 --track-name Nashville --min-starts 10 --output league\stats.csv
+```
+
+The importer matches the name against Sim Racer Hub track names and config names, then fills `track_starts`, `track_wins`, `best_track_finish`, and a note about the driver's most recent race at that track.
+
 The next integration path is:
 
 1. Import each known league driver from a full Sim Racer Hub series stats page.

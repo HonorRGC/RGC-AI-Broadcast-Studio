@@ -4,6 +4,7 @@ from tools.sim_racer_hub_import import (
     merge_stats_row,
     merge_stats_rows,
     normalize_sim_racer_hub_source,
+    resolve_track_ids,
     summarize_bulk_driver_stats,
     summarize_driver_stats,
 )
@@ -60,7 +61,10 @@ React.createElement(LeagueStats,{user: {"driver_id":0},league_id: 1598,series_id
 "90223":{"driver_id":"90223","driver_name":"T.J. Lee","driver_last_first":"Lee, T.J.","driver_is_ai":"N","flair_country_code":"US"},
 "1110":{"driver_id":"1110","driver_name":"Justin Gledhill","driver_last_first":"Gledhill, Justin","driver_is_ai":"N","flair_country_code":"US"},
 "3333":{"driver_id":"3333","driver_name":"Other Season","driver_last_first":"Season, Other","driver_is_ai":"N","flair_country_code":"US"}
-},seasons: {},series: {},leagues: {},cars: {},configs: {},}));
+},seasons: {},series: {},leagues: {},cars: {},configs: {
+"257":{"track_config_id":"257","track_config_short":"Michigan","track_id":"105","track_name":"Michigan International Speedway","type_name":"Speedway"},
+"328":{"track_config_id":"328","track_config_short":"Nashville SS","track_id":"129","track_name":"Nashville Superspeedway","type_name":"Speedway"}
+},}));
 </script>
 </body>
 </html>
@@ -128,6 +132,29 @@ def test_bulk_import_summarizes_all_matching_drivers():
     assert rows[1]["starts"] == "1"
     assert rows[1]["top_fives"] == "1"
     assert "37 race points" in rows[1]["notes"]
+
+
+def test_bulk_import_resolves_track_history_by_track_name():
+    rows = summarize_bulk_driver_stats(
+        BULK_HTML,
+        league_id="1598",
+        series_id="3872",
+        season_id="29247",
+        track_name="Michigan",
+    )
+
+    assert rows[0]["track_starts"] == "1"
+    assert rows[0]["track_wins"] == "1"
+    assert rows[0]["best_track_finish"] == "1"
+    assert "last track race Jul 1, 2026: finished 1st" in rows[0]["notes"]
+    assert rows[1]["track_starts"] == "1"
+
+
+def test_resolve_track_ids_matches_track_config_short_and_track_name():
+    ids = resolve_track_ids(BULK_HTML, track_name="Nashville")
+
+    assert "129" in ids["track_ids"]
+    assert "328" in ids["track_config_ids"]
 
 
 def test_bulk_import_uses_race_date_when_timestamp_is_missing():

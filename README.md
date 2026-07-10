@@ -100,6 +100,12 @@ For career stats across every WFO Wicked Wednesday Truck Series season, leave of
 python tools\sim_racer_hub_import.py "https://simracerhub.com/series_seasons.php?series_id=3872&reset_series=y" --bulk --league-id 1598 --series-id 3872 --min-starts 10 --output league\stats.csv
 ```
 
+To include prior history at the upcoming track:
+
+```powershell
+python tools\sim_racer_hub_import.py "https://simracerhub.com/league_stats.php?series_id=3872" --bulk --league-id 1598 --series-id 3872 --track-name Nashville --min-starts 10 --output league\stats.csv
+```
+
 ## Run a live broadcast
 
 ```powershell
