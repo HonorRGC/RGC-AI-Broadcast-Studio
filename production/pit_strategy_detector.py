@@ -112,6 +112,14 @@ class PitStrategyDetector:
                 self.update_pit_timer(state, session_time, lap_pct)
             elif state.on_pit_road and not on_pit_road:
                 self.finish_pit_timer(state, session_time)
+                event = self.build_pit_exit_event(
+                    state=state,
+                    current_lap=current_lap,
+                    under_caution=under_caution,
+                )
+                if event and (self.can_report(state) or event.event_type == "PIT_STOP_COMPLETE"):
+                    events.append(event)
+                    state.last_reported_at = time.time()
 
             state.on_pit_road = on_pit_road
 
@@ -212,6 +220,82 @@ class PitStrategyDetector:
             lap=current_lap,
             under_caution=under_caution,
         )
+
+    def build_pit_exit_event(self, state, current_lap, under_caution):
+        stop_note = self.describe_completed_stop(state)
+        if under_caution:
+            message = (
+                f"{state.driver_name} has completed the stop in the number {state.car_number}. "
+                f"{stop_note}"
+            )
+            importance = 7
+        else:
+            message = (
+                f"{state.driver_name} cycles off pit road in the number {state.car_number}. "
+                f"{stop_note}"
+            )
+            importance = 8 if self.is_extended_repair_stop(state) else 7
+
+        return PitStrategyEvent(
+            event_type="PIT_STOP_COMPLETE",
+            driver_name=state.driver_name,
+            car_number=state.car_number,
+            car_idx=state.car_idx,
+            message=message,
+            importance=importance,
+            lap=current_lap,
+            under_caution=under_caution,
+        )
+
+    def describe_completed_stop(self, state):
+        lane_seconds = float(state.last_pit_lane_seconds or 0.0)
+        stop_seconds = float(state.last_pit_stop_seconds or 0.0)
+        timing = self.format_stop_timing(lane_seconds, stop_seconds)
+
+        if self.is_extended_repair_stop(state):
+            return (
+                f"That was an extended stop{timing}, so damage repair is likely part "
+                "of the story."
+            )
+        if stop_seconds >= 12.0:
+            return (
+                f"That looks like a full-service stop{timing}, likely tires, fuel, "
+                "or a larger adjustment."
+            )
+        if stop_seconds >= 6.0:
+            return (
+                f"That was a normal service stop{timing}, enough time for tires, fuel, "
+                "or a quick adjustment."
+            )
+        if lane_seconds > 0 and lane_seconds <= 20.0 and stop_seconds < 3.0:
+            return (
+                f"That was a very quick trip{timing}, more like a drive-through or "
+                "track-position move than a full service stop."
+            )
+        return (
+            f"That was a short stop{timing}, so track position may have mattered "
+            "more than full service."
+        )
+
+    @staticmethod
+    def is_extended_repair_stop(state):
+        return (
+            float(state.last_pit_stop_seconds or 0.0) >= 25.0
+            or float(state.last_pit_lane_seconds or 0.0) >= 65.0
+        )
+
+    @staticmethod
+    def format_stop_timing(lane_seconds, stop_seconds):
+        parts = []
+        if stop_seconds > 0:
+            parts.append(f"about {round(stop_seconds)} seconds stationary")
+        if lane_seconds > 0:
+            parts.append(f"{round(lane_seconds)} seconds on pit road")
+        if not parts:
+            return ""
+        if len(parts) == 1:
+            return f", {parts[0]}"
+        return f", {parts[0]} and {parts[1]}"
 
     def build_pit_road_start_event(self, state, current_lap):
         return PitStrategyEvent(

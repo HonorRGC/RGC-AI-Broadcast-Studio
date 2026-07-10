@@ -605,7 +605,9 @@ class BroadcastEngine:
                 pit_road_status=pit_road_status,
             )
             if self.race_director.phase == RacePhase.ONE_TO_GREEN:
-                report = self.caution_pit_reporter.build_majority_report()
+                report = self.caution_pit_reporter.build_majority_report(
+                    self.pit_strategy_detector.driver_states
+                )
                 if report:
                     self.broadcast_queue.add(
                         report.message,
@@ -619,7 +621,9 @@ class BroadcastEngine:
                         participant_car_indices=report.car_indices,
                     )
                     self._queue_caution_sponsor_read(current_lap)
-                small_report = self.caution_pit_reporter.build_small_group_report()
+                small_report = self.caution_pit_reporter.build_small_group_report(
+                    self.pit_strategy_detector.driver_states
+                )
                 if small_report:
                     self.broadcast_queue.add(
                         small_report.message,

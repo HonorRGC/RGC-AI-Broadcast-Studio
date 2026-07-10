@@ -134,3 +134,91 @@ def test_pit_detector_tracks_pit_lane_and_estimated_service_time():
     state = detector.driver_states[0]
     assert state.last_pit_lane_seconds == 22.0
     assert state.last_pit_stop_seconds == 5.0
+
+
+def test_pit_detector_reports_extended_stop_as_likely_damage_repair():
+    detector = PitStrategyDetector()
+    detector.report_cooldown_seconds = 0
+    drivers = {0: {"name": "Driver One", "number": "11"}}
+
+    detector.analyze(
+        results=[{"CarIdx": 0, "Position": 5, "LapsComplete": 20}],
+        driver_lookup=drivers,
+        pit_road_status=[False],
+        current_lap=20,
+        under_caution=False,
+        session_time=100.0,
+        lap_dist_pct=[0.1000],
+    )
+    detector.analyze(
+        results=[{"CarIdx": 0, "Position": 5, "LapsComplete": 21}],
+        driver_lookup=drivers,
+        pit_road_status=[True],
+        current_lap=21,
+        under_caution=False,
+        session_time=110.0,
+        lap_dist_pct=[0.2000],
+    )
+    detector.analyze(
+        results=[{"CarIdx": 0, "Position": 5, "LapsComplete": 21}],
+        driver_lookup=drivers,
+        pit_road_status=[True],
+        current_lap=21,
+        under_caution=False,
+        session_time=140.0,
+        lap_dist_pct=[0.20001],
+    )
+    events = detector.analyze(
+        results=[{"CarIdx": 0, "Position": 5, "LapsComplete": 21}],
+        driver_lookup=drivers,
+        pit_road_status=[False],
+        current_lap=21,
+        under_caution=False,
+        session_time=150.0,
+        lap_dist_pct=[0.2500],
+    )
+
+    completed = [event for event in events if event.event_type == "PIT_STOP_COMPLETE"]
+    assert completed
+    assert "extended stop" in completed[0].message
+    assert "damage repair" in completed[0].message
+    assert "30 seconds stationary" in completed[0].message
+
+
+def test_pit_detector_reports_quick_stop_as_track_position_move():
+    detector = PitStrategyDetector()
+    detector.report_cooldown_seconds = 0
+    drivers = {0: {"name": "Driver One", "number": "11"}}
+
+    detector.analyze(
+        results=[{"CarIdx": 0, "Position": 5, "LapsComplete": 20}],
+        driver_lookup=drivers,
+        pit_road_status=[False],
+        current_lap=20,
+        under_caution=False,
+        session_time=100.0,
+        lap_dist_pct=[0.1000],
+    )
+    detector.analyze(
+        results=[{"CarIdx": 0, "Position": 5, "LapsComplete": 21}],
+        driver_lookup=drivers,
+        pit_road_status=[True],
+        current_lap=21,
+        under_caution=False,
+        session_time=110.0,
+        lap_dist_pct=[0.2000],
+    )
+    events = detector.analyze(
+        results=[{"CarIdx": 0, "Position": 5, "LapsComplete": 21}],
+        driver_lookup=drivers,
+        pit_road_status=[False],
+        current_lap=21,
+        under_caution=False,
+        session_time=118.0,
+        lap_dist_pct=[0.2500],
+    )
+
+    completed = [event for event in events if event.event_type == "PIT_STOP_COMPLETE"]
+    assert completed
+    assert "very quick trip" in completed[0].message
+    assert "track-position move" in completed[0].message

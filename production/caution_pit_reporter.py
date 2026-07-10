@@ -43,7 +43,7 @@ class CautionPitReporter:
 
         return None
 
-    def build_majority_report(self):
+    def build_majority_report(self, pit_states=None):
         if self.majority_announced:
             return None
 
@@ -57,17 +57,18 @@ class CautionPitReporter:
             self.latest_results,
             self.latest_driver_lookup,
         )
+        service_note = self.service_summary(pit_states)
         return CautionPitReport(
             message=(
                 "Pit road is busy under this caution. "
                 f"A majority of the field has come in, {len(self.seen_on_pit_road)} "
                 f"of {field_size} cars, including {name_summary}. "
-                "This is a major strategy reset before the restart."
+                f"{service_note}"
             ),
             car_indices=featured,
         )
 
-    def build_small_group_report(self):
+    def build_small_group_report(self, pit_states=None):
         if (
             self.small_group_announced
             or self.majority_announced
@@ -82,11 +83,12 @@ class CautionPitReporter:
         )
         pitter_count = len(self.seen_on_pit_road)
         plural = "car has" if pitter_count == 1 else "cars have"
+        service_note = self.service_summary(pit_states)
         return CautionPitReport(
             message=(
                 f"Only a few takers on pit road under this caution. "
                 f"{pitter_count} {plural} come in, including {name_summary}. "
-                "Most of the field is choosing track position for the restart."
+                f"{service_note}"
             ),
             car_indices=featured,
             importance=8,
@@ -107,6 +109,44 @@ class CautionPitReporter:
             for car_idx in featured
         ]
         return featured, self.join_names(names)
+
+    def service_summary(self, pit_states=None):
+        states = pit_states or {}
+        pitter_states = []
+        for car_idx in self.seen_on_pit_road:
+            state = states.get(car_idx) if hasattr(states, "get") else None
+            if state is not None:
+                pitter_states.append(state)
+
+        extended = [
+            state
+            for state in pitter_states
+            if float(getattr(state, "last_pit_stop_seconds", 0.0) or 0.0) >= 25.0
+            or float(getattr(state, "last_pit_lane_seconds", 0.0) or 0.0) >= 65.0
+        ]
+        full_service = [
+            state
+            for state in pitter_states
+            if float(getattr(state, "last_pit_stop_seconds", 0.0) or 0.0) >= 12.0
+        ]
+
+        if extended:
+            names = self.join_names(
+                [
+                    getattr(state, "driver_name", f"Car {getattr(state, 'car_idx', '?')}")
+                    for state in extended[:3]
+                ]
+            )
+            return (
+                f"{names} had an extended stop, which points toward damage repair "
+                "or a longer service call before the restart."
+            )
+        if full_service:
+            return (
+                "Several of those stops were long enough for full service, so tires "
+                "and fuel are likely part of this strategy reset."
+            )
+        return "This is a major strategy reset before the restart."
 
     @staticmethod
     def is_on_pit_road(car_idx, pit_road_status):
