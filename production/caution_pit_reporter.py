@@ -129,6 +129,12 @@ class CautionPitReporter:
             for state in pitter_states
             if float(getattr(state, "last_pit_stop_seconds", 0.0) or 0.0) >= 12.0
         ]
+        track_position = [
+            state
+            for state in pitter_states
+            if float(getattr(state, "last_pit_stop_seconds", 0.0) or 0.0) < 8.0
+            and int(getattr(state, "last_pit_position_gain", 0) or 0) >= 2
+        ]
 
         if extended:
             names = self.join_names(
@@ -141,12 +147,42 @@ class CautionPitReporter:
                 f"{names} had an extended stop, which points toward damage repair "
                 "or a longer service call before the restart."
             )
+        if full_service and track_position:
+            names = self.join_names(
+                [
+                    self.car_label(state)
+                    for state in track_position[:3]
+                ]
+            )
+            return (
+                "Most of those stops look long enough for full service. "
+                f"{names} had the quicker stop and gained track position, "
+                "so that has the look of a two-tire or fuel-only call."
+            )
         if full_service:
             return (
                 "Several of those stops were long enough for full service, so tires "
                 "and fuel are likely part of this strategy reset."
             )
+        if track_position:
+            names = self.join_names(
+                [
+                    self.car_label(state)
+                    for state in track_position[:3]
+                ]
+            )
+            return (
+                f"{names} gained spots with a short stop, so that looks like a "
+                "track-position call before the restart."
+            )
         return "This is a major strategy reset before the restart."
+
+    @staticmethod
+    def car_label(state):
+        number = getattr(state, "car_number", "")
+        if number:
+            return f"the {number}"
+        return getattr(state, "driver_name", f"Car {getattr(state, 'car_idx', '?')}")
 
     @staticmethod
     def is_on_pit_road(car_idx, pit_road_status):

@@ -23,6 +23,9 @@ class PitDriverState:
     on_pit_road: bool = False
     last_pit_lap: int = 0
     pit_entry_position: int = 0
+    pit_exit_position: int = 0
+    last_pit_position_gain: int = 0
+    last_pit_exit_lap: int = 0
     pit_entry_time: float = 0.0
     last_pit_lane_seconds: float = 0.0
     current_pit_lane_seconds: float = 0.0
@@ -97,21 +100,11 @@ class PitStrategyDetector:
 
             if on_pit_road and not state.on_pit_road:
                 self.start_pit_timer(state, session_time, current_position, lap_pct)
-                event = self.build_pit_entry_event(
-                    state=state,
-                    current_lap=current_lap,
-                    under_caution=under_caution,
-                )
-
-                if event and self.can_report(state):
-                    events.append(event)
-                    state.last_reported_at = time.time()
-
                 state.last_pit_lap = current_lap
             elif on_pit_road:
                 self.update_pit_timer(state, session_time, lap_pct)
             elif state.on_pit_road and not on_pit_road:
-                self.finish_pit_timer(state, session_time)
+                self.finish_pit_timer(state, session_time, current_position, current_lap)
                 event = self.build_pit_exit_event(
                     state=state,
                     current_lap=current_lap,
@@ -150,11 +143,17 @@ class PitStrategyDetector:
         state.previous_pit_update_time = session_time
         state.previous_lap_dist_pct = current_lap_pct
 
-    def finish_pit_timer(self, state, session_time):
+    def finish_pit_timer(self, state, session_time, current_position=0, current_lap=0):
         if state.pit_entry_time > 0:
             state.current_pit_lane_seconds = max(session_time - state.pit_entry_time, 0.0)
         state.last_pit_lane_seconds = state.current_pit_lane_seconds
         state.last_pit_stop_seconds = state.current_pit_stop_seconds
+        state.pit_exit_position = self.safe_int(current_position)
+        state.last_pit_position_gain = max(
+            self.safe_int(state.pit_entry_position) - state.pit_exit_position,
+            0,
+        )
+        state.last_pit_exit_lap = current_lap
         state.current_pit_lane_seconds = 0.0
         state.current_pit_stop_seconds = 0.0
         state.pit_entry_time = 0.0
@@ -223,16 +222,17 @@ class PitStrategyDetector:
 
     def build_pit_exit_event(self, state, current_lap, under_caution):
         stop_note = self.describe_completed_stop(state)
+        position_note = self.describe_position_change(state)
         if under_caution:
             message = (
                 f"{state.driver_name} has completed the stop in the number {state.car_number}. "
-                f"{stop_note}"
+                f"{stop_note}{position_note}"
             )
             importance = 7
         else:
             message = (
                 f"{state.driver_name} cycles off pit road in the number {state.car_number}. "
-                f"{stop_note}"
+                f"{stop_note}{position_note}"
             )
             importance = 8 if self.is_extended_repair_stop(state) else 7
 
@@ -257,6 +257,11 @@ class PitStrategyDetector:
                 f"That was an extended stop{timing}, so damage repair is likely part "
                 "of the story."
             )
+        if self.looks_like_two_tire_track_position_stop(state):
+            return (
+                f"That was a short stop{timing}, so it has the look of a two-tire, "
+                "fuel-only, or track-position call."
+            )
         if stop_seconds >= 12.0:
             return (
                 f"That looks like a full-service stop{timing}, likely tires, fuel, "
@@ -277,12 +282,32 @@ class PitStrategyDetector:
             "more than full service."
         )
 
+    def describe_position_change(self, state):
+        gain = self.safe_int(getattr(state, "last_pit_position_gain", 0))
+        if gain <= 0:
+            return ""
+        return f" That gained {self.position_count(gain)} on pit road."
+
     @staticmethod
     def is_extended_repair_stop(state):
         return (
             float(state.last_pit_stop_seconds or 0.0) >= 25.0
             or float(state.last_pit_lane_seconds or 0.0) >= 65.0
         )
+
+    @staticmethod
+    def looks_like_two_tire_track_position_stop(state):
+        return (
+            float(state.last_pit_stop_seconds or 0.0) < 8.0
+            and int(getattr(state, "last_pit_position_gain", 0) or 0) >= 2
+        )
+
+    @staticmethod
+    def position_count(count):
+        count = int(count)
+        if count == 1:
+            return "one spot"
+        return f"{count} spots"
 
     @staticmethod
     def format_stop_timing(lane_seconds, stop_seconds):

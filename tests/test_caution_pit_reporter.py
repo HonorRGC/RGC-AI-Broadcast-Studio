@@ -98,6 +98,7 @@ def test_caution_pit_reporter_mentions_full_service_stops():
     pit_states = {
         1: SimpleNamespace(
             driver_name="Driver 2",
+            car_number="2",
             car_idx=1,
             last_pit_stop_seconds=14.0,
             last_pit_lane_seconds=36.0,
@@ -108,3 +109,54 @@ def test_caution_pit_reporter_mentions_full_service_stops():
 
     assert "full service" in report.message
     assert "tires and fuel" in report.message
+
+
+def test_caution_pit_reporter_compares_full_service_to_track_position_call():
+    reporter = CautionPitReporter()
+    results = [{"CarIdx": index, "Position": index} for index in range(6)]
+    drivers = {
+        index: {"name": f"Driver {index + 1}", "number": str(index + 1)}
+        for index in range(6)
+    }
+
+    reporter.update(True, results, drivers, [True, True, True, True, False, False])
+    pit_states = {
+        0: SimpleNamespace(
+            driver_name="Driver 1",
+            car_number="1",
+            car_idx=0,
+            last_pit_stop_seconds=14.0,
+            last_pit_lane_seconds=36.0,
+            last_pit_position_gain=0,
+        ),
+        1: SimpleNamespace(
+            driver_name="Driver 2",
+            car_number="2",
+            car_idx=1,
+            last_pit_stop_seconds=13.0,
+            last_pit_lane_seconds=34.0,
+            last_pit_position_gain=0,
+        ),
+        2: SimpleNamespace(
+            driver_name="Driver 3",
+            car_number="34",
+            car_idx=2,
+            last_pit_stop_seconds=5.0,
+            last_pit_lane_seconds=24.0,
+            last_pit_position_gain=4,
+        ),
+        3: SimpleNamespace(
+            driver_name="Driver 4",
+            car_number="4",
+            car_idx=3,
+            last_pit_stop_seconds=15.0,
+            last_pit_lane_seconds=38.0,
+            last_pit_position_gain=0,
+        ),
+    }
+
+    report = reporter.build_majority_report(pit_states)
+
+    assert "Most of those stops look long enough for full service" in report.message
+    assert "the 34" in report.message
+    assert "two-tire or fuel-only" in report.message
