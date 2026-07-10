@@ -117,6 +117,38 @@ def test_merge_stats_row_updates_existing_driver_by_name(tmp_path):
     assert rows[0]["wins"] == "1"
 
 
+def test_merge_stats_row_updates_old_sim_racer_hub_suffix_name(tmp_path):
+    output = tmp_path / "stats.csv"
+    output.write_text(
+        "name,car_number,starts,wins,top_fives,top_tens,poles,avg_finish,last_finish,points_position,points_to_next,track_starts,track_wins,best_track_finish,notes\n"
+        "Richard Holland2,,100,1,2,3,4,8.0,8,,,,,,old\n",
+        encoding="utf-8",
+    )
+
+    merge_stats_row(
+        output,
+        {
+            "name": "Richard Holland",
+            "starts": "182",
+            "wins": "47",
+            "top_fives": "124",
+            "top_tens": "158",
+            "poles": "24",
+            "avg_finish": "5.3",
+            "last_finish": "2",
+            "notes": "clean",
+        },
+    )
+
+    with output.open(newline="", encoding="utf-8") as csv_file:
+        rows = list(csv.DictReader(csv_file))
+
+    assert len(rows) == 1
+    assert rows[0]["name"] == "Richard Holland"
+    assert rows[0]["starts"] == "182"
+    assert rows[0]["notes"] == "clean"
+
+
 def test_bulk_import_summarizes_all_matching_drivers():
     rows = summarize_bulk_driver_stats(
         BULK_HTML,

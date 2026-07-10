@@ -343,13 +343,13 @@ def merge_stats_row(output_path, new_row):
             for row in reader:
                 rows.append({field: row.get(field, "") for field in STATS_FIELDS})
 
-    key_name = normalize(new_row.get("name"))
+    key_name = normalize_driver_name(new_row.get("name"))
     key_number = normalize_number(new_row.get("car_number"))
     updated = False
     merged = []
 
     for row in rows:
-        same_name = key_name and normalize(row.get("name")) == key_name
+        same_name = key_name and normalize_driver_name(row.get("name")) == key_name
         same_number = key_number and normalize_number(row.get("car_number")) == key_number
         if same_name or same_number:
             merged.append({field: new_row.get(field, "") for field in STATS_FIELDS})
@@ -425,6 +425,10 @@ def float_or_large(value):
 
 def normalize(value):
     return str(value or "").strip().casefold()
+
+
+def normalize_driver_name(value):
+    return normalize(clean_driver_name(value))
 
 
 def clean_driver_name(value):

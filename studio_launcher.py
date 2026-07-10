@@ -354,7 +354,9 @@ def build_league_tab(parent, status):
         if result.returncode == 0:
             action = "Previewed" if dry_run else "Imported"
             mode = "career" if career_mode.get() else "season"
-            status.set(f"{action} Sim Racer Hub {mode} stats.")
+            target = data["output"] or "league/stats.csv"
+            suffix = "" if dry_run else f" to {target}"
+            status.set(f"{action} Sim Racer Hub {mode} stats{suffix}.")
         else:
             status.set("Sim Racer Hub import failed. Check the output panel.")
 
