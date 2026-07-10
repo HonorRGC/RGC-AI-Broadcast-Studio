@@ -247,6 +247,24 @@ def test_overlay_preserves_special_presentation():
     assert state["special_presentation"]["graphics"]
 
 
+def test_overlay_special_presentation_updates_state_immediately():
+    from production.overlay import OverlayServer
+
+    server = OverlayServer()
+
+    server.show_special_presentation(
+        kind="crank_it_up",
+        title="Crank It Up",
+        subtitle="Presented by RGC Motorsports",
+        graphics=["/assets/crank_it_up.png"],
+        duration=28,
+    )
+    state = server.current_state_dict()
+
+    assert state["special_presentation"]["kind"] == "crank_it_up"
+    assert state["special_presentation"]["graphics"] == ["/assets/crank_it_up.png"]
+
+
 def test_overlay_preserves_stat_panel():
     from production.overlay import OverlayServer
 

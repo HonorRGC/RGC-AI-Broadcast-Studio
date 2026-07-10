@@ -474,6 +474,7 @@ class OverlayServer:
                 car_image_url=str(car_image_url or ""),
                 expires_at=time.monotonic() + float(duration),
             )
+            self.state.featured_driver = self.featured_driver
 
     def show_special_presentation(
         self,
@@ -491,10 +492,12 @@ class OverlayServer:
                 graphics=list(graphics or self.state_builder.event_config.graphics),
                 expires_at=time.monotonic() + float(duration),
             )
+            self.state.special_presentation = self.special_presentation
 
     def clear_special_presentation(self):
         with self.lock:
             self.special_presentation = None
+            self.state.special_presentation = None
 
     def show_stat_panel(
         self,
@@ -533,6 +536,7 @@ class OverlayServer:
                 ],
                 expires_at=now + float(duration),
             )
+            self.state.stat_panel = self.stat_panel
         return True
 
     def current_state_dict(self):
