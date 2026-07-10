@@ -54,6 +54,11 @@ def test_overlay_state_includes_title_sponsor_track_and_lap():
     assert state["total_laps"] == 80
 
 
+def test_brand_graphic_can_show_in_any_session():
+    assert "const src = pickRotatingGraphic(graphics || [], 4.5);" in OVERLAY_HTML
+    assert "const isRace =" not in OVERLAY_HTML
+
+
 def test_overlay_leaderboard_sorts_and_formats_zero_based_positions():
     state = OverlayStateBuilder().build_from_telemetry(OverlayTelemetry()).to_dict()
 

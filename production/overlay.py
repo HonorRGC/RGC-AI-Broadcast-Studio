@@ -1347,8 +1347,7 @@ OVERLAY_HTML = r"""<!doctype html>
 
     function renderBrandGraphic(graphics, sessionType) {
       const img = document.getElementById("brand-graphic");
-      const isRace = String(sessionType || "").toLowerCase().includes("race");
-      const src = isRace ? pickRotatingGraphic(graphics || [], 4.5) : "";
+      const src = pickRotatingGraphic(graphics || [], 4.5);
       img.classList.toggle("hidden", !src);
       img.src = src || "";
     }

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -10,7 +11,18 @@ from tkinter import messagebox
 
 ROOT = Path(__file__).resolve().parent
 ENV_PATH = ROOT / ".env"
+STATIC_ASSET_DIR = ROOT / "production" / "static"
 BROADCAST_PROCESS = None
+
+DARK_BG = "#071018"
+PANEL_BG = "#101a24"
+FIELD_BG = "#172331"
+TEXT_FG = "#f4f7fb"
+MUTED_FG = "#9fb0c2"
+ACCENT = "#8b1e2d"
+ACCENT_HOVER = "#a72a3a"
+GREEN = "#158a4d"
+STOP_RED = "#b73535"
 
 LAUNCHER_FIELDS = [
     ("USE_OPENAI", "true"),
@@ -24,6 +36,10 @@ LAUNCHER_FIELDS = [
     ("OVERLAY_EVENT_TITLE", "RGC AI Broadcast"),
     ("OVERLAY_RACE_SPONSOR", ""),
     ("OVERLAY_SERIES_NAME", ""),
+    (
+        "OVERLAY_BRAND_GRAPHICS",
+        "/assets/rgc_motorsports.png,/assets/autism_awareness.png,/assets/keep_it_real.webp",
+    ),
     ("USE_SPONSOR_READS", "true"),
     ("SPONSOR_READ_NAME", ""),
     ("SPONSOR_READ_CAUSE", ""),
@@ -78,6 +94,37 @@ def ensure_league_files(root=ROOT):
             shutil.copyfile(source, target)
             copied.append(str(target))
     return copied
+
+
+def sanitize_asset_name(path):
+    source = Path(path)
+    stem = re.sub(r"[^A-Za-z0-9_-]+", "_", source.stem).strip("_").lower()
+    suffix = source.suffix.lower()
+    if not stem:
+        stem = "sponsor_logo"
+    if suffix not in {".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg"}:
+        suffix = ".png"
+    return f"{stem}{suffix}"
+
+
+def install_overlay_brand_graphics(paths, static_dir=STATIC_ASSET_DIR):
+    static_dir = Path(static_dir)
+    static_dir.mkdir(parents=True, exist_ok=True)
+    asset_paths = []
+
+    for raw_path in paths:
+        if not raw_path:
+            continue
+        source = Path(raw_path)
+        if not source.exists() or not source.is_file():
+            continue
+
+        target = static_dir / sanitize_asset_name(source)
+        if source.resolve() != target.resolve():
+            shutil.copyfile(source, target)
+        asset_paths.append(f"/assets/{target.name}")
+
+    return asset_paths
 
 
 def broadcast_command():
@@ -196,52 +243,142 @@ def stop_broadcast():
 
 def run_gui():
     import tkinter as tk
+    from tkinter import filedialog
     from tkinter import ttk
 
     existing = launcher_defaults(load_env_file())
     root = tk.Tk()
     root.title("RGC AI Broadcast Studio")
-    root.geometry("940x780")
+    root.geometry("1040x720")
+    root.minsize(920, 640)
+    root.configure(bg=DARK_BG)
 
-    tk.Label(
+    style = ttk.Style(root)
+    style.theme_use("clam")
+    style.configure("TNotebook", background=DARK_BG, borderwidth=0)
+    style.configure(
+        "TNotebook.Tab",
+        background=PANEL_BG,
+        foreground=MUTED_FG,
+        padding=(18, 8),
+        borderwidth=0,
+    )
+    style.map(
+        "TNotebook.Tab",
+        background=[("selected", ACCENT)],
+        foreground=[("selected", TEXT_FG)],
+    )
+
+    def label(parent, **kwargs):
+        defaults = {"bg": kwargs.pop("bg", DARK_BG), "fg": kwargs.pop("fg", TEXT_FG)}
+        defaults.update(kwargs)
+        return tk.Label(parent, **defaults)
+
+    def frame(parent, **kwargs):
+        defaults = {"bg": kwargs.pop("bg", DARK_BG)}
+        defaults.update(kwargs)
+        return tk.Frame(parent, **defaults)
+
+    def entry(parent, **kwargs):
+        defaults = {
+            "bg": FIELD_BG,
+            "fg": TEXT_FG,
+            "insertbackground": TEXT_FG,
+            "relief": "flat",
+            "highlightthickness": 1,
+            "highlightbackground": "#26384c",
+            "highlightcolor": ACCENT,
+        }
+        defaults.update(kwargs)
+        return tk.Entry(parent, **defaults)
+
+    def button(parent, text, command, color=ACCENT):
+        return tk.Button(
+            parent,
+            text=text,
+            command=command,
+            bg=color,
+            fg="white",
+            activebackground=ACCENT_HOVER,
+            activeforeground="white",
+            relief="flat",
+            padx=12,
+            pady=7,
+            font=("Segoe UI", 9, "bold"),
+        )
+
+    label(
         root,
         text="RGC AI Broadcast Studio",
         font=("Segoe UI", 18, "bold"),
     ).pack(pady=(14, 4))
-    tk.Label(
+    label(
         root,
         text="Configure your broadcast, league notes, stats, voices, and overlay.",
         font=("Segoe UI", 10),
-    ).pack(pady=(0, 10))
+        fg=MUTED_FG,
+    ).pack(pady=(0, 8))
+
+    status = tk.StringVar(value=f"Settings file: {ENV_PATH}")
+
+    action_bar = frame(root, bg=PANEL_BG)
+    action_bar.pack(fill="x", padx=18, pady=(4, 10))
 
     notebook = ttk.Notebook(root)
     notebook.pack(fill="both", expand=True, padx=18)
 
-    settings_tab = tk.Frame(notebook)
-    league_tab = tk.Frame(notebook)
+    settings_tab = frame(notebook, bg=PANEL_BG)
+    league_tab = frame(notebook, bg=PANEL_BG)
     notebook.add(settings_tab, text="Broadcast Settings")
     notebook.add(league_tab, text="League / Sim Racer Hub")
 
-    frame = tk.Frame(settings_tab)
-    frame.pack(fill="both", expand=True, padx=4, pady=8)
+    settings_frame = frame(settings_tab, bg=PANEL_BG)
+    settings_frame.pack(fill="both", expand=True, padx=14, pady=12)
 
     entries = {}
     for row, (key, _default) in enumerate(LAUNCHER_FIELDS):
-        tk.Label(frame, text=key, anchor="w", width=24).grid(
+        label(settings_frame, text=key, anchor="w", width=24, bg=PANEL_BG, fg=MUTED_FG).grid(
             row=row,
             column=0,
             sticky="w",
             pady=3,
         )
-        entry = tk.Entry(frame, width=70)
-        entry.insert(0, existing.get(key, ""))
-        entry.grid(row=row, column=1, sticky="ew", pady=3)
-        entries[key] = entry
+        entry_widget = entry(settings_frame, width=72)
+        entry_widget.insert(0, existing.get(key, ""))
+        entry_widget.grid(row=row, column=1, sticky="ew", pady=3)
+        entries[key] = entry_widget
 
-    frame.columnconfigure(1, weight=1)
+    def choose_brand_graphics():
+        paths = filedialog.askopenfilenames(
+            title="Choose sponsor / brand logos for the overlay title",
+            filetypes=[
+                ("Image files", "*.png *.jpg *.jpeg *.webp *.gif *.svg"),
+                ("All files", "*.*"),
+            ],
+        )
+        asset_paths = install_overlay_brand_graphics(paths)
+        if not asset_paths:
+            status.set("No sponsor logos were copied. Choose PNG, JPG, WEBP, GIF, or SVG files.")
+            return
+        field = entries["OVERLAY_BRAND_GRAPHICS"]
+        field.delete(0, "end")
+        field.insert(0, ",".join(asset_paths))
+        status.set(f"Added {len(asset_paths)} sponsor logo(s) to the overlay title rotation.")
 
-    status = tk.StringVar(value=f"Settings file: {ENV_PATH}")
-    tk.Label(root, textvariable=status, anchor="w").pack(fill="x", padx=18, pady=(8, 0))
+    button(
+        settings_frame,
+        text="Choose Sponsor Logos",
+        command=choose_brand_graphics,
+        color="#334b64",
+    ).grid(row=LAUNCHER_FIELDS.index(("USE_SPONSOR_READS", "true")) - 1, column=2, padx=(8, 0), sticky="w")
+
+    settings_frame.columnconfigure(1, weight=1)
+
+    label(root, textvariable=status, anchor="w", fg=MUTED_FG).pack(
+        fill="x",
+        padx=18,
+        pady=(8, 0),
+    )
 
     def collect_values():
         return {key: entry.get().strip() for key, entry in entries.items()}
@@ -281,50 +418,52 @@ def run_gui():
         else:
             status.set("No running broadcast found from this launcher.")
 
-    buttons = tk.Frame(root)
-    buttons.pack(fill="x", padx=18, pady=16)
-    tk.Button(buttons, text="Save Settings", command=save_settings).pack(
+    button(action_bar, text="Save Settings", command=save_settings, color="#334b64").pack(
         side="left",
-        padx=4,
+        padx=6,
+        pady=8,
     )
-    tk.Button(buttons, text="Create League Files", command=create_league_files).pack(
+    button(action_bar, text="Create League Files", command=create_league_files, color="#334b64").pack(
         side="left",
-        padx=4,
+        padx=6,
+        pady=8,
     )
-    tk.Button(buttons, text="Start Broadcast", command=start_full_ai).pack(
+    button(action_bar, text="Start Broadcast", command=start_full_ai, color=GREEN).pack(
         side="left",
-        padx=4,
+        padx=6,
+        pady=8,
     )
-    tk.Button(buttons, text="Start Helper Mode", command=start_helper).pack(
+    button(action_bar, text="Start Helper Mode", command=start_helper, color=ACCENT).pack(
         side="left",
-        padx=4,
+        padx=6,
+        pady=8,
     )
-    tk.Button(buttons, text="Stop Broadcast", command=stop_running_broadcast).pack(
+    button(action_bar, text="Stop Broadcast", command=stop_running_broadcast, color=STOP_RED).pack(
         side="left",
-        padx=4,
+        padx=6,
+        pady=8,
     )
 
-    build_league_tab(league_tab, status)
+    build_league_tab(league_tab, status, label, frame, entry, button)
 
     root.mainloop()
 
 
-def build_league_tab(parent, status):
+def build_league_tab(parent, status, label, frame, entry, button):
     import tkinter as tk
-    from tkinter import ttk
 
     intro = (
         "Import league stats from Sim Racer Hub. Use Season Mode for the current season, "
         "or Career Mode for all seasons on the series page."
     )
-    tk.Label(parent, text=intro, anchor="w", justify="left", wraplength=860).pack(
+    label(parent, text=intro, anchor="w", justify="left", wraplength=900, bg=PANEL_BG, fg=MUTED_FG).pack(
         fill="x",
-        padx=8,
+        padx=14,
         pady=(10, 8),
     )
 
-    form = tk.Frame(parent)
-    form.pack(fill="x", padx=8)
+    form = frame(parent, bg=PANEL_BG)
+    form.pack(fill="x", padx=14)
 
     defaults = {
         "source": "https://simracerhub.com/series_seasons.php?series_id=3872&reset_series=y",
@@ -347,17 +486,17 @@ def build_league_tab(parent, status):
         ("Stats Output CSV", "output"),
         ("Drivers Output CSV", "drivers_output"),
     ]
-    for row_number, (label, key) in enumerate(rows):
-        tk.Label(form, text=label, anchor="w", width=22).grid(
+    for row_number, (label_text, key) in enumerate(rows):
+        label(form, text=label_text, anchor="w", width=22, bg=PANEL_BG, fg=MUTED_FG).grid(
             row=row_number,
             column=0,
             sticky="w",
             pady=4,
         )
-        entry = tk.Entry(form, width=86)
-        entry.insert(0, defaults[key])
-        entry.grid(row=row_number, column=1, sticky="ew", pady=4)
-        entries[key] = entry
+        entry_widget = entry(form, width=86)
+        entry_widget.insert(0, defaults[key])
+        entry_widget.grid(row=row_number, column=1, sticky="ew", pady=4)
+        entries[key] = entry_widget
     form.columnconfigure(1, weight=1)
 
     career_mode = tk.BooleanVar(value=False)
@@ -365,10 +504,25 @@ def build_league_tab(parent, status):
         form,
         text="Career Mode: import all seasons in this series instead of one season",
         variable=career_mode,
+        bg=PANEL_BG,
+        fg=TEXT_FG,
+        activebackground=PANEL_BG,
+        activeforeground=TEXT_FG,
+        selectcolor=FIELD_BG,
     ).grid(row=len(rows), column=1, sticky="w", pady=(4, 8))
 
-    output_box = tk.Text(parent, height=18, wrap="none")
-    output_box.pack(fill="both", expand=True, padx=8, pady=(8, 0))
+    output_box = tk.Text(
+        parent,
+        height=18,
+        wrap="none",
+        bg="#08111a",
+        fg=TEXT_FG,
+        insertbackground=TEXT_FG,
+        relief="flat",
+        highlightthickness=1,
+        highlightbackground="#26384c",
+    )
+    output_box.pack(fill="both", expand=True, padx=14, pady=(8, 0))
 
     def values():
         return {key: entry.get().strip() for key, entry in entries.items()}
@@ -413,28 +567,30 @@ def build_league_tab(parent, status):
         else:
             status.set("Sim Racer Hub import failed. Check the output panel.")
 
-    buttons = tk.Frame(parent)
-    buttons.pack(fill="x", padx=8, pady=10)
-    tk.Button(buttons, text="Preview Stats", command=lambda: run_import(True)).pack(
+    buttons = frame(parent, bg=PANEL_BG)
+    buttons.pack(fill="x", padx=14, pady=10)
+    button(buttons, text="Preview Stats", command=lambda: run_import(True), color="#334b64").pack(
         side="left",
         padx=4,
     )
-    tk.Button(buttons, text="Import Stats", command=lambda: run_import(False)).pack(
+    button(buttons, text="Import Stats", command=lambda: run_import(False), color=GREEN).pack(
         side="left",
         padx=4,
     )
-    tk.Button(buttons, text="Preview Driver Roster", command=lambda: run_import(True, True)).pack(
+    button(buttons, text="Preview Driver Roster", command=lambda: run_import(True, True), color="#334b64").pack(
         side="left",
         padx=4,
     )
-    tk.Button(buttons, text="Import Driver Roster", command=lambda: run_import(False, True)).pack(
+    button(buttons, text="Import Driver Roster", command=lambda: run_import(False, True), color=GREEN).pack(
         side="left",
         padx=4,
     )
-    tk.Label(
+    label(
         buttons,
         text="Tip: leave Season ID blank or check Career Mode to use all seasons.",
         anchor="w",
+        bg=PANEL_BG,
+        fg=MUTED_FG,
     ).pack(side="left", padx=12)
 
 

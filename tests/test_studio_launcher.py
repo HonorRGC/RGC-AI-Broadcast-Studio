@@ -2,10 +2,12 @@ import sys
 
 from studio_launcher import (
     broadcast_command,
+    install_overlay_brand_graphics,
     is_process_running,
     launcher_defaults,
     load_env_file,
     save_env_file,
+    sanitize_asset_name,
     sim_racer_hub_import_command,
 )
 
@@ -34,6 +36,7 @@ def test_launcher_defaults_include_league_stats_csv():
 
     assert defaults["LEAGUE_DRIVERS_CSV"] == "league/drivers.csv"
     assert defaults["LEAGUE_STATS_CSV"] == "league/stats.csv"
+    assert "/assets/rgc_motorsports.png" in defaults["OVERLAY_BRAND_GRAPHICS"]
 
 
 def test_launcher_saves_known_settings(tmp_path):
@@ -52,6 +55,21 @@ def test_launcher_saves_known_settings(tmp_path):
     assert "USE_OPENAI=false" in saved
     assert "OVERLAY_EVENT_TITLE=League Race" in saved
     assert "LEAGUE_STATS_CSV=league/stats.csv" in saved
+
+
+def test_launcher_sanitizes_overlay_asset_names():
+    assert sanitize_asset_name("D:/Editor/decals/RGC Motorsports Logo.PNG") == "rgc_motorsports_logo.png"
+
+
+def test_launcher_installs_overlay_brand_graphics(tmp_path):
+    source = tmp_path / "RGC Motorsports Logo.PNG"
+    source.write_bytes(b"fake image")
+    static_dir = tmp_path / "static"
+
+    assets = install_overlay_brand_graphics([source], static_dir=static_dir)
+
+    assert assets == ["/assets/rgc_motorsports_logo.png"]
+    assert (static_dir / "rgc_motorsports_logo.png").read_bytes() == b"fake image"
 
 
 def test_launcher_builds_default_broadcast_command():

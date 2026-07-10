@@ -44,6 +44,8 @@ python studio_launcher.py
 
 The launcher can save the main `.env` settings, create `league\drivers.csv` and `league\stats.csv` from the examples, and start either a full AI broadcast or a broadcast-helper run with OpenAI and ElevenLabs disabled. Use `Start Broadcast` for normal testing with overlay, cameras, and incident replay; use `Start Helper Mode` when a human broadcaster wants the graphics and camera help without AI voices; use `Stop Broadcast` to stop a broadcast launched from the program.
 
+Use `Choose Sponsor Logos` to copy sponsor or league graphics into the overlay assets folder and update the title-logo rotation shown in the upper-left of the broadcast overlay.
+
 The launcher also includes a `League / Sim Racer Hub` tab. Paste a Sim Racer Hub series or stats URL, choose season mode or career mode, optionally enter the upcoming track name, preview the import, and then write the results to `league\stats.csv`.
 
 The same tab can import a driver roster into `league\drivers.csv`. Roster import is safe for manual edits: it adds missing drivers and fills empty basics, but keeps your hometown, sponsor, driving-style, and notes fields.
