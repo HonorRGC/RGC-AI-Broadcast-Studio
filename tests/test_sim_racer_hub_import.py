@@ -27,6 +27,24 @@ React.createElement(DriverStats,{user: {"driver_id":0},league_id: 0,rps: {
 """
 
 
+DATE_ONLY_HTML = """
+<html>
+<body>
+<h1 class='m0'>Series Stats</h1>
+<script>
+ReactDOM.createRoot(document.getElementById('league_stats')).render(
+React.createElement(LeagueStats,{user: {"driver_id":0},league_id: 1598,series_id: 3872,season_id: 0,rps: {
+"1":{"race_participant_id":"1","driver_id":"90223","driver_number":"34","qualify_pos":"2","num_laps":"92","laps_led":"5","finish_pos":"1","race_points":"40","status":"Running","incidents":"2","race_date":"2025-01-01","season_id":"1","track_config_id":"257","series_id":"3872","league_id":"1598","track_id":"105"},
+"2":{"race_participant_id":"2","driver_id":"90223","driver_number":"34","qualify_pos":"1","num_laps":"95","laps_led":"0","finish_pos":"6","race_points":"35","status":"Running","incidents":"0","race_date":"2026-07-01","season_id":"2","track_config_id":"328","series_id":"3872","league_id":"1598","track_id":"129"}
+},drivers: {
+"90223":{"driver_id":"90223","driver_name":"T.J. Lee","driver_last_first":"Lee, T.J.","driver_is_ai":"N","flair_country_code":"US"}
+},seasons: {},series: {},leagues: {},cars: {},configs: {},}));
+</script>
+</body>
+</html>
+"""
+
+
 BULK_HTML = """
 <html>
 <body>
@@ -110,6 +128,18 @@ def test_bulk_import_summarizes_all_matching_drivers():
     assert rows[1]["starts"] == "1"
     assert rows[1]["top_fives"] == "1"
     assert "37 race points" in rows[1]["notes"]
+
+
+def test_bulk_import_uses_race_date_when_timestamp_is_missing():
+    rows = summarize_bulk_driver_stats(
+        DATE_ONLY_HTML,
+        league_id="1598",
+        series_id="3872",
+    )
+
+    assert len(rows) == 1
+    assert rows[0]["last_finish"] == "6"
+    assert "last race 2026-07-01" in rows[0]["notes"]
 
 
 def test_merge_stats_rows_adds_multiple_drivers(tmp_path):

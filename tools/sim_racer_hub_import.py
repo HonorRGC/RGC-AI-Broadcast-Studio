@@ -1,5 +1,6 @@
 import argparse
 import csv
+from datetime import date
 import html
 import json
 import re
@@ -131,7 +132,7 @@ def filter_races(races, league_id="", series_id="", season_id=""):
         filtered.append(race)
     return sorted(
         filtered,
-        key=lambda race: int_or_zero(race.get("race_timestamp")),
+        key=race_sort_key,
         reverse=True,
     )
 
@@ -211,7 +212,7 @@ def summarize_races(
 ):
     races = sorted(
         races,
-        key=lambda race: int_or_zero(race.get("race_timestamp")),
+        key=race_sort_key,
         reverse=True,
     )
     if not races:
@@ -350,6 +351,23 @@ def int_or_none(value):
 def int_or_zero(value):
     number = int_or_none(value)
     return number if number is not None else 0
+
+
+def race_sort_key(race):
+    timestamp = int_or_zero((race or {}).get("race_timestamp"))
+    if timestamp:
+        return timestamp
+    race_date = parse_iso_date((race or {}).get("race_date"))
+    if race_date:
+        return race_date.toordinal()
+    return 0
+
+
+def parse_iso_date(value):
+    try:
+        return date.fromisoformat(str(value or "")[:10])
+    except Exception:
+        return None
 
 
 def float_or_none(value):

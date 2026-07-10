@@ -64,6 +64,14 @@ python tools\sim_racer_hub_import.py "https://simracerhub.com/series_seasons.php
 
 Use `--min-starts 2` or higher if you want to skip one-off substitute drivers.
 
+For career stats across every WFO Wicked Wednesday Truck Series season on the page, leave off `--season-id`:
+
+```powershell
+python tools\sim_racer_hub_import.py "https://simracerhub.com/series_seasons.php?series_id=3872&reset_series=y" --bulk --league-id 1598 --series-id 3872 --min-starts 10 --output league\stats.csv
+```
+
+That produces series-career totals for each driver, including total starts, wins, top fives, top tens, poles, average finish, laps led, passes, quality passes, closing passes, and incidents. Use a higher `--min-starts` value if you only want regular WFO drivers.
+
 The next integration path is:
 
 1. Import each known league driver from a full Sim Racer Hub series stats page.
