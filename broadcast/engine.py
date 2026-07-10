@@ -718,7 +718,7 @@ class BroadcastEngine:
         leader_idx = ordered[0].get("CarIdx")
         if leader_idx is None:
             return ()
-        return ((leader_idx, "TV Fixed", 0),)
+        return ((leader_idx, "Crank Fixed", 0),)
 
     def _queue_caution_race_insight(self):
         insight = self.race_insight_director.caution_insight(

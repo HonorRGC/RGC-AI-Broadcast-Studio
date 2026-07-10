@@ -288,7 +288,7 @@ def test_silent_feature_sequence_uses_feature_duration_for_timing():
     feature = SimpleNamespace(
         camera_target_car_idx=None,
         camera_sequence=(),
-        camera_sequence_steps=((3, "TV Fixed", 0),),
+        camera_sequence_steps=((3, "Crank Fixed", 0),),
         dedupe_key="crank_it_up:10",
         category="crank_it_up",
         message="Crank It Up",
@@ -303,6 +303,31 @@ def test_silent_feature_sequence_uses_feature_duration_for_timing():
     assert first.status == "switched"
     assert held.status == "held"
     assert telemetry.switches == [("14", 7, 0)]
+
+
+def test_crank_fixed_does_not_fall_back_to_moving_tv_cameras():
+    telemetry = CameraTelemetry()
+    telemetry.get_camera_groups = lambda: [
+        {"GroupNum": 4, "GroupName": "TV1"},
+        {"GroupNum": 5, "GroupName": "TV Mixed"},
+    ]
+    director = CameraDirector(mode="auto")
+    feature = SimpleNamespace(
+        camera_target_car_idx=None,
+        camera_sequence=(),
+        camera_sequence_steps=((3, "Crank Fixed", 0),),
+        dedupe_key="crank_it_up:10",
+        category="crank_it_up",
+        message="Crank It Up",
+        silent=True,
+        feature_duration_seconds=10.0,
+        camera_return_home_after_sequence=True,
+    )
+
+    decision = director.follow(feature, telemetry)
+
+    assert decision.status == "failed"
+    assert telemetry.switches == []
 
 
 def test_tv_fixed_request_prefers_exact_tv_fixed_camera_group():
