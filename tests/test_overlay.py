@@ -138,13 +138,28 @@ def test_overlay_tracks_green_and_caution_laps_for_race_bar():
     assert state["lap_history"][1] == {"lap": 2, "status": "caution"}
 
 
-def test_overlay_shows_laps_down_before_time_gap():
-    class LappedTelemetry(OverlayTelemetry):
+def test_overlay_shows_time_gap_during_start_finish_lap_transition():
+    class LapTransitionTelemetry(OverlayTelemetry):
         def get_results(self):
             return [
                 {"CarIdx": 3, "Position": 0, "LapsComplete": 20, "Time": 0.0},
                 {"CarIdx": 7, "Position": 1, "LapsComplete": 19, "Time": 4.2},
-                {"CarIdx": 9, "Position": 2, "LapsComplete": 18, "Time": 9.9},
+                {"CarIdx": 9, "Position": 2, "LapsComplete": 19, "Time": 9.9},
+            ]
+
+    state = OverlayStateBuilder().build_from_telemetry(LapTransitionTelemetry()).to_dict()
+
+    assert state["leaderboard"][1]["interval"] == "+4.2"
+    assert state["leaderboard"][2]["interval"] == "+9.9"
+
+
+def test_overlay_shows_explicit_laps_down_before_time_gap():
+    class LappedTelemetry(OverlayTelemetry):
+        def get_results(self):
+            return [
+                {"CarIdx": 3, "Position": 0, "LapsComplete": 20, "Time": 0.0},
+                {"CarIdx": 7, "Position": 1, "LapsComplete": 19, "Time": 4.2, "LapsBehind": 1},
+                {"CarIdx": 9, "Position": 2, "LapsComplete": 18, "Time": 9.9, "LapsBehind": 2},
             ]
 
     state = OverlayStateBuilder().build_from_telemetry(LappedTelemetry()).to_dict()

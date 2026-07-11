@@ -264,17 +264,27 @@ class OverlayStateBuilder:
     def format_entry_metric(self, car, display_position, session_type, leader_laps=0):
         if self.is_timed_session(session_type):
             return self.format_lap_time(self.best_lap_value(car))
-        laps_down = self.laps_down(car, leader_laps)
+        explicit_laps_down = self.explicit_laps_down(car)
+        if explicit_laps_down > 0:
+            lap_word = "lap" if explicit_laps_down == 1 else "laps"
+            return f"-{explicit_laps_down} {lap_word}"
+        interval = self.format_interval(car)
+        if display_position != 1 and interval:
+            return interval
+        laps_down = self.computed_laps_down(car, leader_laps)
         if laps_down > 0:
             lap_word = "lap" if laps_down == 1 else "laps"
             return f"-{laps_down} {lap_word}"
-        return "" if display_position == 1 else self.format_interval(car)
+        return "" if display_position == 1 else interval
 
-    def laps_down(self, car, leader_laps=0):
+    def explicit_laps_down(self, car):
         for key in ("LapsBehind", "LapsDown"):
             value = self.safe_int(car.get(key), 0)
             if value > 0:
                 return value
+        return 0
+
+    def computed_laps_down(self, car, leader_laps=0):
         car_laps = self.safe_int(car.get("LapsComplete", car.get("Lap", 0)))
         if leader_laps > 0 and car_laps > 0:
             return max(leader_laps - car_laps, 0)
