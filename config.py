@@ -68,6 +68,10 @@ SPONSOR_READ_MESSAGE = os.getenv("SPONSOR_READ_MESSAGE", "")
 POST_RACE_INTERVIEWS_ENABLED = (
     os.getenv("POST_RACE_INTERVIEWS_ENABLED", "false").lower() == "true"
 )
+POST_RACE_FINISH_CAMERA_DELAY_SECONDS = max(
+    0,
+    env_int("POST_RACE_FINISH_CAMERA_DELAY_SECONDS", 180),
+)
 
 
 # Optional pre-race ceremony

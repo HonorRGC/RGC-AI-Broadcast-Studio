@@ -56,6 +56,7 @@ LAUNCHER_FIELDS = [
     ("PRACTICE_MUSIC_VOLUME", "65"),
     ("CAUTION_REPLAY_AUDIO", ""),
     ("POST_RACE_INTERVIEWS_ENABLED", "false"),
+    ("POST_RACE_FINISH_CAMERA_DELAY_SECONDS", "180"),
     ("USE_LEAGUE_DRIVER_NOTES", "false"),
     ("LEAGUE_DRIVERS_CSV", "league/drivers.csv"),
     ("LEAGUE_STATS_CSV", "league/stats.csv"),

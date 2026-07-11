@@ -366,12 +366,20 @@ def test_checkered_queues_finish_rundown_then_signoff():
         )
 
     categories = [item.category for item in queue.items]
-    assert categories == ["race_control", "post_race", "post_race_signoff"]
+    assert categories == [
+        "race_control",
+        "post_race_camera",
+        "post_race",
+        "post_race_signoff",
+    ]
     assert queue.items[0].camera_sequence_steps == ((0, "TV Mixed", 0),)
-    assert queue.items[1].priority > queue.items[2].priority
-    assert "Thank you for watching" in queue.items[2].message
-    assert "Homestead Miami Speedway" in queue.items[2].message
-    assert "Jeff and Sarah" in queue.items[2].message
+    assert queue.items[1].silent is True
+    assert queue.items[1].delay_seconds == 180
+    assert queue.items[1].camera_sequence_steps == ((0, "TV Fixed", 0),)
+    assert queue.items[2].priority > queue.items[3].priority
+    assert "Thank you for watching" in queue.items[3].message
+    assert "Homestead Miami Speedway" in queue.items[3].message
+    assert "Jeff and Sarah" in queue.items[3].message
 
 
 def test_checkered_with_interviews_queues_handoff_instead_of_signoff():
@@ -401,13 +409,19 @@ def test_checkered_with_interviews_queues_handoff_instead_of_signoff():
         )
 
     categories = [item.category for item in queue.items]
-    assert categories == ["race_control", "post_race", "post_race_interviews"]
+    assert categories == [
+        "race_control",
+        "post_race_camera",
+        "post_race",
+        "post_race_interviews",
+    ]
     assert queue.items[0].camera_sequence_steps == ((0, "TV Mixed", 0),)
-    assert "top three are headed to post-race interviews" in queue.items[2].message
-    assert "Third Place first" in queue.items[2].message
-    assert "Second Place" in queue.items[2].message
-    assert "Winner Driver" in queue.items[2].message
-    assert "Thank you for watching" not in queue.items[2].message
+    assert queue.items[1].camera_sequence_steps == ((0, "TV Fixed", 0),)
+    assert "top three are headed to post-race interviews" in queue.items[3].message
+    assert "Third Place first" in queue.items[3].message
+    assert "Second Place" in queue.items[3].message
+    assert "Winner Driver" in queue.items[3].message
+    assert "Thank you for watching" not in queue.items[3].message
 
 
 def test_checkered_finish_rundown_waits_for_stable_order():

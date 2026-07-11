@@ -61,6 +61,7 @@ def test_launcher_defaults_include_league_stats_csv():
     assert defaults["CAUTION_REPLAY_AUDIO"] == ""
     assert defaults["NATIONAL_ANTHEM_AUDIO"] == ""
     assert defaults["POST_RACE_INTERVIEWS_ENABLED"] == "false"
+    assert defaults["POST_RACE_FINISH_CAMERA_DELAY_SECONDS"] == "180"
 
 
 def test_launcher_saves_known_settings(tmp_path):

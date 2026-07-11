@@ -53,6 +53,12 @@ Adjust `PRACTICE_MUSIC_VOLUME` in the launcher instead of looking for a separate
 
 Turn on `POST_RACE_INTERVIEWS_ENABLED` when the league admin plans to interview the podium after the race. With that option enabled, the broadcast still reads the top ten finishers, then hands off to post-race interviews in third, second, winner order instead of playing the normal sign-off.
 
+After the checkered flag, the camera holds the winner/leader shot for celebration time, then moves to a fixed finish-line-style shot. The default delay is three minutes:
+
+```text
+POST_RACE_FINISH_CAMERA_DELAY_SECONDS=180
+```
+
 The launcher also includes a `League / Sim Racer Hub` tab. Paste a Sim Racer Hub series or stats URL, choose season mode or career mode, optionally enter the upcoming track name, preview the import, and then write the results to `league\stats.csv`.
 
 The same tab can import a driver roster into `league\drivers.csv`. Roster import is safe for manual edits: it adds missing drivers and fills empty basics, but keeps your hometown, sponsor, driving-style, and notes fields.
