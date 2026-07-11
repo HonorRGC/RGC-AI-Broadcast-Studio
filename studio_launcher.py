@@ -15,6 +15,7 @@ ENV_PATH = ROOT / ".env"
 STATIC_ASSET_DIR = ROOT / "production" / "static"
 RUNTIME_DIR = ROOT / ".runtime"
 BROADCAST_PID_PATH = RUNTIME_DIR / "broadcast.pid"
+PROFILE_DIR = ROOT / "profiles"
 BROADCAST_PROCESS = None
 RGC_DISCORD_URL = "https://discord.gg/Axwwa8CUqt"
 RGC_WEBSITE_URL = "https://www.realisticgamingcrew.com"
@@ -89,6 +90,44 @@ def save_env_file(values, path=ENV_PATH):
         lines.append(f"{key}={values.get(key, default)}")
     lines.append("")
     Path(path).write_text("\n".join(lines), encoding="utf-8")
+
+
+def sanitize_profile_name(name):
+    cleaned = re.sub(r"[^A-Za-z0-9 _.-]+", "", str(name or "")).strip()
+    cleaned = re.sub(r"\s+", " ", cleaned)
+    return cleaned[:60]
+
+
+def profile_path(profile_name, profile_dir=PROFILE_DIR):
+    safe_name = sanitize_profile_name(profile_name)
+    if not safe_name:
+        raise ValueError("Profile name is required.")
+    filename = safe_name.replace(" ", "_")
+    return Path(profile_dir) / f"{filename}.env"
+
+
+def list_profiles(profile_dir=PROFILE_DIR):
+    profile_dir = Path(profile_dir)
+    if not profile_dir.exists():
+        return []
+    names = []
+    for path in sorted(profile_dir.glob("*.env")):
+        names.append(path.stem.replace("_", " "))
+    return names
+
+
+def save_profile(profile_name, values, profile_dir=PROFILE_DIR):
+    path = profile_path(profile_name, profile_dir)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    save_env_file(values, path)
+    return path
+
+
+def load_profile(profile_name, profile_dir=PROFILE_DIR):
+    path = profile_path(profile_name, profile_dir)
+    if not path.exists():
+        raise FileNotFoundError(f"Profile not found: {profile_name}")
+    return launcher_defaults(load_env_file(path))
 
 
 def launcher_defaults(existing=None):
@@ -610,6 +649,33 @@ def run_gui():
         )
     )
 
+    profile_bar = frame(root, bg=PANEL_BG)
+    profile_bar.pack(fill="x", padx=18, pady=(0, 8))
+    label(
+        profile_bar,
+        text="Profile",
+        bg=PANEL_BG,
+        fg=MUTED_FG,
+        font=("Segoe UI", 9, "bold"),
+    ).pack(side="left", padx=(10, 6), pady=8)
+    profile_var = tk.StringVar(value="")
+    profile_combo = ttk.Combobox(
+        profile_bar,
+        textvariable=profile_var,
+        values=list_profiles(),
+        width=28,
+    )
+    profile_combo.pack(side="left", padx=4, pady=8)
+    label(
+        profile_bar,
+        text="New / Save As",
+        bg=PANEL_BG,
+        fg=MUTED_FG,
+    ).pack(side="left", padx=(14, 6), pady=8)
+    profile_name_var = tk.StringVar(value="")
+    profile_name_entry = entry(profile_bar, textvariable=profile_name_var, width=24)
+    profile_name_entry.pack(side="left", padx=4, pady=8)
+
     action_bar = frame(root, bg=PANEL_BG)
     action_bar.pack(fill="x", padx=18, pady=(4, 10))
 
@@ -822,10 +888,48 @@ def run_gui():
         values["STUDIO_VOLUME"] = str(int(volume_var.get()))
         return values
 
+    def apply_values_to_form(values):
+        values = launcher_defaults(values)
+        for key, widget in entries.items():
+            widget.delete(0, "end")
+            widget.insert(0, values.get(key, ""))
+        volume_var.set(int(values.get("STUDIO_VOLUME", "65") or 65))
+        update_volume_label(volume_var.get())
+        refresh_health()
+
+    def refresh_profile_list():
+        profile_combo["values"] = list_profiles()
+        status.set("Profile list refreshed.")
+
     def save_settings():
         save_env_file(collect_values())
         status.set(f"Saved settings to {ENV_PATH}")
         refresh_health()
+
+    def save_current_profile():
+        name = profile_name_var.get().strip() or profile_var.get().strip()
+        if not name:
+            messagebox.showerror("Missing profile name", "Enter a profile name first.")
+            return
+        path = save_profile(name, collect_values())
+        profile_var.set(sanitize_profile_name(name))
+        profile_name_var.set("")
+        refresh_profile_list()
+        status.set(f"Saved profile: {path.name}")
+
+    def load_selected_profile():
+        name = profile_var.get().strip()
+        if not name:
+            messagebox.showerror("Missing profile", "Choose a profile to load first.")
+            return
+        try:
+            values = load_profile(name)
+        except Exception as error:
+            messagebox.showerror("Profile load failed", str(error))
+            return
+        apply_values_to_form(values)
+        save_env_file(collect_values())
+        status.set(f"Loaded profile '{name}' and saved it as the active broadcast settings.")
 
     def refresh_health():
         for widget in health_rows_frame.winfo_children():
@@ -935,6 +1039,21 @@ def run_gui():
         root.destroy()
 
     button(action_bar, text="Save Settings", command=save_settings, color="#334b64").pack(
+        side="left",
+        padx=6,
+        pady=8,
+    )
+    button(action_bar, text="Save Profile", command=save_current_profile, color="#334b64").pack(
+        side="left",
+        padx=6,
+        pady=8,
+    )
+    button(action_bar, text="Load Profile", command=load_selected_profile, color="#334b64").pack(
+        side="left",
+        padx=6,
+        pady=8,
+    )
+    button(action_bar, text="Refresh Profiles", command=refresh_profile_list, color="#334b64").pack(
         side="left",
         padx=6,
         pady=8,

@@ -15,11 +15,16 @@ from studio_launcher import (
     install_overlay_brand_graphics,
     is_process_running,
     launcher_defaults,
+    list_profiles,
+    load_profile,
     load_env_file,
+    profile_path,
     read_broadcast_pid,
     running_broadcast_pids,
     save_env_file,
+    save_profile,
     sanitize_asset_name,
+    sanitize_profile_name,
     sim_racer_hub_import_command,
     stop_broadcast_processes,
     write_broadcast_pid,
@@ -132,6 +137,38 @@ def test_launcher_saves_known_settings(tmp_path):
     assert "USE_OPENAI=false" in saved
     assert "OVERLAY_EVENT_TITLE=League Race" in saved
     assert "LEAGUE_STATS_CSV=league/stats.csv" in saved
+
+
+def test_launcher_sanitizes_profile_names():
+    assert sanitize_profile_name(" WFO / Truck: League! ") == "WFO Truck League"
+    assert sanitize_profile_name("") == ""
+
+
+def test_launcher_saves_lists_and_loads_profiles(tmp_path):
+    values = launcher_defaults(
+        {
+            "USE_OPENAI": "false",
+            "OVERLAY_EVENT_TITLE": "WFO Truck Night",
+        }
+    )
+
+    saved_path = save_profile("WFO Truck", values, profile_dir=tmp_path)
+    profiles = list_profiles(profile_dir=tmp_path)
+    loaded = load_profile("WFO Truck", profile_dir=tmp_path)
+
+    assert saved_path == tmp_path / "WFO_Truck.env"
+    assert profiles == ["WFO Truck"]
+    assert loaded["USE_OPENAI"] == "false"
+    assert loaded["OVERLAY_EVENT_TITLE"] == "WFO Truck Night"
+
+
+def test_launcher_profile_path_rejects_blank_name(tmp_path):
+    try:
+        profile_path("", profile_dir=tmp_path)
+    except ValueError as error:
+        assert "required" in str(error)
+    else:
+        raise AssertionError("Expected ValueError for blank profile name")
 
 
 def test_launcher_saves_music_settings(tmp_path):
