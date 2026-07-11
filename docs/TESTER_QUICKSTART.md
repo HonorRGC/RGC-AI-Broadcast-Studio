@@ -71,7 +71,7 @@ In the launcher:
 
 ## Streamlabs / OBS overlay
 
-Add this as a browser source:
+The launcher shows this browser-source link near the top. Click **Copy Overlay Link** and paste it into Streamlabs or OBS:
 
 ```text
 http://127.0.0.1:8765/overlay

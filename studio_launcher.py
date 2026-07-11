@@ -18,6 +18,7 @@ BROADCAST_PID_PATH = RUNTIME_DIR / "broadcast.pid"
 BROADCAST_PROCESS = None
 RGC_DISCORD_URL = "https://discord.gg/Axwwa8CUqt"
 RGC_WEBSITE_URL = "https://www.realisticgamingcrew.com"
+DEFAULT_OVERLAY_URL = "http://127.0.0.1:8765/overlay"
 
 DARK_BG = "#071018"
 PANEL_BG = "#101a24"
@@ -151,6 +152,12 @@ def apply_audio_file_selection(values, field_name, path):
 
 def open_external_link(url):
     webbrowser.open(url)
+
+
+def copy_to_clipboard(root, text):
+    root.clipboard_clear()
+    root.clipboard_append(text)
+    root.update()
 
 
 def broadcast_command():
@@ -448,6 +455,34 @@ def run_gui():
         command=lambda: open_external_link(RGC_WEBSITE_URL),
         color="#334b64",
     ).pack(side="left", padx=5)
+
+    overlay_bar = frame(root, bg=PANEL_BG)
+    overlay_bar.pack(fill="x", padx=18, pady=(0, 8))
+    label(
+        overlay_bar,
+        text="Streamlabs / OBS Browser Source:",
+        anchor="w",
+        bg=PANEL_BG,
+        fg=MUTED_FG,
+    ).pack(side="left", padx=(10, 6), pady=8)
+    overlay_url_var = tk.StringVar(value=DEFAULT_OVERLAY_URL)
+    overlay_url_entry = entry(
+        overlay_bar,
+        textvariable=overlay_url_var,
+        width=38,
+        state="readonly",
+        readonlybackground=FIELD_BG,
+    )
+    overlay_url_entry.pack(side="left", fill="x", expand=True, padx=(0, 8), pady=8)
+    button(
+        overlay_bar,
+        text="Copy Overlay Link",
+        command=lambda: (
+            copy_to_clipboard(root, DEFAULT_OVERLAY_URL),
+            status.set("Copied overlay browser-source link for Streamlabs / OBS."),
+        ),
+        color="#334b64",
+    ).pack(side="left", padx=(0, 10), pady=8)
 
     status = tk.StringVar(
         value=(

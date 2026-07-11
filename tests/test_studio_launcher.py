@@ -3,6 +3,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from studio_launcher import (
+    DEFAULT_OVERLAY_URL,
     RGC_DISCORD_URL,
     RGC_WEBSITE_URL,
     apply_audio_file_selection,
@@ -46,6 +47,7 @@ def test_launcher_loads_simple_env_file(tmp_path):
 def test_launcher_includes_rgc_links():
     assert RGC_DISCORD_URL == "https://discord.gg/Axwwa8CUqt"
     assert RGC_WEBSITE_URL == "https://www.realisticgamingcrew.com"
+    assert DEFAULT_OVERLAY_URL == "http://127.0.0.1:8765/overlay"
 
 
 def test_launcher_defaults_include_league_stats_csv():
