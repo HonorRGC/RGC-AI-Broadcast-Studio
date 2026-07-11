@@ -99,6 +99,107 @@ def launcher_defaults(existing=None):
     return defaults
 
 
+def setting_enabled(values, key, default="false"):
+    return str(values.get(key, default) or default).strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+
+
+def resolve_project_path(path_value, root=ROOT):
+    path = Path(str(path_value or "").strip())
+    if not path:
+        return Path(root)
+    if path.is_absolute():
+        return path
+    return Path(root) / path
+
+
+def build_health_status(values, root=ROOT, broadcast_running=False):
+    """Return launcher health rows as (name, state, detail, level)."""
+
+    rows = []
+
+    if setting_enabled(values, "USE_OPENAI", "true"):
+        if values.get("OPENAI_API_KEY"):
+            rows.append(("OpenAI", "Ready", values.get("OPENAI_MODEL", "Configured"), "ok"))
+        else:
+            rows.append(("OpenAI", "Needs key", "Add OPENAI_API_KEY or turn OpenAI off.", "warn"))
+    else:
+        rows.append(("OpenAI", "Off", "AI commentary generation disabled.", "off"))
+
+    if setting_enabled(values, "USE_ELEVENLABS", "true"):
+        missing = []
+        if not values.get("ELEVENLABS_API_KEY"):
+            missing.append("API key")
+        if not values.get("LEAD_VOICE_ID"):
+            missing.append("lead voice")
+        if not values.get("COLOR_VOICE_ID"):
+            missing.append("Jeff voice")
+        if not values.get("PIT_VOICE_ID"):
+            missing.append("Sarah voice")
+        if missing:
+            rows.append(
+                (
+                    "ElevenLabs",
+                    "Needs setup",
+                    f"Missing {', '.join(missing)}.",
+                    "warn",
+                )
+            )
+        else:
+            rows.append(("ElevenLabs", "Ready", "All broadcaster voices configured.", "ok"))
+    else:
+        rows.append(("ElevenLabs", "Off", "Voice playback disabled.", "off"))
+
+    rows.append(("Overlay", "Ready", DEFAULT_OVERLAY_URL, "ok"))
+
+    if setting_enabled(values, "USE_LEAGUE_DRIVER_NOTES", "false"):
+        drivers_path = resolve_project_path(values.get("LEAGUE_DRIVERS_CSV"), root)
+        stats_path = resolve_project_path(values.get("LEAGUE_STATS_CSV"), root)
+        missing_files = [
+            label
+            for label, path in (("drivers", drivers_path), ("stats", stats_path))
+            if not path.exists()
+        ]
+        if missing_files:
+            rows.append(
+                (
+                    "League Notes",
+                    "Needs files",
+                    f"Missing {', '.join(missing_files)} CSV file(s).",
+                    "warn",
+                )
+            )
+        else:
+            rows.append(("League Notes", "Ready", "Driver and stats CSV files found.", "ok"))
+    else:
+        rows.append(("League Notes", "Off", "League driver context disabled.", "off"))
+
+    if values.get("PRACTICE_MUSIC_PLAYLIST"):
+        songs = [
+            path
+            for path in str(values.get("PRACTICE_MUSIC_PLAYLIST", "")).split(";")
+            if path.strip()
+        ]
+        existing_songs = [path for path in songs if Path(path).expanduser().exists()]
+        if existing_songs:
+            rows.append(("Practice Music", "Ready", f"{len(existing_songs)} song(s) found.", "ok"))
+        else:
+            rows.append(("Practice Music", "Check files", "Playlist is set, but no song files were found.", "warn"))
+    else:
+        rows.append(("Practice Music", "Off", "No practice playlist selected.", "off"))
+
+    if broadcast_running:
+        rows.append(("Broadcast", "Running", "Use Stop Broadcast before closing.", "ok"))
+    else:
+        rows.append(("Broadcast", "Stopped", "Ready to start when iRacing is open.", "off"))
+
+    return rows
+
+
 def ensure_league_files(root=ROOT):
     root = Path(root)
     league_dir = root / "league"
@@ -512,6 +613,28 @@ def run_gui():
     action_bar = frame(root, bg=PANEL_BG)
     action_bar.pack(fill="x", padx=18, pady=(4, 10))
 
+    health_panel = frame(root, bg=PANEL_BG)
+    health_panel.pack(fill="x", padx=18, pady=(0, 10))
+    health_header = frame(health_panel, bg=PANEL_BG)
+    health_header.pack(fill="x", padx=12, pady=(10, 4))
+    label(
+        health_header,
+        text="Broadcast Health",
+        bg=PANEL_BG,
+        fg=TEXT_FG,
+        font=("Segoe UI", 11, "bold"),
+    ).pack(side="left")
+    health_summary = tk.StringVar(value="Not checked yet.")
+    label(
+        health_header,
+        textvariable=health_summary,
+        bg=PANEL_BG,
+        fg=MUTED_FG,
+    ).pack(side="left", padx=(12, 0))
+    health_rows_frame = frame(health_panel, bg=PANEL_BG)
+    health_rows_frame.pack(fill="x", padx=12, pady=(0, 10))
+    health_row_widgets = []
+
     notebook = ttk.Notebook(root)
     notebook.pack(fill="both", expand=True, padx=18)
 
@@ -702,6 +825,64 @@ def run_gui():
     def save_settings():
         save_env_file(collect_values())
         status.set(f"Saved settings to {ENV_PATH}")
+        refresh_health()
+
+    def refresh_health():
+        for widget in health_rows_frame.winfo_children():
+            widget.destroy()
+        health_row_widgets.clear()
+
+        rows = build_health_status(
+            collect_values(),
+            root=ROOT,
+            broadcast_running=has_running_broadcast(),
+        )
+        level_colors = {
+            "ok": GREEN,
+            "warn": "#d19a2a",
+            "off": MUTED_FG,
+        }
+        ok_count = sum(1 for _name, _state, _detail, level in rows if level == "ok")
+        warn_count = sum(1 for _name, _state, _detail, level in rows if level == "warn")
+        health_summary.set(f"{ok_count} ready | {warn_count} need attention")
+
+        for index, (name, state_text, detail, level) in enumerate(rows):
+            row_frame = frame(health_rows_frame, bg=PANEL_BG)
+            row_frame.grid(
+                row=index // 2,
+                column=index % 2,
+                sticky="ew",
+                padx=(0, 14),
+                pady=3,
+            )
+            health_rows_frame.columnconfigure(index % 2, weight=1)
+            label(
+                row_frame,
+                text=name,
+                width=16,
+                anchor="w",
+                bg=PANEL_BG,
+                fg=MUTED_FG,
+                font=("Segoe UI", 9, "bold"),
+            ).pack(side="left")
+            label(
+                row_frame,
+                text=state_text,
+                width=12,
+                anchor="w",
+                bg=PANEL_BG,
+                fg=level_colors.get(level, MUTED_FG),
+                font=("Segoe UI", 9, "bold"),
+            ).pack(side="left")
+            label(
+                row_frame,
+                text=detail,
+                anchor="w",
+                bg=PANEL_BG,
+                fg=TEXT_FG,
+            ).pack(side="left", fill="x", expand=True)
+            health_row_widgets.append(row_frame)
+        status.set("Broadcast health refreshed.")
 
     def create_league_files():
         copied = ensure_league_files()
@@ -718,6 +899,7 @@ def run_gui():
         process = launch_broadcast(producer_assist=False)
         if process:
             status.set("Started full AI broadcast with overlay, cameras, and incident replay.")
+        refresh_health()
 
     def start_producer_assist():
         save_settings()
@@ -727,6 +909,7 @@ def run_gui():
                 "Started Producer Assist broadcast with overlay and cameras. "
                 "AI voices are disabled so a human broadcaster can call the race."
             )
+        refresh_health()
 
     def stop_running_broadcast():
         stopped_count = stop_broadcast()
@@ -734,6 +917,7 @@ def run_gui():
             status.set(f"Stopped broadcast process(es): {stopped_count}.")
         else:
             status.set("No running broadcast found from this launcher.")
+        refresh_health()
 
     def on_close():
         if has_running_broadcast():
@@ -771,6 +955,11 @@ def run_gui():
         pady=8,
     )
     button(action_bar, text="Stop Broadcast", command=stop_running_broadcast, color=STOP_RED).pack(
+        side="left",
+        padx=6,
+        pady=8,
+    )
+    button(action_bar, text="Refresh Health", command=refresh_health, color="#334b64").pack(
         side="left",
         padx=6,
         pady=8,
@@ -813,6 +1002,7 @@ def run_gui():
     ).pack(side="left", padx=(4, 0))
 
     build_league_tab(league_content, status, label, frame, entry, button)
+    refresh_health()
     root.protocol("WM_DELETE_WINDOW", on_close)
 
     root.mainloop()

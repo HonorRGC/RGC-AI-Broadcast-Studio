@@ -7,6 +7,7 @@ from studio_launcher import (
     RGC_DISCORD_URL,
     RGC_WEBSITE_URL,
     apply_audio_file_selection,
+    build_health_status,
     broadcast_command,
     clear_broadcast_pid,
     format_playlist_paths,
@@ -64,6 +65,49 @@ def test_launcher_defaults_include_league_stats_csv():
     assert defaults["CAUTION_PRESENTATION_GRAPHICS"] == ""
     assert defaults["POST_RACE_INTERVIEWS_ENABLED"] == "false"
     assert defaults["POST_RACE_FINISH_CAMERA_DELAY_SECONDS"] == "180"
+
+
+def test_launcher_health_reports_missing_ai_keys():
+    values = launcher_defaults({})
+
+    rows = build_health_status(values, root=Path("C:/RGC"), broadcast_running=False)
+    row_map = {name: (state, detail, level) for name, state, detail, level in rows}
+
+    assert row_map["OpenAI"][0] == "Needs key"
+    assert row_map["ElevenLabs"][0] == "Needs setup"
+    assert row_map["Broadcast"][0] == "Stopped"
+
+
+def test_launcher_health_reports_disabled_ai_as_off():
+    values = launcher_defaults({"USE_OPENAI": "false", "USE_ELEVENLABS": "false"})
+
+    rows = build_health_status(values, root=Path("C:/RGC"), broadcast_running=True)
+    row_map = {name: (state, detail, level) for name, state, detail, level in rows}
+
+    assert row_map["OpenAI"][0] == "Off"
+    assert row_map["ElevenLabs"][0] == "Off"
+    assert row_map["Broadcast"][0] == "Running"
+
+
+def test_launcher_health_reports_league_files_ready(tmp_path):
+    league_dir = tmp_path / "league"
+    league_dir.mkdir()
+    (league_dir / "drivers.csv").write_text("name,car_number\n", encoding="utf-8")
+    (league_dir / "stats.csv").write_text("name,starts\n", encoding="utf-8")
+    values = launcher_defaults(
+        {
+            "USE_OPENAI": "false",
+            "USE_ELEVENLABS": "false",
+            "USE_LEAGUE_DRIVER_NOTES": "true",
+            "LEAGUE_DRIVERS_CSV": "league/drivers.csv",
+            "LEAGUE_STATS_CSV": "league/stats.csv",
+        }
+    )
+
+    rows = build_health_status(values, root=tmp_path, broadcast_running=False)
+    row_map = {name: (state, detail, level) for name, state, detail, level in rows}
+
+    assert row_map["League Notes"][0] == "Ready"
 
 
 def test_launcher_migrates_old_practice_music_volume_to_studio_volume():
