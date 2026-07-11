@@ -1,9 +1,11 @@
 import sys
+from pathlib import Path
 
 from studio_launcher import (
     RGC_DISCORD_URL,
     RGC_WEBSITE_URL,
     broadcast_command,
+    format_playlist_paths,
     install_overlay_brand_graphics,
     is_process_running,
     launcher_defaults,
@@ -44,6 +46,9 @@ def test_launcher_defaults_include_league_stats_csv():
     assert defaults["LEAGUE_DRIVERS_CSV"] == "league/drivers.csv"
     assert defaults["LEAGUE_STATS_CSV"] == "league/stats.csv"
     assert "/assets/rgc_motorsports.png" in defaults["OVERLAY_BRAND_GRAPHICS"]
+    assert defaults["PRACTICE_MUSIC_PLAYLIST"] == ""
+    assert defaults["CAUTION_REPLAY_AUDIO"] == ""
+    assert defaults["NATIONAL_ANTHEM_AUDIO"] == ""
 
 
 def test_launcher_saves_known_settings(tmp_path):
@@ -62,6 +67,30 @@ def test_launcher_saves_known_settings(tmp_path):
     assert "USE_OPENAI=false" in saved
     assert "OVERLAY_EVENT_TITLE=League Race" in saved
     assert "LEAGUE_STATS_CSV=league/stats.csv" in saved
+
+
+def test_launcher_saves_music_settings(tmp_path):
+    env_path = tmp_path / ".env"
+
+    save_env_file(
+        {
+            "PRACTICE_MUSIC_PLAYLIST": "D:/Music/practice1.mp3;D:/Music/practice2.mp3",
+            "CAUTION_REPLAY_AUDIO": "D:/Music/caution.mp3",
+            "NATIONAL_ANTHEM_AUDIO": "D:/Music/anthem.mp3",
+        },
+        env_path,
+    )
+
+    saved = env_path.read_text(encoding="utf-8")
+    assert "PRACTICE_MUSIC_PLAYLIST=D:/Music/practice1.mp3;D:/Music/practice2.mp3" in saved
+    assert "CAUTION_REPLAY_AUDIO=D:/Music/caution.mp3" in saved
+    assert "NATIONAL_ANTHEM_AUDIO=D:/Music/anthem.mp3" in saved
+
+
+def test_launcher_formats_practice_music_playlist():
+    playlist = format_playlist_paths(["D:/Music/one.mp3", "D:/Music/two.mp3"])
+
+    assert playlist.split(";") == [str(Path("D:/Music/one.mp3")), str(Path("D:/Music/two.mp3"))]
 
 
 def test_launcher_sanitizes_overlay_asset_names():

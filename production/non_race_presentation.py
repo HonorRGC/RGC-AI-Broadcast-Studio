@@ -59,7 +59,7 @@ class PracticePresentationDirector:
                 self.player(str(path.resolve()))
             except Exception as error:
                 return f"Practice music could not be played: {error}"
-        return f"Practice music started: {path.name}"
+            return f"Practice music started: {path.name}"
         return "Practice music playlist is configured, but no listed file was found."
 
 

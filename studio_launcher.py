@@ -46,6 +46,11 @@ LAUNCHER_FIELDS = [
     ("USE_SPONSOR_READS", "true"),
     ("SPONSOR_READ_NAME", ""),
     ("SPONSOR_READ_CAUSE", ""),
+    ("USE_NATIONAL_ANTHEM", "false"),
+    ("NATIONAL_ANTHEM_AUDIO", ""),
+    ("NATIONAL_ANTHEM_DURATION_SECONDS", "90"),
+    ("PRACTICE_MUSIC_PLAYLIST", ""),
+    ("CAUTION_REPLAY_AUDIO", ""),
     ("USE_LEAGUE_DRIVER_NOTES", "false"),
     ("LEAGUE_DRIVERS_CSV", "league/drivers.csv"),
     ("LEAGUE_STATS_CSV", "league/stats.csv"),
@@ -128,6 +133,10 @@ def install_overlay_brand_graphics(paths, static_dir=STATIC_ASSET_DIR):
         asset_paths.append(f"/assets/{target.name}")
 
     return asset_paths
+
+
+def format_playlist_paths(paths):
+    return ";".join(str(Path(path)) for path in paths if path)
 
 
 def open_external_link(url):
@@ -387,12 +396,60 @@ def run_gui():
         field.insert(0, ",".join(asset_paths))
         status.set(f"Added {len(asset_paths)} sponsor logo(s) to the overlay title rotation.")
 
+    def choose_practice_music():
+        paths = filedialog.askopenfilenames(
+            title="Choose practice music files",
+            filetypes=[
+                ("Audio files", "*.mp3 *.wav *.m4a *.aac *.flac *.wma"),
+                ("All files", "*.*"),
+            ],
+        )
+        if not paths:
+            return
+        field = entries["PRACTICE_MUSIC_PLAYLIST"]
+        field.delete(0, "end")
+        field.insert(0, format_playlist_paths(paths))
+        status.set(f"Added {len(paths)} practice music file(s). Save settings before starting.")
+
+    def choose_single_audio(field_name, title):
+        path = filedialog.askopenfilename(
+            title=title,
+            filetypes=[
+                ("Audio files", "*.mp3 *.wav *.m4a *.aac *.flac *.wma"),
+                ("All files", "*.*"),
+            ],
+        )
+        if not path:
+            return
+        field = entries[field_name]
+        field.delete(0, "end")
+        field.insert(0, str(Path(path)))
+        status.set(f"Set {field_name}. Save settings before starting.")
+
     button(
         settings_frame,
         text="Choose Sponsor Logos",
         command=choose_brand_graphics,
         color="#334b64",
     ).grid(row=LAUNCHER_FIELDS.index(("USE_SPONSOR_READS", "true")) - 1, column=2, padx=(8, 0), sticky="w")
+    button(
+        settings_frame,
+        text="Choose Anthem Audio",
+        command=lambda: choose_single_audio("NATIONAL_ANTHEM_AUDIO", "Choose RGC Anthem audio"),
+        color="#334b64",
+    ).grid(row=LAUNCHER_FIELDS.index(("NATIONAL_ANTHEM_AUDIO", "")), column=2, padx=(8, 0), sticky="w")
+    button(
+        settings_frame,
+        text="Choose Practice Music",
+        command=choose_practice_music,
+        color="#334b64",
+    ).grid(row=LAUNCHER_FIELDS.index(("PRACTICE_MUSIC_PLAYLIST", "")), column=2, padx=(8, 0), sticky="w")
+    button(
+        settings_frame,
+        text="Choose Caution Audio",
+        command=lambda: choose_single_audio("CAUTION_REPLAY_AUDIO", "Choose caution replay audio"),
+        color="#334b64",
+    ).grid(row=LAUNCHER_FIELDS.index(("CAUTION_REPLAY_AUDIO", "")), column=2, padx=(8, 0), sticky="w")
 
     settings_frame.columnconfigure(1, weight=1)
 

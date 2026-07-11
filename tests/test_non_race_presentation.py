@@ -46,6 +46,17 @@ def test_practice_presentation_can_start_practice_music(tmp_path):
     assert "Practice music started" in message
 
 
+def test_practice_presentation_reports_missing_music_file(tmp_path):
+    missing = tmp_path / "missing.mp3"
+    played = []
+    director = PracticePresentationDirector(playlist=[str(missing)], player=played.append)
+
+    message = director.update("Practice", OverlaySpy())
+
+    assert played == []
+    assert message == "Practice music playlist is configured, but no listed file was found."
+
+
 class QualifyingTelemetry:
     def get_session_type(self):
         return "Qualifying"
