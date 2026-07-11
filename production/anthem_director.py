@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from config import (
+    NATIONAL_ANTHEM_GRAPHICS,
     NATIONAL_ANTHEM_AUDIO,
     NATIONAL_ANTHEM_DURATION_SECONDS,
     STUDIO_VOLUME,
@@ -25,6 +26,7 @@ class NationalAnthemDirector:
         duration_seconds=NATIONAL_ANTHEM_DURATION_SECONDS,
         player=None,
         studio_volume=STUDIO_VOLUME,
+        graphics=None,
     ):
         self.enabled = bool(enabled)
         self.audio_path = str(audio_path or "").strip()
@@ -33,6 +35,7 @@ class NationalAnthemDirector:
             normal_volume=percent_to_mci_volume(studio_volume),
             alias="rgc_anthem_audio",
         )
+        self.graphics = list(graphics if graphics is not None else NATIONAL_ANTHEM_GRAPHICS)
         self.session_tracker = SessionTracker()
         self.played = False
         self.active = False
@@ -51,6 +54,7 @@ class NationalAnthemDirector:
                     title="RGC Anthem",
                     subtitle="Presented by RGC Motorsports",
                     duration=self.duration_seconds,
+                    graphics=self.graphics,
                 )
             return self.play_audio()
 

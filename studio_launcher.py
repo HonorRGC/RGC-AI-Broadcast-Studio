@@ -52,9 +52,11 @@ LAUNCHER_FIELDS = [
     ("USE_NATIONAL_ANTHEM", "false"),
     ("NATIONAL_ANTHEM_AUDIO", ""),
     ("NATIONAL_ANTHEM_DURATION_SECONDS", "90"),
+    ("NATIONAL_ANTHEM_GRAPHICS", ""),
     ("PRACTICE_MUSIC_PLAYLIST", ""),
     ("STUDIO_VOLUME", "65"),
     ("CAUTION_REPLAY_AUDIO", ""),
+    ("CAUTION_PRESENTATION_GRAPHICS", ""),
     ("POST_RACE_INTERVIEWS_ENABLED", "false"),
     ("POST_RACE_FINISH_CAMERA_DELAY_SECONDS", "180"),
     ("USE_LEAGUE_DRIVER_NOTES", "false"),
@@ -536,9 +538,9 @@ def run_gui():
         color="#334b64",
     ).grid(row=overlay_link_row, column=2, padx=(8, 0), sticky="w")
 
-    def choose_brand_graphics():
+    def choose_graphics_for_field(field_name, title, status_label):
         paths = filedialog.askopenfilenames(
-            title="Choose sponsor / brand logos for the overlay title",
+            title=title,
             filetypes=[
                 ("Image files", "*.png *.jpg *.jpeg *.webp *.gif *.svg"),
                 ("All files", "*.*"),
@@ -546,12 +548,19 @@ def run_gui():
         )
         asset_paths = install_overlay_brand_graphics(paths)
         if not asset_paths:
-            status.set("No sponsor logos were copied. Choose PNG, JPG, WEBP, GIF, or SVG files.")
+            status.set("No graphics were copied. Choose PNG, JPG, WEBP, GIF, or SVG files.")
             return
-        field = entries["OVERLAY_BRAND_GRAPHICS"]
+        field = entries[field_name]
         field.delete(0, "end")
         field.insert(0, ",".join(asset_paths))
-        status.set(f"Added {len(asset_paths)} sponsor logo(s) to the overlay title rotation.")
+        status.set(f"Added {len(asset_paths)} graphic(s) for {status_label}.")
+
+    def choose_brand_graphics():
+        choose_graphics_for_field(
+            "OVERLAY_BRAND_GRAPHICS",
+            "Choose sponsor / brand logos for the overlay title",
+            "the overlay title rotation",
+        )
 
     def choose_practice_music():
         paths = filedialog.askopenfilenames(
@@ -604,6 +613,16 @@ def run_gui():
     ).grid(row=settings_grid_row(LAUNCHER_FIELDS.index(("NATIONAL_ANTHEM_AUDIO", ""))), column=2, padx=(8, 0), sticky="w")
     button(
         settings_frame,
+        text="Choose Anthem Graphics",
+        command=lambda: choose_graphics_for_field(
+            "NATIONAL_ANTHEM_GRAPHICS",
+            "Choose RGC Anthem overlay graphics",
+            "the RGC Anthem presentation",
+        ),
+        color="#334b64",
+    ).grid(row=settings_grid_row(LAUNCHER_FIELDS.index(("NATIONAL_ANTHEM_GRAPHICS", ""))), column=2, padx=(8, 0), sticky="w")
+    button(
+        settings_frame,
         text="Choose Practice Music",
         command=choose_practice_music,
         color="#334b64",
@@ -614,6 +633,16 @@ def run_gui():
         command=lambda: choose_single_audio("CAUTION_REPLAY_AUDIO", "Choose caution replay audio"),
         color="#334b64",
     ).grid(row=settings_grid_row(LAUNCHER_FIELDS.index(("CAUTION_REPLAY_AUDIO", ""))), column=2, padx=(8, 0), sticky="w")
+    button(
+        settings_frame,
+        text="Choose Caution Graphics",
+        command=lambda: choose_graphics_for_field(
+            "CAUTION_PRESENTATION_GRAPHICS",
+            "Choose caution overlay graphics",
+            "the caution presentation",
+        ),
+        color="#334b64",
+    ).grid(row=settings_grid_row(LAUNCHER_FIELDS.index(("CAUTION_PRESENTATION_GRAPHICS", ""))), column=2, padx=(8, 0), sticky="w")
 
     settings_frame.columnconfigure(1, weight=1)
 

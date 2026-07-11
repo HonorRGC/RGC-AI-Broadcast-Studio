@@ -1,5 +1,5 @@
 from broadcaster.race_director import RacePhase
-from config import SPONSOR_READ_CAUSE, SPONSOR_READ_NAME
+from config import CAUTION_PRESENTATION_GRAPHICS, SPONSOR_READ_CAUSE, SPONSOR_READ_NAME
 
 
 class CautionPresentationDirector:
@@ -10,10 +10,12 @@ class CautionPresentationDirector:
         sponsor_name=SPONSOR_READ_NAME,
         sponsor_cause=SPONSOR_READ_CAUSE,
         overlay_duration=600.0,
+        graphics=None,
     ):
         self.sponsor_name = sponsor_name
         self.sponsor_cause = sponsor_cause
         self.overlay_duration = float(overlay_duration)
+        self.graphics = list(graphics if graphics is not None else CAUTION_PRESENTATION_GRAPHICS)
         self.presentation_shown = False
         self.music_stopped_for_one_to_green = False
 
@@ -28,6 +30,7 @@ class CautionPresentationDirector:
                     title="Today's Race Sponsors",
                     subtitle=self.subtitle(),
                     duration=self.overlay_duration,
+                    graphics=self.graphics,
                 )
                 self.presentation_shown = True
                 return "Caution sponsor overlay shown."

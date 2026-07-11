@@ -60,6 +60,8 @@ def test_launcher_defaults_include_league_stats_csv():
     assert defaults["STUDIO_VOLUME"] == "65"
     assert defaults["CAUTION_REPLAY_AUDIO"] == ""
     assert defaults["NATIONAL_ANTHEM_AUDIO"] == ""
+    assert defaults["NATIONAL_ANTHEM_GRAPHICS"] == ""
+    assert defaults["CAUTION_PRESENTATION_GRAPHICS"] == ""
     assert defaults["POST_RACE_INTERVIEWS_ENABLED"] == "false"
     assert defaults["POST_RACE_FINISH_CAMERA_DELAY_SECONDS"] == "180"
 
@@ -96,7 +98,9 @@ def test_launcher_saves_music_settings(tmp_path):
             "STUDIO_VOLUME": "45",
             "PRACTICE_MUSIC_PLAYLIST": "D:/Music/practice1.mp3;D:/Music/practice2.mp3",
             "CAUTION_REPLAY_AUDIO": "D:/Music/caution.mp3",
+            "CAUTION_PRESENTATION_GRAPHICS": "/assets/caution.png",
             "NATIONAL_ANTHEM_AUDIO": "D:/Music/anthem.mp3",
+            "NATIONAL_ANTHEM_GRAPHICS": "/assets/anthem.png",
         },
         env_path,
     )
@@ -106,7 +110,9 @@ def test_launcher_saves_music_settings(tmp_path):
     assert "PRACTICE_MUSIC_PLAYLIST=D:/Music/practice1.mp3;D:/Music/practice2.mp3" in saved
     assert "PRACTICE_MUSIC_VOLUME" not in saved
     assert "CAUTION_REPLAY_AUDIO=D:/Music/caution.mp3" in saved
+    assert "CAUTION_PRESENTATION_GRAPHICS=/assets/caution.png" in saved
     assert "NATIONAL_ANTHEM_AUDIO=D:/Music/anthem.mp3" in saved
+    assert "NATIONAL_ANTHEM_GRAPHICS=/assets/anthem.png" in saved
 
 
 def test_launcher_formats_practice_music_playlist():

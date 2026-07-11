@@ -47,6 +47,25 @@ def test_rgc_anthem_starts_once_during_qualifying(tmp_path):
     assert overlay.presentations[0]["duration"] == 88
 
 
+def test_rgc_anthem_uses_configured_graphics(tmp_path):
+    audio = tmp_path / "anthem.mp3"
+    audio.write_bytes(b"audio")
+    overlay = OverlaySpy()
+    director = NationalAnthemDirector(
+        enabled=True,
+        audio_path=str(audio),
+        player=lambda _: None,
+        graphics=["/assets/anthem.png", "/assets/awareness.png"],
+    )
+
+    director.update("Qualifying", overlay)
+
+    assert overlay.presentations[0]["graphics"] == [
+        "/assets/anthem.png",
+        "/assets/awareness.png",
+    ]
+
+
 def test_rgc_anthem_uses_hidden_player_interface_with_duration(tmp_path):
     audio = tmp_path / "anthem.mp3"
     audio.write_bytes(b"audio")

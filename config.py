@@ -47,6 +47,16 @@ OVERLAY_BRAND_GRAPHICS = [
     ).split(",")
     if item.strip()
 ]
+NATIONAL_ANTHEM_GRAPHICS = [
+    item.strip()
+    for item in os.getenv("NATIONAL_ANTHEM_GRAPHICS", ",".join(OVERLAY_BRAND_GRAPHICS)).split(",")
+    if item.strip()
+]
+CAUTION_PRESENTATION_GRAPHICS = [
+    item.strip()
+    for item in os.getenv("CAUTION_PRESENTATION_GRAPHICS", ",".join(OVERLAY_BRAND_GRAPHICS)).split(",")
+    if item.strip()
+]
 CRANK_IT_UP_SPONSOR_GRAPHIC = os.getenv(
     "CRANK_IT_UP_SPONSOR_GRAPHIC",
     "/assets/rgc_motorsports.png",

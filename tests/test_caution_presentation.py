@@ -40,6 +40,20 @@ def test_caution_presentation_shows_sponsors_until_green():
     assert overlay.cleared == 1
 
 
+def test_caution_presentation_uses_configured_graphics():
+    overlay = OverlaySpy()
+    director = CautionPresentationDirector(
+        graphics=["/assets/caution_sponsor.png", "/assets/autism.png"],
+    )
+
+    director.update(RacePhase.CAUTION, overlay)
+
+    assert overlay.presentations[0]["graphics"] == [
+        "/assets/caution_sponsor.png",
+        "/assets/autism.png",
+    ]
+
+
 def test_caution_presentation_stops_music_once_at_one_to_green():
     audio = AudioBedSpy()
     director = CautionPresentationDirector()
