@@ -18,6 +18,19 @@ class OverlaySpy:
         self.cleared += 1
 
 
+class PlaylistPlayerSpy:
+    def __init__(self):
+        self.playlists = []
+        self.stops = 0
+
+    def play_playlist(self, playlist):
+        self.playlists.append(list(playlist))
+        return True
+
+    def stop(self):
+        self.stops += 1
+
+
 def test_practice_presentation_shows_race_sponsors_and_clears_after_practice():
     overlay = OverlaySpy()
     director = PracticePresentationDirector(
@@ -37,13 +50,25 @@ def test_practice_presentation_shows_race_sponsors_and_clears_after_practice():
 def test_practice_presentation_can_start_practice_music(tmp_path):
     song = tmp_path / "practice.mp3"
     song.write_bytes(b"audio")
-    played = []
-    director = PracticePresentationDirector(playlist=[str(song)], player=played.append)
+    player = PlaylistPlayerSpy()
+    director = PracticePresentationDirector(playlist=[str(song)], player=player)
 
     message = director.update("Practice", OverlaySpy())
 
-    assert played == [str(song.resolve())]
-    assert "Practice music started" in message
+    assert player.playlists == [[str(song.resolve())]]
+    assert "Practice music loop started" in message
+
+
+def test_practice_music_stops_when_practice_ends(tmp_path):
+    song = tmp_path / "practice.mp3"
+    song.write_bytes(b"audio")
+    player = PlaylistPlayerSpy()
+    director = PracticePresentationDirector(playlist=[str(song)], player=player)
+
+    director.update("Practice", OverlaySpy())
+    director.update("Qualifying", OverlaySpy())
+
+    assert player.stops == 1
 
 
 def test_practice_presentation_reports_missing_music_file(tmp_path):

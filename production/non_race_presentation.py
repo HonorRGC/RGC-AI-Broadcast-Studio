@@ -1,7 +1,7 @@
 from pathlib import Path
-import os
 
 from config import PRACTICE_MUSIC_PLAYLIST, SPONSOR_READ_CAUSE, SPONSOR_READ_NAME
+from production.audio_bed import PlaylistAudioPlayer
 from production.session_tracker import SessionTracker, WeekendSession
 
 
@@ -14,7 +14,7 @@ class PracticePresentationDirector:
         sponsor_cause=SPONSOR_READ_CAUSE,
     ):
         self.playlist = list(playlist if playlist is not None else PRACTICE_MUSIC_PLAYLIST)
-        self.player = player or getattr(os, "startfile", None)
+        self.player = player or PlaylistAudioPlayer()
         self.sponsor_name = sponsor_name
         self.sponsor_cause = sponsor_cause
         self.session_tracker = SessionTracker()
@@ -26,7 +26,10 @@ class PracticePresentationDirector:
         if session != WeekendSession.PRACTICE:
             if overlay_server and self.presentation_shown:
                 overlay_server.clear_special_presentation()
+            if self.music_started:
+                self.stop_music()
             self.presentation_shown = False
+            self.music_started = False
             return None
 
         if overlay_server and not self.presentation_shown:
@@ -40,7 +43,7 @@ class PracticePresentationDirector:
 
         if self.playlist and not self.music_started:
             self.music_started = True
-            return self.play_first_available_song()
+            return self.start_practice_music_loop()
 
         return None
 
@@ -48,8 +51,19 @@ class PracticePresentationDirector:
         parts = [part for part in [self.sponsor_name, self.sponsor_cause] if part]
         return " • ".join(parts) if parts else "RGC AI Broadcast Studio"
 
-    def play_first_available_song(self):
+    def start_practice_music_loop(self):
         if not self.player:
+            return "Practice music is configured, but no desktop audio player is available."
+        existing_paths = self.existing_playlist_paths()
+        if not existing_paths:
+            return "Practice music playlist is configured, but no listed file was found."
+        playlist_starter = getattr(self.player, "play_playlist", None)
+        if playlist_starter:
+            try:
+                if playlist_starter(existing_paths):
+                    return f"Practice music loop started with {len(existing_paths)} song(s)."
+            except Exception as error:
+                return f"Practice music could not be played: {error}"
             return "Practice music is configured, but no desktop audio player is available."
         for raw_path in self.playlist:
             path = Path(raw_path).expanduser()
@@ -61,6 +75,18 @@ class PracticePresentationDirector:
                 return f"Practice music could not be played: {error}"
             return f"Practice music started: {path.name}"
         return "Practice music playlist is configured, but no listed file was found."
+
+    def existing_playlist_paths(self):
+        return [
+            str(Path(raw_path).expanduser().resolve())
+            for raw_path in self.playlist
+            if Path(raw_path).expanduser().exists()
+        ]
+
+    def stop_music(self):
+        stopper = getattr(self.player, "stop", None)
+        if stopper:
+            stopper()
 
 
 class QualifyingCameraDirector:

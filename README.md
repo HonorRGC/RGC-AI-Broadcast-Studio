@@ -48,7 +48,7 @@ The launcher can save the main `.env` settings, create `league\drivers.csv` and 
 
 Use `Choose Sponsor Logos` to copy sponsor or league graphics into the overlay assets folder and update the title-logo rotation shown in the upper-left of the broadcast overlay.
 
-Practice music, RGC Anthem audio, and caution replay audio can also be selected in the launcher. Use semicolons between multiple practice songs if editing the playlist manually.
+Practice music, RGC Anthem audio, and caution replay audio can also be selected in the launcher. Practice music loops through the playlist until practice ends. The RGC Anthem remains a one-time qualifying ceremony. Use semicolons between multiple practice songs if editing the playlist manually.
 
 The launcher also includes a `League / Sim Racer Hub` tab. Paste a Sim Racer Hub series or stats URL, choose season mode or career mode, optionally enter the upcoming track name, preview the import, and then write the results to `league\stats.csv`.
 

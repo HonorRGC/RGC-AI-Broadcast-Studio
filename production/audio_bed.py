@@ -98,3 +98,83 @@ class AudioBedPlayer:
             return False
         result = winmm.mciSendStringW(str(command), None, 0, None)
         return int(result or 0) == 0
+
+
+class PlaylistAudioPlayer:
+    """Loop a playlist with the built-in Windows MCI audio player."""
+
+    def __init__(self, normal_volume=650, alias="rgc_practice_music"):
+        self.normal_volume = int(normal_volume)
+        self.alias = alias
+        self.thread = None
+        self.stop_event = threading.Event()
+        self.lock = threading.Lock()
+        self.active_playlist = []
+        self.is_playing = False
+
+    def play_playlist(self, playlist):
+        paths = [Path(str(path or "")).expanduser() for path in playlist]
+        paths = [path.resolve() for path in paths if path.exists()]
+        if not paths:
+            return False
+
+        playlist_key = [str(path) for path in paths]
+        with self.lock:
+            if self.is_playing and self.active_playlist == playlist_key:
+                return True
+            self.stop_locked()
+            self.stop_event.clear()
+            self.active_playlist = playlist_key
+            self.thread = threading.Thread(
+                target=self.loop_playlist,
+                args=(playlist_key,),
+                daemon=True,
+            )
+            self.thread.start()
+            self.is_playing = True
+            return True
+
+    def loop_playlist(self, playlist):
+        while not self.stop_event.is_set():
+            for path in playlist:
+                if self.stop_event.is_set():
+                    break
+                self.play_one(path)
+
+    def play_one(self, path):
+        self.close_alias()
+        opened = self.send(f'open "{path}" type mpegvideo alias {self.alias}')
+        if not opened:
+            opened = self.send(f'open "{path}" alias {self.alias}')
+        if not opened:
+            return False
+        self.set_volume(self.normal_volume)
+        played = self.send(f"play {self.alias} wait")
+        self.close_alias()
+        return played
+
+    def stop(self):
+        with self.lock:
+            self.stop_locked()
+
+    def stop_locked(self):
+        self.stop_event.set()
+        self.close_alias()
+        self.active_playlist = []
+        self.is_playing = False
+
+    def close_alias(self):
+        self.send(f"stop {self.alias}")
+        self.send(f"close {self.alias}")
+
+    def set_volume(self, volume):
+        volume = max(0, min(1000, int(volume)))
+        return self.send(f"setaudio {self.alias} volume to {volume}")
+
+    def send(self, command):
+        try:
+            winmm = ctypes.windll.winmm
+        except Exception:
+            return False
+        result = winmm.mciSendStringW(str(command), None, 0, None)
+        return int(result or 0) == 0
