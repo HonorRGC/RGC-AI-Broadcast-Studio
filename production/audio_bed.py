@@ -1,6 +1,7 @@
 from pathlib import Path
 import ctypes
 import threading
+import time
 
 from config import CAUTION_REPLAY_AUDIO
 
@@ -169,9 +170,18 @@ class PlaylistAudioPlayer:
             self.close_alias()
             return False
 
-        played = self.send(f"play {self.alias} wait")
+        played = self.send(f"play {self.alias}")
+        if played:
+            self.wait_until_finished_or_stopped()
         self.close_alias()
         return played
+
+    def wait_until_finished_or_stopped(self):
+        while not self.stop_event.is_set():
+            mode = self.query(f"status {self.alias} mode")
+            if mode and mode.lower() not in {"playing", "seeking"}:
+                break
+            time.sleep(0.2)
 
     def stop(self):
         thread = None
@@ -203,6 +213,17 @@ class PlaylistAudioPlayer:
             return False
         result = winmm.mciSendStringW(str(command), None, 0, None)
         return int(result or 0) == 0
+
+    def query(self, command):
+        try:
+            winmm = ctypes.windll.winmm
+        except Exception:
+            return ""
+        buffer = ctypes.create_unicode_buffer(128)
+        result = winmm.mciSendStringW(str(command), buffer, len(buffer), None)
+        if int(result or 0) != 0:
+            return ""
+        return buffer.value.strip()
 
 
 class OneShotAudioPlayer:
