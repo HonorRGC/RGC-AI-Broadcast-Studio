@@ -5,6 +5,13 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
+def env_int(name, default):
+    try:
+        return int(os.getenv(name, str(default)) or default)
+    except (TypeError, ValueError):
+        return int(default)
+
+
 # OpenAI
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 USE_OPENAI = os.getenv("USE_OPENAI", "true").lower() == "true"
@@ -77,4 +84,5 @@ PRACTICE_MUSIC_PLAYLIST = [
     for item in os.getenv("PRACTICE_MUSIC_PLAYLIST", "").split(";")
     if item.strip()
 ]
+PRACTICE_MUSIC_VOLUME = max(0, min(100, env_int("PRACTICE_MUSIC_VOLUME", 65)))
 CAUTION_REPLAY_AUDIO = os.getenv("CAUTION_REPLAY_AUDIO", NATIONAL_ANTHEM_AUDIO)

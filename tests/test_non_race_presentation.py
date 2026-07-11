@@ -71,6 +71,12 @@ def test_practice_music_stops_when_practice_ends(tmp_path):
     assert player.stops == 1
 
 
+def test_practice_music_volume_uses_percent_scale():
+    assert PracticePresentationDirector.music_volume_to_player_volume(0) == 0
+    assert PracticePresentationDirector.music_volume_to_player_volume(65) == 650
+    assert PracticePresentationDirector.music_volume_to_player_volume(100) == 1000
+
+
 def test_practice_presentation_reports_missing_music_file(tmp_path):
     missing = tmp_path / "missing.mp3"
     played = []
