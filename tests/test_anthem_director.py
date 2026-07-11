@@ -32,7 +32,6 @@ def test_rgc_anthem_starts_once_during_qualifying(tmp_path):
     director = NationalAnthemDirector(
         enabled=True,
         audio_path=str(audio),
-        duration_seconds=88,
         player=played.append,
     )
 
@@ -44,7 +43,7 @@ def test_rgc_anthem_starts_once_during_qualifying(tmp_path):
     assert played == [str(audio.resolve())]
     assert overlay.presentations[0]["kind"] == "rgc_anthem"
     assert overlay.presentations[0]["title"] == "RGC Anthem"
-    assert overlay.presentations[0]["duration"] == 88
+    assert overlay.presentations[0]["duration"] == 24 * 60 * 60
 
 
 def test_rgc_anthem_uses_configured_graphics(tmp_path):
@@ -66,21 +65,20 @@ def test_rgc_anthem_uses_configured_graphics(tmp_path):
     ]
 
 
-def test_rgc_anthem_uses_hidden_player_interface_with_duration(tmp_path):
+def test_rgc_anthem_uses_hidden_player_without_overlay_duration(tmp_path):
     audio = tmp_path / "anthem.mp3"
     audio.write_bytes(b"audio")
     player = HiddenPlayerSpy()
     director = NationalAnthemDirector(
         enabled=True,
         audio_path=str(audio),
-        duration_seconds=75,
         player=player,
     )
 
     decision = director.update("Qualifying", OverlaySpy())
 
     assert decision.status == "played"
-    assert player.plays == [(str(audio.resolve()), 75)]
+    assert player.plays == [(str(audio.resolve()), None)]
 
 
 def test_rgc_anthem_can_show_without_audio_file():

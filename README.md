@@ -188,11 +188,10 @@ Optional RGC Anthem ceremony:
 ```text
 USE_NATIONAL_ANTHEM=true
 NATIONAL_ANTHEM_AUDIO=C:\Path\To\rgc_anthem.mp3
-NATIONAL_ANTHEM_DURATION_SECONDS=90
 NATIONAL_ANTHEM_GRAPHICS=/assets/rgc_motorsports.png,/assets/autism_awareness.png
 ```
 
-If you start the program during practice or qualifying, the overlay can show the RGC Anthem graphics near the top of the screen and play the configured local audio file once qualifying begins. `NATIONAL_ANTHEM_DURATION_SECONDS` controls how long the overlay graphic stays on screen; the audio file still plays normally through the hidden player. The qualifying board stays visible underneath. Once the race session starts, the normal brand graphics cycle cleanly in the title banner. The project does not include an anthem recording; use your own recording or a properly licensed audio file.
+If you start the program during practice or qualifying, the overlay can show the RGC Anthem graphics near the top of the screen and play the configured local audio file once qualifying begins. The anthem graphic stays up through the qualifying session and clears automatically when the race session starts. The qualifying board stays visible underneath. Once the race session starts, the normal brand graphics cycle cleanly in the title banner. The project does not include an anthem recording; use your own recording or a properly licensed audio file.
 
 Optional music beds:
 

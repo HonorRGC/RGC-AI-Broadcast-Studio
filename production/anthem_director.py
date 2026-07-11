@@ -4,7 +4,6 @@ from pathlib import Path
 from config import (
     NATIONAL_ANTHEM_GRAPHICS,
     NATIONAL_ANTHEM_AUDIO,
-    NATIONAL_ANTHEM_DURATION_SECONDS,
     STUDIO_VOLUME,
     USE_NATIONAL_ANTHEM,
 )
@@ -23,14 +22,12 @@ class NationalAnthemDirector:
         self,
         enabled=USE_NATIONAL_ANTHEM,
         audio_path=NATIONAL_ANTHEM_AUDIO,
-        duration_seconds=NATIONAL_ANTHEM_DURATION_SECONDS,
         player=None,
         studio_volume=STUDIO_VOLUME,
         graphics=None,
     ):
         self.enabled = bool(enabled)
         self.audio_path = str(audio_path or "").strip()
-        self.duration_seconds = float(duration_seconds or 90)
         self.player = player or OneShotAudioPlayer(
             normal_volume=percent_to_mci_volume(studio_volume),
             alias="rgc_anthem_audio",
@@ -53,7 +50,7 @@ class NationalAnthemDirector:
                     kind="rgc_anthem",
                     title="RGC Anthem",
                     subtitle="Presented by RGC Motorsports",
-                    duration=self.duration_seconds,
+                    duration=24 * 60 * 60,
                     graphics=self.graphics,
                 )
             return self.play_audio()
@@ -96,5 +93,5 @@ class NationalAnthemDirector:
 
     def play_with_player(self, path):
         if hasattr(self.player, "play"):
-            return self.player.play(path, duration_seconds=self.duration_seconds)
+            return self.player.play(path)
         return self.player(path)

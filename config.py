@@ -87,9 +87,6 @@ POST_RACE_FINISH_CAMERA_DELAY_SECONDS = max(
 # Optional pre-race ceremony
 USE_NATIONAL_ANTHEM = os.getenv("USE_NATIONAL_ANTHEM", "false").lower() == "true"
 NATIONAL_ANTHEM_AUDIO = os.getenv("NATIONAL_ANTHEM_AUDIO", "")
-NATIONAL_ANTHEM_DURATION_SECONDS = float(
-    os.getenv("NATIONAL_ANTHEM_DURATION_SECONDS", "90")
-)
 
 
 # Optional practice/replay music beds.
