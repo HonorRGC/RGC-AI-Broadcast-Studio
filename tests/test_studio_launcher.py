@@ -17,6 +17,7 @@ from studio_launcher import (
     save_env_file,
     sanitize_asset_name,
     sim_racer_hub_import_command,
+    stop_broadcast_processes,
 )
 
 
@@ -154,6 +155,20 @@ def test_launcher_finds_running_broadcast_pids(monkeypatch):
     monkeypatch.setattr("studio_launcher.subprocess.run", fake_run)
 
     assert running_broadcast_pids(root=Path("C:/RGC")) == [1234, 5678]
+
+
+def test_launcher_counts_stopped_broadcast_processes(monkeypatch):
+    calls = []
+
+    def fake_run(command, text, capture_output, check):
+        calls.append(command)
+        return SimpleNamespace(returncode=0, stdout="")
+
+    monkeypatch.setattr("studio_launcher.subprocess.run", fake_run)
+
+    assert stop_broadcast_processes([1234, 5678]) == 2
+    assert calls[0] == ["taskkill", "/PID", "1234", "/T", "/F"]
+    assert calls[1] == ["taskkill", "/PID", "5678", "/T", "/F"]
 
 
 def test_launcher_detects_external_running_broadcast(monkeypatch):

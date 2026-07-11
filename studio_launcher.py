@@ -163,11 +163,16 @@ def broadcast_command():
 
 
 def running_broadcast_pids(root=ROOT):
+    root_path = str(Path(root).resolve())
     app_path = str((Path(root) / "app.py").resolve())
+    escaped_root_path = root_path.replace("'", "''")
     escaped_app_path = app_path.replace("'", "''")
     script = (
         "Get-CimInstance Win32_Process | "
-        f"Where-Object {{ $_.CommandLine -like '*{escaped_app_path}*' }} | "
+        "Where-Object { "
+        f"($_.CommandLine -like '*{escaped_app_path}*') -or "
+        f"(($_.CommandLine -like '*app.py*') -and ($_.CommandLine -like '*{escaped_root_path}*')) "
+        "} | "
         "ForEach-Object { $_.ProcessId }"
     )
     try:
@@ -187,6 +192,20 @@ def running_broadcast_pids(root=ROOT):
         if line.isdigit():
             pids.append(int(line))
     return pids
+
+
+def stop_broadcast_processes(pids):
+    stopped = 0
+    for pid in pids:
+        result = subprocess.run(
+            ["taskkill", "/PID", str(pid), "/T", "/F"],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        if result.returncode == 0:
+            stopped += 1
+    return stopped
 
 
 def is_process_running(process):
@@ -288,23 +307,21 @@ def stop_broadcast():
         stopped = True
 
     external_pids = running_broadcast_pids()
+    pids_to_stop = []
     for pid in external_pids:
         if BROADCAST_PROCESS and BROADCAST_PROCESS.pid == pid:
             continue
-        subprocess.run(
-            ["taskkill", "/PID", str(pid), "/T", "/F"],
-            text=True,
-            capture_output=True,
-            check=False,
-        )
+        pids_to_stop.append(pid)
+    stopped_count = stop_broadcast_processes(pids_to_stop)
+    if stopped_count:
         stopped = True
 
     if not stopped:
         BROADCAST_PROCESS = None
-        return False
+        return 0
 
     BROADCAST_PROCESS = None
-    return True
+    return max(1, stopped_count)
 
 
 def has_running_broadcast():
@@ -558,8 +575,9 @@ def run_gui():
             )
 
     def stop_running_broadcast():
-        if stop_broadcast():
-            status.set("Stopped broadcast.")
+        stopped_count = stop_broadcast()
+        if stopped_count:
+            status.set(f"Stopped broadcast process(es): {stopped_count}.")
         else:
             status.set("No running broadcast found from this launcher.")
 
