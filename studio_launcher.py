@@ -435,6 +435,46 @@ def run_gui():
             font=("Segoe UI", 9, "bold"),
         )
 
+    def scrollable_tab(parent):
+        container = frame(parent, bg=PANEL_BG)
+        container.pack(fill="both", expand=True)
+
+        canvas = tk.Canvas(
+            container,
+            bg=PANEL_BG,
+            borderwidth=0,
+            highlightthickness=0,
+        )
+        scrollbar = tk.Scrollbar(container, orient="vertical", command=canvas.yview)
+        content = frame(canvas, bg=PANEL_BG)
+        window_id = canvas.create_window((0, 0), window=content, anchor="nw")
+
+        def update_scroll_region(_event=None):
+            canvas.configure(scrollregion=canvas.bbox("all"))
+
+        def resize_content(event):
+            canvas.itemconfigure(window_id, width=event.width)
+
+        def enable_mousewheel(_event=None):
+            canvas.bind_all("<MouseWheel>", on_mousewheel)
+
+        def disable_mousewheel(_event=None):
+            canvas.unbind_all("<MouseWheel>")
+
+        def on_mousewheel(event):
+            delta = int(-1 * (event.delta / 120))
+            canvas.yview_scroll(delta, "units")
+
+        content.bind("<Configure>", update_scroll_region)
+        canvas.bind("<Configure>", resize_content)
+        content.bind("<Enter>", enable_mousewheel)
+        content.bind("<Leave>", disable_mousewheel)
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+        return content
+
     label(
         root,
         text="RGC AI Broadcast Studio",
@@ -480,7 +520,10 @@ def run_gui():
     notebook.add(settings_tab, text="Broadcast Settings")
     notebook.add(league_tab, text="League / Sim Racer Hub")
 
-    settings_frame = frame(settings_tab, bg=PANEL_BG)
+    settings_content = scrollable_tab(settings_tab)
+    league_content = scrollable_tab(league_tab)
+
+    settings_frame = frame(settings_content, bg=PANEL_BG)
     settings_frame.pack(fill="both", expand=True, padx=14, pady=12)
 
     entries = {}
@@ -769,7 +812,7 @@ def run_gui():
         width=4,
     ).pack(side="left", padx=(4, 0))
 
-    build_league_tab(league_tab, status, label, frame, entry, button)
+    build_league_tab(league_content, status, label, frame, entry, button)
     root.protocol("WM_DELETE_WINDOW", on_close)
 
     root.mainloop()
