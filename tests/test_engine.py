@@ -931,6 +931,24 @@ def test_one_to_green_reports_small_caution_pit_group():
         pit_road_status=[False, False, False, False, False, False],
         current_lap=6,
     )
+    engine._collect_pit_stories(
+        results=results,
+        driver_lookup=drivers,
+        pit_road_status=[False, False, False, False, False, False],
+        current_lap=6,
+    )
+    engine._collect_pit_stories(
+        results=results,
+        driver_lookup=drivers,
+        pit_road_status=[False, False, False, False, False, False],
+        current_lap=6,
+    )
+    engine._collect_pit_stories(
+        results=results,
+        driver_lookup=drivers,
+        pit_road_status=[False, False, False, False, False, False],
+        current_lap=6,
+    )
 
     pit_item = next(
         item for item in engine.broadcast_queue.items
@@ -951,7 +969,7 @@ def test_one_to_green_reports_small_caution_pit_group():
     assert "Before this restart, here is the top ten" in top_ten.message
     assert "first, the 1 of Driver 1" in top_ten.message
     assert "second, the 2 of Driver 2" in top_ten.message
-    assert top_ten.delay_seconds == 10.0
+    assert top_ten.delay_seconds == 1.5
 
 
 def test_one_to_green_top_ten_reset_only_queues_once_per_caution():
@@ -966,7 +984,7 @@ def test_one_to_green_top_ten_reset_only_queues_once_per_caution():
     }
     engine.race_director.phase = RacePhase.ONE_TO_GREEN
 
-    for lap in (20, 21, 22, 23):
+    for lap in (20, 21, 22, 23, 24, 25, 26):
         engine._collect_pit_stories(results, drivers, [False] * 10, current_lap=lap)
 
     resets = [
@@ -1001,7 +1019,13 @@ def test_one_to_green_top_ten_waits_for_stable_running_order():
         for item in engine.broadcast_queue.items
     )
 
-    engine._collect_pit_stories(settled_order, drivers, [False] * 10, current_lap=20)
+    for _ in range(4):
+        engine._collect_pit_stories(
+            settled_order,
+            drivers,
+            [False] * 10,
+            current_lap=20,
+        )
 
     reset = next(
         item for item in engine.broadcast_queue.items
@@ -1227,3 +1251,59 @@ class RaceFlags:
     ONE_TO_GREEN = 0x00000200
     START_READY = 0x20000000
     START_GO = 0x80000000
+
+
+def test_caution_top_ten_waits_when_top_ten_car_is_on_pit_road():
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    drivers = {
+        car_idx: {"name": f"Driver {car_idx}", "number": str(car_idx)}
+        for car_idx in range(12)
+    }
+    results = [
+        {"CarIdx": car_idx, "Position": car_idx}
+        for car_idx in range(12)
+    ]
+    pit_road = [False] * 12
+    pit_road[4] = True
+
+    for _ in range(10):
+        engine._queue_caution_top_ten_reset(
+            results,
+            drivers,
+            current_lap=25,
+            pit_road_status=pit_road,
+        )
+
+    assert not any(
+        item.category == "caution_top_ten_reset"
+        for item in engine.broadcast_queue.items
+    )
+
+
+def test_caution_top_ten_queues_after_order_is_stable_and_pit_road_clear():
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    drivers = {
+        car_idx: {"name": f"Driver {car_idx}", "number": str(car_idx)}
+        for car_idx in range(12)
+    }
+    results = [
+        {"CarIdx": car_idx, "Position": car_idx}
+        for car_idx in range(12)
+    ]
+    pit_road = [False] * 12
+
+    for _ in range(6):
+        engine._queue_caution_top_ten_reset(
+            results,
+            drivers,
+            current_lap=25,
+            pit_road_status=pit_road,
+        )
+
+    item = next(
+        item
+        for item in engine.broadcast_queue.items
+        if item.category == "caution_top_ten_reset"
+    )
+    assert item.participant_car_indices == tuple(range(10))
+    assert item.delay_seconds == 1.5

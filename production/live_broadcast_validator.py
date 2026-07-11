@@ -23,9 +23,16 @@ class LiveBroadcastValidator:
         "final_laps_battle",
     }
 
+    ORDER_SENSITIVE_CATEGORIES = {
+        "caution_top_ten_reset",
+    }
+
     def validate(self, item, telemetry):
         category = str(getattr(item, "category", "") or "")
         car_idx = getattr(item, "camera_target_car_idx", None)
+
+        if category in self.ORDER_SENSITIVE_CATEGORIES:
+            return self.validate_running_order_item(item, telemetry)
 
         if category not in self.STORY_CATEGORIES or car_idx is None:
             return BroadcastValidation(True)
@@ -65,6 +72,28 @@ class LiveBroadcastValidator:
 
         return BroadcastValidation(True)
 
+    def validate_running_order_item(self, item, telemetry):
+        expected = tuple(
+            car_idx
+            for car_idx in (getattr(item, "participant_car_indices", ()) or ())
+            if car_idx is not None
+        )
+        if not expected:
+            return BroadcastValidation(True)
+
+        live = self.current_top_order(telemetry, len(expected))
+        if len(live) < min(3, len(expected)):
+            return BroadcastValidation(
+                False,
+                "live running order was not available before the rundown aired",
+            )
+        if live != expected:
+            return BroadcastValidation(
+                False,
+                "queued restart top ten no longer matches live scoring",
+            )
+        return BroadcastValidation(True)
+
     def current_position(self, telemetry, car_idx):
         results_reader = getattr(telemetry, "get_results", None)
         if not results_reader:
@@ -79,6 +108,29 @@ class LiveBroadcastValidator:
                 return None
             return position + 1 if zero_based else position
         return None
+
+    def current_top_order(self, telemetry, count):
+        results_reader = getattr(telemetry, "get_results", None)
+        if not results_reader:
+            return ()
+        results = [
+            car
+            for car in (results_reader() or [])
+            if car.get("CarIdx") is not None
+        ]
+        zero_based = any(self.safe_int(car.get("Position"), 999) == 0 for car in results)
+        ordered = sorted(
+            results,
+            key=lambda car: self.display_position(
+                car.get("Position", 999),
+                zero_based,
+            ),
+        )
+        return tuple(car.get("CarIdx") for car in ordered[:count])
+
+    def display_position(self, raw_position, zero_based):
+        position = self.safe_int(raw_position, 999)
+        return position + 1 if zero_based else position
 
     def is_on_pit_road(self, telemetry, car_idx):
         pit_reader = getattr(telemetry, "get_car_idx_on_pit_road", None)

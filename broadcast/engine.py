@@ -641,6 +641,7 @@ class BroadcastEngine:
                     results,
                     driver_lookup,
                     current_lap,
+                    pit_road_status,
                 )
                 self._queue_caution_race_insight()
             else:
@@ -755,14 +756,28 @@ class BroadcastEngine:
             dedupe_key=f"sponsor_read:caution:{current_lap}",
         )
 
-    def _queue_caution_top_ten_reset(self, results, driver_lookup, current_lap):
+    def _queue_caution_top_ten_reset(
+        self,
+        results,
+        driver_lookup,
+        current_lap,
+        pit_road_status=None,
+    ):
         if self.caution_top_ten_reset_queued:
+            return
+        if self.top_ten_has_pit_road_cars(results, pit_road_status):
+            self.caution_top_ten_order_signature = ()
+            self.caution_top_ten_stable_ticks = 0
             return
         if not self.caution_top_ten_order_is_stable(results):
             return
         message = self.build_caution_top_ten_reset(results, driver_lookup)
         if not message:
             return
+        ordered = self.sorted_running_order(results)[:10]
+        top_ten_car_indices = tuple(
+            car.get("CarIdx") for car in ordered if car.get("CarIdx") is not None
+        )
         self.caution_top_ten_reset_queued = True
         self.broadcast_queue.add(
             message,
@@ -770,12 +785,13 @@ class BroadcastEngine:
             category="caution_top_ten_reset",
             protected=True,
             speaker="jeff",
-            delay_seconds=10.0,
-            expires_after=70,
+            delay_seconds=1.5,
+            expires_after=30,
             dedupe_key=f"caution_top_ten_reset:{current_lap}",
+            participant_car_indices=top_ten_car_indices,
         )
 
-    def caution_top_ten_order_is_stable(self, results, required_ticks=3):
+    def caution_top_ten_order_is_stable(self, results, required_ticks=6):
         ordered = self.sorted_running_order(results)[:10]
         signature = tuple(car.get("CarIdx") for car in ordered)
         if len(signature) < 3:
@@ -788,6 +804,21 @@ class BroadcastEngine:
             self.caution_top_ten_order_signature = signature
             self.caution_top_ten_stable_ticks = 1
         return self.caution_top_ten_stable_ticks >= required_ticks
+
+    def top_ten_has_pit_road_cars(self, results, pit_road_status):
+        if not pit_road_status:
+            return False
+        ordered = self.sorted_running_order(results)[:10]
+        for car in ordered:
+            car_idx = car.get("CarIdx")
+            if car_idx is None:
+                continue
+            try:
+                if bool(pit_road_status[int(car_idx)]):
+                    return True
+            except Exception:
+                continue
+        return False
 
     def _queue_lucky_dog_note(self, results, driver_lookup, current_lap):
         if self.caution_lucky_dog_queued:

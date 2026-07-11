@@ -27,6 +27,15 @@ def story(message, car_idx=1):
     )
 
 
+def order_item(car_indices):
+    return SimpleNamespace(
+        category="caution_top_ten_reset",
+        message="Before this restart, here is the top ten.",
+        participant_car_indices=tuple(car_indices),
+        camera_target_car_idx=None,
+    )
+
+
 def test_validator_skips_leader_story_when_driver_is_no_longer_leading():
     telemetry = Telemetry(
         results=[
@@ -73,5 +82,34 @@ def test_validator_allows_current_leader_story():
         story("The 24 is the leader and starting to stretch it."),
         telemetry,
     )
+
+    assert result.valid is True
+
+
+def test_validator_skips_restart_top_ten_when_live_order_changed():
+    telemetry = Telemetry(
+        results=[
+            {"CarIdx": 2, "Position": 0},
+            {"CarIdx": 1, "Position": 1},
+            {"CarIdx": 3, "Position": 2},
+        ],
+    )
+
+    result = LiveBroadcastValidator().validate(order_item((1, 2, 3)), telemetry)
+
+    assert result.valid is False
+    assert "top ten" in result.reason
+
+
+def test_validator_allows_restart_top_ten_when_live_order_matches():
+    telemetry = Telemetry(
+        results=[
+            {"CarIdx": 1, "Position": 0},
+            {"CarIdx": 2, "Position": 1},
+            {"CarIdx": 3, "Position": 2},
+        ],
+    )
+
+    result = LiveBroadcastValidator().validate(order_item((1, 2, 3)), telemetry)
 
     assert result.valid is True
