@@ -139,6 +139,13 @@ def format_playlist_paths(paths):
     return ";".join(str(Path(path)) for path in paths if path)
 
 
+def apply_audio_file_selection(values, field_name, path):
+    values[field_name] = str(Path(path))
+    if field_name == "NATIONAL_ANTHEM_AUDIO":
+        values["USE_NATIONAL_ANTHEM"] = "true"
+    return values
+
+
 def open_external_link(url):
     webbrowser.open(url)
 
@@ -473,9 +480,16 @@ def run_gui():
         )
         if not path:
             return
-        field = entries[field_name]
-        field.delete(0, "end")
-        field.insert(0, str(Path(path)))
+        updated_values = apply_audio_file_selection(collect_values(), field_name, path)
+        for key, value in updated_values.items():
+            if key not in entries:
+                continue
+            field = entries[key]
+            field.delete(0, "end")
+            field.insert(0, value)
+        if field_name == "NATIONAL_ANTHEM_AUDIO":
+            status.set("Set RGC Anthem audio and turned USE_NATIONAL_ANTHEM on. Save settings before starting.")
+            return
         status.set(f"Set {field_name}. Save settings before starting.")
 
     button(

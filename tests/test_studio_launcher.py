@@ -5,6 +5,7 @@ from types import SimpleNamespace
 from studio_launcher import (
     RGC_DISCORD_URL,
     RGC_WEBSITE_URL,
+    apply_audio_file_selection,
     broadcast_command,
     format_playlist_paths,
     has_running_broadcast,
@@ -94,6 +95,17 @@ def test_launcher_formats_practice_music_playlist():
     playlist = format_playlist_paths(["D:/Music/one.mp3", "D:/Music/two.mp3"])
 
     assert playlist.split(";") == [str(Path("D:/Music/one.mp3")), str(Path("D:/Music/two.mp3"))]
+
+
+def test_launcher_turns_on_anthem_when_audio_is_selected():
+    values = apply_audio_file_selection(
+        {"USE_NATIONAL_ANTHEM": "false"},
+        "NATIONAL_ANTHEM_AUDIO",
+        "D:/Music/anthem.mp3",
+    )
+
+    assert values["USE_NATIONAL_ANTHEM"] == "true"
+    assert values["NATIONAL_ANTHEM_AUDIO"] == str(Path("D:/Music/anthem.mp3"))
 
 
 def test_launcher_sanitizes_overlay_asset_names():
