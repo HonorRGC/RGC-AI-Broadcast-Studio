@@ -461,34 +461,6 @@ def run_gui():
         color="#334b64",
     ).pack(side="left", padx=5)
 
-    overlay_bar = frame(root, bg=PANEL_BG)
-    overlay_bar.pack(fill="x", padx=18, pady=(0, 8))
-    label(
-        overlay_bar,
-        text="Streamlabs / OBS Browser Source:",
-        anchor="w",
-        bg=PANEL_BG,
-        fg=MUTED_FG,
-    ).pack(side="left", padx=(10, 6), pady=8)
-    overlay_url_var = tk.StringVar(value=DEFAULT_OVERLAY_URL)
-    overlay_url_entry = entry(
-        overlay_bar,
-        textvariable=overlay_url_var,
-        width=38,
-        state="readonly",
-        readonlybackground=FIELD_BG,
-    )
-    overlay_url_entry.pack(side="left", fill="x", expand=True, padx=(0, 8), pady=8)
-    button(
-        overlay_bar,
-        text="Copy Overlay Link",
-        command=lambda: (
-            copy_to_clipboard(root, DEFAULT_OVERLAY_URL),
-            status.set("Copied overlay browser-source link for Streamlabs / OBS."),
-        ),
-        color="#334b64",
-    ).pack(side="left", padx=(0, 10), pady=8)
-
     status = tk.StringVar(
         value=(
             "Launcher ready. Broadcast is not started from this window yet. "
@@ -511,19 +483,58 @@ def run_gui():
     settings_frame.pack(fill="both", expand=True, padx=14, pady=12)
 
     entries = {}
+    overlay_brand_row = LAUNCHER_FIELDS.index(
+        (
+            "OVERLAY_BRAND_GRAPHICS",
+            "/assets/rgc_motorsports.png,/assets/autism_awareness.png,/assets/keep_it_real.webp",
+        )
+    )
+    overlay_link_row = overlay_brand_row + 1
+
+    def settings_grid_row(field_row):
+        return field_row + 1 if field_row > overlay_brand_row else field_row
+
     for row, (key, _default) in enumerate(LAUNCHER_FIELDS):
         if key == "STUDIO_VOLUME":
             continue
+        grid_row = settings_grid_row(row)
         label(settings_frame, text=key, anchor="w", width=24, bg=PANEL_BG, fg=MUTED_FG).grid(
-            row=row,
+            row=grid_row,
             column=0,
             sticky="w",
             pady=3,
         )
         entry_widget = entry(settings_frame, width=72)
         entry_widget.insert(0, existing.get(key, ""))
-        entry_widget.grid(row=row, column=1, sticky="ew", pady=3)
+        entry_widget.grid(row=grid_row, column=1, sticky="ew", pady=3)
         entries[key] = entry_widget
+
+    label(
+        settings_frame,
+        text="Streamlabs / OBS Link",
+        anchor="w",
+        width=24,
+        bg=PANEL_BG,
+        fg=MUTED_FG,
+    ).grid(row=overlay_link_row, column=0, sticky="w", pady=3)
+    overlay_url_var = tk.StringVar(value=DEFAULT_OVERLAY_URL)
+    overlay_url_entry = entry(
+        settings_frame,
+        textvariable=overlay_url_var,
+        width=72,
+        state="readonly",
+        readonlybackground=FIELD_BG,
+    )
+    overlay_url_entry.grid(row=overlay_link_row, column=1, sticky="ew", pady=3)
+    button(
+        settings_frame,
+        text="Copy Overlay Link",
+        command=lambda: (
+            copy_to_clipboard(root, DEFAULT_OVERLAY_URL),
+            status.set("Copied overlay browser-source link for Streamlabs / OBS."),
+        ),
+        color="#334b64",
+    ).grid(row=overlay_link_row, column=2, padx=(8, 0), sticky="w")
 
     def choose_brand_graphics():
         paths = filedialog.askopenfilenames(
@@ -584,25 +595,25 @@ def run_gui():
         text="Choose Sponsor Logos",
         command=choose_brand_graphics,
         color="#334b64",
-    ).grid(row=LAUNCHER_FIELDS.index(("USE_SPONSOR_READS", "true")) - 1, column=2, padx=(8, 0), sticky="w")
+    ).grid(row=settings_grid_row(overlay_brand_row), column=2, padx=(8, 0), sticky="w")
     button(
         settings_frame,
         text="Choose Anthem Audio",
         command=lambda: choose_single_audio("NATIONAL_ANTHEM_AUDIO", "Choose RGC Anthem audio"),
         color="#334b64",
-    ).grid(row=LAUNCHER_FIELDS.index(("NATIONAL_ANTHEM_AUDIO", "")), column=2, padx=(8, 0), sticky="w")
+    ).grid(row=settings_grid_row(LAUNCHER_FIELDS.index(("NATIONAL_ANTHEM_AUDIO", ""))), column=2, padx=(8, 0), sticky="w")
     button(
         settings_frame,
         text="Choose Practice Music",
         command=choose_practice_music,
         color="#334b64",
-    ).grid(row=LAUNCHER_FIELDS.index(("PRACTICE_MUSIC_PLAYLIST", "")), column=2, padx=(8, 0), sticky="w")
+    ).grid(row=settings_grid_row(LAUNCHER_FIELDS.index(("PRACTICE_MUSIC_PLAYLIST", ""))), column=2, padx=(8, 0), sticky="w")
     button(
         settings_frame,
         text="Choose Caution Audio",
         command=lambda: choose_single_audio("CAUTION_REPLAY_AUDIO", "Choose caution replay audio"),
         color="#334b64",
-    ).grid(row=LAUNCHER_FIELDS.index(("CAUTION_REPLAY_AUDIO", "")), column=2, padx=(8, 0), sticky="w")
+    ).grid(row=settings_grid_row(LAUNCHER_FIELDS.index(("CAUTION_REPLAY_AUDIO", ""))), column=2, padx=(8, 0), sticky="w")
 
     settings_frame.columnconfigure(1, weight=1)
 
