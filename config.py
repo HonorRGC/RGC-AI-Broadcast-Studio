@@ -83,10 +83,19 @@ NATIONAL_ANTHEM_DURATION_SECONDS = float(
 
 
 # Optional practice/replay music beds.
+STUDIO_VOLUME = max(
+    0,
+    min(
+        100,
+        env_int(
+            "STUDIO_VOLUME",
+            env_int("PRACTICE_MUSIC_VOLUME", 65),
+        ),
+    ),
+)
 PRACTICE_MUSIC_PLAYLIST = [
     item.strip()
     for item in os.getenv("PRACTICE_MUSIC_PLAYLIST", "").split(";")
     if item.strip()
 ]
-PRACTICE_MUSIC_VOLUME = max(0, min(100, env_int("PRACTICE_MUSIC_VOLUME", 65)))
 CAUTION_REPLAY_AUDIO = os.getenv("CAUTION_REPLAY_AUDIO", NATIONAL_ANTHEM_AUDIO)

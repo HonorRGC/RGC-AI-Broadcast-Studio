@@ -2,11 +2,11 @@ from pathlib import Path
 
 from config import (
     PRACTICE_MUSIC_PLAYLIST,
-    PRACTICE_MUSIC_VOLUME,
+    STUDIO_VOLUME,
     SPONSOR_READ_CAUSE,
     SPONSOR_READ_NAME,
 )
-from production.audio_bed import PlaylistAudioPlayer
+from production.audio_bed import PlaylistAudioPlayer, percent_to_mci_volume
 from production.session_tracker import SessionTracker, WeekendSession
 
 
@@ -17,12 +17,12 @@ class PracticePresentationDirector:
         player=None,
         sponsor_name=SPONSOR_READ_NAME,
         sponsor_cause=SPONSOR_READ_CAUSE,
-        music_volume=PRACTICE_MUSIC_VOLUME,
+        music_volume=STUDIO_VOLUME,
     ):
         self.playlist = list(playlist if playlist is not None else PRACTICE_MUSIC_PLAYLIST)
         self.music_volume = max(0, min(100, int(music_volume or 0)))
         self.player = player or PlaylistAudioPlayer(
-            normal_volume=self.music_volume_to_player_volume(self.music_volume)
+            normal_volume=percent_to_mci_volume(self.music_volume)
         )
         self.sponsor_name = sponsor_name
         self.sponsor_cause = sponsor_cause
@@ -99,7 +99,7 @@ class PracticePresentationDirector:
 
     @staticmethod
     def music_volume_to_player_volume(volume_percent):
-        return max(0, min(1000, int(volume_percent) * 10))
+        return percent_to_mci_volume(volume_percent)
 
 
 class QualifyingCameraDirector:

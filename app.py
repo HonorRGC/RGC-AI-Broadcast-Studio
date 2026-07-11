@@ -1,7 +1,7 @@
 import argparse
 import time
 
-from config import CRANK_IT_UP_ICON_GRAPHIC, CRANK_IT_UP_SPONSOR_GRAPHIC
+from config import CRANK_IT_UP_ICON_GRAPHIC, CRANK_IT_UP_SPONSOR_GRAPHIC, STUDIO_VOLUME
 from broadcast.booth import BroadcastBooth
 from broadcast.engine import BroadcastEngine
 from broadcaster.telemetry import IRacingTelemetry
@@ -535,8 +535,15 @@ def report_camera_decision(decision):
 def main():
     args = parse_args()
     engine = BroadcastEngine(incident_debug=args.incident_debug)
-    caution_audio_bed = AudioBedPlayer()
-    booth = BroadcastBooth(enable_voice=not args.no_voice, audio_bed=caution_audio_bed)
+    caution_audio_bed = AudioBedPlayer(
+        normal_volume=STUDIO_VOLUME * 10,
+        ducked_volume=max(0, min(1000, STUDIO_VOLUME * 2)),
+    )
+    booth = BroadcastBooth(
+        enable_voice=not args.no_voice,
+        audio_bed=caution_audio_bed,
+        studio_volume=STUDIO_VOLUME,
+    )
     camera_director = CameraDirector(
         mode=args.camera_mode,
         preferred_group=args.camera_group,

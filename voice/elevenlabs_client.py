@@ -1,12 +1,16 @@
 from pathlib import Path
-import os
 
 from elevenlabs.client import ElevenLabs
+from production.audio_bed import OneShotAudioPlayer, percent_to_mci_volume
 
 
 class ElevenLabsClient:
-    def __init__(self, api_key):
+    def __init__(self, api_key, studio_volume=65, player=None):
         self.client = ElevenLabs(api_key=api_key)
+        self.player = player or OneShotAudioPlayer(
+            normal_volume=percent_to_mci_volume(studio_volume),
+            alias="rgc_voice_audio",
+        )
 
     def list_voices(self):
         voices = self.client.voices.get_all()
@@ -30,7 +34,9 @@ class ElevenLabsClient:
                 for chunk in audio:
                     file.write(chunk)
 
-            os.startfile(output_path.resolve())
+            if not self.player.play(str(output_path.resolve())):
+                print("ElevenLabs voice error:")
+                print("Hidden voice audio player could not play the generated file.")
 
         except Exception as error:
             print("ElevenLabs voice error:")

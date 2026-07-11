@@ -4,19 +4,24 @@ from config import (
     LEAD_VOICE_ID,
     COLOR_VOICE_ID,
     PIT_VOICE_ID,
+    STUDIO_VOLUME,
 )
 
 from voice.elevenlabs_client import ElevenLabsClient
 
 
 class BroadcastBooth:
-    def __init__(self, enable_voice=True, audio_bed=None):
+    def __init__(self, enable_voice=True, audio_bed=None, studio_volume=STUDIO_VOLUME):
         self.last_comment = ""
         self.enable_voice = enable_voice
         self.audio_bed = audio_bed
+        self.studio_volume = int(studio_volume)
 
         if enable_voice and USE_ELEVENLABS and ELEVENLABS_API_KEY:
-            self.voice_client = ElevenLabsClient(ELEVENLABS_API_KEY)
+            self.voice_client = ElevenLabsClient(
+                ELEVENLABS_API_KEY,
+                studio_volume=self.studio_volume,
+            )
         else:
             self.voice_client = None
 

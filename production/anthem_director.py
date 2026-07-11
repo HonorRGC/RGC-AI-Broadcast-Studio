@@ -4,9 +4,10 @@ from pathlib import Path
 from config import (
     NATIONAL_ANTHEM_AUDIO,
     NATIONAL_ANTHEM_DURATION_SECONDS,
+    STUDIO_VOLUME,
     USE_NATIONAL_ANTHEM,
 )
-from production.audio_bed import OneShotAudioPlayer
+from production.audio_bed import OneShotAudioPlayer, percent_to_mci_volume
 from production.session_tracker import SessionTracker, WeekendSession
 
 
@@ -23,11 +24,15 @@ class NationalAnthemDirector:
         audio_path=NATIONAL_ANTHEM_AUDIO,
         duration_seconds=NATIONAL_ANTHEM_DURATION_SECONDS,
         player=None,
+        studio_volume=STUDIO_VOLUME,
     ):
         self.enabled = bool(enabled)
         self.audio_path = str(audio_path or "").strip()
         self.duration_seconds = float(duration_seconds or 90)
-        self.player = player or OneShotAudioPlayer(alias="rgc_anthem_audio")
+        self.player = player or OneShotAudioPlayer(
+            normal_volume=percent_to_mci_volume(studio_volume),
+            alias="rgc_anthem_audio",
+        )
         self.session_tracker = SessionTracker()
         self.played = False
         self.active = False

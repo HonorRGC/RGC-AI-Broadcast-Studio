@@ -53,7 +53,7 @@ LAUNCHER_FIELDS = [
     ("NATIONAL_ANTHEM_AUDIO", ""),
     ("NATIONAL_ANTHEM_DURATION_SECONDS", "90"),
     ("PRACTICE_MUSIC_PLAYLIST", ""),
-    ("PRACTICE_MUSIC_VOLUME", "65"),
+    ("STUDIO_VOLUME", "65"),
     ("CAUTION_REPLAY_AUDIO", ""),
     ("POST_RACE_INTERVIEWS_ENABLED", "false"),
     ("POST_RACE_FINISH_CAMERA_DELAY_SECONDS", "180"),
@@ -92,7 +92,10 @@ def save_env_file(values, path=ENV_PATH):
 
 def launcher_defaults(existing=None):
     existing = existing or {}
-    return {key: existing.get(key, default) for key, default in LAUNCHER_FIELDS}
+    defaults = {key: existing.get(key, default) for key, default in LAUNCHER_FIELDS}
+    if "STUDIO_VOLUME" not in existing and "PRACTICE_MUSIC_VOLUME" in existing:
+        defaults["STUDIO_VOLUME"] = existing["PRACTICE_MUSIC_VOLUME"]
+    return defaults
 
 
 def ensure_league_files(root=ROOT):
@@ -509,6 +512,8 @@ def run_gui():
 
     entries = {}
     for row, (key, _default) in enumerate(LAUNCHER_FIELDS):
+        if key == "STUDIO_VOLUME":
+            continue
         label(settings_frame, text=key, anchor="w", width=24, bg=PANEL_BG, fg=MUTED_FG).grid(
             row=row,
             column=0,
@@ -608,7 +613,9 @@ def run_gui():
     )
 
     def collect_values():
-        return {key: entry.get().strip() for key, entry in entries.items()}
+        values = {key: entry.get().strip() for key, entry in entries.items()}
+        values["STUDIO_VOLUME"] = str(int(volume_var.get()))
+        return values
 
     def save_settings():
         save_env_file(collect_values())
@@ -686,6 +693,42 @@ def run_gui():
         padx=6,
         pady=8,
     )
+    volume_frame = frame(action_bar, bg=PANEL_BG)
+    volume_frame.pack(side="left", padx=(14, 6), pady=8)
+    label(
+        volume_frame,
+        text="Studio Volume",
+        bg=PANEL_BG,
+        fg=MUTED_FG,
+        font=("Segoe UI", 9, "bold"),
+    ).pack(side="left", padx=(0, 6))
+    volume_var = tk.IntVar(value=int(existing.get("STUDIO_VOLUME", existing.get("PRACTICE_MUSIC_VOLUME", "65")) or 65))
+    volume_value = tk.StringVar(value=f"{volume_var.get()}%")
+
+    def update_volume_label(value):
+        volume_value.set(f"{int(float(value))}%")
+
+    tk.Scale(
+        volume_frame,
+        from_=0,
+        to=100,
+        orient="horizontal",
+        variable=volume_var,
+        command=update_volume_label,
+        length=150,
+        bg=PANEL_BG,
+        fg=TEXT_FG,
+        troughcolor=FIELD_BG,
+        highlightthickness=0,
+        activebackground=ACCENT,
+    ).pack(side="left")
+    label(
+        volume_frame,
+        textvariable=volume_value,
+        bg=PANEL_BG,
+        fg=TEXT_FG,
+        width=4,
+    ).pack(side="left", padx=(4, 0))
 
     build_league_tab(league_tab, status, label, frame, entry, button)
     root.protocol("WM_DELETE_WINDOW", on_close)

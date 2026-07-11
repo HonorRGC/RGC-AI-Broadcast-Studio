@@ -1,6 +1,10 @@
 import threading
 
-from production.audio_bed import OneShotAudioPlayer, PlaylistAudioPlayer
+from production.audio_bed import (
+    OneShotAudioPlayer,
+    PlaylistAudioPlayer,
+    percent_to_mci_volume,
+)
 
 
 class PlaylistAudioPlayerSpy(PlaylistAudioPlayer):
@@ -11,6 +15,14 @@ class PlaylistAudioPlayerSpy(PlaylistAudioPlayer):
     def send(self, command):
         self.commands.append(command)
         return True
+
+
+def test_percent_to_mci_volume_uses_studio_volume_scale():
+    assert percent_to_mci_volume(0) == 0
+    assert percent_to_mci_volume(65) == 650
+    assert percent_to_mci_volume(100) == 1000
+    assert percent_to_mci_volume(120) == 1000
+    assert percent_to_mci_volume(-5) == 0
 
 
 def test_playlist_player_does_not_start_song_after_stop_signal():

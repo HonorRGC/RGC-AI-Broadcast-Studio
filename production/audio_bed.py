@@ -5,6 +5,14 @@ import threading
 from config import CAUTION_REPLAY_AUDIO
 
 
+def percent_to_mci_volume(volume_percent):
+    try:
+        percent = int(volume_percent)
+    except (TypeError, ValueError):
+        percent = 65
+    return max(0, min(1000, percent * 10))
+
+
 class AudioBedPlayer:
     """Small Windows music-bed player with ducking support.
 

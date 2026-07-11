@@ -57,11 +57,17 @@ def test_launcher_defaults_include_league_stats_csv():
     assert defaults["LEAGUE_STATS_CSV"] == "league/stats.csv"
     assert "/assets/rgc_motorsports.png" in defaults["OVERLAY_BRAND_GRAPHICS"]
     assert defaults["PRACTICE_MUSIC_PLAYLIST"] == ""
-    assert defaults["PRACTICE_MUSIC_VOLUME"] == "65"
+    assert defaults["STUDIO_VOLUME"] == "65"
     assert defaults["CAUTION_REPLAY_AUDIO"] == ""
     assert defaults["NATIONAL_ANTHEM_AUDIO"] == ""
     assert defaults["POST_RACE_INTERVIEWS_ENABLED"] == "false"
     assert defaults["POST_RACE_FINISH_CAMERA_DELAY_SECONDS"] == "180"
+
+
+def test_launcher_migrates_old_practice_music_volume_to_studio_volume():
+    defaults = launcher_defaults({"PRACTICE_MUSIC_VOLUME": "42"})
+
+    assert defaults["STUDIO_VOLUME"] == "42"
 
 
 def test_launcher_saves_known_settings(tmp_path):
@@ -87,8 +93,8 @@ def test_launcher_saves_music_settings(tmp_path):
 
     save_env_file(
         {
+            "STUDIO_VOLUME": "45",
             "PRACTICE_MUSIC_PLAYLIST": "D:/Music/practice1.mp3;D:/Music/practice2.mp3",
-            "PRACTICE_MUSIC_VOLUME": "45",
             "CAUTION_REPLAY_AUDIO": "D:/Music/caution.mp3",
             "NATIONAL_ANTHEM_AUDIO": "D:/Music/anthem.mp3",
         },
@@ -96,8 +102,9 @@ def test_launcher_saves_music_settings(tmp_path):
     )
 
     saved = env_path.read_text(encoding="utf-8")
+    assert "STUDIO_VOLUME=45" in saved
     assert "PRACTICE_MUSIC_PLAYLIST=D:/Music/practice1.mp3;D:/Music/practice2.mp3" in saved
-    assert "PRACTICE_MUSIC_VOLUME=45" in saved
+    assert "PRACTICE_MUSIC_VOLUME" not in saved
     assert "CAUTION_REPLAY_AUDIO=D:/Music/caution.mp3" in saved
     assert "NATIONAL_ANTHEM_AUDIO=D:/Music/anthem.mp3" in saved
 
