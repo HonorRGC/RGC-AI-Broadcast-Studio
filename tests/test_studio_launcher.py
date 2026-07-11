@@ -70,6 +70,10 @@ def test_launcher_defaults_include_league_stats_csv():
     assert defaults["CAUTION_PRESENTATION_GRAPHICS"] == ""
     assert defaults["POST_RACE_INTERVIEWS_ENABLED"] == "false"
     assert defaults["POST_RACE_FINISH_CAMERA_DELAY_SECONDS"] == "180"
+    assert defaults["SIMRACERHUB_SOURCE"] == "https://simracerhub.com"
+    assert defaults["SIMRACERHUB_LEAGUE_ID"] == ""
+    assert defaults["SIMRACERHUB_SERIES_ID"] == ""
+    assert defaults["SIMRACERHUB_SEASON_ID"] == ""
 
 
 def test_launcher_health_reports_missing_ai_keys():
@@ -137,6 +141,29 @@ def test_launcher_saves_known_settings(tmp_path):
     assert "USE_OPENAI=false" in saved
     assert "OVERLAY_EVENT_TITLE=League Race" in saved
     assert "LEAGUE_STATS_CSV=league/stats.csv" in saved
+
+
+def test_launcher_saves_sim_racer_hub_settings(tmp_path):
+    env_path = tmp_path / ".env"
+
+    save_env_file(
+        {
+            "SIMRACERHUB_SOURCE": "https://simracerhub.com",
+            "SIMRACERHUB_LEAGUE_ID": "1598",
+            "SIMRACERHUB_SERIES_ID": "3872",
+            "SIMRACERHUB_SEASON_ID": "29247",
+            "SIMRACERHUB_TRACK_NAME": "Nashville",
+            "SIMRACERHUB_CAREER_MODE": "true",
+        },
+        env_path,
+    )
+    loaded = launcher_defaults(load_env_file(env_path))
+
+    assert loaded["SIMRACERHUB_LEAGUE_ID"] == "1598"
+    assert loaded["SIMRACERHUB_SERIES_ID"] == "3872"
+    assert loaded["SIMRACERHUB_SEASON_ID"] == "29247"
+    assert loaded["SIMRACERHUB_TRACK_NAME"] == "Nashville"
+    assert loaded["SIMRACERHUB_CAREER_MODE"] == "true"
 
 
 def test_launcher_sanitizes_profile_names():

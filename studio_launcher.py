@@ -64,6 +64,20 @@ LAUNCHER_FIELDS = [
     ("LEAGUE_STATS_CSV", "league/stats.csv"),
 ]
 
+SIM_RACER_HUB_FIELDS = [
+    ("SIMRACERHUB_SOURCE", "https://simracerhub.com"),
+    ("SIMRACERHUB_LEAGUE_ID", ""),
+    ("SIMRACERHUB_SERIES_ID", ""),
+    ("SIMRACERHUB_SEASON_ID", ""),
+    ("SIMRACERHUB_TRACK_NAME", ""),
+    ("SIMRACERHUB_MIN_STARTS", "2"),
+    ("SIMRACERHUB_STATS_OUTPUT", "league/stats.csv"),
+    ("SIMRACERHUB_DRIVERS_OUTPUT", "league/drivers.csv"),
+    ("SIMRACERHUB_CAREER_MODE", "false"),
+]
+
+SAVED_FIELDS = LAUNCHER_FIELDS + SIM_RACER_HUB_FIELDS
+
 
 def load_env_file(path=ENV_PATH):
     values = {}
@@ -86,7 +100,7 @@ def save_env_file(values, path=ENV_PATH):
         "# You can still edit this file manually if needed.",
         "",
     ]
-    for key, default in LAUNCHER_FIELDS:
+    for key, default in SAVED_FIELDS:
         lines.append(f"{key}={values.get(key, default)}")
     lines.append("")
     Path(path).write_text("\n".join(lines), encoding="utf-8")
@@ -132,7 +146,7 @@ def load_profile(profile_name, profile_dir=PROFILE_DIR):
 
 def launcher_defaults(existing=None):
     existing = existing or {}
-    defaults = {key: existing.get(key, default) for key, default in LAUNCHER_FIELDS}
+    defaults = {key: existing.get(key, default) for key, default in SAVED_FIELDS}
     if "STUDIO_VOLUME" not in existing and "PRACTICE_MUSIC_VOLUME" in existing:
         defaults["STUDIO_VOLUME"] = existing["PRACTICE_MUSIC_VOLUME"]
     return defaults
@@ -716,6 +730,7 @@ def run_gui():
     settings_frame.pack(fill="both", expand=True, padx=14, pady=12)
 
     entries = {}
+    sim_racer_hub_state = {"entries": {}, "career_mode": None}
     overlay_brand_row = LAUNCHER_FIELDS.index(
         (
             "OVERLAY_BRAND_GRAPHICS",
@@ -886,6 +901,11 @@ def run_gui():
     def collect_values():
         values = {key: entry.get().strip() for key, entry in entries.items()}
         values["STUDIO_VOLUME"] = str(int(volume_var.get()))
+        for key, widget in sim_racer_hub_state["entries"].items():
+            values[key] = widget.get().strip()
+        career_mode = sim_racer_hub_state.get("career_mode")
+        if career_mode is not None:
+            values["SIMRACERHUB_CAREER_MODE"] = "true" if career_mode.get() else "false"
         return values
 
     def apply_values_to_form(values):
@@ -893,6 +913,12 @@ def run_gui():
         for key, widget in entries.items():
             widget.delete(0, "end")
             widget.insert(0, values.get(key, ""))
+        for key, widget in sim_racer_hub_state["entries"].items():
+            widget.delete(0, "end")
+            widget.insert(0, values.get(key, ""))
+        career_mode = sim_racer_hub_state.get("career_mode")
+        if career_mode is not None:
+            career_mode.set(setting_enabled(values, "SIMRACERHUB_CAREER_MODE", "false"))
         volume_var.set(int(values.get("STUDIO_VOLUME", "65") or 65))
         update_volume_label(volume_var.get())
         refresh_health()
@@ -1120,15 +1146,36 @@ def run_gui():
         width=4,
     ).pack(side="left", padx=(4, 0))
 
-    build_league_tab(league_content, status, label, frame, entry, button)
+    build_league_tab(
+        league_content,
+        status,
+        label,
+        frame,
+        entry,
+        button,
+        existing,
+        sim_racer_hub_state,
+    )
     refresh_health()
     root.protocol("WM_DELETE_WINDOW", on_close)
 
     root.mainloop()
 
 
-def build_league_tab(parent, status, label, frame, entry, button):
+def build_league_tab(
+    parent,
+    status,
+    label,
+    frame,
+    entry,
+    button,
+    existing=None,
+    sim_racer_hub_state=None,
+):
     import tkinter as tk
+
+    existing = launcher_defaults(existing or {})
+    sim_racer_hub_state = sim_racer_hub_state if sim_racer_hub_state is not None else {}
 
     intro = (
         "Import league stats from Sim Racer Hub. You can use the clean URL "
@@ -1145,25 +1192,25 @@ def build_league_tab(parent, status, label, frame, entry, button):
     form.pack(fill="x", padx=14)
 
     defaults = {
-        "source": "https://simracerhub.com",
-        "league_id": "",
-        "series_id": "",
-        "season_id": "",
-        "track_name": "",
-        "min_starts": "2",
-        "output": "league/stats.csv",
-        "drivers_output": "league/drivers.csv",
+        "SIMRACERHUB_SOURCE": existing.get("SIMRACERHUB_SOURCE", "https://simracerhub.com"),
+        "SIMRACERHUB_LEAGUE_ID": existing.get("SIMRACERHUB_LEAGUE_ID", ""),
+        "SIMRACERHUB_SERIES_ID": existing.get("SIMRACERHUB_SERIES_ID", ""),
+        "SIMRACERHUB_SEASON_ID": existing.get("SIMRACERHUB_SEASON_ID", ""),
+        "SIMRACERHUB_TRACK_NAME": existing.get("SIMRACERHUB_TRACK_NAME", ""),
+        "SIMRACERHUB_MIN_STARTS": existing.get("SIMRACERHUB_MIN_STARTS", "2"),
+        "SIMRACERHUB_STATS_OUTPUT": existing.get("SIMRACERHUB_STATS_OUTPUT", "league/stats.csv"),
+        "SIMRACERHUB_DRIVERS_OUTPUT": existing.get("SIMRACERHUB_DRIVERS_OUTPUT", "league/drivers.csv"),
     }
     entries = {}
     rows = [
-        ("Sim Racer Hub URL", "source"),
-        ("League ID", "league_id"),
-        ("Series ID", "series_id"),
-        ("Season ID", "season_id"),
-        ("Track History Filter", "track_name"),
-        ("Minimum Starts", "min_starts"),
-        ("Stats Output CSV", "output"),
-        ("Drivers Output CSV", "drivers_output"),
+        ("Sim Racer Hub URL", "SIMRACERHUB_SOURCE"),
+        ("League ID", "SIMRACERHUB_LEAGUE_ID"),
+        ("Series ID", "SIMRACERHUB_SERIES_ID"),
+        ("Season ID", "SIMRACERHUB_SEASON_ID"),
+        ("Track History Filter", "SIMRACERHUB_TRACK_NAME"),
+        ("Minimum Starts", "SIMRACERHUB_MIN_STARTS"),
+        ("Stats Output CSV", "SIMRACERHUB_STATS_OUTPUT"),
+        ("Drivers Output CSV", "SIMRACERHUB_DRIVERS_OUTPUT"),
     ]
     for row_number, (label_text, key) in enumerate(rows):
         label(form, text=label_text, anchor="w", width=22, bg=PANEL_BG, fg=MUTED_FG).grid(
@@ -1176,9 +1223,13 @@ def build_league_tab(parent, status, label, frame, entry, button):
         entry_widget.insert(0, defaults[key])
         entry_widget.grid(row=row_number, column=1, sticky="ew", pady=4)
         entries[key] = entry_widget
+    sim_racer_hub_state["entries"] = entries
     form.columnconfigure(1, weight=1)
 
-    career_mode = tk.BooleanVar(value=False)
+    career_mode = tk.BooleanVar(
+        value=setting_enabled(existing, "SIMRACERHUB_CAREER_MODE", "false")
+    )
+    sim_racer_hub_state["career_mode"] = career_mode
     tk.Checkbutton(
         form,
         text="Career Mode: import all seasons in this series instead of one season",
@@ -1212,19 +1263,19 @@ def build_league_tab(parent, status, label, frame, entry, button):
 
     def run_import(dry_run, drivers_only=False):
         data = values()
-        if not data["source"]:
+        if not data["SIMRACERHUB_SOURCE"]:
             messagebox.showerror("Missing URL", "Paste a Sim Racer Hub URL first.")
             return
 
         result = run_sim_racer_hub_import(
-            source=data["source"],
-            league_id=data["league_id"],
-            series_id=data["series_id"],
-            season_id=data["season_id"],
-            track_name=data["track_name"],
-            min_starts=data["min_starts"],
-            output=data["output"],
-            drivers_output=data["drivers_output"],
+            source=data["SIMRACERHUB_SOURCE"],
+            league_id=data["SIMRACERHUB_LEAGUE_ID"],
+            series_id=data["SIMRACERHUB_SERIES_ID"],
+            season_id=data["SIMRACERHUB_SEASON_ID"],
+            track_name=data["SIMRACERHUB_TRACK_NAME"],
+            min_starts=data["SIMRACERHUB_MIN_STARTS"],
+            output=data["SIMRACERHUB_STATS_OUTPUT"],
+            drivers_output=data["SIMRACERHUB_DRIVERS_OUTPUT"],
             career_mode=career_mode.get(),
             dry_run=dry_run,
             drivers_only=drivers_only,
@@ -1237,9 +1288,9 @@ def build_league_tab(parent, status, label, frame, entry, button):
             action = "Previewed" if dry_run else "Imported"
             mode = "career" if career_mode.get() else "season"
             if drivers_only:
-                target = data["drivers_output"] or "league/drivers.csv"
+                target = data["SIMRACERHUB_DRIVERS_OUTPUT"] or "league/drivers.csv"
             else:
-                target = data["output"] or "league/stats.csv"
+                target = data["SIMRACERHUB_STATS_OUTPUT"] or "league/stats.csv"
             data_type = "driver roster" if drivers_only else "stats"
             suffix = "" if dry_run else f" to {target}"
             status.set(f"{action} Sim Racer Hub {mode} {data_type}{suffix}.")
