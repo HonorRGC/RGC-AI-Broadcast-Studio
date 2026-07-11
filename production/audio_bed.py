@@ -195,3 +195,73 @@ class PlaylistAudioPlayer:
             return False
         result = winmm.mciSendStringW(str(command), None, 0, None)
         return int(result or 0) == 0
+
+
+class OneShotAudioPlayer:
+    """Play one local audio file through Windows MCI without opening a player UI."""
+
+    def __init__(self, normal_volume=800, alias="rgc_one_shot_audio"):
+        self.normal_volume = int(normal_volume)
+        self.alias = alias
+        self.active_path = ""
+        self.is_playing = False
+        self.close_timer = None
+        self.lock = threading.Lock()
+
+    def play(self, audio_path, duration_seconds=None):
+        path = Path(str(audio_path or "")).expanduser()
+        if not path.exists():
+            return False
+
+        with self.lock:
+            resolved = str(path.resolve())
+            self.close_locked()
+            opened = self.send(f'open "{resolved}" type mpegvideo alias {self.alias}')
+            if not opened:
+                opened = self.send(f'open "{resolved}" alias {self.alias}')
+            if not opened:
+                return False
+
+            self.active_path = resolved
+            self.set_volume(self.normal_volume)
+            if not self.send(f"play {self.alias}"):
+                self.close_locked()
+                return False
+            self.is_playing = True
+            self.schedule_close(duration_seconds)
+            return True
+
+    def stop(self):
+        with self.lock:
+            self.close_locked()
+
+    def schedule_close(self, duration_seconds):
+        if not duration_seconds:
+            return
+        self.close_timer = threading.Timer(
+            max(0.1, float(duration_seconds)),
+            self.stop,
+        )
+        self.close_timer.daemon = True
+        self.close_timer.start()
+
+    def close_locked(self):
+        if self.close_timer:
+            self.close_timer.cancel()
+            self.close_timer = None
+        self.send(f"stop {self.alias}")
+        self.send(f"close {self.alias}")
+        self.active_path = ""
+        self.is_playing = False
+
+    def set_volume(self, volume):
+        volume = max(0, min(1000, int(volume)))
+        return self.send(f"setaudio {self.alias} volume to {volume}")
+
+    def send(self, command):
+        try:
+            winmm = ctypes.windll.winmm
+        except Exception:
+            return False
+        result = winmm.mciSendStringW(str(command), None, 0, None)
+        return int(result or 0) == 0

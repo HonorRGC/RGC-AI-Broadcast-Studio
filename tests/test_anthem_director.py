@@ -15,6 +15,15 @@ class OverlaySpy:
         self.cleared += 1
 
 
+class HiddenPlayerSpy:
+    def __init__(self):
+        self.plays = []
+
+    def play(self, path, duration_seconds=None):
+        self.plays.append((path, duration_seconds))
+        return True
+
+
 def test_rgc_anthem_starts_once_during_qualifying(tmp_path):
     audio = tmp_path / "anthem.mp3"
     audio.write_bytes(b"audio")
@@ -36,6 +45,23 @@ def test_rgc_anthem_starts_once_during_qualifying(tmp_path):
     assert overlay.presentations[0]["kind"] == "rgc_anthem"
     assert overlay.presentations[0]["title"] == "RGC Anthem"
     assert overlay.presentations[0]["duration"] == 88
+
+
+def test_rgc_anthem_uses_hidden_player_interface_with_duration(tmp_path):
+    audio = tmp_path / "anthem.mp3"
+    audio.write_bytes(b"audio")
+    player = HiddenPlayerSpy()
+    director = NationalAnthemDirector(
+        enabled=True,
+        audio_path=str(audio),
+        duration_seconds=75,
+        player=player,
+    )
+
+    decision = director.update("Qualifying", OverlaySpy())
+
+    assert decision.status == "played"
+    assert player.plays == [(str(audio.resolve()), 75)]
 
 
 def test_rgc_anthem_can_show_without_audio_file():

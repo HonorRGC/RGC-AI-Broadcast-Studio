@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-import os
 from pathlib import Path
 
 from config import (
@@ -7,6 +6,7 @@ from config import (
     NATIONAL_ANTHEM_DURATION_SECONDS,
     USE_NATIONAL_ANTHEM,
 )
+from production.audio_bed import OneShotAudioPlayer
 from production.session_tracker import SessionTracker, WeekendSession
 
 
@@ -27,7 +27,7 @@ class NationalAnthemDirector:
         self.enabled = bool(enabled)
         self.audio_path = str(audio_path or "").strip()
         self.duration_seconds = float(duration_seconds or 90)
-        self.player = player or getattr(os, "startfile", self.no_audio_player)
+        self.player = player or OneShotAudioPlayer(alias="rgc_anthem_audio")
         self.session_tracker = SessionTracker()
         self.played = False
         self.active = False
@@ -72,7 +72,11 @@ class NationalAnthemDirector:
             )
 
         try:
-            self.player(str(path.resolve()))
+            if self.play_with_player(str(path.resolve())) is False:
+                return AnthemDecision(
+                    "audio_failed",
+                    "RGC Anthem audio could not be played by the hidden audio player.",
+                )
         except Exception as error:
             return AnthemDecision(
                 "audio_failed",
@@ -81,6 +85,7 @@ class NationalAnthemDirector:
 
         return AnthemDecision("played", "RGC Anthem presentation started.")
 
-    @staticmethod
-    def no_audio_player(_):
-        raise RuntimeError("No default desktop audio player is available.")
+    def play_with_player(self, path):
+        if hasattr(self.player, "play"):
+            return self.player.play(path, duration_seconds=self.duration_seconds)
+        return self.player(path)
