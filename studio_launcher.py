@@ -794,9 +794,9 @@ def build_league_tab(parent, status, label, frame, entry, button):
 
     defaults = {
         "source": "https://simracerhub.com",
-        "league_id": "1598",
-        "series_id": "3872",
-        "season_id": "29247",
+        "league_id": "",
+        "series_id": "",
+        "season_id": "",
         "track_name": "",
         "min_starts": "2",
         "output": "league/stats.csv",

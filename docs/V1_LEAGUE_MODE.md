@@ -37,45 +37,44 @@ These stats are added to the verified driver context OpenAI receives, so the bro
 The first Sim Racer Hub importer is available as a command-line bridge:
 
 ```powershell
-python tools\sim_racer_hub_import.py "https://simracerhub.com/driver_stats.php?driver_id=90223" --league-id 1598 --season-id 29247 --output league\stats.csv
+python tools\sim_racer_hub_import.py "https://simracerhub.com/driver_stats.php?driver_id=YOUR_DRIVER_ID" --league-id YOUR_LEAGUE_ID --season-id YOUR_SEASON_ID --output league\stats.csv
 ```
 
-Useful WFO examples from the public driver page:
+Useful placeholders for your league:
 
-- `--league-id 1598` filters to WFO Racing League.
-- `--series-id 3872` filters to WFO Racing League Wicked Wednesday Truck Series.
-- `--series-id 4737` filters to WFO X Series Xfinity Cars.
-- `--season-id 29247` filters to WFO Burn't Bacon Truck Series Season 17.
-- `--season-id 29222` filters to RGC O'Reillys Series Season 17.
+- `--league-id YOUR_LEAGUE_ID` filters to one league.
+- `--series-id YOUR_SERIES_ID` filters to one series.
+- `--season-id YOUR_SEASON_ID` filters to one season.
+- Leave off `--season-id` for career totals across the selected series.
 
 The importer currently reads one driver page at a time and updates `league/stats.csv` with starts, wins, top fives, top tens, poles, average finish, last finish, optional track-history stats, and a stat note containing Sim Racer Hub values like laps led, passes, quality passes, closing passes, incidents, average start, and average running position.
 
 It can also bulk import a whole season from a Sim Racer Hub `league_stats.php` page:
 
 ```powershell
-python tools\sim_racer_hub_import.py "https://simracerhub.com/league_stats.php?series_id=3872" --bulk --league-id 1598 --series-id 3872 --season-id 29247 --output league\stats.csv
+python tools\sim_racer_hub_import.py "https://simracerhub.com/league_stats.php?series_id=YOUR_SERIES_ID" --bulk --league-id YOUR_LEAGUE_ID --series-id YOUR_SERIES_ID --season-id YOUR_SEASON_ID --output league\stats.csv
 ```
 
 You can also pass the Sim Racer Hub series seasons URL; bulk mode automatically follows it to the matching stats page:
 
 ```powershell
-python tools\sim_racer_hub_import.py "https://simracerhub.com/series_seasons.php?series_id=3872&reset_series=y" --bulk --league-id 1598 --series-id 3872 --season-id 29247 --output league\stats.csv
+python tools\sim_racer_hub_import.py "https://simracerhub.com/series_seasons.php?series_id=YOUR_SERIES_ID&reset_series=y" --bulk --league-id YOUR_LEAGUE_ID --series-id YOUR_SERIES_ID --season-id YOUR_SEASON_ID --output league\stats.csv
 ```
 
 Use `--min-starts 2` or higher if you want to skip one-off substitute drivers.
 
-For career stats across every WFO Wicked Wednesday Truck Series season on the page, leave off `--season-id`:
+For career stats across every season in the selected series, leave off `--season-id`:
 
 ```powershell
-python tools\sim_racer_hub_import.py "https://simracerhub.com/series_seasons.php?series_id=3872&reset_series=y" --bulk --league-id 1598 --series-id 3872 --min-starts 10 --output league\stats.csv
+python tools\sim_racer_hub_import.py "https://simracerhub.com/series_seasons.php?series_id=YOUR_SERIES_ID&reset_series=y" --bulk --league-id YOUR_LEAGUE_ID --series-id YOUR_SERIES_ID --min-starts 10 --output league\stats.csv
 ```
 
-That produces series-career totals for each driver, including total starts, wins, top fives, top tens, poles, average finish, laps led, passes, quality passes, closing passes, and incidents. Use a higher `--min-starts` value if you only want regular WFO drivers.
+That produces series-career totals for each driver, including total starts, wins, top fives, top tens, poles, average finish, laps led, passes, quality passes, closing passes, and incidents. Use a higher `--min-starts` value if you only want regular league drivers.
 
 To add track-history stats for the race you are about to broadcast, include `--track-name`:
 
 ```powershell
-python tools\sim_racer_hub_import.py "https://simracerhub.com/league_stats.php?series_id=3872" --bulk --league-id 1598 --series-id 3872 --track-name Nashville --min-starts 10 --output league\stats.csv
+python tools\sim_racer_hub_import.py "https://simracerhub.com/league_stats.php?series_id=YOUR_SERIES_ID" --bulk --league-id YOUR_LEAGUE_ID --series-id YOUR_SERIES_ID --track-name Nashville --min-starts 10 --output league\stats.csv
 ```
 
 The importer matches the name against Sim Racer Hub track names and config names, then fills `track_starts`, `track_wins`, `best_track_finish`, and a note about the driver's most recent race at that track.

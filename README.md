@@ -102,29 +102,29 @@ See [docs/V1_LEAGUE_MODE.md](docs/V1_LEAGUE_MODE.md) for the league-mode and Sim
 Public Sim Racer Hub driver stat pages can be imported into `league\stats.csv`:
 
 ```powershell
-python tools\sim_racer_hub_import.py "https://simracerhub.com/driver_stats.php?driver_id=90223" --league-id 1598 --season-id 29247 --output league\stats.csv
+python tools\sim_racer_hub_import.py "https://simracerhub.com/driver_stats.php?driver_id=YOUR_DRIVER_ID" --league-id YOUR_LEAGUE_ID --season-id YOUR_SEASON_ID --output league\stats.csv
 ```
 
 Use `--dry-run` first if you want to preview the row before updating the CSV.
 
-To import the current WFO Truck season from the series stats page:
+To import a current league season from the series stats page:
 
 ```powershell
-python tools\sim_racer_hub_import.py "https://simracerhub.com/league_stats.php?series_id=3872" --bulk --league-id 1598 --series-id 3872 --season-id 29247 --output league\stats.csv
+python tools\sim_racer_hub_import.py "https://simracerhub.com/league_stats.php?series_id=YOUR_SERIES_ID" --bulk --league-id YOUR_LEAGUE_ID --series-id YOUR_SERIES_ID --season-id YOUR_SEASON_ID --output league\stats.csv
 ```
 
 The same bulk command also accepts the Sim Racer Hub series seasons URL and automatically follows it to the matching stats page.
 
-For career stats across every WFO Wicked Wednesday Truck Series season, leave off `--season-id`:
+For career stats across every season in a series, leave off `--season-id`:
 
 ```powershell
-python tools\sim_racer_hub_import.py "https://simracerhub.com/series_seasons.php?series_id=3872&reset_series=y" --bulk --league-id 1598 --series-id 3872 --min-starts 10 --output league\stats.csv
+python tools\sim_racer_hub_import.py "https://simracerhub.com/series_seasons.php?series_id=YOUR_SERIES_ID&reset_series=y" --bulk --league-id YOUR_LEAGUE_ID --series-id YOUR_SERIES_ID --min-starts 10 --output league\stats.csv
 ```
 
 To include prior history at the upcoming track:
 
 ```powershell
-python tools\sim_racer_hub_import.py "https://simracerhub.com/league_stats.php?series_id=3872" --bulk --league-id 1598 --series-id 3872 --track-name Nashville --min-starts 10 --output league\stats.csv
+python tools\sim_racer_hub_import.py "https://simracerhub.com/league_stats.php?series_id=YOUR_SERIES_ID" --bulk --league-id YOUR_LEAGUE_ID --series-id YOUR_SERIES_ID --track-name Nashville --min-starts 10 --output league\stats.csv
 ```
 
 ## Run a live broadcast
