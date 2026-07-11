@@ -142,26 +142,43 @@ class PlaylistAudioPlayer:
                 self.play_one(path)
 
     def play_one(self, path):
+        if self.stop_event.is_set():
+            return False
+
         self.close_alias()
         opened = self.send(f'open "{path}" type mpegvideo alias {self.alias}')
         if not opened:
             opened = self.send(f'open "{path}" alias {self.alias}')
         if not opened:
             return False
+
+        if self.stop_event.is_set():
+            self.close_alias()
+            return False
+
         self.set_volume(self.normal_volume)
+        if self.stop_event.is_set():
+            self.close_alias()
+            return False
+
         played = self.send(f"play {self.alias} wait")
         self.close_alias()
         return played
 
     def stop(self):
+        thread = None
         with self.lock:
+            thread = self.thread
             self.stop_locked()
+        if thread and thread.is_alive() and thread is not threading.current_thread():
+            thread.join(timeout=1.0)
 
     def stop_locked(self):
         self.stop_event.set()
         self.close_alias()
         self.active_playlist = []
         self.is_playing = False
+        self.thread = None
 
     def close_alias(self):
         self.send(f"stop {self.alias}")
