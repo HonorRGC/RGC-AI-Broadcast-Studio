@@ -1,5 +1,6 @@
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 from studio_launcher import (
     RGC_DISCORD_URL,
@@ -10,6 +11,7 @@ from studio_launcher import (
     is_process_running,
     launcher_defaults,
     load_env_file,
+    running_broadcast_pids,
     save_env_file,
     sanitize_asset_name,
     sim_racer_hub_import_command,
@@ -129,6 +131,16 @@ def test_launcher_detects_running_process():
     assert is_process_running(RunningProcess())
     assert not is_process_running(StoppedProcess())
     assert not is_process_running(None)
+
+
+def test_launcher_finds_running_broadcast_pids(monkeypatch):
+    def fake_run(command, text, capture_output, check):
+        assert "powershell" in command[0].lower()
+        return SimpleNamespace(returncode=0, stdout="1234\nnot-a-pid\n5678\n")
+
+    monkeypatch.setattr("studio_launcher.subprocess.run", fake_run)
+
+    assert running_broadcast_pids(root=Path("C:/RGC")) == [1234, 5678]
 
 
 def test_launcher_builds_sim_racer_hub_season_import_command():

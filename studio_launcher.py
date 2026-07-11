@@ -155,6 +155,33 @@ def broadcast_command():
     ]
 
 
+def running_broadcast_pids(root=ROOT):
+    app_path = str((Path(root) / "app.py").resolve())
+    escaped_app_path = app_path.replace("'", "''")
+    script = (
+        "Get-CimInstance Win32_Process | "
+        f"Where-Object {{ $_.CommandLine -like '*{escaped_app_path}*' }} | "
+        "ForEach-Object { $_.ProcessId }"
+    )
+    try:
+        result = subprocess.run(
+            ["powershell", "-NoProfile", "-Command", script],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+    except Exception:
+        return []
+    if result.returncode != 0:
+        return []
+    pids = []
+    for line in result.stdout.splitlines():
+        line = line.strip()
+        if line.isdigit():
+            pids.append(int(line))
+    return pids
+
+
 def is_process_running(process):
     return process is not None and process.poll() is None
 
@@ -248,11 +275,27 @@ def launch_broadcast(producer_assist=False):
 
 def stop_broadcast():
     global BROADCAST_PROCESS
-    if not is_process_running(BROADCAST_PROCESS):
+    stopped = False
+    if is_process_running(BROADCAST_PROCESS):
+        BROADCAST_PROCESS.terminate()
+        stopped = True
+
+    external_pids = running_broadcast_pids()
+    for pid in external_pids:
+        if BROADCAST_PROCESS and BROADCAST_PROCESS.pid == pid:
+            continue
+        subprocess.run(
+            ["taskkill", "/PID", str(pid), "/T", "/F"],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        stopped = True
+
+    if not stopped:
         BROADCAST_PROCESS = None
         return False
 
-    BROADCAST_PROCESS.terminate()
     BROADCAST_PROCESS = None
     return True
 
@@ -350,7 +393,12 @@ def run_gui():
         color="#334b64",
     ).pack(side="left", padx=5)
 
-    status = tk.StringVar(value=f"Settings file: {ENV_PATH}")
+    status = tk.StringVar(
+        value=(
+            "Launcher ready. Broadcast is not started from this window yet. "
+            f"Settings file: {ENV_PATH}"
+        )
+    )
 
     action_bar = frame(root, bg=PANEL_BG)
     action_bar.pack(fill="x", padx=18, pady=(4, 10))
