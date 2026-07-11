@@ -57,6 +57,7 @@ def test_launcher_defaults_include_league_stats_csv():
     assert defaults["PRACTICE_MUSIC_PLAYLIST"] == ""
     assert defaults["CAUTION_REPLAY_AUDIO"] == ""
     assert defaults["NATIONAL_ANTHEM_AUDIO"] == ""
+    assert defaults["POST_RACE_INTERVIEWS_ENABLED"] == "false"
 
 
 def test_launcher_saves_known_settings(tmp_path):

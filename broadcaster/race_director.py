@@ -1,6 +1,6 @@
 from enum import Enum
 
-from config import SPONSOR_READ_CAUSE, USE_SPONSOR_READS
+from config import POST_RACE_INTERVIEWS_ENABLED, SPONSOR_READ_CAUSE, USE_SPONSOR_READS
 from helpers.position_formatter import PositionFormatter
 
 
@@ -28,7 +28,8 @@ class RaceDirector:
     SESSION_STATE_CHECKERED = 5
     SESSION_STATE_COOL_DOWN = 6
 
-    def __init__(self):
+    def __init__(self, post_race_interviews_enabled=POST_RACE_INTERVIEWS_ENABLED):
+        self.post_race_interviews_enabled = bool(post_race_interviews_enabled)
         self.reset()
 
     def reset(self):
@@ -275,6 +276,7 @@ class RaceDirector:
             return
 
         winner = self.get_winner(results, driver_lookup)
+        winner_car_idx = self.get_winner_car_idx(results)
         track_name = self.get_track_name(track_info)
 
         if winner:
@@ -290,6 +292,11 @@ class RaceDirector:
             speaker="lead",
             expires_after=60,
             dedupe_key="race_control:checkered",
+            camera_sequence_steps=(
+                (winner_car_idx, "TV Mixed", 0),
+            )
+            if winner_car_idx is not None
+            else (),
         )
 
         self.checkered_announced = True
@@ -321,16 +328,28 @@ class RaceDirector:
             dedupe_key="post_race:finish_rundown",
         )
 
-        scheduler.add(
-            self.build_signoff(track_name),
-            priority=7,
-            category="post_race_signoff",
-            protected=True,
-            speaker="lead",
-            delay_seconds=8.0,
-            expires_after=240,
-            dedupe_key="post_race:signoff",
-        )
+        if self.post_race_interviews_enabled:
+            scheduler.add(
+                self.build_interview_handoff(results, driver_lookup),
+                priority=7,
+                category="post_race_interviews",
+                protected=True,
+                speaker="lead",
+                delay_seconds=8.0,
+                expires_after=240,
+                dedupe_key="post_race:interview_handoff",
+            )
+        else:
+            scheduler.add(
+                self.build_signoff(track_name),
+                priority=7,
+                category="post_race_signoff",
+                protected=True,
+                speaker="lead",
+                delay_seconds=8.0,
+                expires_after=240,
+                dedupe_key="post_race:signoff",
+            )
 
         self.post_race_results_queued = True
 
@@ -506,20 +525,21 @@ class RaceDirector:
         return track_info.get("track_name", "the speedway") or "the speedway"
 
     def get_winner(self, results, driver_lookup):
-        if not results:
+        car_idx = self.get_winner_car_idx(results)
+        if car_idx is None:
             return ""
 
-        try:
-            leader = sorted(results, key=lambda car: int(car.get("Position", 999)))[0]
-        except Exception:
-            return ""
-
-        car_idx = leader.get("CarIdx")
         driver_info = driver_lookup.get(car_idx, {})
         number = driver_info.get("number", "?")
         name = driver_info.get("name", f"Car {car_idx}")
 
         return f"the {number} of {name}"
+
+    def get_winner_car_idx(self, results):
+        ordered = self.sort_results(results or [])
+        if not ordered:
+            return None
+        return ordered[0].get("CarIdx")
 
     def build_finish_rundown(self, results, driver_lookup, max_cars=10):
         if not results:
@@ -545,6 +565,28 @@ class RaceDirector:
             "For Jeff and Sarah, I am Mike with RGC AI Broadcast. "
             "Thank you for watching, and we will see you next time."
         )
+
+    def build_interview_handoff(self, results, driver_lookup):
+        podium = self.podium_names(results, driver_lookup)
+        if len(podium) >= 3:
+            return (
+                "Do not go anywhere. The top three are headed to post-race interviews. "
+                f"We will hear from {podium[2]} first, then {podium[1]}, "
+                f"and finally tonight's winner, {podium[0]}. "
+                "Race control will take it from here with the drivers."
+            )
+        return (
+            "Do not go anywhere. Post-race interviews are coming up next, "
+            "and race control will take it from here with the drivers."
+        )
+
+    def podium_names(self, results, driver_lookup):
+        names = []
+        for car in self.sort_results(results or [])[:3]:
+            car_idx = car.get("CarIdx")
+            driver_info = driver_lookup.get(car_idx, {})
+            names.append(driver_info.get("name", f"Car {car_idx}"))
+        return names
 
     def format_driver_position(self, car, driver_lookup, zero_based_positions=False):
         car_idx = car.get("CarIdx")

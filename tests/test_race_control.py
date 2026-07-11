@@ -367,10 +367,47 @@ def test_checkered_queues_finish_rundown_then_signoff():
 
     categories = [item.category for item in queue.items]
     assert categories == ["race_control", "post_race", "post_race_signoff"]
+    assert queue.items[0].camera_sequence_steps == ((0, "TV Mixed", 0),)
     assert queue.items[1].priority > queue.items[2].priority
     assert "Thank you for watching" in queue.items[2].message
     assert "Homestead Miami Speedway" in queue.items[2].message
     assert "Jeff and Sarah" in queue.items[2].message
+
+
+def test_checkered_with_interviews_queues_handoff_instead_of_signoff():
+    director = RaceDirector(post_race_interviews_enabled=True)
+    queue = BroadcastQueue()
+    results = [
+        {"CarIdx": index, "Position": index + 1} for index in range(3)
+    ]
+    drivers = {
+        0: {"name": "Winner Driver", "number": "1"},
+        1: {"name": "Second Place", "number": "2"},
+        2: {"name": "Third Place", "number": "3"},
+    }
+
+    director.handle_checkered(
+        results,
+        drivers,
+        queue,
+        {"track_name": "Homestead Miami Speedway"},
+    )
+    for _ in range(8):
+        director.handle_post_race_results(
+            results,
+            drivers,
+            queue,
+            {"track_name": "Homestead Miami Speedway"},
+        )
+
+    categories = [item.category for item in queue.items]
+    assert categories == ["race_control", "post_race", "post_race_interviews"]
+    assert queue.items[0].camera_sequence_steps == ((0, "TV Mixed", 0),)
+    assert "top three are headed to post-race interviews" in queue.items[2].message
+    assert "Third Place first" in queue.items[2].message
+    assert "Second Place" in queue.items[2].message
+    assert "Winner Driver" in queue.items[2].message
+    assert "Thank you for watching" not in queue.items[2].message
 
 
 def test_checkered_finish_rundown_waits_for_stable_order():

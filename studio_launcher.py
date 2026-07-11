@@ -53,6 +53,7 @@ LAUNCHER_FIELDS = [
     ("NATIONAL_ANTHEM_DURATION_SECONDS", "90"),
     ("PRACTICE_MUSIC_PLAYLIST", ""),
     ("CAUTION_REPLAY_AUDIO", ""),
+    ("POST_RACE_INTERVIEWS_ENABLED", "false"),
     ("USE_LEAGUE_DRIVER_NOTES", "false"),
     ("LEAGUE_DRIVERS_CSV", "league/drivers.csv"),
     ("LEAGUE_STATS_CSV", "league/stats.csv"),

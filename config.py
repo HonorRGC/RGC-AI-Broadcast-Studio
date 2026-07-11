@@ -57,6 +57,12 @@ SPONSOR_READ_CAUSE = os.getenv("SPONSOR_READ_CAUSE", "")
 SPONSOR_READ_MESSAGE = os.getenv("SPONSOR_READ_MESSAGE", "")
 
 
+# Optional post-race interviews.
+POST_RACE_INTERVIEWS_ENABLED = (
+    os.getenv("POST_RACE_INTERVIEWS_ENABLED", "false").lower() == "true"
+)
+
+
 # Optional pre-race ceremony
 USE_NATIONAL_ANTHEM = os.getenv("USE_NATIONAL_ANTHEM", "false").lower() == "true"
 NATIONAL_ANTHEM_AUDIO = os.getenv("NATIONAL_ANTHEM_AUDIO", "")
