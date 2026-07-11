@@ -300,6 +300,10 @@ def stop_broadcast():
     return True
 
 
+def has_running_broadcast():
+    return is_process_running(BROADCAST_PROCESS) or bool(running_broadcast_pids())
+
+
 def run_gui():
     import tkinter as tk
     from tkinter import filedialog
@@ -545,6 +549,21 @@ def run_gui():
         else:
             status.set("No running broadcast found from this launcher.")
 
+    def on_close():
+        if has_running_broadcast():
+            should_stop = messagebox.askyesno(
+                "Broadcast still running",
+                (
+                    "A broadcast appears to still be running.\n\n"
+                    "Do you want to stop the broadcast before closing RGC AI Broadcast Studio?"
+                ),
+            )
+            if should_stop:
+                stop_broadcast()
+                root.destroy()
+            return
+        root.destroy()
+
     button(action_bar, text="Save Settings", command=save_settings, color="#334b64").pack(
         side="left",
         padx=6,
@@ -572,6 +591,7 @@ def run_gui():
     )
 
     build_league_tab(league_tab, status, label, frame, entry, button)
+    root.protocol("WM_DELETE_WINDOW", on_close)
 
     root.mainloop()
 

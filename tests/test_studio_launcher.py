@@ -7,6 +7,7 @@ from studio_launcher import (
     RGC_WEBSITE_URL,
     broadcast_command,
     format_playlist_paths,
+    has_running_broadcast,
     install_overlay_brand_graphics,
     is_process_running,
     launcher_defaults,
@@ -141,6 +142,13 @@ def test_launcher_finds_running_broadcast_pids(monkeypatch):
     monkeypatch.setattr("studio_launcher.subprocess.run", fake_run)
 
     assert running_broadcast_pids(root=Path("C:/RGC")) == [1234, 5678]
+
+
+def test_launcher_detects_external_running_broadcast(monkeypatch):
+    monkeypatch.setattr("studio_launcher.BROADCAST_PROCESS", None)
+    monkeypatch.setattr("studio_launcher.running_broadcast_pids", lambda: [1234])
+
+    assert has_running_broadcast()
 
 
 def test_launcher_builds_sim_racer_hub_season_import_command():
