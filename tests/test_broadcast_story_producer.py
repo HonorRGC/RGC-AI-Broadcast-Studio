@@ -24,8 +24,9 @@ def test_story_producer_adds_broadcast_angle_and_notes_for_mover():
     )
 
     assert item.broadcast_angle == "quiet charge through traffic"
-    assert "Broadcast angle: quiet charge through traffic." in item.summary
+    assert item.summary == "The number 24 has gained eight positions."
     assert any("long green-flag run" in note for note in item.producer_notes)
+    assert any("without saying the label out loud" in note for note in item.producer_notes)
     assert any("not make this only a position-gain read" in note for note in item.producer_notes)
 
 

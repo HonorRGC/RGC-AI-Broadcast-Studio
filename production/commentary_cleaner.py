@@ -26,6 +26,8 @@ class CommentaryCleaner:
             r"\bStory type:\s*[^.]+\.?",
             r"\bCurrent story:\s*[^.]+\.?",
             r"\bConfidence:\s*\d+\s*percent\.?",
+            r"\bBroadcast angle:\s*[^.?!]+[.?!]?",
+            r"\bBroadcast Angle:\s*[^.?!]+[.?!]?",
             r"\bHe is currently the biggest mover in the field\.?",
             r"\bShe is currently the biggest mover in the field\.?",
         ]

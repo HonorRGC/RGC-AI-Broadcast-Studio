@@ -26,7 +26,7 @@ class BroadcastStoryProducer:
 
         if angle:
             setattr(item, "broadcast_angle", angle)
-            notes.append(f"Broadcast angle: {angle}.")
+            notes.append(f"Use this broadcast angle without saying the label out loud: {angle}.")
 
         if story_type in {"biggest_mover", "top_five_charge", "momentum"}:
             notes.append(
@@ -74,7 +74,6 @@ class BroadcastStoryProducer:
         self.remember_angle(driver_key, angle)
 
         setattr(item, "producer_notes", notes)
-        setattr(item, "summary", self.enrich_summary(item, angle, race_state))
         return item
 
     def phase_notes(self, race_state):
@@ -131,14 +130,6 @@ class BroadcastStoryProducer:
         if priority >= 9:
             return "high-priority race development"
         return "race context update"
-
-    def enrich_summary(self, item, angle, race_state):
-        summary = str(getattr(item, "summary", "") or "").strip()
-        if not angle or not summary:
-            return summary
-        if "Broadcast angle:" in summary:
-            return summary
-        return f"{summary} Broadcast angle: {angle}."
 
     def can_mention_start_position(self, driver_key):
         if not driver_key:
