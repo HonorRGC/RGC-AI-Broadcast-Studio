@@ -57,6 +57,7 @@ class NationalAnthemDirector:
 
         if self.active and session == WeekendSession.RACE:
             self.active = False
+            self.stop_audio()
             if overlay_server:
                 overlay_server.clear_special_presentation()
             return AnthemDecision("ended", "RGC Anthem presentation ended.")
@@ -95,3 +96,8 @@ class NationalAnthemDirector:
         if hasattr(self.player, "play"):
             return self.player.play(path)
         return self.player(path)
+
+    def stop_audio(self):
+        stopper = getattr(self.player, "stop", None)
+        if stopper:
+            stopper()

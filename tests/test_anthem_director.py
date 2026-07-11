@@ -18,10 +18,14 @@ class OverlaySpy:
 class HiddenPlayerSpy:
     def __init__(self):
         self.plays = []
+        self.stops = 0
 
     def play(self, path, duration_seconds=None):
         self.plays.append((path, duration_seconds))
         return True
+
+    def stop(self):
+        self.stops += 1
 
 
 def test_rgc_anthem_starts_once_during_qualifying(tmp_path):
@@ -95,10 +99,11 @@ def test_rgc_anthem_clears_when_race_starts(tmp_path):
     audio = tmp_path / "anthem.mp3"
     audio.write_bytes(b"audio")
     overlay = OverlaySpy()
+    player = HiddenPlayerSpy()
     director = NationalAnthemDirector(
         enabled=True,
         audio_path=str(audio),
-        player=lambda _: None,
+        player=player,
     )
 
     director.update("Qualifying", overlay)
@@ -106,6 +111,7 @@ def test_rgc_anthem_clears_when_race_starts(tmp_path):
 
     assert ended.status == "ended"
     assert overlay.cleared == 1
+    assert player.stops == 1
 
 
 def test_rgc_anthem_reports_missing_audio(tmp_path):
