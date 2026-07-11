@@ -7,17 +7,20 @@ from studio_launcher import (
     RGC_WEBSITE_URL,
     apply_audio_file_selection,
     broadcast_command,
+    clear_broadcast_pid,
     format_playlist_paths,
     has_running_broadcast,
     install_overlay_brand_graphics,
     is_process_running,
     launcher_defaults,
     load_env_file,
+    read_broadcast_pid,
     running_broadcast_pids,
     save_env_file,
     sanitize_asset_name,
     sim_racer_hub_import_command,
     stop_broadcast_processes,
+    write_broadcast_pid,
 )
 
 
@@ -171,9 +174,28 @@ def test_launcher_counts_stopped_broadcast_processes(monkeypatch):
     assert calls[1] == ["taskkill", "/PID", "5678", "/T", "/F"]
 
 
+def test_launcher_writes_and_reads_broadcast_pid(tmp_path):
+    path = tmp_path / ".runtime" / "broadcast.pid"
+
+    write_broadcast_pid(4321, path=path)
+
+    assert read_broadcast_pid(path=path) == 4321
+    clear_broadcast_pid(path=path)
+    assert read_broadcast_pid(path=path) is None
+
+
 def test_launcher_detects_external_running_broadcast(monkeypatch):
     monkeypatch.setattr("studio_launcher.BROADCAST_PROCESS", None)
+    monkeypatch.setattr("studio_launcher.read_broadcast_pid", lambda: None)
     monkeypatch.setattr("studio_launcher.running_broadcast_pids", lambda: [1234])
+
+    assert has_running_broadcast()
+
+
+def test_launcher_detects_saved_broadcast_pid(monkeypatch):
+    monkeypatch.setattr("studio_launcher.BROADCAST_PROCESS", None)
+    monkeypatch.setattr("studio_launcher.read_broadcast_pid", lambda: 4321)
+    monkeypatch.setattr("studio_launcher.running_broadcast_pids", lambda: [])
 
     assert has_running_broadcast()
 

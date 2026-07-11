@@ -13,6 +13,8 @@ from tkinter import messagebox
 ROOT = Path(__file__).resolve().parent
 ENV_PATH = ROOT / ".env"
 STATIC_ASSET_DIR = ROOT / "production" / "static"
+RUNTIME_DIR = ROOT / ".runtime"
+BROADCAST_PID_PATH = RUNTIME_DIR / "broadcast.pid"
 BROADCAST_PROCESS = None
 RGC_DISCORD_URL = "https://discord.gg/Axwwa8CUqt"
 RGC_WEBSITE_URL = "https://www.realisticgamingcrew.com"
@@ -162,6 +164,30 @@ def broadcast_command():
     ]
 
 
+def write_broadcast_pid(pid, path=BROADCAST_PID_PATH):
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(str(int(pid)), encoding="utf-8")
+
+
+def read_broadcast_pid(path=BROADCAST_PID_PATH):
+    path = Path(path)
+    if not path.exists():
+        return None
+    try:
+        pid = int(path.read_text(encoding="utf-8").strip())
+    except Exception:
+        return None
+    return pid if pid > 0 else None
+
+
+def clear_broadcast_pid(path=BROADCAST_PID_PATH):
+    try:
+        Path(path).unlink(missing_ok=True)
+    except Exception:
+        pass
+
+
 def running_broadcast_pids(root=ROOT):
     root_path = str(Path(root).resolve())
     app_path = str((Path(root) / "app.py").resolve())
@@ -296,36 +322,37 @@ def launch_broadcast(producer_assist=False):
         env["USE_OPENAI"] = "false"
         env["USE_ELEVENLABS"] = "false"
     BROADCAST_PROCESS = subprocess.Popen(broadcast_command(), cwd=ROOT, env=env)
+    write_broadcast_pid(BROADCAST_PROCESS.pid)
     return BROADCAST_PROCESS
 
 
 def stop_broadcast():
     global BROADCAST_PROCESS
-    stopped = False
+    pids_to_stop = []
     if is_process_running(BROADCAST_PROCESS):
-        BROADCAST_PROCESS.terminate()
-        stopped = True
+        pids_to_stop.append(BROADCAST_PROCESS.pid)
+
+    saved_pid = read_broadcast_pid()
+    if saved_pid:
+        pids_to_stop.append(saved_pid)
 
     external_pids = running_broadcast_pids()
-    pids_to_stop = []
     for pid in external_pids:
-        if BROADCAST_PROCESS and BROADCAST_PROCESS.pid == pid:
-            continue
         pids_to_stop.append(pid)
+    pids_to_stop = sorted(set(pid for pid in pids_to_stop if pid))
     stopped_count = stop_broadcast_processes(pids_to_stop)
-    if stopped_count:
-        stopped = True
 
-    if not stopped:
-        BROADCAST_PROCESS = None
-        return 0
-
+    clear_broadcast_pid()
     BROADCAST_PROCESS = None
-    return max(1, stopped_count)
+    return stopped_count
 
 
 def has_running_broadcast():
-    return is_process_running(BROADCAST_PROCESS) or bool(running_broadcast_pids())
+    return (
+        is_process_running(BROADCAST_PROCESS)
+        or bool(read_broadcast_pid())
+        or bool(running_broadcast_pids())
+    )
 
 
 def run_gui():
