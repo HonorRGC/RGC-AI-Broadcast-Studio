@@ -234,6 +234,7 @@ class OverlayStateBuilder:
             ],
             default=0,
         )
+        leader_car = valid_results[0] if valid_results else {}
 
         leaderboard = []
         for car in valid_results:
@@ -255,13 +256,21 @@ class OverlayStateBuilder:
                         display_position,
                         session_type,
                         leader_laps,
+                        leader_car,
                     ),
                     fastest_lap=self.format_lap_time(self.best_lap_value(car)),
                 )
             )
         return self.visible_leaderboard_window(leaderboard)
 
-    def format_entry_metric(self, car, display_position, session_type, leader_laps=0):
+    def format_entry_metric(
+        self,
+        car,
+        display_position,
+        session_type,
+        leader_laps=0,
+        leader_car=None,
+    ):
         if self.is_timed_session(session_type):
             return self.format_lap_time(self.best_lap_value(car))
         explicit_laps_down = self.explicit_laps_down(car)
@@ -269,9 +278,17 @@ class OverlayStateBuilder:
             lap_word = "lap" if explicit_laps_down == 1 else "laps"
             return f"-{explicit_laps_down} {lap_word}"
         interval = self.format_interval(car)
+        laps_down = self.computed_laps_down(car, leader_laps)
+        if laps_down > 0 and self.should_show_computed_laps_down(
+            car,
+            leader_car or {},
+            laps_down,
+            interval,
+        ):
+            lap_word = "lap" if laps_down == 1 else "laps"
+            return f"-{laps_down} {lap_word}"
         if display_position != 1 and interval:
             return interval
-        laps_down = self.computed_laps_down(car, leader_laps)
         if laps_down > 0:
             lap_word = "lap" if laps_down == 1 else "laps"
             return f"-{laps_down} {lap_word}"
@@ -289,6 +306,32 @@ class OverlayStateBuilder:
         if leader_laps > 0 and car_laps > 0:
             return max(leader_laps - car_laps, 0)
         return 0
+
+    def should_show_computed_laps_down(self, car, leader_car, laps_down, interval=""):
+        if laps_down >= 2:
+            return True
+        if not interval:
+            return True
+
+        leader_pct = self.lap_distance_pct(leader_car)
+        car_pct = self.lap_distance_pct(car)
+        if leader_pct is None or car_pct is None:
+            return False
+
+        # Avoid the common start/finish flash: leader has just crossed the
+        # stripe, while the next cars are still at the end of the previous lap.
+        if leader_pct <= 0.15 and car_pct >= 0.85:
+            return False
+
+        return True
+
+    def lap_distance_pct(self, car):
+        for key in ("LapDistPct", "LapDist", "LapDistancePct"):
+            if key in car and car.get(key) not in (None, ""):
+                value = self.safe_float(car.get(key), -1.0)
+                if 0.0 <= value <= 1.0:
+                    return value
+        return None
 
     def is_timed_session(self, session_type):
         text = str(session_type or "").lower()
