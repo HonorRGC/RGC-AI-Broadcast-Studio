@@ -31,19 +31,24 @@ tester ZIP without private `.env`, `league`, or saved profile data.
 2. Double-click:
 
    ```text
+   install_studio.bat
+   ```
+
+3. Wait for setup to finish. This creates the local Python environment, installs the app, creates `.env`, adds a desktop shortcut, and opens the studio.
+
+If you prefer the manual setup path, double-click:
+
+   ```text
    setup_windows.bat
    ```
 
-3. Wait for setup to finish.
-4. Double-click:
-
-   ```text
-   launch_studio.bat
-   ```
+Then open the app with `launch_studio.bat`.
 
 ## Add a desktop icon
 
-Right-click:
+The installer normally creates the desktop shortcut automatically.
+
+If you need to create it manually, right-click:
 
 ```text
 create_desktop_shortcut.ps1

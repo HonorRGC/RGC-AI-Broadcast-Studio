@@ -31,11 +31,14 @@ dist\
 ## First setup
 
 1. Extract the ZIP somewhere simple, like `Documents\RGC-AI-Broadcast-Studio`.
-2. Double-click `setup_windows.bat`.
-3. Double-click `launch_studio.bat`.
-4. Fill in the launcher settings.
-5. Click `Save Settings`.
-6. Create a profile for their league or test session.
+2. Double-click `install_studio.bat`.
+3. Wait for setup to finish.
+4. The installer creates a desktop shortcut named `RGC AI Broadcast Studio`.
+5. Fill in the launcher settings.
+6. Click `Save Settings`.
+7. Create a profile for their league or test session.
+
+If the installer cannot create the desktop shortcut, the admin can still open the program with `launch_studio.bat`.
 
 ## Overlay setup
 
@@ -52,6 +55,18 @@ Add it as a browser source at `1920 x 1080`.
 For the first run, use `Start Producer Assist` if they only want cameras, overlays, and live broadcast prompts.
 
 Use `Start Broadcast` when they are ready to test OpenAI and ElevenLabs voices.
+
+## Admin first-run checklist
+
+Before race night, have the admin verify:
+
+- iRacing is open and connected to a live, hosted, league, or AI session.
+- The launcher Broadcast Health panel looks ready.
+- OpenAI and ElevenLabs are either configured or intentionally turned off.
+- The Streamlabs / OBS browser source is showing the overlay.
+- Camera control works in a short test session.
+- They can start and stop the broadcast from the launcher.
+- A profile is saved for the league race.
 
 ## Private files intentionally not included
 

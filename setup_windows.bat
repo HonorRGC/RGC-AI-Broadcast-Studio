@@ -13,7 +13,7 @@ if errorlevel 1 (
     echo Python launcher "py" was not found.
     echo Install Python 3.11 or newer from https://www.python.org/downloads/
     echo Make sure "Add python.exe to PATH" is checked during install.
-    pause
+    if not "%RGC_SETUP_NO_PAUSE%"=="1" pause
     exit /b 1
 )
 
@@ -28,7 +28,7 @@ if not exist ".venv\Scripts\python.exe" (
 
 if not exist ".venv\Scripts\python.exe" (
     echo Could not create .venv.
-    pause
+    if not "%RGC_SETUP_NO_PAUSE%"=="1" pause
     exit /b 1
 )
 
@@ -37,7 +37,7 @@ echo Installing RGC AI Broadcast Studio dependencies...
 ".venv\Scripts\python.exe" -m pip install -e .
 if errorlevel 1 (
     echo Install failed. Check the message above.
-    pause
+    if not "%RGC_SETUP_NO_PAUSE%"=="1" pause
     exit /b 1
 )
 
@@ -52,4 +52,4 @@ echo.
 echo Setup complete.
 echo Next: double-click launch_studio.bat, or run create_desktop_shortcut.ps1.
 echo.
-pause
+if not "%RGC_SETUP_NO_PAUSE%"=="1" pause

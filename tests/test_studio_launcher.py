@@ -381,6 +381,7 @@ def test_launcher_builds_sim_racer_hub_driver_roster_command():
 
 def test_tester_zip_excludes_private_local_files():
     assert should_include("README.md")
+    assert should_include("install_studio.bat")
     assert should_include("production/static/rgc_motorsports.png")
 
     assert not should_include(".env")
