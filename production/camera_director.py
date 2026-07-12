@@ -22,6 +22,7 @@ class CameraDirector:
         home_group="TV Mixed",
         minimum_hold_seconds=8.0,
         return_after_seconds=10.0,
+        incident_return_after_seconds=35.0,
         lineup_camera_number=1,
         clock=None,
     ):
@@ -32,6 +33,10 @@ class CameraDirector:
         self.home_group = str(home_group or "TV Mixed")
         self.minimum_hold_seconds = float(minimum_hold_seconds)
         self.return_after_seconds = float(return_after_seconds)
+        self.incident_return_after_seconds = max(
+            float(incident_return_after_seconds),
+            self.return_after_seconds,
+        )
         self.lineup_camera_number = int(lineup_camera_number)
         self.clock = clock or time.monotonic
         self.reset()
@@ -96,6 +101,13 @@ class CameraDirector:
             self.return_home_at = None
             return self.focus_home(telemetry, now, force=True)
 
+        if self.current_role == "replay" and self.current_group_number is not None:
+            return CameraDecision(
+                "held",
+                "Incident camera holds until the replay or leader return.",
+                group_number=self.current_group_number,
+            )
+
         if self.current_car_idx is None:
             return self.focus_home(telemetry, now, force=True)
 
@@ -152,7 +164,7 @@ class CameraDirector:
 
         if getattr(item, "camera_focus_incident", False):
             self.clear_sequence()
-            self.return_home_at = now + self.return_after_seconds
+            self.return_home_at = now + self.incident_return_after_seconds
             return self.focus_incident_replay(
                 getattr(item, "camera_incident_group", "Far Chase"),
                 telemetry,
