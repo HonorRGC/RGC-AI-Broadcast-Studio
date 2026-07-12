@@ -131,6 +131,30 @@ def test_caution_item_immediately_focuses_incident_camera():
     assert telemetry.switches == [("incident", 4, 0)]
 
 
+def test_caution_incident_camera_returns_to_leader_after_hold():
+    telemetry = CameraTelemetry()
+    times = iter([100.0, 100.0, 111.0])
+    director = CameraDirector(
+        mode="auto",
+        preferred_group="TV1",
+        return_after_seconds=10,
+        clock=lambda: next(times),
+    )
+    item = SimpleNamespace(
+        camera_focus_incident=True,
+        camera_incident_group="Far Chase",
+        category="race_control",
+        dedupe_key="race_control:caution",
+    )
+
+    incident = director.follow(item, telemetry)
+    home = director.update(telemetry)
+
+    assert incident.status == "switched"
+    assert home.status == "switched"
+    assert telemetry.switches == [("incident", 4, 0), ("77", 5, 0)]
+
+
 def test_unknown_camera_group_fails_without_sending_command():
     telemetry = CameraTelemetry()
     director = CameraDirector(mode="auto", preferred_group="Not A Group")

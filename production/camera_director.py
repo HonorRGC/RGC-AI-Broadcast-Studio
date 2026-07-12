@@ -152,7 +152,7 @@ class CameraDirector:
 
         if getattr(item, "camera_focus_incident", False):
             self.clear_sequence()
-            self.return_home_at = None
+            self.return_home_at = now + self.return_after_seconds
             return self.focus_incident_replay(
                 getattr(item, "camera_incident_group", "Far Chase"),
                 telemetry,
