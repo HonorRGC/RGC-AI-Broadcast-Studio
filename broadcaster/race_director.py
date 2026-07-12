@@ -232,7 +232,11 @@ class RaceDirector:
         track_name = self.get_track_name(track_info)
 
         scheduler.add(
-            f"Trouble on the speedway — caution is out here at {track_name}. We'll have to see what brought this yellow flag out.",
+            (
+                f"Trouble on the speedway - caution is out here at {track_name}. "
+                "The incident camera is picking up one of the cars involved. "
+                "We'll have to see what brought this yellow flag out."
+            ),
             priority=12,
             category="race_control",
             protected=True,
