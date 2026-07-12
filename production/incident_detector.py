@@ -15,6 +15,8 @@ class IncidentEvent:
     incident_delta: int = 0
     total_incidents: int = 0
     trouble_type: str = ""
+    replay_session_time: float | None = None
+    replay_confidence: str = ""
 
 
 @dataclass
@@ -41,6 +43,9 @@ class CautionCandidate:
     score: float
     lap: int
     observed_at: float
+    session_time: float | None = None
+    signal_count: int = 0
+    reasons: tuple[str, ...] = ()
 
 
 class IncidentDetector:
@@ -76,6 +81,7 @@ class IncidentDetector:
         lap_dist_pct_status=None,
         est_time_status=None,
         pit_road_status=None,
+        session_time=None,
         suppress_soft_events=False,
     ) -> List[IncidentEvent]:
         events = []
@@ -166,6 +172,7 @@ class IncidentDetector:
                 est_time=est_time,
                 track_surface=track_surface,
                 current_lap=current_lap,
+                session_time=session_time,
             )
 
             if event and self.can_report(state):
@@ -199,6 +206,12 @@ class IncidentDetector:
         if candidate.score < 3.0:
             return None
 
+        high_confidence = (
+            candidate.session_time is not None
+            and candidate.score >= 8.0
+            and candidate.signal_count >= 2
+        )
+
         self.recent_caution_candidates = []
         return IncidentEvent(
             event_type="INCIDENT",
@@ -213,6 +226,8 @@ class IncidentDetector:
             importance=9,
             lap=current_lap,
             trouble_type="caution candidate",
+            replay_session_time=candidate.session_time if high_confidence else None,
+            replay_confidence="high" if high_confidence else "low",
         )
 
     def remember_caution_candidate(
@@ -224,6 +239,7 @@ class IncidentDetector:
         est_time,
         track_surface,
         current_lap,
+        session_time=None,
     ):
         incident_delta = max(0, incident_count - state.last_incident_count)
         position_loss = max(0, position - state.last_position)
@@ -232,12 +248,25 @@ class IncidentDetector:
             lap_dist_pct,
         )
         est_time_loss = max(0.0, est_time - state.last_est_time)
+        abnormal_surface = self.is_abnormal_surface(track_surface)
+        reasons = []
+        if incident_delta > 0:
+            reasons.append("incident counter changed")
+        if position_loss >= 2:
+            reasons.append("lost positions")
+        if lap_distance_loss >= 0.01:
+            reasons.append("lost track position quickly")
+        if est_time_loss >= 2.0:
+            reasons.append("lost estimated time")
+        if abnormal_surface:
+            reasons.append("abnormal track surface")
+
         score = (
             incident_delta * 3.0
             + position_loss
             + lap_distance_loss * 100.0
             + est_time_loss
-            + (4.0 if self.is_abnormal_surface(track_surface) else 0.0)
+            + (4.0 if abnormal_surface else 0.0)
         )
         if score < 1.0:
             return
@@ -250,6 +279,9 @@ class IncidentDetector:
                 score=score,
                 lap=current_lap,
                 observed_at=time.time(),
+                session_time=self.safe_optional_float(session_time),
+                signal_count=len(reasons),
+                reasons=tuple(reasons),
             )
         )
         self.recent_caution_candidates = self.recent_caution_candidates[-30:]
@@ -447,3 +479,11 @@ class IncidentDetector:
             return float(value)
         except Exception:
             return 0.0
+
+    def safe_optional_float(self, value):
+        try:
+            if value is None:
+                return None
+            return float(value)
+        except Exception:
+            return None

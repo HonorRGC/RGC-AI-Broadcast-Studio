@@ -749,6 +749,56 @@ def test_caution_candidate_prefers_iracing_incident_marker_over_guessed_car():
     assert "Wrong guessed car" not in incident.message
 
 
+def test_high_confidence_caution_candidate_anchors_replay_to_car_and_time():
+    drivers = {0: {"name": "Driver One", "number": "1"}}
+    source = SnapshotSource(
+        TelemetrySnapshot(
+            lap=5,
+            total_laps=20,
+            session_flags=RaceFlags.GREEN,
+            session_num=2,
+            session_time=120.0,
+            results=[
+                {"CarIdx": 0, "Position": 1, "LapsComplete": 5, "Incidents": 0}
+            ],
+            driver_lookup=drivers,
+            pit_road_status=[False],
+            track_surface=[3],
+            track_surface_material=[0],
+            lap_dist_pct=[0.50],
+            est_time=[10.0],
+        )
+    )
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    engine.tick(source)
+    source.snapshot = TelemetrySnapshot(
+        lap=5,
+        total_laps=20,
+        session_flags=RaceFlags.CAUTION,
+        session_num=2,
+        session_time=125.0,
+        results=[
+            {"CarIdx": 0, "Position": 5, "LapsComplete": 5, "Incidents": 0}
+        ],
+        driver_lookup=drivers,
+        pit_road_status=[False],
+        track_surface=[0],
+        track_surface_material=[0],
+        lap_dist_pct=[0.46],
+        est_time=[15.0],
+    )
+
+    engine.tick(source)
+
+    incident = next(
+        item for item in engine.broadcast_queue.items if item.category == "incident"
+    )
+    assert incident.replay_use_incident_marker is False
+    assert incident.camera_target_car_idx == 0
+    assert incident.replay_session_time == 125.0
+    assert incident.replay_multi_angle is True
+
+
 def test_green_flag_incident_requests_only_one_replay_angle():
     drivers = {0: {"name": "Driver One", "number": "1"}}
     source = SnapshotSource(

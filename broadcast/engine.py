@@ -1035,6 +1035,7 @@ class BroadcastEngine:
             lap_dist_pct_status=telemetry.get_car_idx_lap_dist_pct(),
             est_time_status=telemetry.get_car_idx_est_time(),
             pit_road_status=pit_road_status,
+            session_time=getattr(telemetry, "get_session_time", lambda: 0.0)(),
             suppress_soft_events=self.should_suppress_soft_incidents(),
         )
         if not events and caution_just_started:
@@ -1066,14 +1067,24 @@ class BroadcastEngine:
                 event.incident_delta >= 2
                 or event.trouble_type == "caution candidate"
             )
+            candidate_replay_time = getattr(event, "replay_session_time", None)
+            candidate_confidence = str(
+                getattr(event, "replay_confidence", "") or ""
+            ).lower()
+            high_confidence_candidate = (
+                event.trouble_type == "caution candidate"
+                and candidate_confidence == "high"
+                and candidate_replay_time is not None
+            )
             use_incident_marker_replay = (
                 caution_just_started
                 and event.trouble_type == "caution candidate"
                 and event.incident_delta <= 0
+                and not high_confidence_candidate
             )
             replay_message = (
                 "We are going to take a look at what brought out this caution."
-                if use_incident_marker_replay
+                if use_incident_marker_replay or high_confidence_candidate
                 else event.message
             )
             self.broadcast_queue.add(
@@ -1097,7 +1108,11 @@ class BroadcastEngine:
                 replay_session_time=(
                     None
                     if use_incident_marker_replay
-                    else session_time if replay_eligible else None
+                    else (
+                        candidate_replay_time
+                        if high_confidence_candidate
+                        else session_time if replay_eligible else None
+                    )
                 ),
                 replay_incident_delta=event.incident_delta,
                 replay_multi_angle=replay_eligible and caution_just_started,

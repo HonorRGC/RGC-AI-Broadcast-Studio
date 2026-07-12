@@ -50,6 +50,38 @@ def test_recent_trouble_can_supply_a_cautious_caution_cause_fallback():
     assert event.trouble_type == "caution candidate"
     assert "may have found" in event.message
     assert event.car_idx == 0
+    assert event.replay_confidence == "low"
+    assert event.replay_session_time is None
+
+
+def test_multi_signal_caution_candidate_keeps_replay_session_time():
+    detector = IncidentDetector()
+    drivers = {0: {"name": "Driver One", "number": "1"}}
+    detector.analyze(
+        [{"CarIdx": 0, "Position": 1, "LapsComplete": 5}],
+        drivers,
+        current_lap=5,
+        track_surface_status=[3],
+        lap_dist_pct_status=[0.50],
+        est_time_status=[10.0],
+        pit_road_status=[False],
+        session_time=120.0,
+    )
+    detector.analyze(
+        [{"CarIdx": 0, "Position": 5, "LapsComplete": 5}],
+        drivers,
+        current_lap=5,
+        track_surface_status=[0],
+        lap_dist_pct_status=[0.46],
+        est_time_status=[15.0],
+        pit_road_status=[False],
+        session_time=124.0,
+    )
+
+    event = detector.build_caution_fallback(current_lap=5)
+
+    assert event.replay_confidence == "high"
+    assert event.replay_session_time == pytest.approx(124.0)
 
 
 def test_soft_incident_suppression_blocks_false_off_pace_calls():
