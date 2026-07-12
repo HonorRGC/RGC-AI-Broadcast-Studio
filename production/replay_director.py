@@ -259,6 +259,8 @@ class ReplayDirector:
         return bool(rewinder(self.current_incident_marker_pre_roll_frames()))
 
     def replay_seek_is_valid(self, telemetry):
+        if getattr(self, "use_incident_marker", False):
+            return True
         if self.mode != "auto":
             return True
         checker = getattr(telemetry, "is_replay_at_live_edge", None)

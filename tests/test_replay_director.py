@@ -374,7 +374,7 @@ def test_incident_marker_replay_can_use_per_item_restart_preroll():
     assert telemetry.rewinds == [2400]
 
 
-def test_replay_does_not_start_when_seek_stays_at_live_edge():
+def test_incident_marker_replay_starts_even_when_live_edge_status_is_stale():
     telemetry = ReplayTelemetry()
     telemetry.at_live_edge = True
     camera = ReplayCamera()
@@ -382,10 +382,24 @@ def test_replay_does_not_start_when_seek_stays_at_live_edge():
 
     decision = director.handle_item(incident_marker_item(), telemetry, camera)
 
+    assert decision.status == "started"
+    assert telemetry.seeks == [("previous_incident_marker", 0)]
+    assert telemetry.rewinds == [1500]
+    assert camera.focuses == [("incident", "Far Chase")]
+    assert camera.replay_active is True
+
+
+def test_car_specific_replay_does_not_start_when_seek_stays_at_live_edge():
+    telemetry = ReplayTelemetry()
+    telemetry.at_live_edge = True
+    camera = ReplayCamera()
+    director = ReplayDirector(mode="auto", clock=lambda: 10.0)
+
+    decision = director.handle_item(incident_item(), telemetry, camera)
+
     assert decision.status == "failed"
     assert "live edge" in decision.reason
-    assert telemetry.seeks == [("previous_incident_marker", 0)]
-    assert telemetry.rewinds == []
+    assert telemetry.seeks == [(2, 85.0)]
     assert camera.focuses == []
     assert camera.replay_active is False
 
