@@ -66,6 +66,13 @@ class BroadcastStoryProducer:
                 "or whether this puts the driver on a different strategy."
             )
 
+        if story_type in {"race_recovery", "race_fade", "pit_cycle_memory"}:
+            notes.append(
+                "This is a race-long storyline. Connect what happened earlier "
+                "to what it means now, and avoid making it sound like a fresh "
+                "single-lap position update."
+            )
+
         if self.recently_used_angle(driver_key, angle):
             notes.append(
                 "Use a different sentence structure and do not repeat the prior "
@@ -125,6 +132,12 @@ class BroadcastStoryProducer:
             return "single-file draft train setting up the next move"
         if story_type == "formation_compressed_pack":
             return "lead pack compression"
+        if story_type == "race_recovery":
+            return "driver has rebuilt the race after losing track position"
+        if story_type == "race_fade":
+            return "earlier strength has turned into a developing concern"
+        if story_type == "pit_cycle_memory":
+            return "pit cycle has shaped this driver's race"
         if getattr(item, "category", "") == "pit_strategy":
             return "strategy consequence"
         if priority >= 9:

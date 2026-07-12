@@ -431,7 +431,7 @@ class RaceDirector:
             )
             self.ten_to_go_announced = True
 
-        if total_laps > 5 and 1 < laps_to_go <= 6:
+        if total_laps > 5 and laps_to_go in (5, 2):
             self.handle_final_lap_countdown(laps_to_go, scheduler)
 
         white_flag_is_out = self.has_flag(session_flags, self.WHITE_FLAG)
@@ -456,10 +456,7 @@ class RaceDirector:
             return
 
         messages = {
-            6: "Six laps to go. The finish is coming fast now.",
             5: "Five laps to go. The pressure is about to ramp up.",
-            4: "Four laps to go. Every move matters from here.",
-            3: "Three laps to go. The leaders are running out of time.",
             2: "Two laps to go. This race is coming down to the final miles.",
         }
         message = messages.get(laps_to_go)
@@ -486,10 +483,7 @@ class RaceDirector:
 
     def final_lap_key(self, laps_to_go):
         words = {
-            6: "six",
             5: "five",
-            4: "four",
-            3: "three",
             2: "two",
         }
         return words.get(laps_to_go, str(laps_to_go))

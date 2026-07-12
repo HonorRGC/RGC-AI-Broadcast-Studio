@@ -19,6 +19,7 @@ from production.race_insight_director import RaceInsightDirector
 from production.race_intelligence import RaceIntelligence
 from production.session_tracker import SessionTracker
 from production.sponsor_reads import SponsorReadDirector
+from production.storyline_director import StorylineDirector
 
 
 class BroadcastEngine:
@@ -43,6 +44,7 @@ class BroadcastEngine:
         self.race_intelligence = RaceIntelligence()
         self.race_insight_director = RaceInsightDirector()
         self.racecraft_director = RacecraftDirector()
+        self.storyline_director = StorylineDirector()
         self.action_detector = ActionDetector()
         self.formation_detector = FormationDetector()
         self.editorial_producer = EditorialProducer()
@@ -254,6 +256,10 @@ class BroadcastEngine:
                 driver_lookup,
                 current_lap,
                 total_laps,
+                race_state,
+            )
+            self._collect_storyline_stories(
+                current_lap,
                 race_state,
             )
             self._collect_pass_stories(story_results, driver_lookup)
@@ -685,6 +691,26 @@ class BroadcastEngine:
                 summary=event.summary,
                 priority=event.priority,
                 source="racecraft_director",
+                driver_name=event.driver_name,
+                car_number=event.car_number,
+                speaker=event.speaker,
+                camera_target_car_idx=event.camera_target_car_idx,
+                participant_car_indices=event.participant_car_indices,
+            )
+
+    def _collect_storyline_stories(self, current_lap, race_state):
+        events = self.storyline_director.analyze(
+            self.race_intelligence.driver_memory,
+            race_state=race_state,
+            current_lap=current_lap,
+        )
+        for event in events:
+            self.editorial_producer.submit_story(
+                story_type=event.story_type,
+                headline=event.headline,
+                summary=event.summary,
+                priority=event.priority,
+                source="storyline_director",
                 driver_name=event.driver_name,
                 car_number=event.car_number,
                 speaker=event.speaker,
