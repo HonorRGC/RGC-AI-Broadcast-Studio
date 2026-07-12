@@ -334,6 +334,24 @@ class IRacingTelemetry:
     def get_car_idx_est_time(self):
         return self.safe_array_read("CarIdxEstTime")
 
+    def get_car_idx_session_flags(self):
+        for key in ("CarIdxSessionFlags", "CarIdxFlags", "CarIdxRaceFlags"):
+            values = self.safe_array_read(key)
+            if values:
+                return values
+        return []
+
+    def get_car_idx_penalty_reasons(self):
+        for key in (
+            "CarIdxPenaltyReason",
+            "CarIdxPenalty",
+            "CarIdxBlackFlagReason",
+        ):
+            values = self.safe_array_read(key)
+            if values:
+                return values
+        return []
+
     def get_track_info(self):
         weekend_info = self.get_weekend_info()
 

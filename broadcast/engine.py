@@ -13,6 +13,7 @@ from production.incident_detector import IncidentDetector
 from production.league_context import LeagueContext
 from production.openai_director import OpenAIDirector
 from production.opening_director import OpeningDirector
+from production.penalty_detector import PenaltyDetector
 from production.pit_strategy_detector import PitStrategyDetector
 from production.racecraft_director import RacecraftDirector
 from production.race_insight_director import RaceInsightDirector
@@ -49,6 +50,7 @@ class BroadcastEngine:
         self.formation_detector = FormationDetector()
         self.editorial_producer = EditorialProducer()
         self.broadcast_story_producer = BroadcastStoryProducer()
+        self.penalty_detector = PenaltyDetector()
         self.pit_strategy_detector = PitStrategyDetector()
         self.caution_pit_reporter = CautionPitReporter()
         self.incident_detector = IncidentDetector()
@@ -172,6 +174,12 @@ class BroadcastEngine:
                 pit_road_status,
                 current_lap,
                 race_state.green_lap_count,
+            )
+            self._collect_penalty_stories(
+                telemetry,
+                results,
+                driver_lookup,
+                current_lap,
             )
 
         if self.race_director.phase == RacePhase.GREEN:
@@ -925,6 +933,35 @@ class BroadcastEngine:
         )
         for event in events:
             self.editorial_producer.submit_pit_event(event)
+
+    def _collect_penalty_stories(self, telemetry, results, driver_lookup, current_lap):
+        events = self.penalty_detector.analyze(
+            results=results,
+            driver_lookup=driver_lookup,
+            current_lap=current_lap,
+            car_idx_session_flags=getattr(
+                telemetry,
+                "get_car_idx_session_flags",
+                lambda: [],
+            )(),
+            penalty_reasons=getattr(
+                telemetry,
+                "get_car_idx_penalty_reasons",
+                lambda: [],
+            )(),
+        )
+        for event in events:
+            self.broadcast_queue.add(
+                event.message,
+                priority=event.priority,
+                category="penalty",
+                protected=event.event_type == "meatball",
+                speaker="lead" if event.event_type == "meatball" else "sarah",
+                expires_after=45,
+                dedupe_key=f"penalty:{event.event_type}:{event.car_idx}",
+                camera_target_car_idx=event.car_idx,
+                participant_car_indices=(event.car_idx,),
+            )
 
     def _queue_long_green_insight(self, race_state, current_lap):
         if self.broadcast_queue.items:

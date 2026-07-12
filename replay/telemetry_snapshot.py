@@ -22,6 +22,8 @@ class TelemetrySnapshot:
     track_surface_material: list[Any] = field(default_factory=list)
     lap_dist_pct: list[Any] = field(default_factory=list)
     est_time: list[Any] = field(default_factory=list)
+    car_idx_session_flags: list[Any] = field(default_factory=list)
+    car_idx_penalty_reasons: list[Any] = field(default_factory=list)
 
     @classmethod
     def from_dict(cls, data):
@@ -53,6 +55,16 @@ class TelemetrySnapshot:
             track_surface_material=telemetry.get_car_idx_track_surface_material(),
             lap_dist_pct=telemetry.get_car_idx_lap_dist_pct(),
             est_time=telemetry.get_car_idx_est_time(),
+            car_idx_session_flags=getattr(
+                telemetry,
+                "get_car_idx_session_flags",
+                lambda: [],
+            )(),
+            car_idx_penalty_reasons=getattr(
+                telemetry,
+                "get_car_idx_penalty_reasons",
+                lambda: [],
+            )(),
         )
 
     def to_dict(self):

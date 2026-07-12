@@ -1,5 +1,6 @@
 from broadcast.engine import BroadcastEngine
 from broadcaster.race_director import RacePhase
+from production.penalty_detector import PenaltyDetector
 from production.race_state_tracker import RaceState
 from replay.telemetry_snapshot import TelemetrySnapshot
 from types import SimpleNamespace
@@ -83,6 +84,12 @@ class SnapshotSource:
 
     def get_car_idx_est_time(self):
         return self.snapshot.est_time
+
+    def get_car_idx_session_flags(self):
+        return self.snapshot.car_idx_session_flags
+
+    def get_car_idx_penalty_reasons(self):
+        return self.snapshot.car_idx_penalty_reasons
 
 
 def test_engine_queues_exactly_one_initial_green_flag():
@@ -1491,6 +1498,72 @@ def test_restart_launch_story_can_call_tight_lead():
     engine._queue_restart_launch_story(results, drivers, green_lap_count=1)
 
     assert "tight launch" in engine.broadcast_queue.items[0].message
+
+
+def test_engine_queues_pit_speeding_black_flag_story():
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    drivers = {4: {"name": "Fast Driver", "number": "44"}}
+    initial = TelemetrySnapshot(
+        lap=4,
+        total_laps=40,
+        session_flags=RaceFlags.GREEN,
+        results=[{"CarIdx": 4, "Position": 1, "LapsComplete": 4}],
+        driver_lookup=drivers,
+        pit_road_status=[False] * 5,
+        track_surface=[3] * 5,
+        track_surface_material=[0] * 5,
+        lap_dist_pct=[0.0] * 5,
+        est_time=[0.0] * 5,
+        car_idx_session_flags=[0] * 5,
+        car_idx_penalty_reasons=[""] * 5,
+    )
+    source = SnapshotSource(initial)
+    engine.tick(source)
+    source.snapshot = TelemetrySnapshot(
+        lap=5,
+        total_laps=40,
+        session_flags=RaceFlags.GREEN,
+        results=[{"CarIdx": 4, "Position": 1, "LapsComplete": 5}],
+        driver_lookup=drivers,
+        pit_road_status=[False] * 5,
+        track_surface=[3] * 5,
+        track_surface_material=[0] * 5,
+        lap_dist_pct=[0.0] * 5,
+        est_time=[0.0] * 5,
+        car_idx_session_flags=[0, 0, 0, 0, PenaltyDetector.BLACK_FLAG],
+        car_idx_penalty_reasons=["", "", "", "", "Speeding on pit road"],
+    )
+
+    engine.tick(source)
+
+    item = next(item for item in engine.broadcast_queue.items if item.category == "penalty")
+    assert "speeding on pit road" in item.message
+    assert item.camera_target_car_idx == 4
+
+
+def test_engine_ignores_generic_black_flag_without_reason():
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    drivers = {4: {"name": "Quiet Driver", "number": "44"}}
+    initial = TelemetrySnapshot(
+        lap=4,
+        total_laps=40,
+        session_flags=RaceFlags.GREEN,
+        results=[{"CarIdx": 4, "Position": 1, "LapsComplete": 4}],
+        driver_lookup=drivers,
+        pit_road_status=[False] * 5,
+        track_surface=[3] * 5,
+        track_surface_material=[0] * 5,
+        lap_dist_pct=[0.0] * 5,
+        est_time=[0.0] * 5,
+        car_idx_session_flags=[0] * 5,
+    )
+    source = SnapshotSource(initial)
+    engine.tick(source)
+    source.snapshot.car_idx_session_flags = [0, 0, 0, 0, PenaltyDetector.BLACK_FLAG]
+
+    engine.tick(source)
+
+    assert not any(item.category == "penalty" for item in engine.broadcast_queue.items)
 
 
 def test_final_laps_battle_prioritizes_closest_top_five_gap():
