@@ -48,12 +48,14 @@ def test_long_green_rundown_freezes_top_ten_and_airs_one_driver_at_a_time():
         (0, "TV1", 0),
         (0, "Cockpit", 0),
     )
-    assert segments[0].feature_duration_seconds == 20.0
+    assert segments[0].feature_duration_seconds == 22.0
     assert second_segment[0].camera_sequence == (1,)
     assert "20-lap green flag run" in segments[0].message
     assert "top ten" in segments[0].message
     assert "First place" in segments[0].message
+    assert "controlled this green-flag stretch" in segments[0].message
     assert "Driver 2" in second_segment[0].message
+    assert "pressure spot" in second_segment[0].message
     assert repeated[0].category == "long_green_field_rundown_3"
 
 

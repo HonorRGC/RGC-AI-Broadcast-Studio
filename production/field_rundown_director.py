@@ -256,7 +256,7 @@ class FieldRundownDirector:
 
     def segment_feature_duration(self, milestone):
         if milestone == "long_green":
-            return 20.0
+            return 22.0
         return 0.0
 
     def freeze_running_order(self, results):
@@ -308,7 +308,55 @@ class FieldRundownDirector:
                 f"The {number} of {name} is steady in {current_position}, no change from the grid.",
             )
 
-        return templates[(position - 1) % len(templates)]
+        return (
+            f"{templates[(position - 1) % len(templates)]} "
+            f"{self.long_green_context(entry, net)}"
+        )
+
+    def long_green_context(self, entry, net):
+        position = self.safe_int(entry.get("position"), 0)
+        starting_position = self.safe_int(entry.get("starting_position"), 0)
+        name = entry.get("name", "that driver")
+
+        if position == 1:
+            return (
+                f"{name} has controlled this green-flag stretch, and now the question "
+                "is whether clean air can keep that pace out front."
+            )
+        if position == 2:
+            return (
+                "From second, this is the pressure spot: close enough to keep the "
+                "leader honest, but still needing the right opening."
+            )
+        if position == 3:
+            return (
+                "Third place is still very much in the race-winning conversation "
+                "if this run keeps stretching out."
+            )
+        if position <= 5:
+            return (
+                "Inside the top five, track position matters now, especially if "
+                "this run turns into a strategy race."
+            )
+        if net > 0:
+            return (
+                "That is the kind of forward progress that can change the whole "
+                "shape of a race over a long green run."
+            )
+        if net < 0:
+            return (
+                "They have lost a little ground, but there is still enough time "
+                "to regroup if the balance comes back."
+            )
+        if starting_position and position == starting_position:
+            return (
+                "That steady run may not be flashy, but keeping the car clean "
+                "through a long stretch like this can pay off late."
+            )
+        return (
+            "This is a good checkpoint in the race, with pit strategy and tire "
+            "wear starting to matter more every lap."
+        )
 
     def movement_phrase(self, current_position, starting_position):
         if not starting_position:
