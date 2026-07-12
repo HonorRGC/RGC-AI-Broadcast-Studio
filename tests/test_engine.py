@@ -808,7 +808,8 @@ def test_incident_is_collected_after_race_enters_caution():
         item for item in engine.broadcast_queue.items if item.category == "incident"
     ]
     assert len(incident_items) == 1
-    assert incident_items[0].camera_target_car_idx == 0
+    assert incident_items[0].camera_target_car_idx is None
+    assert incident_items[0].replay_use_incident_marker is True
     assert incident_items[0].replay_session_num == 2
     assert incident_items[0].replay_session_time == 125.0
     assert incident_items[0].replay_multi_angle is True
@@ -949,8 +950,8 @@ def test_high_confidence_caution_candidate_anchors_replay_to_car_and_time():
     incident = next(
         item for item in engine.broadcast_queue.items if item.category == "incident"
     )
-    assert incident.replay_use_incident_marker is False
-    assert incident.camera_target_car_idx == 0
+    assert incident.replay_use_incident_marker is True
+    assert incident.camera_target_car_idx is None
     assert incident.replay_session_time == 125.0
     assert incident.replay_multi_angle is True
 
@@ -1328,6 +1329,37 @@ def test_restart_caution_marker_replay_uses_extra_preroll():
     assert engine.restart_caution_marker_pre_roll_frames(0) == 2400
     assert engine.restart_caution_marker_pre_roll_frames(2) == 2400
     assert engine.restart_caution_marker_pre_roll_frames(3) is None
+
+
+def test_caution_marker_replay_uses_saved_caution_start_time():
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    caution_start = SnapshotSource(
+        TelemetrySnapshot(
+            session_num=2,
+            session_time=100.0,
+        )
+    )
+    later_under_caution = SnapshotSource(
+        TelemetrySnapshot(
+            session_num=2,
+            session_time=140.0,
+        )
+    )
+    engine.race_director.phase_changed = True
+    engine.race_director.phase = RacePhase.CAUTION
+
+    engine._handle_caution_phase_change(caution_start)
+    engine.queue_incident_marker_replay(
+        results=[],
+        telemetry=later_under_caution,
+        current_lap=12,
+        green_lap_count=5,
+        reason="test",
+    )
+
+    item = engine.broadcast_queue.items[0]
+    assert item.replay_session_num == 2
+    assert item.replay_session_time == 100.0
 
 
 def test_leader_story_uses_total_laps_led_and_tight_margin_language():

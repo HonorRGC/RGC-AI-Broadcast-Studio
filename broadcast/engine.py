@@ -76,6 +76,8 @@ class BroadcastEngine:
         self.joined_mid_race = False
         self.mid_race_join_note_queued = False
         self.restart_launch_story_queued = False
+        self.caution_started_session_num = None
+        self.caution_started_session_time = None
 
     def tick(self, telemetry):
         session_type_reader = getattr(telemetry, "get_session_type", None)
@@ -145,6 +147,7 @@ class BroadcastEngine:
             scheduler=self.broadcast_queue,
         )
         self._handle_green_phase_change()
+        self._handle_caution_phase_change(telemetry)
         self._queue_mid_race_join_note(current_lap, total_laps, telemetry.get_track_info())
 
         if self.race_director.phase == RacePhase.CAUTION:
@@ -316,6 +319,22 @@ class BroadcastEngine:
         # call and let fresh telemetry build the next story.
         self.editorial_producer.clear()
         self.restart_launch_story_queued = False
+
+    def _handle_caution_phase_change(self, telemetry):
+        if not (
+            self.race_director.phase_changed
+            and self.race_director.phase == RacePhase.CAUTION
+        ):
+            return
+
+        session_num_reader = getattr(telemetry, "get_current_session_num", None)
+        session_time_reader = getattr(telemetry, "get_session_time", None)
+        self.caution_started_session_num = (
+            session_num_reader() if session_num_reader else None
+        )
+        self.caution_started_session_time = (
+            session_time_reader() if session_time_reader else None
+        )
 
     def _detect_mid_race_start(
         self,
@@ -1366,6 +1385,16 @@ class BroadcastEngine:
         session_time_reader = getattr(telemetry, "get_session_time", None)
         session_num = session_num_reader() if session_num_reader else 0
         session_time = session_time_reader() if session_time_reader else 0.0
+        caution_replay_session_num = (
+            self.caution_started_session_num
+            if self.caution_started_session_num is not None
+            else session_num
+        )
+        caution_replay_session_time = (
+            self.caution_started_session_time
+            if self.caution_started_session_time is not None
+            else session_time
+        )
         for event in events:
             replay_eligible = (
                 event.incident_delta >= 2
@@ -1382,9 +1411,7 @@ class BroadcastEngine:
             )
             use_incident_marker_replay = (
                 caution_just_started
-                and event.trouble_type == "caution candidate"
-                and event.incident_delta <= 0
-                and not high_confidence_candidate
+                and replay_eligible
             )
             replay_message = (
                 "We are going to take a look at what brought out this caution."
@@ -1408,9 +1435,13 @@ class BroadcastEngine:
                 participant_car_indices=(
                     () if use_incident_marker_replay else (event.car_idx,)
                 ),
-                replay_session_num=session_num if replay_eligible else None,
+                replay_session_num=(
+                    caution_replay_session_num
+                    if use_incident_marker_replay
+                    else session_num if replay_eligible else None
+                ),
                 replay_session_time=(
-                    session_time
+                    caution_replay_session_time
                     if use_incident_marker_replay
                     else (
                         candidate_replay_time
@@ -1441,6 +1472,10 @@ class BroadcastEngine:
         session_time_reader = getattr(telemetry, "get_session_time", None)
         session_num = session_num_reader() if session_num_reader else 0
         session_time = session_time_reader() if session_time_reader else 0.0
+        if self.caution_started_session_num is not None:
+            session_num = self.caution_started_session_num
+        if self.caution_started_session_time is not None:
+            session_time = self.caution_started_session_time
         self.caution_marker_replay_count += 1
         self.broadcast_queue.add(
             "We are going to take a look at what may have brought out this caution.",

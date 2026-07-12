@@ -241,7 +241,7 @@ class ReplayDirector:
             if self.use_absolute_incident_time():
                 return telemetry.seek_replay_session_time(
                     self.session_num,
-                    self.current_replay_start_time(),
+                    self.replay_session_time,
                 )
             marker_seeker = getattr(telemetry, "seek_previous_incident_marker", None)
             if marker_seeker:
@@ -254,8 +254,6 @@ class ReplayDirector:
         )
 
     def apply_incident_marker_preroll(self, telemetry):
-        if self.use_absolute_incident_time():
-            return True
         rewinder = getattr(telemetry, "rewind_replay_frames", None)
         if not rewinder:
             return True

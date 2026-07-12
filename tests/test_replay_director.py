@@ -360,8 +360,8 @@ def test_timed_incident_marker_replay_seeks_to_absolute_caution_time():
     started = director.handle_item(timed_incident_marker_item(), telemetry, camera)
 
     assert started.status == "started"
-    assert telemetry.seeks == [(2, 88.0)]
-    assert telemetry.rewinds == []
+    assert telemetry.seeks == [(2, 100.0)]
+    assert telemetry.rewinds == [720]
     assert camera.focuses == [("incident", "Far Chase")]
 
 
