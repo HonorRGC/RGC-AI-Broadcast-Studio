@@ -279,6 +279,14 @@ class BroadcastEngine:
                 race_knowledge,
                 driver_lookup,
             )
+            queued_stat_filler = self._queue_race_stat_filler(
+                story_results,
+                driver_lookup,
+                race_state,
+                current_lap,
+            )
+            if queued_stat_filler:
+                return self.broadcast_queue.next_item()
         else:
             self.field_rundown_director.cancel_active()
             if self.race_director.phase in (RacePhase.CAUTION, RacePhase.ONE_TO_GREEN):
@@ -830,6 +838,30 @@ class BroadcastEngine:
             speaker=insight.speaker,
             expires_after=45,
             dedupe_key=insight.category,
+        )
+        return True
+
+    def _queue_race_stat_filler(self, results, driver_lookup, race_state, current_lap):
+        if self.broadcast_queue.items or not self.broadcast_queue.can_speak():
+            return False
+        insight = self.race_insight_director.race_stat_filler(
+            results,
+            driver_lookup,
+            race_state,
+            current_lap,
+        )
+        if not insight:
+            return False
+        self.broadcast_queue.add(
+            insight.message,
+            priority=insight.priority,
+            category=insight.category,
+            protected=False,
+            speaker=insight.speaker,
+            expires_after=35,
+            dedupe_key=insight.category,
+            camera_target_car_idx=insight.camera_target_car_idx,
+            participant_car_indices=insight.participant_car_indices,
         )
         return True
 

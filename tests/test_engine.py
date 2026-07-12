@@ -1,5 +1,6 @@
 from broadcast.engine import BroadcastEngine
 from broadcaster.race_director import RacePhase
+from production.race_state_tracker import RaceState
 from replay.telemetry_snapshot import TelemetrySnapshot
 from types import SimpleNamespace
 import time
@@ -730,6 +731,38 @@ def test_inactive_cars_are_filtered_from_pass_stories():
         item.driver_name != "Inactive Driver"
         for item in engine.editorial_producer.items
     )
+
+
+def test_engine_queues_quiet_green_race_stat_filler_with_camera_target():
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    state = RaceState(
+        current_lap=12,
+        total_laps=80,
+        laps_remaining=68,
+        green_lap_count=8,
+        is_green=True,
+    )
+    drivers = {
+        1: {"name": "Austin Peterson", "number": "77"},
+        2: {"name": "Dean Marsh", "number": "24"},
+        3: {"name": "Eric Hudec", "number": "14"},
+    }
+    results = [
+        {"CarIdx": 1, "Position": 0, "Time": 0.0},
+        {"CarIdx": 2, "Position": 1, "Time": 0.3},
+        {"CarIdx": 3, "Position": 2, "Time": 2.0},
+    ]
+
+    queued = engine._queue_race_stat_filler(
+        results,
+        drivers,
+        state,
+        current_lap=12,
+    )
+
+    assert queued is True
+    assert engine.broadcast_queue.items[0].category.startswith("race_stat:")
+    assert engine.broadcast_queue.items[0].camera_target_car_idx == 2
 
 
 def test_incident_is_collected_after_race_enters_caution():

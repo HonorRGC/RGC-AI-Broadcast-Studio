@@ -76,3 +76,77 @@ def test_late_caution_insights_do_not_repeat_all_used_topics():
     assert first.category != second.category
     assert third is None
 
+
+def test_race_stat_filler_finds_closest_battle():
+    director = RaceInsightDirector(seed=5)
+    state = RaceState(
+        current_lap=12,
+        total_laps=80,
+        laps_remaining=68,
+        green_lap_count=8,
+        is_green=True,
+    )
+    results = [
+        {"CarIdx": 1, "Position": 0, "Time": 0.0},
+        {"CarIdx": 2, "Position": 1, "Time": 0.3},
+        {"CarIdx": 3, "Position": 2, "Time": 2.0},
+    ]
+    drivers = {
+        1: {"name": "Austin Peterson", "number": "77"},
+        2: {"name": "Dean Marsh", "number": "24"},
+        3: {"name": "Eric Hudec", "number": "14"},
+    }
+
+    insight = director.race_stat_filler(results, drivers, state, current_lap=12)
+
+    assert insight is not None
+    assert insight.category.startswith("race_stat:closest_battle")
+    assert "closest battle" in insight.message.lower()
+    assert insight.camera_target_car_idx == 2
+    assert insight.participant_car_indices == (1, 2)
+
+
+def test_race_stat_filler_finds_biggest_mover_without_close_battle():
+    director = RaceInsightDirector(seed=6)
+    state = RaceState(
+        current_lap=18,
+        total_laps=80,
+        laps_remaining=62,
+        green_lap_count=12,
+        is_green=True,
+    )
+    results = [
+        {"CarIdx": 1, "Position": 0, "Time": 0.0, "StartingPosition": 1},
+        {"CarIdx": 2, "Position": 1, "Time": 2.0, "StartingPosition": 8},
+        {"CarIdx": 3, "Position": 2, "Time": 4.0, "StartingPosition": 3},
+    ]
+    drivers = {
+        1: {"name": "Austin Peterson", "number": "77"},
+        2: {"name": "Dean Marsh", "number": "24"},
+        3: {"name": "Eric Hudec", "number": "14"},
+    }
+
+    insight = director.race_stat_filler(results, drivers, state, current_lap=18)
+
+    assert insight is not None
+    assert insight.category.startswith("race_stat:biggest_mover")
+    assert "started 8th" in insight.message
+    assert "2nd" in insight.message
+    assert insight.camera_target_car_idx == 2
+
+
+def test_race_stat_filler_waits_for_green_run():
+    director = RaceInsightDirector(seed=7)
+    state = RaceState(
+        current_lap=6,
+        total_laps=80,
+        laps_remaining=74,
+        green_lap_count=5,
+        is_green=True,
+    )
+    results = [
+        {"CarIdx": 1, "Position": 0, "Time": 0.0},
+        {"CarIdx": 2, "Position": 1, "Time": 0.2},
+    ]
+
+    assert director.race_stat_filler(results, {}, state, current_lap=6) is None
