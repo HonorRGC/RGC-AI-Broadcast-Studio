@@ -13,6 +13,7 @@ from studio_launcher import (
     format_playlist_paths,
     has_running_broadcast,
     install_overlay_brand_graphics,
+    is_newer_version,
     is_process_running,
     launcher_defaults,
     list_profiles,
@@ -27,6 +28,8 @@ from studio_launcher import (
     sanitize_profile_name,
     sim_racer_hub_import_command,
     stop_broadcast_processes,
+    update_status_from_release,
+    version_parts,
     write_broadcast_pid,
 )
 from tools.build_tester_zip import should_include
@@ -56,6 +59,41 @@ def test_launcher_includes_rgc_links():
     assert RGC_DISCORD_URL == "https://discord.gg/Axwwa8CUqt"
     assert RGC_WEBSITE_URL == "https://www.realisticgamingcrew.com"
     assert DEFAULT_OVERLAY_URL == "http://127.0.0.1:8765/overlay"
+
+
+def test_launcher_version_comparison_helpers():
+    assert version_parts("v1.2.3") == (1, 2, 3)
+    assert version_parts("0.19.0-beta") == (0, 19, 0)
+    assert is_newer_version("0.19.0", "0.18.0")
+    assert not is_newer_version("0.18.0", "0.18.0")
+    assert not is_newer_version("0.17.9", "0.18.0")
+
+
+def test_update_status_from_release_detects_available_update():
+    state, message, url = update_status_from_release(
+        {
+            "tag_name": "v0.19.0",
+            "html_url": "https://example.com/release",
+        },
+        current_version="0.18.0",
+    )
+
+    assert state == "available"
+    assert "0.19.0" in message
+    assert url == "https://example.com/release"
+
+
+def test_update_status_from_release_detects_current_version():
+    state, message, _url = update_status_from_release(
+        {
+            "tag_name": "v0.18.0",
+            "html_url": "https://example.com/release",
+        },
+        current_version="0.18.0",
+    )
+
+    assert state == "current"
+    assert "up to date" in message
 
 
 def test_launcher_defaults_include_league_stats_csv():

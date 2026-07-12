@@ -1,13 +1,21 @@
 from __future__ import annotations
 
+import json
 import os
 import re
 import shutil
 import subprocess
 import sys
+import urllib.error
+import urllib.request
 import webbrowser
 from pathlib import Path
 from tkinter import messagebox
+
+try:
+    import tomllib
+except ModuleNotFoundError:  # pragma: no cover - Python < 3.11 fallback
+    import tomli as tomllib
 
 
 ROOT = Path(__file__).resolve().parent
@@ -20,6 +28,10 @@ BROADCAST_PROCESS = None
 RGC_DISCORD_URL = "https://discord.gg/Axwwa8CUqt"
 RGC_WEBSITE_URL = "https://www.realisticgamingcrew.com"
 DEFAULT_OVERLAY_URL = "http://127.0.0.1:8765/overlay"
+GITHUB_RELEASES_URL = "https://github.com/HonorRGC/RGC-AI-Broadcast-Studio/releases"
+GITHUB_LATEST_RELEASE_API = (
+    "https://api.github.com/repos/HonorRGC/RGC-AI-Broadcast-Studio/releases/latest"
+)
 
 DARK_BG = "#071018"
 PANEL_BG = "#101a24"
@@ -92,6 +104,71 @@ def load_env_file(path=ENV_PATH):
         key, value = line.split("=", 1)
         values[key.strip()] = value.strip()
     return values
+
+
+def project_version(root=ROOT):
+    pyproject = Path(root) / "pyproject.toml"
+    try:
+        with pyproject.open("rb") as file:
+            data = tomllib.load(file)
+        return str(data.get("project", {}).get("version", "0.0.0"))
+    except Exception:
+        return "0.0.0"
+
+
+APP_VERSION = project_version()
+
+
+def version_parts(version):
+    cleaned = str(version or "").strip().lstrip("vV")
+    parts = []
+    for token in re.split(r"[.+\\-]", cleaned):
+        if token.isdigit():
+            parts.append(int(token))
+        else:
+            break
+    while len(parts) < 3:
+        parts.append(0)
+    return tuple(parts[:3])
+
+
+def is_newer_version(latest, current=APP_VERSION):
+    return version_parts(latest) > version_parts(current)
+
+
+def fetch_latest_release(api_url=GITHUB_LATEST_RELEASE_API, timeout=6):
+    request = urllib.request.Request(
+        api_url,
+        headers={
+            "Accept": "application/vnd.github+json",
+            "User-Agent": f"RGC-AI-Broadcast-Studio/{APP_VERSION}",
+        },
+    )
+    with urllib.request.urlopen(request, timeout=timeout) as response:
+        return json.loads(response.read().decode("utf-8"))
+
+
+def update_status_from_release(release, current_version=APP_VERSION):
+    tag = str(release.get("tag_name") or release.get("name") or "").strip()
+    latest_version = tag.lstrip("vV")
+    release_url = release.get("html_url") or GITHUB_RELEASES_URL
+    if latest_version and is_newer_version(latest_version, current_version):
+        return (
+            "available",
+            f"Update available: v{latest_version}",
+            release_url,
+        )
+    if latest_version:
+        return (
+            "current",
+            f"You are up to date. Installed v{current_version}; latest v{latest_version}.",
+            release_url,
+        )
+    return (
+        "unknown",
+        "Could not read a version from the latest GitHub release.",
+        GITHUB_RELEASES_URL,
+    )
 
 
 def save_env_file(values, path=ENV_PATH):
@@ -631,7 +708,7 @@ def run_gui():
 
     label(
         root,
-        text="RGC AI Broadcast Studio",
+        text=f"RGC AI Broadcast Studio v{APP_VERSION}",
         font=("Segoe UI", 18, "bold"),
     ).pack(pady=(14, 4))
     label(
@@ -720,11 +797,14 @@ def run_gui():
 
     settings_tab = frame(notebook, bg=PANEL_BG)
     league_tab = frame(notebook, bg=PANEL_BG)
+    help_tab = frame(notebook, bg=PANEL_BG)
     notebook.add(settings_tab, text="Broadcast Settings")
     notebook.add(league_tab, text="League / Sim Racer Hub")
+    notebook.add(help_tab, text="Help / Setup Guide")
 
     settings_content = scrollable_tab(settings_tab)
     league_content = scrollable_tab(league_tab)
+    help_content = scrollable_tab(help_tab)
 
     settings_frame = frame(settings_content, bg=PANEL_BG)
     settings_frame.pack(fill="both", expand=True, padx=14, pady=12)
@@ -1049,6 +1129,33 @@ def run_gui():
             status.set("No running broadcast found from this launcher.")
         refresh_health()
 
+    def check_for_updates():
+        status.set("Checking GitHub Releases for updates...")
+        root.update_idletasks()
+        try:
+            release = fetch_latest_release()
+            state, message, release_url = update_status_from_release(release)
+        except urllib.error.HTTPError as error:
+            if error.code == 404:
+                status.set(
+                    "No GitHub release is published yet. Use the installer build from this project for now."
+                )
+                return
+            status.set(f"Update check failed: GitHub returned HTTP {error.code}.")
+            return
+        except Exception as error:
+            status.set(f"Update check failed: {error}")
+            return
+
+        status.set(message)
+        if state == "available":
+            should_open = messagebox.askyesno(
+                "Update available",
+                f"{message}\n\nOpen the download/release page?",
+            )
+            if should_open:
+                open_external_link(release_url)
+
     def on_close():
         if has_running_broadcast():
             should_stop = messagebox.askyesno(
@@ -1109,6 +1216,11 @@ def run_gui():
         padx=6,
         pady=8,
     )
+    button(action_bar, text="Check for Updates", command=check_for_updates, color="#334b64").pack(
+        side="left",
+        padx=6,
+        pady=8,
+    )
     volume_frame = frame(action_bar, bg=PANEL_BG)
     volume_frame.pack(side="left", padx=(14, 6), pady=8)
     label(
@@ -1156,6 +1268,7 @@ def run_gui():
         existing,
         sim_racer_hub_state,
     )
+    build_help_tab(help_content, label, frame, button)
     refresh_health()
     root.protocol("WM_DELETE_WINDOW", on_close)
 
@@ -1322,6 +1435,153 @@ def build_league_tab(
         bg=PANEL_BG,
         fg=MUTED_FG,
     ).pack(side="left", padx=12)
+
+
+def build_help_tab(parent, label, frame, button):
+    content = frame(parent, bg=PANEL_BG)
+    content.pack(fill="both", expand=True, padx=18, pady=16)
+
+    def section(title, body):
+        label(
+            content,
+            text=title,
+            bg=PANEL_BG,
+            fg=TEXT_FG,
+            font=("Segoe UI", 13, "bold"),
+            anchor="w",
+        ).pack(fill="x", pady=(14, 4))
+        label(
+            content,
+            text=body.strip(),
+            bg=PANEL_BG,
+            fg=MUTED_FG,
+            font=("Segoe UI", 10),
+            justify="left",
+            anchor="w",
+            wraplength=900,
+        ).pack(fill="x", pady=(0, 4))
+
+    label(
+        content,
+        text="RGC AI Broadcast Studio Setup Guide",
+        bg=PANEL_BG,
+        fg=TEXT_FG,
+        font=("Segoe UI", 17, "bold"),
+        anchor="w",
+    ).pack(fill="x", pady=(0, 6))
+    label(
+        content,
+        text=(
+            "Use this page as the quick in-app guide. Set up keys, voices, overlays, "
+            "league data, and profiles before race night."
+        ),
+        bg=PANEL_BG,
+        fg=MUTED_FG,
+        font=("Segoe UI", 10),
+        justify="left",
+        anchor="w",
+        wraplength=900,
+    ).pack(fill="x", pady=(0, 8))
+
+    link_row = frame(content, bg=PANEL_BG)
+    link_row.pack(fill="x", pady=(0, 12))
+    button(
+        link_row,
+        text="Open OpenAI API Keys",
+        command=lambda: open_external_link("https://platform.openai.com/api-keys"),
+        color="#334b64",
+    ).pack(side="left", padx=(0, 8))
+    button(
+        link_row,
+        text="Open ElevenLabs API Keys",
+        command=lambda: open_external_link("https://elevenlabs.io/app/developers/api-keys"),
+        color="#334b64",
+    ).pack(side="left", padx=(0, 8))
+    button(
+        link_row,
+        text="Open GitHub Releases",
+        command=lambda: open_external_link(GITHUB_RELEASES_URL),
+        color="#334b64",
+    ).pack(side="left", padx=(0, 8))
+
+    section(
+        "1. Install and open the studio",
+        """
+        Run the Windows installer, then open RGC AI Broadcast Studio from the desktop icon.
+        The installer sets up the app files, creates shortcuts, and runs the Python setup needed by this early version.
+        If setup says Python is missing, install Python 3.11 or newer and make sure "Add python.exe to PATH" is checked.
+        """,
+    )
+    section(
+        "2. OpenAI setup",
+        """
+        OpenAI writes the broadcast commentary. Put your OpenAI API key into OPENAI_API_KEY.
+        Keep USE_OPENAI set to true for the full AI broadcast. Turn it false if you only want overlays, cameras, and Producer Assist.
+        OPENAI_MODEL controls which OpenAI model writes the broadcast. Never stream or share your API key.
+        """,
+    )
+    section(
+        "3. ElevenLabs setup",
+        """
+        ElevenLabs creates the spoken broadcaster voices. Put your ElevenLabs API key into ELEVENLABS_API_KEY.
+        LEAD_VOICE_ID is the play-by-play voice. COLOR_VOICE_ID is the analyst voice. PIT_VOICE_ID is pit road and strategy.
+        Turn USE_ELEVENLABS false if a human broadcaster is talking instead.
+        """,
+    )
+    section(
+        "4. Overlay setup",
+        """
+        Copy the Streamlabs / OBS browser-source link from Broadcast Settings and add it as a Browser Source.
+        Use 1920 x 1080 for the browser source size. Put the overlay source above your iRacing capture.
+        Add event title, race sponsor, series name, and sponsor logos before saving settings.
+        """,
+    )
+    section(
+        "5. Music, anthem, caution, and sponsor graphics",
+        """
+        Practice music loops during practice. RGC Anthem audio plays once during qualifying when enabled.
+        Caution audio and caution presentation graphics are used during caution periods.
+        The Studio Volume slider controls program audio, including music beds and ElevenLabs voice playback.
+        """,
+    )
+    section(
+        "6. League and Sim Racer Hub data",
+        """
+        For official race testing, league files are optional. For league races, use the League / Sim Racer Hub tab.
+        A clean Sim Racer Hub URL can be https://simracerhub.com, then fill in League ID, Series ID, and Season ID.
+        Preview imports first. Driver imports preserve manual notes like hometown, sponsor, team, and driving style.
+        """,
+    )
+    section(
+        "7. Profiles",
+        """
+        Click Save Settings, then save a profile. Profiles let you keep separate setups for league races,
+        official testing, Producer Assist, or no-voice camera/overlay mode. Before race night, load the correct profile and refresh Broadcast Health.
+        """,
+    )
+    section(
+        "8. Broadcast modes",
+        """
+        Start Broadcast runs the full AI broadcast with OpenAI commentary, ElevenLabs voices, overlays, cameras, and race control.
+        Start Producer Assist keeps overlays, cameras, and race information active without AI voices, so a human broadcaster can call the race.
+        Stop Broadcast stops a broadcast launched by the studio.
+        """,
+    )
+    section(
+        "9. Updates",
+        """
+        Use Check for Updates to compare this installed version against the latest GitHub Release.
+        Early versions open the release/download page instead of auto-installing. This is safer while the app is still moving quickly.
+        """,
+    )
+    section(
+        "10. Race-night checklist",
+        """
+        Open iRacing, open Streamlabs/OBS, confirm the browser overlay is visible, load your profile,
+        refresh Broadcast Health, then start during practice. Run a short smoke test before league night:
+        open the launcher, start, check overlay, stop. Full race tests are only needed when broadcast logic changes.
+        """,
+    )
 
 
 def main():
