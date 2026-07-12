@@ -23,7 +23,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for responsibilities and extens
 
 ## Setup
 
-Requirements: Windows, Python 3.11 or newer, and iRacing for live operation.
+Requirements: Windows, Python 3.11 or newer, and iRacing for live operation. Newer Python 3 versions are okay as long as they can create a virtual environment.
 
 ```powershell
 py -m venv .venv

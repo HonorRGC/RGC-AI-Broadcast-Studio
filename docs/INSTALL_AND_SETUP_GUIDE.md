@@ -37,7 +37,7 @@ If you only want overlays, cameras, and race information for a human broadcaster
 
 5. Finish the install.
 
-If Python is not installed correctly, `install_studio.bat` will tell you.
+If Python is not installed correctly, `install_studio.bat` will tell you. The installer tries Python 3.11 first, then any available Python 3 runtime. Newer Python versions are okay as long as they can create a virtual environment.
 
 ## 3. Install RGC AI Broadcast Studio
 
@@ -333,7 +333,7 @@ Later versions may add a true installer/updater.
 
 ### The program will not install
 
-Check that Python 3.11 or newer is installed and that **Add python.exe to PATH** was checked during Python install.
+Check that Python 3.11 or newer is installed and that **Add python.exe to PATH** was checked during Python install. If the Python launcher says no 3.11 runtime is installed, either install Python from python.org or run `py install 3.11` in PowerShell.
 
 ### No AI commentary
 
