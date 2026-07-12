@@ -2,6 +2,12 @@
 
 Use this when sending RGC AI Broadcast Studio to a league admin for a first test.
 
+For the full step-by-step install, OpenAI, ElevenLabs, overlay, and profile setup tutorial, send them:
+
+```text
+docs\INSTALL_AND_SETUP_GUIDE.md
+```
+
 ## What to send
 
 Send the clean tester ZIP built from this repo. Do not send your working folder directly, because it can contain private keys, saved profiles, league files, local music paths, and recordings.

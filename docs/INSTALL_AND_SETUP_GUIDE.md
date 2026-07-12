@@ -1,0 +1,381 @@
+# RGC AI Broadcast Studio install and setup guide
+
+This guide is for a league admin, broadcaster, or tester setting up RGC AI Broadcast Studio on a Windows PC.
+
+The goal is simple:
+
+```text
+Install the studio → add your keys and voices → set up the overlay → save a profile → start a broadcast
+```
+
+## 1. What you need before installing
+
+You need:
+
+- Windows 10 or Windows 11
+- iRacing installed
+- Python 3.11 or newer
+- Streamlabs, OBS, or another broadcast tool that supports browser sources
+- An OpenAI API key if you want AI-written commentary
+- An ElevenLabs API key and voice IDs if you want spoken AI broadcasters
+
+If you only want overlays, cameras, and race information for a human broadcaster, you can use **Producer Assist** mode without OpenAI or ElevenLabs voices.
+
+## 2. Install Python
+
+1. Go to the official Python download page:
+
+   <https://www.python.org/downloads/>
+
+2. Download Python 3.11 or newer.
+3. Run the installer.
+4. Important: check this box during install:
+
+   ```text
+   Add python.exe to PATH
+   ```
+
+5. Finish the install.
+
+If Python is not installed correctly, `install_studio.bat` will tell you.
+
+## 3. Install RGC AI Broadcast Studio
+
+1. Download or receive the RGC AI Broadcast Studio ZIP.
+2. Right-click the ZIP and choose **Extract All**.
+3. Extract it somewhere simple, for example:
+
+   ```text
+   Documents\RGC-AI-Broadcast-Studio
+   ```
+
+4. Open the extracted folder.
+5. Double-click:
+
+   ```text
+   install_studio.bat
+   ```
+
+6. Wait for the setup to finish.
+
+The installer will:
+
+- create a local Python environment
+- install the studio dependencies
+- create the starting settings file
+- create a desktop shortcut
+- open RGC AI Broadcast Studio
+
+After install, you can open the program from the desktop shortcut:
+
+```text
+RGC AI Broadcast Studio
+```
+
+## 4. Create an OpenAI API key
+
+OpenAI is used for the AI broadcast writing. It creates the commentary text that Mike, Jeff, and Sarah read.
+
+1. Go to the OpenAI API keys page:
+
+   <https://platform.openai.com/api-keys>
+
+2. Sign in or create an OpenAI account.
+3. Create a new API key.
+4. Copy the key.
+5. In RGC AI Broadcast Studio, paste it into:
+
+   ```text
+   OPENAI_API_KEY
+   ```
+
+6. Make sure OpenAI is turned on if you want full AI commentary:
+
+   ```text
+   USE_OPENAI = true
+   ```
+
+Official OpenAI API quickstart:
+
+<https://developers.openai.com/api/docs/quickstart>
+
+Important: do not share your OpenAI API key, do not post it in Discord, and do not commit it to GitHub.
+
+## 5. Create an ElevenLabs API key
+
+ElevenLabs is used for the spoken broadcaster voices.
+
+1. Go to ElevenLabs:
+
+   <https://elevenlabs.io/>
+
+2. Sign in or create an account.
+3. Open the API keys page:
+
+   <https://elevenlabs.io/app/developers/api-keys>
+
+4. Create or copy your API key.
+5. In RGC AI Broadcast Studio, paste it into:
+
+   ```text
+   ELEVENLABS_API_KEY
+   ```
+
+6. Make sure ElevenLabs is turned on if you want spoken voices:
+
+   ```text
+   USE_ELEVENLABS = true
+   ```
+
+Important: do not share your ElevenLabs API key.
+
+## 6. Add ElevenLabs voice IDs
+
+RGC AI Broadcast Studio uses three voice slots:
+
+- Lead announcer
+- Color analyst
+- Pit reporter
+
+In the launcher, fill in:
+
+```text
+LEAD_VOICE_ID
+COLOR_VOICE_ID
+PIT_VOICE_ID
+```
+
+To find a voice ID:
+
+1. Open ElevenLabs.
+2. Go to your voices / voice library.
+3. Choose the voice you want to use.
+4. Copy the voice ID.
+5. Paste it into the matching voice field in the studio.
+
+ElevenLabs voice API reference:
+
+<https://elevenlabs.io/docs/api-reference/voices/search>
+
+Recommended setup:
+
+- Lead announcer: main play-by-play voice
+- Color analyst: second broadcaster / race analysis voice
+- Pit reporter: pit road and strategy voice
+
+After adding voices, use the voice test in the launcher if available, or start a short test broadcast to confirm audio works.
+
+## 7. Set up the broadcast overlay
+
+The overlay is a local browser page that works in Streamlabs, OBS, or any broadcast program that supports browser sources.
+
+In RGC AI Broadcast Studio:
+
+1. Go to the Broadcast Settings area.
+2. Find the Streamlabs / OBS overlay link:
+
+   ```text
+   http://127.0.0.1:8765/overlay
+   ```
+
+3. Click **Copy Overlay Link**.
+
+In Streamlabs or OBS:
+
+1. Add a new **Browser Source**.
+2. Paste the overlay link.
+3. Set the browser source size to:
+
+   ```text
+   1920 x 1080
+   ```
+
+4. Put the browser source above your iRacing capture.
+
+The overlay will only show live data while the broadcast program is running.
+
+## 8. Add event, sponsor, and graphics
+
+In the launcher, fill in:
+
+- Event title
+- Race sponsor
+- Series name
+- Sponsor / brand logos
+- Crank It Up sponsor graphic
+- Anthem graphics if used
+- Caution presentation graphics if used
+
+Use the logo buttons in the launcher to choose images from your PC. The program copies those graphics into the overlay assets folder for you.
+
+Good image types:
+
+- `.png`
+- `.jpg`
+- `.jpeg`
+- `.webp`
+
+## 9. Set up league files and Sim Racer Hub
+
+For official race testing, league files are optional.
+
+For league races, use the **League / Sim Racer Hub** tab.
+
+Recommended Sim Racer Hub URL:
+
+```text
+https://simracerhub.com
+```
+
+Then fill in:
+
+```text
+League ID
+Series ID
+Season ID
+```
+
+Use:
+
+- **Preview** first, to make sure the import looks right.
+- **Import Drivers** to create or update `league\drivers.csv`.
+- **Import Stats** to create or update `league\stats.csv`.
+
+The driver import is designed to preserve manual notes. That means you can add hometown, sponsor, team, driving style, or other notes later without the import wiping them out.
+
+## 10. Save settings and create a profile
+
+After filling out the launcher:
+
+1. Click **Save Settings**.
+2. Enter a profile name, for example:
+
+   ```text
+   WFO Truck League
+   ```
+
+3. Click **Save Profile**.
+
+Profiles are useful because you can keep separate setups, such as:
+
+- League race
+- Official race testing
+- Producer Assist
+- No-voice overlay/camera mode
+
+Before race night, load the correct profile and check the Broadcast Health panel.
+
+## 11. Choose how you want to broadcast
+
+### Full AI Broadcast
+
+Use this when you want:
+
+- AI commentary writing
+- ElevenLabs spoken voices
+- camera direction
+- overlay graphics
+- race control and caution handling
+
+Click:
+
+```text
+Start Broadcast
+```
+
+### Producer Assist
+
+Use this when a human broadcaster is calling the race, but still wants:
+
+- overlays
+- camera movement
+- live race information
+- suggested talking points
+
+Click:
+
+```text
+Start Producer Assist
+```
+
+## 12. Recommended race-night flow
+
+1. Open iRacing.
+2. Join the session as a spectator, admin, or driver depending on your workflow.
+3. Open RGC AI Broadcast Studio.
+4. Load your saved profile.
+5. Open Streamlabs or OBS.
+6. Confirm the overlay browser source is visible.
+7. Check Broadcast Health.
+8. Start the broadcast during practice.
+9. Let the studio detect practice, qualifying, and race.
+10. Stop the broadcast after the race or after post-race coverage.
+
+## 13. Updating to a newer build
+
+For now, updates are handled by receiving a newer ZIP.
+
+Recommended update method:
+
+1. Extract the new ZIP into a new folder.
+2. Run:
+
+   ```text
+   install_studio.bat
+   ```
+
+3. Open the launcher.
+4. Re-enter settings or recreate the profile if needed.
+
+Later versions may add a true installer/updater.
+
+## 14. Troubleshooting
+
+### The program will not install
+
+Check that Python 3.11 or newer is installed and that **Add python.exe to PATH** was checked during Python install.
+
+### No AI commentary
+
+Check:
+
+- `USE_OPENAI` is on
+- OpenAI API key is entered
+- internet connection works
+- OpenAI account has API access and billing set up if required
+
+### No spoken voices
+
+Check:
+
+- `USE_ELEVENLABS` is on
+- ElevenLabs API key is entered
+- voice IDs are entered
+- Windows audio output is correct
+- ElevenLabs account has enough usage available
+
+### Overlay does not show
+
+Check:
+
+- broadcast is started
+- browser source URL is `http://127.0.0.1:8765/overlay`
+- browser source size is `1920 x 1080`
+- overlay source is above the iRacing capture
+
+### Cameras do not move
+
+Check:
+
+- iRacing is running
+- you are connected to a session
+- camera mode is enabled in the launcher
+- iRacing replay/camera controls are not blocked by another tool
+
+## 15. Safety notes
+
+- Never share API keys publicly.
+- Do not stream your launcher while keys are visible.
+- Do not send your personal `.env` file to another user.
+- Each league/admin should use their own OpenAI and ElevenLabs accounts.
+- Use Producer Assist if you want to test overlays and cameras without AI costs.

@@ -6,6 +6,9 @@ If you are preparing a ZIP for another league admin, see
 [ADMIN_TESTER_HANDOFF.md](ADMIN_TESTER_HANDOFF.md). That path builds a clean
 tester ZIP without private `.env`, `league`, or saved profile data.
 
+For the full step-by-step install, OpenAI, ElevenLabs, overlay, and profile setup tutorial, see
+[INSTALL_AND_SETUP_GUIDE.md](INSTALL_AND_SETUP_GUIDE.md).
+
 ## What testers need
 
 - Windows 10 or 11
