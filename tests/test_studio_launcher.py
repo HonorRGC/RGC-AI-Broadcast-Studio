@@ -30,6 +30,7 @@ from studio_launcher import (
     write_broadcast_pid,
 )
 from tools.build_tester_zip import should_include
+from tools.build_windows_setup import build_inno_command, project_version
 
 
 def test_launcher_loads_simple_env_file(tmp_path):
@@ -391,3 +392,23 @@ def test_tester_zip_excludes_private_local_files():
     assert not should_include("recordings/test.mp4")
     assert not should_include("broadcast/__pycache__/engine.pyc")
     assert not should_include("local_song.mp3")
+
+
+def test_windows_installer_helpers_build_expected_command(tmp_path):
+    command = build_inno_command(
+        tmp_path / "ISCC.exe",
+        source_dir=tmp_path / "source",
+        output_dir=tmp_path / "dist",
+        version="1.2.3",
+        script=tmp_path / "installer.iss",
+    )
+
+    assert str(tmp_path / "ISCC.exe") == command[0]
+    assert f"/DSourceDir={tmp_path / 'source'}" in command
+    assert f"/DOutputDir={tmp_path / 'dist'}" in command
+    assert "/DAppVersion=1.2.3" in command
+    assert str(tmp_path / "installer.iss") == command[-1]
+
+
+def test_project_version_reads_pyproject():
+    assert project_version()

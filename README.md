@@ -34,7 +34,7 @@ Copy-Item .env.example .env
 
 Add the desired API keys and voice IDs to `.env`. Generated audio and telemetry recordings are intentionally ignored by Git.
 
-For outside testers, see [docs/TESTER_QUICKSTART.md](docs/TESTER_QUICKSTART.md). For a full step-by-step install and key setup tutorial, see [docs/INSTALL_AND_SETUP_GUIDE.md](docs/INSTALL_AND_SETUP_GUIDE.md). For a league admin handoff, see [docs/ADMIN_TESTER_HANDOFF.md](docs/ADMIN_TESTER_HANDOFF.md) and build a clean tester ZIP with `python tools\build_tester_zip.py`. The current pre-installer flow is: download the GitHub ZIP or tester ZIP, run `install_studio.bat`, then use the desktop shortcut it creates.
+For outside testers, see [docs/TESTER_QUICKSTART.md](docs/TESTER_QUICKSTART.md). For a full step-by-step install and key setup tutorial, see [docs/INSTALL_AND_SETUP_GUIDE.md](docs/INSTALL_AND_SETUP_GUIDE.md). For a league admin handoff, see [docs/ADMIN_TESTER_HANDOFF.md](docs/ADMIN_TESTER_HANDOFF.md) and build a clean tester ZIP with `python tools\build_tester_zip.py`. To build a Windows `Setup.exe`, see [docs/WINDOWS_INSTALLER_BUILD.md](docs/WINDOWS_INSTALLER_BUILD.md). The current pre-installer flow is: download the GitHub ZIP or tester ZIP, run `install_studio.bat`, then use the desktop shortcut it creates.
 
 ## Early desktop launcher
 
