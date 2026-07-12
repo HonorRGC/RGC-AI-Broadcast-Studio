@@ -114,6 +114,23 @@ def test_camera_can_focus_iracing_incident_camera():
     assert telemetry.switches == [("incident", 4, 0)]
 
 
+def test_caution_item_immediately_focuses_incident_camera():
+    telemetry = CameraTelemetry()
+    director = CameraDirector(mode="auto", preferred_group="TV1")
+    item = SimpleNamespace(
+        camera_focus_incident=True,
+        camera_incident_group="Far Chase",
+        category="race_control",
+        dedupe_key="race_control:caution",
+    )
+
+    decision = director.follow(item, telemetry)
+
+    assert decision.status == "switched"
+    assert decision.group_number == 4
+    assert telemetry.switches == [("incident", 4, 0)]
+
+
 def test_unknown_camera_group_fails_without_sending_command():
     telemetry = CameraTelemetry()
     director = CameraDirector(mode="auto", preferred_group="Not A Group")

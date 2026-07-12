@@ -15,6 +15,8 @@ class ScheduledBroadcast:
     dedupe_key: str = ""
     camera_target_car_idx: int | None = None
     participant_car_indices: Tuple[int, ...] = ()
+    camera_focus_incident: bool = False
+    camera_incident_group: str = "Far Chase"
     camera_sequence: Tuple[int, ...] = ()
     camera_sequence_steps: Tuple[tuple, ...] = ()
     replay_session_num: int | None = None
@@ -54,6 +56,8 @@ class BroadcastQueue:
         dedupe_key="",
         camera_target_car_idx=None,
         participant_car_indices=(),
+        camera_focus_incident=False,
+        camera_incident_group="Far Chase",
         camera_sequence=(),
         camera_sequence_steps=(),
         replay_session_num=None,
@@ -85,6 +89,8 @@ class BroadcastQueue:
                 dedupe_key=key,
                 camera_target_car_idx=camera_target_car_idx,
                 participant_car_indices=tuple(participant_car_indices),
+                camera_focus_incident=bool(camera_focus_incident),
+                camera_incident_group=str(camera_incident_group or "Far Chase"),
                 camera_sequence=tuple(camera_sequence),
                 camera_sequence_steps=tuple(camera_sequence_steps),
                 replay_session_num=replay_session_num,

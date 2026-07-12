@@ -150,6 +150,14 @@ class CameraDirector:
             self.return_home_at = None
             return self.focus_home(telemetry, now, force=True)
 
+        if getattr(item, "camera_focus_incident", False):
+            self.clear_sequence()
+            self.return_home_at = None
+            return self.focus_incident_replay(
+                getattr(item, "camera_incident_group", "Far Chase"),
+                telemetry,
+            )
+
         sequence = self.build_sequence_steps(item)
         if sequence:
             self.return_home_at = None

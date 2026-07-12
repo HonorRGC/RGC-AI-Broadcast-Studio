@@ -188,6 +188,8 @@ def test_caution_uses_immediate_trouble_language():
 
     assert queue.items[0].message.startswith("Trouble on the speedway")
     assert "caution is out" in queue.items[0].message
+    assert queue.items[0].camera_focus_incident is True
+    assert queue.items[0].camera_incident_group == "Far Chase"
 
 
 def test_one_to_green_preserves_a_pending_caution_pit_summary():

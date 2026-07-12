@@ -239,6 +239,8 @@ class RaceDirector:
             speaker="lead",
             expires_after=30,
             dedupe_key="race_control:caution",
+            camera_focus_incident=True,
+            camera_incident_group="Far Chase",
         )
 
         self.yellow_announced = True
