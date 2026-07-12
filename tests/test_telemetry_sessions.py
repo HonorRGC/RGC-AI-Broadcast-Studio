@@ -138,6 +138,12 @@ def test_live_telemetry_detects_replay_delay_and_returns_to_live_edge():
     assert telemetry.ir.replay_commands[-3][0] == "search"
     assert telemetry.ir.replay_commands[-2][0] == "position"
     assert telemetry.ir.replay_commands[-2][2] == -420
+    assert telemetry.seek_previous_incident_marker() is True
+    assert telemetry.ir.replay_commands[-1][0] == "search"
+    assert telemetry.rewind_replay_frames(300) is True
+    assert telemetry.ir.replay_commands[-2][0] == "position"
+    assert telemetry.ir.replay_commands[-2][2] == -300
+    assert telemetry.ir.replay_commands[-1] == ("speed", 1)
 
 
 def test_live_results_include_the_player_incident_total():

@@ -290,12 +290,31 @@ class OpeningDirector:
         try:
             number = float(text.split()[0])
             if "km" in text.lower():
-                return f"{number * 0.621371:.2f}-mile"
+                return self.broadcast_track_length(number * 0.621371)
             if "mi" in text.lower():
-                return f"{number:.2f}-mile"
+                return self.broadcast_track_length(number)
         except (TypeError, ValueError):
             return text
         return text
+
+    def broadcast_track_length(self, miles):
+        common_lengths = (
+            (0.5, "half-mile"),
+            (0.75, "three-quarter-mile"),
+            (0.875, "seven-eighths-mile"),
+            (1.0, "one-mile"),
+            (1.25, "mile-and-a-quarter"),
+            (1.33, "mile-and-a-third"),
+            (1.5, "mile-and-a-half"),
+            (2.0, "two-mile"),
+            (2.5, "two-and-a-half-mile"),
+        )
+        for target, label in common_lengths:
+            if abs(float(miles) - target) <= 0.06:
+                return label
+        if miles >= 2.0:
+            return f"{miles:.1f}-mile"
+        return f"{miles:.2f}-mile"
 
     def format_temperature(self, value):
         try:

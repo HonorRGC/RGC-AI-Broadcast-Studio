@@ -46,6 +46,7 @@ def test_opening_waits_for_lineup_after_welcome_and_weather():
     ]
     track_message = first_segments[1].message
     assert "partly cloudy" in track_message.lower()
+    assert "mile-and-a-third oval" in track_message
     assert "81 degrees Fahrenheit" in track_message
     assert "rain chance is 0 percent" in track_message
     assert "dynamic" not in track_message.lower()
@@ -139,6 +140,7 @@ def test_track_info_explains_hot_daytime_track_grip():
     )
 
     assert "rain chance is 0 percent" in segment.message
+    assert "mile-and-a-half oval" in segment.message
     assert "hotter track should make the tires give up faster" in segment.message
     assert "drivers who manage throttle and corner entry" in segment.message
 
@@ -179,6 +181,7 @@ def test_track_info_uses_supplied_rain_chance():
     )
 
     assert "rain chance is 25 percent" in segment.message
+    assert "two-and-a-half-mile oval" in segment.message
 
 
 def test_track_info_removes_simulator_weather_mode_wording():

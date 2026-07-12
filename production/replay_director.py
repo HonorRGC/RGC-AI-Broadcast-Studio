@@ -126,6 +126,14 @@ class ReplayDirector:
             if camera_decision.status == "failed":
                 self.restore_live_after_failure(telemetry, camera_director)
                 return ReplayDecision("failed", camera_decision.reason)
+            if self.use_incident_marker and not self.apply_incident_marker_preroll(
+                telemetry
+            ):
+                self.restore_live_after_failure(telemetry, camera_director)
+                return ReplayDecision(
+                    "failed",
+                    "iRacing did not accept the incident replay pre-roll.",
+                )
 
         self.active = True
         self.angle_started_at = self.clock()
@@ -177,6 +185,10 @@ class ReplayDirector:
                 )
             if camera_decision.status == "failed":
                 return self.finish(telemetry, camera_director, failed=True)
+            if self.use_incident_marker and not self.apply_incident_marker_preroll(
+                telemetry
+            ):
+                return self.finish(telemetry, camera_director, failed=True)
 
         self.angle_started_at = now
         return ReplayDecision(
@@ -213,12 +225,21 @@ class ReplayDirector:
                 return_live = getattr(telemetry, "return_to_live", None)
                 if return_live:
                     return_live()
+            marker_seeker = getattr(telemetry, "seek_previous_incident_marker", None)
+            if marker_seeker:
+                return bool(marker_seeker())
             seeker = getattr(telemetry, "seek_previous_incident", None)
             return bool(seeker and seeker(self.current_incident_marker_pre_roll_frames()))
         return telemetry.seek_replay_session_time(
             self.session_num,
             self.current_replay_start_time(),
         )
+
+    def apply_incident_marker_preroll(self, telemetry):
+        rewinder = getattr(telemetry, "rewind_replay_frames", None)
+        if not rewinder:
+            return True
+        return bool(rewinder(self.current_incident_marker_pre_roll_frames()))
 
     def replay_seek_is_valid(self, telemetry):
         if self.mode != "auto":
