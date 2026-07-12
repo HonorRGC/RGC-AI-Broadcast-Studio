@@ -115,6 +115,7 @@ class FieldRundownDirector:
     def build_entries(self, frozen_results, driver_lookup):
         entries = []
         zero_based = self.results_are_zero_based(frozen_results)
+        previous_gap_to_leader = None
         for order_position, car in enumerate(frozen_results, start=1):
             car_idx = car.get("CarIdx")
             driver_info = driver_lookup.get(car_idx, {})
@@ -124,6 +125,10 @@ class FieldRundownDirector:
                 car.get("Position", order_position),
                 zero_based,
             )
+            gap_to_leader = self.safe_float(car.get("Time", car.get("Gap", 0)))
+            gap_to_car_ahead = 0.0
+            if order_position > 1 and previous_gap_to_leader is not None:
+                gap_to_car_ahead = max(0.0, gap_to_leader - previous_gap_to_leader)
             entries.append(
                 {
                     "order_position": order_position,
@@ -135,7 +140,9 @@ class FieldRundownDirector:
                     "car_idx": car_idx,
                     "name": name,
                     "number": number,
-                    "gap": self.safe_float(car.get("Time", car.get("Gap", 0))),
+                    "gap": gap_to_car_ahead,
+                    "gap_to_car_ahead": gap_to_car_ahead,
+                    "gap_to_leader": gap_to_leader,
                     "last_lap": self.safe_float(car.get("LastTime", 0)),
                     "fastest_lap": self.safe_float(
                         car.get(
@@ -148,6 +155,7 @@ class FieldRundownDirector:
                     ),
                 }
             )
+            previous_gap_to_leader = gap_to_leader
         return entries
 
     def build_segments(self, milestone, entries, current_lap=0, total_laps=0):
@@ -331,7 +339,10 @@ class FieldRundownDirector:
 
     def session_stat_context(self, entry, net):
         position = self.safe_int(entry.get("position"), 0)
-        gap = self.safe_float(entry.get("gap", 0))
+        gap_to_car_ahead = self.safe_float(
+            entry.get("gap_to_car_ahead", entry.get("gap", 0))
+        )
+        gap_to_leader = self.safe_float(entry.get("gap_to_leader", 0))
         fastest_lap = self.safe_float(entry.get("fastest_lap", 0))
         last_lap = self.safe_float(entry.get("last_lap", 0))
 
@@ -339,10 +350,12 @@ class FieldRundownDirector:
             return f"Their best lap so far is {fastest_lap:.3f} seconds."
         if position == 1 and last_lap > 0:
             return f"Last time by, they ran a {last_lap:.3f}."
-        if position > 1 and 0 < gap < 0.75:
-            return f"They are within {gap:.1f} seconds of the car ahead, so that is still a live battle."
-        if position > 1 and gap >= 0.75:
-            return f"They are showing about {gap:.1f} seconds back from the next position on track."
+        if position > 1 and 0 < gap_to_car_ahead < 0.75:
+            return f"They are within {gap_to_car_ahead:.1f} seconds of the car ahead, so that is still a live battle."
+        if position > 1 and gap_to_car_ahead >= 0.75:
+            return f"They are about {gap_to_car_ahead:.1f} seconds behind the car ahead."
+        if position > 1 and gap_to_leader > 0:
+            return f"They are scored about {gap_to_leader:.1f} seconds behind the leader."
         if net > 0:
             return f"That is {self.position_count(net)} gained since the start."
         if net < 0:

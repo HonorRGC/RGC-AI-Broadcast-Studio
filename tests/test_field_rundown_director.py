@@ -144,6 +144,28 @@ def test_long_green_rundown_refreshes_live_order_during_passes():
     assert "Driver 6" in fifth_call[0].message
 
 
+def test_long_green_rundown_uses_adjacent_gap_not_leader_gap():
+    director = FieldRundownDirector()
+    results = [
+        {"CarIdx": 0, "Position": 1, "StartingPosition": 1, "Time": 0.0},
+        {"CarIdx": 1, "Position": 2, "StartingPosition": 2, "Time": 0.4},
+        {"CarIdx": 2, "Position": 3, "StartingPosition": 3, "Time": 2.0},
+    ]
+    drivers = {
+        index: {"name": f"Driver {index + 1}", "number": str(index + 1)}
+        for index in range(3)
+    }
+
+    entries = director.build_entries(results, drivers)
+
+    assert entries[2]["gap_to_leader"] == 2.0
+    assert entries[2]["gap_to_car_ahead"] == 1.6
+    assert "1.6 seconds behind the car ahead" in director.format_entry(entries[2])
+    assert "2.0 seconds back from the next position" not in director.format_entry(
+        entries[2]
+    )
+
+
 def test_long_green_final_rundown_segment_returns_to_home_camera():
     director = FieldRundownDirector()
     results = [
