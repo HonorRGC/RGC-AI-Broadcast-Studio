@@ -234,7 +234,7 @@ class RaceDirector:
         scheduler.add(
             (
                 f"Trouble on the speedway - caution is out here at {track_name}. "
-                "The incident camera is picking up one of the cars involved. "
+                "This looks like what could have brought out the caution. "
                 "We'll have to see what brought this yellow flag out."
             ),
             priority=12,

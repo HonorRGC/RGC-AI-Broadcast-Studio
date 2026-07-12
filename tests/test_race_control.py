@@ -188,8 +188,7 @@ def test_caution_uses_immediate_trouble_language():
 
     assert queue.items[0].message.startswith("Trouble on the speedway")
     assert "caution is out" in queue.items[0].message
-    assert "incident camera" in queue.items[0].message
-    assert "one of the cars involved" in queue.items[0].message
+    assert "This looks like what could have brought out the caution" in queue.items[0].message
     assert queue.items[0].camera_focus_incident is True
     assert queue.items[0].camera_incident_group == "Far Chase"
 
