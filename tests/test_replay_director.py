@@ -90,6 +90,12 @@ def incident_marker_item():
     )
 
 
+def timed_incident_marker_item():
+    item = incident_marker_item()
+    item.replay_session_time = 100.0
+    return item
+
+
 def restart_incident_marker_item():
     item = incident_marker_item()
     item.replay_marker_pre_roll_frames = 2400
@@ -341,6 +347,23 @@ def test_incident_marker_replay_uses_iracing_previous_incident_camera():
     assert telemetry.rewinds == [1500, 1500]
     assert telemetry.live_returns == 1
     assert camera.focuses == [("incident", "TV1"), ("incident", "TV2")]
+
+
+def test_timed_incident_marker_replay_seeks_to_absolute_caution_time():
+    telemetry = ReplayTelemetry()
+    camera = ReplayCamera()
+    director = ReplayDirector(
+        mode="auto",
+        incident_marker_pre_roll_frames=1920,
+        clock=lambda: 10.0,
+    )
+
+    started = director.handle_item(timed_incident_marker_item(), telemetry, camera)
+
+    assert started.status == "started"
+    assert telemetry.seeks == [(2, 68.0)]
+    assert telemetry.rewinds == []
+    assert camera.focuses == [("incident", "Far Chase")]
 
 
 def test_incident_marker_replay_pre_roll_frames_are_configurable():

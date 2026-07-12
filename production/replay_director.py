@@ -126,9 +126,7 @@ class ReplayDirector:
             if camera_decision.status == "failed":
                 self.restore_live_after_failure(telemetry, camera_director)
                 return ReplayDecision("failed", camera_decision.reason)
-            if self.use_incident_marker and not self.apply_incident_marker_preroll(
-                telemetry
-            ):
+            if self.use_incident_marker and not self.apply_incident_marker_preroll(telemetry):
                 self.restore_live_after_failure(telemetry, camera_director)
                 return ReplayDecision(
                     "failed",
@@ -185,9 +183,7 @@ class ReplayDirector:
                 )
             if camera_decision.status == "failed":
                 return self.finish(telemetry, camera_director, failed=True)
-            if self.use_incident_marker and not self.apply_incident_marker_preroll(
-                telemetry
-            ):
+            if self.use_incident_marker and not self.apply_incident_marker_preroll(telemetry):
                 return self.finish(telemetry, camera_director, failed=True)
 
         self.angle_started_at = now
@@ -242,6 +238,11 @@ class ReplayDirector:
                 return_live = getattr(telemetry, "return_to_live", None)
                 if return_live:
                     return_live()
+            if self.use_absolute_incident_time():
+                return telemetry.seek_replay_session_time(
+                    self.session_num,
+                    self.current_replay_start_time(),
+                )
             marker_seeker = getattr(telemetry, "seek_previous_incident_marker", None)
             if marker_seeker:
                 return bool(marker_seeker())
@@ -253,6 +254,8 @@ class ReplayDirector:
         )
 
     def apply_incident_marker_preroll(self, telemetry):
+        if self.use_absolute_incident_time():
+            return True
         rewinder = getattr(telemetry, "rewind_replay_frames", None)
         if not rewinder:
             return True
@@ -318,6 +321,12 @@ class ReplayDirector:
 
     def current_replay_start_time(self):
         if getattr(self, "use_incident_marker", False):
+            if self.use_absolute_incident_time():
+                return max(
+                    0.0,
+                    self.replay_session_time
+                    - self.current_incident_marker_pre_roll_seconds(),
+                )
             return 0.0
         return max(0.0, self.replay_session_time - self.current_pre_roll_seconds())
 
@@ -328,6 +337,16 @@ class ReplayDirector:
         if self.marker_pre_roll_override_frames:
             return int(self.marker_pre_roll_override_frames)
         return self.incident_marker_pre_roll_frames
+
+    def current_incident_marker_pre_roll_seconds(self):
+        return max(self.current_incident_marker_pre_roll_frames() / 60.0, 0.0)
+
+    def use_absolute_incident_time(self):
+        return (
+            bool(getattr(self, "use_incident_marker", False))
+            and self.replay_session_time > 0
+            and self.session_num is not None
+        )
 
     def restore_live_after_failure(self, telemetry, camera_director):
         if self.mode == "auto":

@@ -818,6 +818,7 @@ def test_early_caution_without_candidate_queues_iracing_incident_marker_replay()
     assert incident.replay_use_incident_marker is True
     assert incident.replay_multi_angle is True
     assert incident.camera_target_car_idx is None
+    assert incident.replay_session_time == 35.0
 
 
 def test_caution_candidate_prefers_iracing_incident_marker_over_guessed_car():
@@ -866,7 +867,7 @@ def test_caution_candidate_prefers_iracing_incident_marker_over_guessed_car():
     )
     assert incident.replay_use_incident_marker is True
     assert incident.camera_target_car_idx is None
-    assert incident.replay_session_time is None
+    assert incident.replay_session_time == 90.0
     assert "Wrong guessed car" not in incident.message
 
 

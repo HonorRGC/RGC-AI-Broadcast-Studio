@@ -1289,7 +1289,7 @@ class BroadcastEngine:
                 ),
                 replay_session_num=session_num if replay_eligible else None,
                 replay_session_time=(
-                    None
+                    session_time
                     if use_incident_marker_replay
                     else (
                         candidate_replay_time
@@ -1317,7 +1317,9 @@ class BroadcastEngine:
     ):
         self.report_incident_debug(reason, results, telemetry)
         session_num_reader = getattr(telemetry, "get_current_session_num", None)
+        session_time_reader = getattr(telemetry, "get_session_time", None)
         session_num = session_num_reader() if session_num_reader else 0
+        session_time = session_time_reader() if session_time_reader else 0.0
         self.caution_marker_replay_count += 1
         self.broadcast_queue.add(
             "We are going to take a look at what may have brought out this caution.",
@@ -1331,6 +1333,7 @@ class BroadcastEngine:
                 f"{self.caution_marker_replay_count}"
             ),
             replay_session_num=session_num,
+            replay_session_time=session_time,
             replay_incident_delta=0,
             replay_multi_angle=True,
             replay_use_incident_marker=True,
