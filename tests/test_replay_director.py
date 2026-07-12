@@ -9,6 +9,7 @@ class ReplayTelemetry:
         self.live_returns = 0
         self.session_flags = 0
         self.session_state = 0
+        self.at_live_edge = None
 
     def seek_replay_session_time(self, session_num, session_time_seconds):
         self.seeks.append((session_num, session_time_seconds))
@@ -27,6 +28,9 @@ class ReplayTelemetry:
 
     def get_session_state(self):
         return self.session_state
+
+    def is_replay_at_live_edge(self):
+        return self.at_live_edge
 
 
 class ReplayCamera:
@@ -318,3 +322,30 @@ def test_incident_marker_replay_can_use_per_item_restart_preroll():
     director.handle_item(restart_incident_marker_item(), telemetry, camera)
 
     assert telemetry.seeks == [("previous_incident", 2400)]
+
+
+def test_replay_does_not_start_when_seek_stays_at_live_edge():
+    telemetry = ReplayTelemetry()
+    telemetry.at_live_edge = True
+    camera = ReplayCamera()
+    director = ReplayDirector(mode="auto", clock=lambda: 10.0)
+
+    decision = director.handle_item(incident_marker_item(), telemetry, camera)
+
+    assert decision.status == "failed"
+    assert "live edge" in decision.reason
+    assert telemetry.seeks == [("previous_incident", 1500)]
+    assert camera.focuses == []
+    assert camera.replay_active is False
+
+
+def test_replay_starts_when_seek_confirms_replay_is_behind_live():
+    telemetry = ReplayTelemetry()
+    telemetry.at_live_edge = False
+    camera = ReplayCamera()
+    director = ReplayDirector(mode="auto", clock=lambda: 10.0)
+
+    decision = director.handle_item(incident_marker_item(), telemetry, camera)
+
+    assert decision.status == "started"
+    assert camera.focuses == [("incident", "Far Chase")]

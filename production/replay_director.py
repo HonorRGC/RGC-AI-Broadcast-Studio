@@ -103,6 +103,11 @@ class ReplayDirector:
                 "failed",
                 "iRacing did not accept the incident replay seek.",
             )
+        if not self.replay_seek_is_valid(telemetry):
+            return ReplayDecision(
+                "failed",
+                "Incident replay seek stayed at the live edge.",
+            )
 
         if self.mode == "auto":
             camera_director.begin_replay()
@@ -153,6 +158,8 @@ class ReplayDirector:
 
         self.angle_index = next_index
         if not self.seek_to_incident(telemetry):
+            return self.finish(telemetry, camera_director, failed=True)
+        if not self.replay_seek_is_valid(telemetry):
             return self.finish(telemetry, camera_director, failed=True)
 
         group_name = self.active_groups[self.angle_index]
@@ -212,6 +219,17 @@ class ReplayDirector:
             self.session_num,
             self.current_replay_start_time(),
         )
+
+    def replay_seek_is_valid(self, telemetry):
+        if self.mode != "auto":
+            return True
+        checker = getattr(telemetry, "is_replay_at_live_edge", None)
+        if not checker:
+            return True
+        at_live_edge = checker()
+        if at_live_edge is None:
+            return True
+        return at_live_edge is False
 
     def play_replay_audio(self, story_id):
         if (
