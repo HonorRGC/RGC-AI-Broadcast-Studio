@@ -11,6 +11,7 @@ class FieldRundownSegment:
     category: str
     camera_sequence: tuple[int, ...] = ()
     camera_sequence_steps: tuple[tuple, ...] = ()
+    camera_return_home_after_sequence: bool = False
     feature_duration_seconds: float = 0.0
 
 
@@ -134,6 +135,17 @@ class FieldRundownDirector:
                     "car_idx": car_idx,
                     "name": name,
                     "number": number,
+                    "gap": self.safe_float(car.get("Time", car.get("Gap", 0))),
+                    "last_lap": self.safe_float(car.get("LastTime", 0)),
+                    "fastest_lap": self.safe_float(
+                        car.get(
+                            "FastestTime",
+                            car.get(
+                                "BestLapTime",
+                                car.get("FastestLapTime", car.get("BestTime", 0)),
+                            ),
+                        )
+                    ),
                 }
             )
         return entries
@@ -163,6 +175,9 @@ class FieldRundownDirector:
                         if entry["car_idx"] is not None
                     ),
                     camera_sequence_steps=self.build_quarter_camera_steps(group),
+                    camera_return_home_after_sequence=(
+                        start + self.GROUP_SIZE >= len(entries)
+                    ),
                     feature_duration_seconds=self.segment_feature_duration(milestone),
                 )
             )
@@ -194,6 +209,7 @@ class FieldRundownDirector:
                 entry["car_idx"] for entry in group if entry["car_idx"] is not None
             ),
             camera_sequence_steps=self.build_quarter_camera_steps(group),
+            camera_return_home_after_sequence=is_final,
             feature_duration_seconds=self.segment_feature_duration(milestone),
         )
 
@@ -308,55 +324,30 @@ class FieldRundownDirector:
                 f"The {number} of {name} is steady in {current_position}, no change from the grid.",
             )
 
-        return (
-            f"{templates[(position - 1) % len(templates)]} "
-            f"{self.long_green_context(entry, net)}"
-        )
+        stat_context = self.session_stat_context(entry, net)
+        if stat_context:
+            return f"{templates[(position - 1) % len(templates)]} {stat_context}"
+        return templates[(position - 1) % len(templates)]
 
-    def long_green_context(self, entry, net):
+    def session_stat_context(self, entry, net):
         position = self.safe_int(entry.get("position"), 0)
-        starting_position = self.safe_int(entry.get("starting_position"), 0)
-        name = entry.get("name", "that driver")
+        gap = self.safe_float(entry.get("gap", 0))
+        fastest_lap = self.safe_float(entry.get("fastest_lap", 0))
+        last_lap = self.safe_float(entry.get("last_lap", 0))
 
-        if position == 1:
-            return (
-                f"{name} has controlled this green-flag stretch, and now the question "
-                "is whether clean air can keep that pace out front."
-            )
-        if position == 2:
-            return (
-                "From second, this is the pressure spot: close enough to keep the "
-                "leader honest, but still needing the right opening."
-            )
-        if position == 3:
-            return (
-                "Third place is still very much in the race-winning conversation "
-                "if this run keeps stretching out."
-            )
-        if position <= 5:
-            return (
-                "Inside the top five, track position matters now, especially if "
-                "this run turns into a strategy race."
-            )
+        if position == 1 and fastest_lap > 0:
+            return f"Their best lap so far is {fastest_lap:.3f} seconds."
+        if position == 1 and last_lap > 0:
+            return f"Last time by, they ran a {last_lap:.3f}."
+        if position > 1 and 0 < gap < 0.75:
+            return f"They are within {gap:.1f} seconds of the car ahead, so that is still a live battle."
+        if position > 1 and gap >= 0.75:
+            return f"They are showing about {gap:.1f} seconds back from the next position on track."
         if net > 0:
-            return (
-                "That is the kind of forward progress that can change the whole "
-                "shape of a race over a long green run."
-            )
+            return f"That is {self.position_count(net)} gained since the start."
         if net < 0:
-            return (
-                "They have lost a little ground, but there is still enough time "
-                "to regroup if the balance comes back."
-            )
-        if starting_position and position == starting_position:
-            return (
-                "That steady run may not be flashy, but keeping the car clean "
-                "through a long stretch like this can pay off late."
-            )
-        return (
-            "This is a good checkpoint in the race, with pit strategy and tire "
-            "wear starting to matter more every lap."
-        )
+            return f"They are trying to stop the slide after losing {self.position_count(abs(net))}."
+        return ""
 
     def movement_phrase(self, current_position, starting_position):
         if not starting_position:
@@ -394,5 +385,11 @@ class FieldRundownDirector:
     def safe_int(self, value, default=0):
         try:
             return int(value)
+        except Exception:
+            return default
+
+    def safe_float(self, value, default=0.0):
+        try:
+            return float(value)
         except Exception:
             return default

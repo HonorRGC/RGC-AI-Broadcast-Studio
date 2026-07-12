@@ -4,7 +4,13 @@ from production.field_rundown_director import FieldRundownDirector
 def test_long_green_rundown_freezes_top_ten_and_airs_one_driver_at_a_time():
     director = FieldRundownDirector()
     results = [
-        {"CarIdx": index, "Position": index, "StartingPosition": index + 1}
+        {
+            "CarIdx": index,
+            "Position": index,
+            "StartingPosition": index + 1,
+            "Time": index * 0.4,
+            "FastestTime": 30.125 + index,
+        }
         for index in range(10)
     ]
     results[1]["StartingPosition"] = 5
@@ -53,9 +59,9 @@ def test_long_green_rundown_freezes_top_ten_and_airs_one_driver_at_a_time():
     assert "20-lap green flag run" in segments[0].message
     assert "top ten" in segments[0].message
     assert "First place" in segments[0].message
-    assert "controlled this green-flag stretch" in segments[0].message
+    assert "best lap so far is 30.125 seconds" in segments[0].message
     assert "Driver 2" in second_segment[0].message
-    assert "pressure spot" in second_segment[0].message
+    assert "within 0.4 seconds" in second_segment[0].message
     assert repeated[0].category == "long_green_field_rundown_3"
 
 
@@ -136,6 +142,32 @@ def test_long_green_rundown_refreshes_live_order_during_passes():
     assert fifth_call[0].camera_sequence == (5,)
     assert "fifth" in fifth_call[0].message.lower()
     assert "Driver 6" in fifth_call[0].message
+
+
+def test_long_green_final_rundown_segment_returns_to_home_camera():
+    director = FieldRundownDirector()
+    results = [
+        {"CarIdx": index, "Position": index, "StartingPosition": index + 1}
+        for index in range(10)
+    ]
+    drivers = {
+        index: {"name": f"Driver {index + 1}", "number": str(index + 1)}
+        for index in range(10)
+    }
+
+    final_segment = []
+    for lap in range(20, 30):
+        final_segment = director.update(
+            results,
+            drivers,
+            lap,
+            60,
+            under_green=True,
+            green_lap_count=lap,
+        )
+
+    assert final_segment[0].category == "long_green_field_rundown_10"
+    assert final_segment[0].camera_return_home_after_sequence is True
 
 
 def test_active_long_green_rundown_cancels_under_caution():
