@@ -1,6 +1,8 @@
 from types import SimpleNamespace
 
 from app import (
+    find_brand_graphic_for_name,
+    split_sponsor_names,
     should_show_movers_graphic,
     show_overlay_feature,
     sponsor_graphics_for_mentions,
@@ -122,3 +124,26 @@ def test_sponsor_graphics_use_expected_defaults():
         "/assets/rgc_motorsports.png",
         "/assets/autism_awareness.png",
     ]
+
+
+def test_sponsor_names_can_be_split_from_profile_style_value():
+    assert split_sponsor_names("Bob's Auto Parts; Autism Awareness | RGC Motorsports") == [
+        "Bob's Auto Parts",
+        "Autism Awareness",
+        "RGC Motorsports",
+    ]
+
+
+def test_sponsor_graphic_matching_uses_configured_brand_graphics(monkeypatch):
+    import app
+
+    monkeypatch.setattr(
+        app,
+        "OVERLAY_BRAND_GRAPHICS",
+        [
+            "/assets/bobs_auto_parts.png",
+            "/assets/autism_awareness.png",
+        ],
+    )
+
+    assert find_brand_graphic_for_name("Bob's Auto Parts") == "/assets/bobs_auto_parts.png"

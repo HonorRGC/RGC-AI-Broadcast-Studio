@@ -5,6 +5,9 @@ from config import (
     CRANK_IT_UP_ICON_GRAPHIC,
     CRANK_IT_UP_SPONSOR_GRAPHIC,
     OVERLAY_BRAND_GRAPHICS,
+    OVERLAY_RACE_SPONSOR,
+    SPONSOR_READ_CAUSE,
+    SPONSOR_READ_NAME,
     STUDIO_VOLUME,
 )
 from broadcast.booth import BroadcastBooth
@@ -296,11 +299,45 @@ def show_sponsor_mention_bug(item, overlay_server):
 def sponsor_mentions_for_message(message):
     text = str(message or "").lower()
     mentions = []
-    if "rgc motorsports" in text:
-        mentions.append("RGC Motorsports")
-    if "autism awareness" in text or "autism" in text:
-        mentions.append("Autism Awareness")
+    for name in configured_sponsor_names():
+        if sponsor_name_matches_text(name, text):
+            mentions.append(name)
     return mentions
+
+
+def configured_sponsor_names():
+    names = []
+    for raw in (
+        SPONSOR_READ_NAME,
+        OVERLAY_RACE_SPONSOR,
+        SPONSOR_READ_CAUSE,
+        "RGC Motorsports",
+        "Autism Awareness",
+    ):
+        for name in split_sponsor_names(raw):
+            if name and name not in names:
+                names.append(name)
+    return names
+
+
+def split_sponsor_names(value):
+    text = str(value or "").strip()
+    if not text:
+        return []
+    for separator in (";", "|", ","):
+        text = text.replace(separator, "||")
+    return [part.strip() for part in text.split("||") if part.strip()]
+
+
+def sponsor_name_matches_text(name, lower_text):
+    normalized_name = normalize_sponsor_text(name)
+    if not normalized_name:
+        return False
+    if normalized_name in normalize_sponsor_text(lower_text):
+        return True
+    if "autism" in normalized_name and "autism" in lower_text:
+        return True
+    return False
 
 
 def sponsor_graphics_for_mentions(mentions):
@@ -313,12 +350,30 @@ def sponsor_graphics_for_mentions(mentions):
 
 
 def sponsor_graphic_for_mention(mention):
-    mention_text = str(mention or "").lower()
+    mention_text = normalize_sponsor_text(mention)
+    graphic = find_brand_graphic_for_name(mention)
+    if graphic:
+        return graphic
     if "autism" in mention_text:
         return find_brand_graphic(("autism",), "/assets/autism_awareness.png")
     if "rgc" in mention_text:
         return find_brand_graphic(("rgc", "motor"), "/assets/rgc_motorsports.png")
-    return ""
+    return OVERLAY_BRAND_GRAPHICS[0] if OVERLAY_BRAND_GRAPHICS else ""
+
+
+def find_brand_graphic_for_name(name):
+    name_tokens = sponsor_tokens(name)
+    if not name_tokens:
+        return ""
+    best_graphic = ""
+    best_score = 0
+    for graphic in OVERLAY_BRAND_GRAPHICS:
+        graphic_tokens = sponsor_tokens(graphic)
+        score = len(set(name_tokens) & set(graphic_tokens))
+        if score > best_score:
+            best_graphic = graphic
+            best_score = score
+    return best_graphic if best_score >= min(2, len(set(name_tokens))) else ""
 
 
 def find_brand_graphic(required_terms, fallback):
@@ -327,6 +382,38 @@ def find_brand_graphic(required_terms, fallback):
         if all(term in text for term in required_terms):
             return graphic
     return fallback
+
+
+def sponsor_tokens(value):
+    ignored = {
+        "a",
+        "an",
+        "and",
+        "awareness",
+        "broadcast",
+        "cause",
+        "logo",
+        "motorsport",
+        "motorsports",
+        "of",
+        "partner",
+        "presented",
+        "sponsor",
+        "the",
+    }
+    return [
+        token
+        for token in normalize_sponsor_text(value).split()
+        if token and token not in ignored
+    ]
+
+
+def normalize_sponsor_text(value):
+    text = str(value or "").lower()
+    cleaned = []
+    for char in text:
+        cleaned.append(char if char.isalnum() else " ")
+    return " ".join("".join(cleaned).split())
 
 
 def run_crank_it_up_test(booth, overlay_server, duration_seconds=DEFAULT_CRANK_IT_UP_SECONDS):
