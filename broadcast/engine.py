@@ -14,6 +14,7 @@ from production.league_context import LeagueContext
 from production.openai_director import OpenAIDirector
 from production.opening_director import OpeningDirector
 from production.pit_strategy_detector import PitStrategyDetector
+from production.racecraft_director import RacecraftDirector
 from production.race_insight_director import RaceInsightDirector
 from production.race_intelligence import RaceIntelligence
 from production.session_tracker import SessionTracker
@@ -41,6 +42,7 @@ class BroadcastEngine:
         self.race_director = RaceDirector()
         self.race_intelligence = RaceIntelligence()
         self.race_insight_director = RaceInsightDirector()
+        self.racecraft_director = RacecraftDirector()
         self.action_detector = ActionDetector()
         self.formation_detector = FormationDetector()
         self.editorial_producer = EditorialProducer()
@@ -245,6 +247,14 @@ class BroadcastEngine:
                 driver_lookup,
                 pit_road_status,
                 current_lap,
+            )
+            self._collect_racecraft_stories(
+                telemetry,
+                story_results,
+                driver_lookup,
+                current_lap,
+                total_laps,
+                race_state,
             )
             self._collect_pass_stories(story_results, driver_lookup)
             self._queue_editorial_decision(
@@ -646,6 +656,39 @@ class BroadcastEngine:
                 car_number=primary.get("number", ""),
                 speaker="jeff",
                 camera_target_car_idx=event.primary_car_idx,
+                participant_car_indices=event.participant_car_indices,
+            )
+
+    def _collect_racecraft_stories(
+        self,
+        telemetry,
+        results,
+        driver_lookup,
+        current_lap,
+        total_laps,
+        race_state,
+    ):
+        events = self.racecraft_director.analyze(
+            results=results,
+            driver_lookup=driver_lookup,
+            track_info=telemetry.get_track_info(),
+            race_state=race_state,
+            current_lap=current_lap,
+            total_laps=total_laps,
+            lap_dist_pct_status=telemetry.get_car_idx_lap_dist_pct(),
+            pit_states=self.pit_strategy_detector.driver_states,
+        )
+        for event in events:
+            self.editorial_producer.submit_story(
+                story_type=event.story_type,
+                headline=event.headline,
+                summary=event.summary,
+                priority=event.priority,
+                source="racecraft_director",
+                driver_name=event.driver_name,
+                car_number=event.car_number,
+                speaker=event.speaker,
+                camera_target_car_idx=event.camera_target_car_idx,
                 participant_car_indices=event.participant_car_indices,
             )
 
