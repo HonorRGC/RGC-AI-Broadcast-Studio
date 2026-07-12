@@ -28,11 +28,17 @@ On first setup, it runs the same Python dependency setup that the current tester
 
 ## Required installer tool
 
-Install Inno Setup 6:
+Install Inno Setup:
 
 <https://jrsoftware.org/isinfo.php>
 
 Inno Setup is the tool that turns the clean app folder into a Windows `Setup.exe`.
+
+The build script checks the common Inno Setup 7 and Inno Setup 6 install folders automatically. If your install is somewhere else, pass the compiler path manually:
+
+```powershell
+.\.venv\Scripts\python.exe tools\build_windows_setup.py --inno-path "C:\Program Files (x86)\Inno Setup 7\ISCC.exe"
+```
 
 ## Build command
 

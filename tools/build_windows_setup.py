@@ -24,6 +24,8 @@ INNO_SCRIPT = ROOT / "installer" / "RGC_AI_Broadcast_Studio.iss"
 
 
 DEFAULT_INNO_PATHS = [
+    Path("C:/Program Files (x86)/Inno Setup 7/ISCC.exe"),
+    Path("C:/Program Files/Inno Setup 7/ISCC.exe"),
     Path("C:/Program Files (x86)/Inno Setup 6/ISCC.exe"),
     Path("C:/Program Files/Inno Setup 6/ISCC.exe"),
 ]
@@ -106,7 +108,8 @@ def build_windows_setup(
     if compiler is None:
         print("")
         print("Inno Setup compiler was not found, so Setup.exe was not built yet.")
-        print("Install Inno Setup 6 from https://jrsoftware.org/isinfo.php")
+        print("Install Inno Setup from https://jrsoftware.org/isinfo.php")
+        print("The script checks common Inno Setup 7 and 6 install folders.")
         print("Then rerun:")
         print(r"  .\.venv\Scripts\python.exe tools\build_windows_setup.py")
         if require_inno:

@@ -30,7 +30,7 @@ from studio_launcher import (
     write_broadcast_pid,
 )
 from tools.build_tester_zip import should_include
-from tools.build_windows_setup import build_inno_command, project_version
+from tools.build_windows_setup import DEFAULT_INNO_PATHS, build_inno_command, project_version
 
 
 def test_launcher_loads_simple_env_file(tmp_path):
@@ -412,3 +412,10 @@ def test_windows_installer_helpers_build_expected_command(tmp_path):
 
 def test_project_version_reads_pyproject():
     assert project_version()
+
+
+def test_inno_setup_searches_version_7_and_6_paths():
+    paths = [str(path) for path in DEFAULT_INNO_PATHS]
+
+    assert any("Inno Setup 7" in path for path in paths)
+    assert any("Inno Setup 6" in path for path in paths)
