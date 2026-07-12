@@ -1370,6 +1370,65 @@ def test_leader_story_uses_singular_lap_word():
     assert "1 laps" not in engine.broadcast_queue.items[0].message
 
 
+def test_green_phase_change_clears_stale_editorial_stories():
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    engine.editorial_producer.submit_story(
+        "battle_for_top_five",
+        "Old battle",
+        "This was collected before the restart.",
+        priority=8,
+    )
+    engine.race_director.phase_changed = True
+    engine.race_director.phase = RacePhase.GREEN
+
+    engine._handle_green_phase_change()
+
+    assert engine.editorial_producer.items == []
+
+
+def test_restart_launch_story_describes_leader_gap():
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    engine.race_director.previous_phase = RacePhase.ONE_TO_GREEN
+    drivers = {
+        34: {"name": "T.J. Lee", "number": "34"},
+        12: {"name": "Second Place", "number": "12"},
+    }
+    results = [
+        {"CarIdx": 34, "Position": 0, "Time": 0.0},
+        {"CarIdx": 12, "Position": 1, "Time": 0.4},
+    ]
+
+    queued = engine._queue_restart_launch_story(
+        results,
+        drivers,
+        green_lap_count=1,
+    )
+
+    assert queued is True
+    item = engine.broadcast_queue.items[0]
+    assert item.category == "restart_launch"
+    assert "Good start" in item.message
+    assert "34" in item.message
+    assert item.camera_target_car_idx == 34
+
+
+def test_restart_launch_story_can_call_tight_lead():
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    engine.race_director.previous_phase = RacePhase.ONE_TO_GREEN
+    drivers = {
+        34: {"name": "T.J. Lee", "number": "34"},
+        12: {"name": "Second Place", "number": "12"},
+    }
+    results = [
+        {"CarIdx": 34, "Position": 0, "Time": 0.0},
+        {"CarIdx": 12, "Position": 1, "Time": 0.05},
+    ]
+
+    engine._queue_restart_launch_story(results, drivers, green_lap_count=1)
+
+    assert "tight launch" in engine.broadcast_queue.items[0].message
+
+
 def test_final_laps_battle_prioritizes_closest_top_five_gap():
     engine = BroadcastEngine(openai_director=SilentOpenAI())
     results = [

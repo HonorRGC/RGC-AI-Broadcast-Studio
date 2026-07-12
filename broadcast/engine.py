@@ -75,6 +75,7 @@ class BroadcastEngine:
         self.race_ticks_seen = 0
         self.joined_mid_race = False
         self.mid_race_join_note_queued = False
+        self.restart_launch_story_queued = False
 
     def tick(self, telemetry):
         session_type_reader = getattr(telemetry, "get_session_type", None)
@@ -143,6 +144,7 @@ class BroadcastEngine:
             driver_lookup=driver_lookup,
             scheduler=self.broadcast_queue,
         )
+        self._handle_green_phase_change()
         self._queue_mid_race_join_note(current_lap, total_laps, telemetry.get_track_info())
 
         if self.race_director.phase == RacePhase.CAUTION:
@@ -235,6 +237,13 @@ class BroadcastEngine:
             )
             if queued_insight:
                 return self.broadcast_queue.next_item()
+            queued_restart_launch = self._queue_restart_launch_story(
+                story_results,
+                driver_lookup,
+                race_state.green_lap_count,
+            )
+            if queued_restart_launch:
+                return self.broadcast_queue.next_item()
             self.editorial_producer.submit_race_knowledge(race_knowledge)
             self._queue_fastest_lap_story(
                 story_results,
@@ -291,8 +300,22 @@ class BroadcastEngine:
             self.field_rundown_director.cancel_active()
             if self.race_director.phase in (RacePhase.CAUTION, RacePhase.ONE_TO_GREEN):
                 self.crank_it_up_sent_this_green_run = False
+                self.restart_launch_story_queued = False
 
         return self.broadcast_queue.next_item()
+
+    def _handle_green_phase_change(self):
+        if not (
+            self.race_director.phase_changed
+            and self.race_director.phase == RacePhase.GREEN
+        ):
+            return
+
+        # Any pass/battle items collected before the restart can sound stale
+        # as soon as the field takes the green. Keep only the live race-control
+        # call and let fresh telemetry build the next story.
+        self.editorial_producer.clear()
+        self.restart_launch_story_queued = False
 
     def _detect_mid_race_start(
         self,
@@ -481,6 +504,67 @@ class BroadcastEngine:
         )
         self.last_leader_story_lap = current_lap
         self.last_leader_gap = gap if gap > 0 else self.last_leader_gap
+
+    def _queue_restart_launch_story(self, results, driver_lookup, green_lap_count):
+        if self.restart_launch_story_queued:
+            return False
+        if green_lap_count > 2:
+            return False
+        if not results or self.broadcast_queue.items:
+            return False
+
+        ordered = self.sorted_running_order(results)
+        if len(ordered) < 2:
+            return False
+
+        leader = ordered[0]
+        second = ordered[1]
+        leader_idx = leader.get("CarIdx")
+        second_idx = second.get("CarIdx")
+        if leader_idx is None:
+            return False
+
+        gap = self.safe_float(second.get("Time", second.get("Gap", 0)))
+        driver = driver_lookup.get(leader_idx, {})
+        name = driver.get("name", f"Car {leader_idx}")
+        number = driver.get("number", "?")
+
+        if gap <= 0.15:
+            second_driver = driver_lookup.get(second_idx, {})
+            second_name = second_driver.get("name", "second place")
+            second_number = second_driver.get("number", "?")
+            message = (
+                f"That is a tight launch at the front. {name} in the number {number} "
+                f"has the lead for now, but the {second_number} of {second_name} "
+                "is still right there with them."
+            )
+        elif gap < 0.60:
+            message = (
+                f"Good start for the {number} of {name}. They have pulled out "
+                "a couple of car lengths as the field gets back up to speed."
+            )
+        else:
+            message = (
+                f"Clean restart for the {number} of {name}. They have already built "
+                f"about {gap:.1f} seconds over second place."
+            )
+
+        self.broadcast_queue.add(
+            message,
+            priority=9,
+            category="restart_launch",
+            protected=False,
+            speaker="lead",
+            delay_seconds=2.5,
+            expires_after=18,
+            dedupe_key=f"restart_launch:{leader_idx}:{self.race_director.previous_phase.value}",
+            camera_target_car_idx=leader_idx,
+            participant_car_indices=tuple(
+                idx for idx in (leader_idx, second_idx) if idx is not None
+            ),
+        )
+        self.restart_launch_story_queued = True
+        return True
 
     def _queue_fastest_lap_story(self, results, driver_lookup, current_lap):
         event = self.fastest_lap_tracker.analyze(
