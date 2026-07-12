@@ -383,7 +383,9 @@ def test_engine_queues_long_green_field_rundown_under_green():
         est_time=[10.0] * 12,
     )
     engine = BroadcastEngine(openai_director=SilentOpenAI())
+    engine.session_tracker.update("Race")
     engine.race_director.race_started = True
+    engine.race_intelligence.race_state_tracker.initialized = True
 
     green = engine.tick(SnapshotSource(snapshot))
     engine.broadcast_queue.busy_until = 0
@@ -500,6 +502,7 @@ def test_due_field_rundown_blocks_normal_stories_until_booth_is_clear():
     engine.session_tracker.update("Race")
     engine.race_director.race_started = True
     engine.race_director.phase = RacePhase.GREEN
+    engine.race_intelligence.race_state_tracker.initialized = True
     engine.broadcast_queue.busy_until = time.time() + 60
 
     first = engine.tick(SnapshotSource(snapshot))
@@ -538,9 +541,11 @@ def test_due_field_rundown_waits_for_green_flag_call_then_airs():
         track_info={"track_name": "Chicagoland Speedway"},
     )
     engine = BroadcastEngine(openai_director=SilentOpenAI())
+    engine.session_tracker.update("Race")
     engine.race_director.race_started = True
     engine.race_director.phase = RacePhase.CAUTION
     engine.race_director.previous_phase = RacePhase.CAUTION
+    engine.race_intelligence.race_state_tracker.initialized = True
 
     green = engine.tick(SnapshotSource(snapshot))
 
@@ -551,6 +556,70 @@ def test_due_field_rundown_waits_for_green_flag_call_then_airs():
     rundown = engine.tick(SnapshotSource(snapshot))
 
     assert rundown.category == "long_green_field_rundown_1"
+
+
+def test_engine_joining_mid_race_queues_in_progress_opening_without_green_flag():
+    results = [
+        {"CarIdx": index, "Position": index, "LapsComplete": 12}
+        for index in range(8)
+    ]
+    drivers = {
+        index: {"name": f"Driver {index + 1}", "number": str(index + 1)}
+        for index in range(8)
+    }
+    snapshot = TelemetrySnapshot(
+        lap=12,
+        total_laps=50,
+        session_flags=RaceFlags.GREEN,
+        results=results,
+        driver_lookup=drivers,
+        pit_road_status=[False] * 8,
+        track_surface=[3] * 8,
+        track_surface_material=[0] * 8,
+        lap_dist_pct=[0.1] * 8,
+        est_time=[10.0] * 8,
+        track_info={"track_name": "Talladega Superspeedway"},
+    )
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+
+    first = engine.tick(SnapshotSource(snapshot))
+
+    assert first.category == "mid_race_join"
+    assert "already in progress" in first.message
+    assert "lap 12 of 50" in first.message
+    assert not any("Green flag is in the air" in item.message for item in engine.broadcast_queue.items)
+    assert engine.joined_mid_race is True
+
+
+def test_mid_race_join_does_not_count_unobserved_laps_as_long_green_run():
+    results = [
+        {"CarIdx": index, "Position": index, "LapsComplete": 20}
+        for index in range(12)
+    ]
+    drivers = {
+        index: {"name": f"Driver {index + 1}", "number": str(index + 1)}
+        for index in range(12)
+    }
+    snapshot = TelemetrySnapshot(
+        lap=20,
+        total_laps=60,
+        session_flags=RaceFlags.GREEN,
+        results=results,
+        driver_lookup=drivers,
+        pit_road_status=[False] * 12,
+        track_surface=[3] * 12,
+        track_surface_material=[0] * 12,
+        lap_dist_pct=[0.1] * 12,
+        est_time=[10.0] * 12,
+    )
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+
+    engine.tick(SnapshotSource(snapshot))
+    engine.broadcast_queue.busy_until = 0
+    second = engine.tick(SnapshotSource(snapshot))
+
+    assert second is None or second.category != "long_green_field_rundown_1"
+    assert engine.race_intelligence.get_race_state().green_lap_count == 0
 
 
 def test_pass_story_carries_overtaking_car_as_camera_target():

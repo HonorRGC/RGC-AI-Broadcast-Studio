@@ -6,6 +6,7 @@ from helpers.position_formatter import PositionFormatter
 class RaceBrain:
     def __init__(self):
         self.driver_manager = DriverManager()
+        self.use_starting_position_context = True
 
     def driver_name(self, car_idx):
         if car_idx == 0:
@@ -89,6 +90,8 @@ class RaceBrain:
         return events
 
     def seed_starting_positions(self, results, driver_lookup=None):
+        if not self.use_starting_position_context:
+            return
         driver_lookup = driver_lookup or {}
         zero_based_positions = self.results_are_zero_based(results or [])
         for car in results or []:
@@ -105,6 +108,9 @@ class RaceBrain:
                 driver.starting_position = position
                 driver.current_position = position
                 driver.previous_position = position
+
+    def disable_starting_position_context(self):
+        self.use_starting_position_context = False
 
     def results_are_zero_based(self, results):
         positions = []
@@ -128,6 +134,36 @@ class RaceBrain:
         return position
 
     def build_pass_story(self, driver, positions_gained):
+        if not self.use_starting_position_context:
+            previous_position = PositionFormatter.ordinal(driver.previous_position)
+            current_position = PositionFormatter.ordinal(driver.current_position)
+
+            if driver.current_position == 1:
+                return (
+                    f"{driver.name} has taken over the race lead in the number "
+                    f"{driver.number}."
+                )
+
+            if driver.current_position <= 5:
+                return (
+                    f"{driver.name} has moved into the top five, taking the "
+                    f"number {driver.number} from {previous_position} to "
+                    f"{current_position}."
+                )
+
+            if driver.current_position <= 10:
+                return (
+                    f"{driver.name} has gained a spot inside the top ten, "
+                    f"moving the number {driver.number} from {previous_position} "
+                    f"to {current_position}."
+                )
+
+            return (
+                f"{driver.name} gains {self.position_count(positions_gained)}, "
+                f"moving the number {driver.number} from {previous_position} "
+                f"to {current_position}."
+            )
+
         starting_position = PositionFormatter.ordinal(driver.starting_position)
         previous_position = PositionFormatter.ordinal(driver.previous_position)
         current_position = PositionFormatter.ordinal(driver.current_position)

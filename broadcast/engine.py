@@ -68,6 +68,9 @@ class BroadcastEngine:
         self.last_leader_gap = None
         self.leader_laps_led = {}
         self.last_leader_lap_counted = None
+        self.race_ticks_seen = 0
+        self.joined_mid_race = False
+        self.mid_race_join_note_queued = False
 
     def tick(self, telemetry):
         session_type_reader = getattr(telemetry, "get_session_type", None)
@@ -92,6 +95,14 @@ class BroadcastEngine:
         session_flags = telemetry.get_session_flags()
         pit_road_status = telemetry.get_car_idx_on_pit_road()
         track_surface_status = telemetry.get_car_idx_track_surface()
+        self._detect_mid_race_start(
+            current_lap=current_lap,
+            total_laps=total_laps,
+            session_flags=session_flags,
+            results=results,
+            telemetry=telemetry,
+        )
+        self.race_ticks_seen += 1
         story_results = self.active_race_results(
             results,
             pit_road_status=pit_road_status,
@@ -110,10 +121,11 @@ class BroadcastEngine:
 
         grid_reader = getattr(telemetry, "get_starting_grid", None)
         starting_grid = grid_reader() if grid_reader else results
-        self.race_brain.seed_starting_positions(
-            starting_grid or results,
-            driver_lookup,
-        )
+        if not self.joined_mid_race:
+            self.race_brain.seed_starting_positions(
+                starting_grid or results,
+                driver_lookup,
+            )
         self._queue_opening(
             telemetry,
             starting_grid or results,
@@ -127,6 +139,7 @@ class BroadcastEngine:
             driver_lookup=driver_lookup,
             scheduler=self.broadcast_queue,
         )
+        self._queue_mid_race_join_note(current_lap, total_laps, telemetry.get_track_info())
 
         if self.race_director.phase == RacePhase.CAUTION:
             self._queue_late_caution_note(current_lap, total_laps)
@@ -245,6 +258,67 @@ class BroadcastEngine:
                 self.crank_it_up_sent_this_green_run = False
 
         return self.broadcast_queue.next_item()
+
+    def _detect_mid_race_start(
+        self,
+        current_lap,
+        total_laps,
+        session_flags,
+        results,
+        telemetry,
+    ):
+        if self.race_ticks_seen > 0 or self.joined_mid_race:
+            return
+        if self.race_director.race_started or self.race_director.phase != RacePhase.UNKNOWN:
+            return
+        if current_lap <= 1:
+            return
+
+        state_reader = getattr(telemetry, "get_session_state", None)
+        session_state = state_reader() if state_reader else 0
+        phase = self.race_director.detect_phase(
+            session_flags,
+            results,
+            current_lap,
+            total_laps,
+            session_state=session_state,
+        )
+        if phase == RacePhase.CHECKERED:
+            return
+
+        self.joined_mid_race = True
+        self.race_brain.disable_starting_position_context()
+
+        if phase == RacePhase.GREEN:
+            self.race_director.phase = RacePhase.GREEN
+            self.race_director.previous_phase = RacePhase.GREEN
+            self.race_director.race_started = True
+
+    def _queue_mid_race_join_note(self, current_lap, total_laps, track_info):
+        if not self.joined_mid_race or self.mid_race_join_note_queued:
+            return
+
+        track_name = (track_info or {}).get("track_name") or "the speedway"
+        if total_laps > 0:
+            lap_text = f"lap {current_lap} of {total_laps}"
+        else:
+            lap_text = f"lap {current_lap}"
+
+        self.broadcast_queue.add(
+            (
+                f"We join this race already in progress at {track_name}, "
+                f"currently on {lap_text}. We'll settle in with the leaders, "
+                "watch the battles developing, and bring you the key stories "
+                "from here."
+            ),
+            priority=11,
+            category="mid_race_join",
+            protected=True,
+            speaker="lead",
+            expires_after=45,
+            dedupe_key="race_control:mid_race_join",
+        )
+        self.mid_race_join_note_queued = True
 
     def _queue_opening(self, telemetry, results, driver_lookup, current_lap):
         if (
@@ -987,6 +1061,9 @@ class BroadcastEngine:
         ]
 
     def enrich_results_with_starting_positions(self, results):
+        if self.joined_mid_race:
+            return [dict(car) for car in results or []]
+
         enriched = []
         for car in results or []:
             car_copy = dict(car)
