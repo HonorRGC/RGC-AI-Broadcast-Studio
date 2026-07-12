@@ -227,6 +227,13 @@ class BroadcastEngine:
             )
             if queued_final_battle:
                 return self.broadcast_queue.next_item()
+            queued_restart_launch = self._queue_restart_launch_story(
+                story_results,
+                driver_lookup,
+                race_state.green_lap_count,
+            )
+            if queued_restart_launch and not self.has_pending_race_control():
+                return self.broadcast_queue.next_item()
             queued_crank_it_up = self._queue_crank_it_up(
                 story_results,
                 race_state.green_lap_count,
@@ -239,13 +246,6 @@ class BroadcastEngine:
                 current_lap,
             )
             if queued_insight:
-                return self.broadcast_queue.next_item()
-            queued_restart_launch = self._queue_restart_launch_story(
-                story_results,
-                driver_lookup,
-                race_state.green_lap_count,
-            )
-            if queued_restart_launch:
                 return self.broadcast_queue.next_item()
             self.editorial_producer.submit_race_knowledge(race_knowledge)
             self._queue_fastest_lap_story(
@@ -527,9 +527,11 @@ class BroadcastEngine:
     def _queue_restart_launch_story(self, results, driver_lookup, green_lap_count):
         if self.restart_launch_story_queued:
             return False
-        if green_lap_count > 2:
+        if green_lap_count > 4:
             return False
-        if not results or self.broadcast_queue.items:
+        if not results:
+            return False
+        if self.has_pending_non_restart_story():
             return False
 
         ordered = self.sorted_running_order(results)
@@ -1499,13 +1501,16 @@ class BroadcastEngine:
         )
 
     def restart_caution_marker_pre_roll_frames(self, green_lap_count):
-        try:
-            green_lap_count = int(green_lap_count)
-        except Exception:
-            green_lap_count = 99
-        if green_lap_count <= 2:
-            return 40 * 60
-        return None
+        return 20 * 60
+
+    def has_pending_non_restart_story(self):
+        for item in self.broadcast_queue.items:
+            if item.category == "race_control":
+                continue
+            if item.category == "restart_launch":
+                continue
+            return True
+        return False
 
     def should_suppress_soft_incidents(self):
         # Soft telemetry signals such as estimated-time loss, lap-distance loss,

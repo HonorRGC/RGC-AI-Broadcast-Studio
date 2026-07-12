@@ -354,6 +354,7 @@ def test_timed_incident_marker_replay_seeks_to_absolute_caution_time():
     camera = ReplayCamera()
     director = ReplayDirector(
         mode="auto",
+        incident_marker_pre_roll_frames=1200,
         clock=lambda: 10.0,
     )
 
@@ -361,7 +362,7 @@ def test_timed_incident_marker_replay_seeks_to_absolute_caution_time():
 
     assert started.status == "started"
     assert telemetry.seeks == [(2, 100.0)]
-    assert telemetry.rewinds == [720]
+    assert telemetry.rewinds == [1200]
     assert camera.focuses == [("incident", "Far Chase")]
 
 

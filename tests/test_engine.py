@@ -1326,9 +1326,9 @@ def test_late_caution_note_mentions_green_white_checkered():
 def test_restart_caution_marker_replay_uses_extra_preroll():
     engine = BroadcastEngine(openai_director=SilentOpenAI())
 
-    assert engine.restart_caution_marker_pre_roll_frames(0) == 2400
-    assert engine.restart_caution_marker_pre_roll_frames(2) == 2400
-    assert engine.restart_caution_marker_pre_roll_frames(3) is None
+    assert engine.restart_caution_marker_pre_roll_frames(0) == 1200
+    assert engine.restart_caution_marker_pre_roll_frames(2) == 1200
+    assert engine.restart_caution_marker_pre_roll_frames(3) == 1200
 
 
 def test_caution_marker_replay_uses_saved_caution_start_time():
@@ -1442,6 +1442,38 @@ def test_restart_launch_story_describes_leader_gap():
     assert "Good start" in item.message
     assert "34" in item.message
     assert item.camera_target_car_idx == 34
+
+
+def test_restart_launch_story_can_queue_behind_green_flag_call():
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    engine.race_director.previous_phase = RacePhase.ONE_TO_GREEN
+    engine.broadcast_queue.add(
+        "Green flag is back in the air!",
+        priority=12,
+        category="race_control",
+        protected=True,
+        dedupe_key="race_control:green:ONE_TO_GREEN",
+    )
+    drivers = {
+        34: {"name": "T.J. Lee", "number": "34"},
+        12: {"name": "Second Place", "number": "12"},
+    }
+    results = [
+        {"CarIdx": 34, "Position": 0, "Time": 0.0},
+        {"CarIdx": 12, "Position": 1, "Time": 0.4},
+    ]
+
+    queued = engine._queue_restart_launch_story(
+        results,
+        drivers,
+        green_lap_count=1,
+    )
+
+    assert queued is True
+    assert [item.category for item in engine.broadcast_queue.items] == [
+        "race_control",
+        "restart_launch",
+    ]
 
 
 def test_restart_launch_story_can_call_tight_lead():
