@@ -271,7 +271,8 @@ class CameraDirector:
 
     def end_replay(self, telemetry):
         self.replay_active = False
-        self.live_edge_initialized = True
+        self.live_edge_initialized = False
+        self.last_live_sync_at = None
         self.return_home_at = None
         self.clear_sequence()
         return self.focus_home(telemetry, self.clock(), force=True)

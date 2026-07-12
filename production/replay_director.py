@@ -208,6 +208,9 @@ class ReplayDirector:
         self.active = False
         self.angle_started_at = None
 
+        if returned and not self.live_return_is_confirmed(telemetry):
+            returned = False
+
         if failed or not returned:
             return ReplayDecision(
                 "failed",
@@ -251,6 +254,17 @@ class ReplayDirector:
         if at_live_edge is None:
             return True
         return at_live_edge is False
+
+    def live_return_is_confirmed(self, telemetry):
+        if self.mode != "auto":
+            return True
+        checker = getattr(telemetry, "is_replay_at_live_edge", None)
+        if not checker:
+            return True
+        at_live_edge = checker()
+        if at_live_edge is None:
+            return True
+        return at_live_edge is True
 
     def play_replay_audio(self, story_id):
         if (

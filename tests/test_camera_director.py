@@ -461,3 +461,18 @@ def test_live_edge_enforcement_is_suspended_during_incident_replay():
 
     assert decision.status == "held"
     assert telemetry.return_to_live_calls == 0
+
+
+def test_end_replay_requires_next_update_to_verify_live_edge():
+    telemetry = CameraTelemetry()
+    telemetry.at_live_edge = False
+    director = CameraDirector(mode="auto", clock=lambda: 100.0)
+    director.begin_replay()
+
+    home = director.end_replay(telemetry)
+    live = director.update(telemetry)
+
+    assert home.status == "switched"
+    assert home.car_number == "77"
+    assert live.status == "live"
+    assert telemetry.return_to_live_calls == 1
