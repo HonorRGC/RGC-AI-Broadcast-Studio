@@ -201,15 +201,14 @@ class ReplayDirector:
         )
 
     def finish(self, telemetry, camera_director, interrupted=False, failed=False):
-        returned = self.mode == "observe" or telemetry.return_to_live()
+        returned = self.mode == "observe" or self.return_to_live_until_confirmed(
+            telemetry
+        )
         if self.camera_engaged:
             camera_director.end_replay(telemetry)
             self.camera_engaged = False
         self.active = False
         self.angle_started_at = None
-
-        if returned and not self.live_return_is_confirmed(telemetry):
-            returned = False
 
         if failed or not returned:
             return ReplayDecision(
@@ -219,6 +218,21 @@ class ReplayDirector:
         if interrupted:
             return ReplayDecision("live", "Replay interrupted by live race control.")
         return ReplayDecision("live", "Incident replay completed and returned live.")
+
+    def return_to_live_until_confirmed(self, telemetry, max_attempts=3):
+        return_live = getattr(telemetry, "return_to_live", None)
+        if not return_live:
+            return False
+
+        sent_any = False
+        for _ in range(max(1, int(max_attempts))):
+            if not return_live():
+                continue
+            sent_any = True
+            if self.live_return_is_confirmed(telemetry):
+                return True
+
+        return sent_any and self.live_return_status_unknown(telemetry)
 
     def seek_to_incident(self, telemetry):
         if self.mode == "observe":
@@ -265,6 +279,12 @@ class ReplayDirector:
         if at_live_edge is None:
             return True
         return at_live_edge is True
+
+    def live_return_status_unknown(self, telemetry):
+        checker = getattr(telemetry, "is_replay_at_live_edge", None)
+        if not checker:
+            return True
+        return checker() is None
 
     def play_replay_audio(self, story_id):
         if (

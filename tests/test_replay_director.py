@@ -254,8 +254,30 @@ def test_replay_finish_reports_when_return_to_live_is_not_confirmed():
 
     assert finished.status == "failed"
     assert "return-to-live" in finished.reason
-    assert telemetry.live_returns == 1
+    assert telemetry.live_returns == 3
     assert camera.replay_active is False
+
+
+def test_replay_finish_retries_until_live_return_is_confirmed():
+    telemetry = ReplayTelemetry()
+    telemetry.at_live_edge = False
+
+    def return_to_live():
+        telemetry.live_returns += 1
+        if telemetry.live_returns >= 2:
+            telemetry.at_live_edge = True
+        return True
+
+    telemetry.return_to_live = return_to_live
+    camera = ReplayCamera()
+    times = iter([10.0, 23.0])
+    director = ReplayDirector(mode="auto", clock=lambda: next(times))
+
+    director.handle_item(incident_item(multi_angle=True), telemetry, camera)
+    finished = director.update(telemetry, camera)
+
+    assert finished.status == "live"
+    assert telemetry.live_returns == 2
 
 
 def test_green_flag_interrupts_replay_and_returns_live_immediately():
