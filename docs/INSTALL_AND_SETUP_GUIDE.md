@@ -63,7 +63,7 @@ The installer will:
 - create a local Python environment
 - install the studio dependencies
 - create the starting settings file
-- create a desktop shortcut
+- create a desktop shortcut with the RGC AI Broadcast Studio icon
 - open RGC AI Broadcast Studio
 
 After install, you can open the program from the desktop shortcut:

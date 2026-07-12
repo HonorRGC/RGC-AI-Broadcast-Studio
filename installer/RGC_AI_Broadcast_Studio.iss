@@ -28,13 +28,14 @@ PrivilegesRequired=lowest
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 UninstallDisplayName=RGC AI Broadcast Studio
+SetupIconFile={#SourceDir}\assets\rgc_ai_broadcast_studio.ico
 
 [Files]
 Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{group}\RGC AI Broadcast Studio"; Filename: "{app}\launch_studio.bat"; WorkingDir: "{app}"
-Name: "{autodesktop}\RGC AI Broadcast Studio"; Filename: "{app}\launch_studio.bat"; WorkingDir: "{app}"
+Name: "{group}\RGC AI Broadcast Studio"; Filename: "{app}\launch_studio.bat"; WorkingDir: "{app}"; IconFilename: "{app}\assets\rgc_ai_broadcast_studio.ico"
+Name: "{autodesktop}\RGC AI Broadcast Studio"; Filename: "{app}\launch_studio.bat"; WorkingDir: "{app}"; IconFilename: "{app}\assets\rgc_ai_broadcast_studio.ico"
 
 [Run]
 Filename: "{app}\setup_windows.bat"; Description: "Install required Python packages"; Flags: postinstall waituntilterminated skipifsilent

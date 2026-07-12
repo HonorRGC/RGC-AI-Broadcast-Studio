@@ -22,6 +22,7 @@ It also creates:
 
 - a Start Menu shortcut
 - a Desktop shortcut
+- a branded RGC desktop icon
 - a Windows uninstall entry
 
 On first setup, it runs the same Python dependency setup that the current tester package uses. The installed app still needs a local Python 3.11-or-newer runtime available on the user's PC for this early installer version.
