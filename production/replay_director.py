@@ -23,7 +23,7 @@ class ReplayDirector:
         mode="off",
         angle_groups=("Far Chase",),
         pre_roll_seconds=15.0,
-        incident_marker_pre_roll_frames=1500,
+        incident_marker_pre_roll_frames=720,
         angle_seconds=12.0,
         replay_audio_path=CAUTION_REPLAY_AUDIO,
         audio_player=None,

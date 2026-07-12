@@ -344,7 +344,7 @@ def test_incident_marker_replay_uses_iracing_previous_incident_camera():
         ("previous_incident_marker", 0),
         ("previous_incident_marker", 0),
     ]
-    assert telemetry.rewinds == [1500, 1500]
+    assert telemetry.rewinds == [720, 720]
     assert telemetry.live_returns == 1
     assert camera.focuses == [("incident", "TV1"), ("incident", "TV2")]
 
@@ -354,14 +354,13 @@ def test_timed_incident_marker_replay_seeks_to_absolute_caution_time():
     camera = ReplayCamera()
     director = ReplayDirector(
         mode="auto",
-        incident_marker_pre_roll_frames=1920,
         clock=lambda: 10.0,
     )
 
     started = director.handle_item(timed_incident_marker_item(), telemetry, camera)
 
     assert started.status == "started"
-    assert telemetry.seeks == [(2, 68.0)]
+    assert telemetry.seeks == [(2, 88.0)]
     assert telemetry.rewinds == []
     assert camera.focuses == [("incident", "Far Chase")]
 
@@ -407,7 +406,7 @@ def test_incident_marker_replay_starts_even_when_live_edge_status_is_stale():
 
     assert decision.status == "started"
     assert telemetry.seeks == [("previous_incident_marker", 0)]
-    assert telemetry.rewinds == [1500]
+    assert telemetry.rewinds == [720]
     assert camera.focuses == [("incident", "Far Chase")]
     assert camera.replay_active is True
 
@@ -437,7 +436,7 @@ def test_replay_starts_when_seek_confirms_replay_is_behind_live():
 
     assert decision.status == "started"
     assert camera.focuses == [("incident", "Far Chase")]
-    assert telemetry.rewinds == [1500]
+    assert telemetry.rewinds == [720]
 
 
 def test_incident_marker_locks_camera_before_applying_preroll():
@@ -465,4 +464,4 @@ def test_incident_marker_locks_camera_before_applying_preroll():
     decision = director.handle_item(incident_marker_item(), telemetry, camera)
 
     assert decision.status == "started"
-    assert order == ["seek_marker", "focus:TV1", "rewind:1500"]
+    assert order == ["seek_marker", "focus:TV1", "rewind:720"]
