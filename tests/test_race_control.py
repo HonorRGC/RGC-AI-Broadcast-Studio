@@ -521,6 +521,56 @@ def test_checkered_finish_rundown_waits_for_stable_order():
     assert "third, the 2 of Second Early" in rundown.message
 
 
+def test_checkered_finish_rundown_waits_until_leader_crosses_finish():
+    director = RaceDirector()
+    queue = BroadcastQueue()
+    drivers = {
+        0: {"name": "Winner", "number": "1"},
+        1: {"name": "Second", "number": "2"},
+    }
+    approaching_line = [
+        {"CarIdx": 0, "Position": 0, "LapsComplete": 49},
+        {"CarIdx": 1, "Position": 1, "LapsComplete": 49},
+    ]
+    finished = [
+        {"CarIdx": 0, "Position": 0, "LapsComplete": 50},
+        {"CarIdx": 1, "Position": 1, "LapsComplete": 50},
+    ]
+
+    director.handle_checkered(
+        approaching_line,
+        drivers,
+        queue,
+        {"track_name": "Homestead Miami Speedway"},
+    )
+    assert "wins" not in queue.items[0].message
+
+    for _ in range(10):
+        director.handle_post_race_results(
+            approaching_line,
+            drivers,
+            queue,
+            {"track_name": "Homestead Miami Speedway"},
+            current_lap=49,
+            total_laps=50,
+        )
+
+    assert not any(item.category == "post_race" for item in queue.items)
+
+    for _ in range(8):
+        director.handle_post_race_results(
+            finished,
+            drivers,
+            queue,
+            {"track_name": "Homestead Miami Speedway"},
+            current_lap=50,
+            total_laps=50,
+        )
+
+    rundown = next(item for item in queue.items if item.category == "post_race")
+    assert "first, the 1 of Winner" in rundown.message
+
+
 def test_finish_rundown_formats_zero_based_positions():
     director = RaceDirector()
     results = [

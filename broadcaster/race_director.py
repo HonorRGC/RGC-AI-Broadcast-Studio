@@ -65,6 +65,7 @@ class RaceDirector:
         self.checkered_stabilization_ticks = 0
         self.finish_order_signature = ()
         self.finish_order_stable_ticks = 0
+        self.finish_confirmed_by_session_state = False
         self.progress_milestones_announced = set()
         self.progress_sponsor_cause = (
             (SPONSOR_READ_CAUSE or "Autism Awareness").strip()
@@ -79,6 +80,10 @@ class RaceDirector:
         session_flags = telemetry.get_session_flags()
         state_reader = getattr(telemetry, "get_session_state", None)
         session_state = state_reader() if state_reader else 0
+        self.finish_confirmed_by_session_state = self.safe_int(session_state) in (
+            self.SESSION_STATE_CHECKERED,
+            self.SESSION_STATE_COOL_DOWN,
+        )
         total_laps = telemetry.get_total_laps()
         current_lap = self.get_best_race_lap(telemetry.get_lap(), results)
         track_info = telemetry.get_track_info()
@@ -122,6 +127,8 @@ class RaceDirector:
                 effective_driver_lookup,
                 scheduler,
                 track_info,
+                current_lap=current_lap,
+                total_laps=total_laps,
             )
 
     def detect_phase(
@@ -294,14 +301,13 @@ class RaceDirector:
         if self.checkered_announced:
             return
 
-        winner = self.get_winner(results, driver_lookup)
         winner_car_idx = self.get_winner_car_idx(results)
         track_name = self.get_track_name(track_info)
 
-        if winner:
-            message = f"Checkered flag is out! {winner} wins at {track_name}!"
-        else:
-            message = f"Checkered flag is out. This race is complete at {track_name}."
+        message = (
+            f"Checkered flag is out at {track_name}. "
+            "The leader is coming to the stripe."
+        )
 
         scheduler.add(
             message,
@@ -342,8 +348,19 @@ class RaceDirector:
             feature_duration_seconds=45.0,
         )
 
-    def handle_post_race_results(self, results, driver_lookup, scheduler, track_info):
+    def handle_post_race_results(
+        self,
+        results,
+        driver_lookup,
+        scheduler,
+        track_info,
+        current_lap=0,
+        total_laps=0,
+    ):
         if not self.checkered_announced or self.post_race_results_queued:
+            return
+
+        if not self.finish_distance_complete(results, total_laps, current_lap):
             return
 
         self.checkered_stabilization_ticks += 1
@@ -390,6 +407,23 @@ class RaceDirector:
             )
 
         self.post_race_results_queued = True
+
+    def finish_distance_complete(self, results, total_laps=0, current_lap=0):
+        if self.finish_confirmed_by_session_state:
+            return True
+
+        total_laps = self.safe_int(total_laps)
+        if total_laps <= 0:
+            return True
+
+        observed_lap = self.safe_int(current_lap)
+        ordered = self.sort_results(results or [])
+        if ordered:
+            leader = ordered[0]
+            for key in ("Lap", "LapsComplete"):
+                observed_lap = max(observed_lap, self.safe_int(leader.get(key)))
+
+        return observed_lap >= total_laps
 
     def finish_order_is_stable(self, results, required_ticks=3, max_cars=10):
         ordered = self.sort_results(results or [])[:max_cars]
