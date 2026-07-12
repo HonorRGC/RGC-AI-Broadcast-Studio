@@ -1,7 +1,12 @@
 import argparse
 import time
 
-from config import CRANK_IT_UP_ICON_GRAPHIC, CRANK_IT_UP_SPONSOR_GRAPHIC, STUDIO_VOLUME
+from config import (
+    CRANK_IT_UP_ICON_GRAPHIC,
+    CRANK_IT_UP_SPONSOR_GRAPHIC,
+    OVERLAY_BRAND_GRAPHICS,
+    STUDIO_VOLUME,
+)
 from broadcast.booth import BroadcastBooth
 from broadcast.engine import BroadcastEngine
 from broadcaster.telemetry import IRacingTelemetry
@@ -252,6 +257,8 @@ def show_overlay_feature(item, overlay_server, source=None, engine=None):
         )
         return
 
+    show_sponsor_mention_bug(item, overlay_server)
+
     if category in ("pit_strategy", "caution_pit_summary"):
         return
 
@@ -267,6 +274,59 @@ def show_overlay_feature(item, overlay_server, source=None, engine=None):
                 dedupe_key="biggest_movers",
                 minimum_interval=180.0,
             )
+
+
+def show_sponsor_mention_bug(item, overlay_server):
+    mentions = sponsor_mentions_for_message(getattr(item, "message", ""))
+    if not mentions:
+        return False
+
+    graphics = sponsor_graphics_for_mentions(mentions)
+    overlay_server.show_special_presentation(
+        kind="sponsor_bug",
+        title=" / ".join(mentions),
+        subtitle="Broadcast Partner",
+        duration=5.0,
+        graphics=graphics,
+    )
+    print(f"SPONSOR: showing graphic for {' / '.join(mentions)}.")
+    return True
+
+
+def sponsor_mentions_for_message(message):
+    text = str(message or "").lower()
+    mentions = []
+    if "rgc motorsports" in text:
+        mentions.append("RGC Motorsports")
+    if "autism awareness" in text or "autism" in text:
+        mentions.append("Autism Awareness")
+    return mentions
+
+
+def sponsor_graphics_for_mentions(mentions):
+    graphics = []
+    for mention in mentions:
+        graphic = sponsor_graphic_for_mention(mention)
+        if graphic and graphic not in graphics:
+            graphics.append(graphic)
+    return graphics
+
+
+def sponsor_graphic_for_mention(mention):
+    mention_text = str(mention or "").lower()
+    if "autism" in mention_text:
+        return find_brand_graphic(("autism",), "/assets/autism_awareness.png")
+    if "rgc" in mention_text:
+        return find_brand_graphic(("rgc", "motor"), "/assets/rgc_motorsports.png")
+    return ""
+
+
+def find_brand_graphic(required_terms, fallback):
+    for graphic in OVERLAY_BRAND_GRAPHICS:
+        text = str(graphic or "").lower()
+        if all(term in text for term in required_terms):
+            return graphic
+    return fallback
 
 
 def run_crank_it_up_test(booth, overlay_server, duration_seconds=DEFAULT_CRANK_IT_UP_SECONDS):

@@ -1052,6 +1052,16 @@ OVERLAY_HTML = r"""<!doctype html>
       height: 112px;
     }
 
+    .special-presentation.sponsor_bug {
+      left: auto;
+      right: 52px;
+      top: 160px;
+      width: 360px;
+      height: 104px;
+      justify-content: flex-end;
+      animation: sponsorBugPop 0.22s ease-out;
+    }
+
     .special-presentation.hidden {
       display: none;
     }
@@ -1078,6 +1088,15 @@ OVERLAY_HTML = r"""<!doctype html>
       background: linear-gradient(90deg, rgba(7, 9, 13, 0.88), rgba(24, 30, 42, 0.78));
     }
 
+    .special-presentation.sponsor_bug .ceremony-card {
+      grid-template-columns: 118px 1fr;
+      gap: 14px;
+      width: 360px;
+      padding: 10px 14px;
+      border-left-width: 4px;
+      background: linear-gradient(90deg, rgba(7, 9, 13, 0.92), rgba(24, 30, 42, 0.82));
+    }
+
     .ceremony-logo {
       width: 210px;
       height: 116px;
@@ -1090,6 +1109,11 @@ OVERLAY_HTML = r"""<!doctype html>
       height: 74px;
     }
 
+    .special-presentation.sponsor_bug .ceremony-logo {
+      width: 112px;
+      height: 62px;
+    }
+
     .ceremony-title {
       font-size: 40px;
       font-weight: 950;
@@ -1099,6 +1123,11 @@ OVERLAY_HTML = r"""<!doctype html>
     .special-presentation.race_sponsors .ceremony-title {
       font-size: 26px;
       letter-spacing: 0.04em;
+    }
+
+    .special-presentation.sponsor_bug .ceremony-title {
+      font-size: 18px;
+      letter-spacing: 0.035em;
     }
 
     .ceremony-subtitle {
@@ -1113,6 +1142,23 @@ OVERLAY_HTML = r"""<!doctype html>
       margin-top: 7px;
       font-size: 13px;
       letter-spacing: 0.06em;
+    }
+
+    .special-presentation.sponsor_bug .ceremony-subtitle {
+      margin-top: 4px;
+      font-size: 11px;
+      letter-spacing: 0.05em;
+    }
+
+    @keyframes sponsorBugPop {
+      from {
+        opacity: 0;
+        transform: translateX(18px) scale(0.96);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0) scale(1);
+      }
     }
 
     .special-presentation.crank_it_up {
@@ -1327,6 +1373,7 @@ OVERLAY_HTML = r"""<!doctype html>
       layer.classList.toggle("hidden", !active);
       layer.classList.toggle("crank_it_up", active && presentation.kind === "crank_it_up");
       layer.classList.toggle("race_sponsors", active && presentation.kind === "race_sponsors");
+      layer.classList.toggle("sponsor_bug", active && presentation.kind === "sponsor_bug");
       if (!active) {
         setCrankSideGraphic("crank-speaker-left", "");
         setCrankSideGraphic("crank-speaker-right", "");

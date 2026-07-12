@@ -1,15 +1,24 @@
 from types import SimpleNamespace
 
-from app import should_show_movers_graphic, show_overlay_feature
+from app import (
+    should_show_movers_graphic,
+    show_overlay_feature,
+    sponsor_graphics_for_mentions,
+    sponsor_mentions_for_message,
+)
 
 
 class OverlaySpy:
     def __init__(self):
         self.stat_panels = []
+        self.special_presentations = []
 
     def show_stat_panel(self, **kwargs):
         self.stat_panels.append(kwargs)
         return True
+
+    def show_special_presentation(self, **kwargs):
+        self.special_presentations.append(kwargs)
 
 
 class RaceIntelligenceStub:
@@ -77,3 +86,39 @@ def test_biggest_movers_graphic_uses_shared_long_cooldown():
     assert overlay.stat_panels[0]["kind"] == "biggest_movers"
     assert overlay.stat_panels[0]["dedupe_key"] == "biggest_movers"
     assert overlay.stat_panels[0]["minimum_interval"] == 180.0
+
+
+def test_sponsor_mention_graphic_pops_for_rgc_and_autism():
+    overlay = OverlaySpy()
+    message = (
+        "Tonight's coverage is presented by RGC Motorsports. "
+        "Autism Awareness is about understanding and acceptance."
+    )
+
+    show_overlay_feature(item(category="sponsor_read", target=None, message=message), overlay)
+
+    presentation = overlay.special_presentations[0]
+    assert presentation["kind"] == "sponsor_bug"
+    assert presentation["duration"] == 5.0
+    assert "RGC Motorsports" in presentation["title"]
+    assert "Autism Awareness" in presentation["title"]
+    assert "/assets/rgc_motorsports.png" in presentation["graphics"]
+    assert "/assets/autism_awareness.png" in presentation["graphics"]
+
+
+def test_sponsor_mention_detection_is_message_based():
+    assert sponsor_mentions_for_message("Thanks to RGC Motorsports.") == [
+        "RGC Motorsports"
+    ]
+    assert sponsor_mentions_for_message("Supporting autism families.") == [
+        "Autism Awareness"
+    ]
+
+
+def test_sponsor_graphics_use_expected_defaults():
+    assert sponsor_graphics_for_mentions(
+        ["RGC Motorsports", "Autism Awareness"]
+    ) == [
+        "/assets/rgc_motorsports.png",
+        "/assets/autism_awareness.png",
+    ]

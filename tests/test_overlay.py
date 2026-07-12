@@ -342,6 +342,11 @@ def test_race_sponsor_banner_is_compact():
     assert "width: min(660px, 100%)" in OVERLAY_HTML
 
 
+def test_sponsor_bug_overlay_is_compact_popup():
+    assert ".special-presentation.sponsor_bug" in OVERLAY_HTML
+    assert 'presentation.kind === "sponsor_bug"' in OVERLAY_HTML
+
+
 def test_crank_it_up_overlay_uses_logo_and_racing_speaker_style():
     assert ".special-presentation.crank_it_up .ceremony-logo" in OVERLAY_HTML
     assert "repeating-linear-gradient" in OVERLAY_HTML
