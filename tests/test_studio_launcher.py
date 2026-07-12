@@ -29,6 +29,7 @@ from studio_launcher import (
     stop_broadcast_processes,
     write_broadcast_pid,
 )
+from tools.build_tester_zip import should_include
 
 
 def test_launcher_loads_simple_env_file(tmp_path):
@@ -376,3 +377,16 @@ def test_launcher_builds_sim_racer_hub_driver_roster_command():
     assert ["--drivers-output", "league/drivers.csv"] == command[
         command.index("--drivers-output") : command.index("--drivers-output") + 2
     ]
+
+
+def test_tester_zip_excludes_private_local_files():
+    assert should_include("README.md")
+    assert should_include("production/static/rgc_motorsports.png")
+
+    assert not should_include(".env")
+    assert not should_include("league/drivers.csv")
+    assert not should_include("profiles/WFO_Truck.env")
+    assert not should_include(".venv/Scripts/python.exe")
+    assert not should_include("recordings/test.mp4")
+    assert not should_include("broadcast/__pycache__/engine.pyc")
+    assert not should_include("local_song.mp3")

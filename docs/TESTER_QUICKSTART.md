@@ -2,6 +2,10 @@
 
 This is the simple Windows tester path before the project has a full installer.
 
+If you are preparing a ZIP for another league admin, see
+[ADMIN_TESTER_HANDOFF.md](ADMIN_TESTER_HANDOFF.md). That path builds a clean
+tester ZIP without private `.env`, `league`, or saved profile data.
+
 ## What testers need
 
 - Windows 10 or 11
