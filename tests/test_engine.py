@@ -399,6 +399,41 @@ def test_engine_queues_long_green_field_rundown_under_green():
     assert "20-lap green flag run" in rundown.message
 
 
+def test_engine_blocks_long_green_field_rundown_with_less_than_ten_to_go():
+    results = [
+        {"CarIdx": index, "Position": index, "LapsComplete": 51}
+        for index in range(12)
+    ]
+    drivers = {
+        index: {"name": f"Driver {index + 1}", "number": str(index + 1)}
+        for index in range(12)
+    }
+    snapshot = TelemetrySnapshot(
+        lap=51,
+        total_laps=60,
+        session_flags=RaceFlags.GREEN,
+        results=results,
+        driver_lookup=drivers,
+        pit_road_status=[False] * 12,
+        track_surface=[3] * 12,
+        track_surface_material=[0] * 12,
+        lap_dist_pct=[0.1] * 12,
+        est_time=[10.0] * 12,
+    )
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    engine.session_tracker.update("Race")
+    engine.race_director.race_started = True
+    engine.race_director.phase = RacePhase.GREEN
+    engine.race_intelligence.race_state_tracker.initialized = True
+    engine.race_intelligence.race_state_tracker.state.green_lap_count = 20
+    engine.field_rundown_director.active_milestone = "long_green"
+
+    item = engine.tick(SnapshotSource(snapshot))
+
+    assert item is None or item.category != "long_green_field_rundown_1"
+    assert engine.field_rundown_director.active_milestone is None
+
+
 def test_engine_queues_silent_crank_it_up_after_ten_green_laps():
     results = [
         {"CarIdx": index, "Position": index + 1, "LapsComplete": 10}
@@ -424,6 +459,23 @@ def test_engine_queues_silent_crank_it_up_after_ten_green_laps():
     assert silent_item.feature_duration_seconds == 50.0
     assert silent_item.camera_sequence_steps == ((0, "Crank Fixed", 0),)
     assert silent_item.camera_return_home_after_sequence is True
+
+
+def test_crank_it_up_does_not_queue_with_less_than_ten_to_go():
+    results = [
+        {"CarIdx": index, "Position": index + 1, "LapsComplete": 51}
+        for index in range(8)
+    ]
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+
+    queued = engine._queue_crank_it_up(
+        results,
+        green_lap_count=20,
+        laps_remaining=9,
+    )
+
+    assert queued is False
+    assert engine.broadcast_queue.items == []
 
 
 def test_crank_it_up_intro_airs_before_silent_feature():

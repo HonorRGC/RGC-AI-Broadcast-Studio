@@ -176,11 +176,19 @@ class BroadcastEngine:
                 story_results,
                 current_lap,
             )
+            closing_feature_blocked = self.closing_lap_feature_blocked(
+                current_lap,
+                total_laps,
+            )
+            if closing_feature_blocked:
+                self.field_rundown_director.cancel_active()
+                self.clear_closing_lap_features()
+
             mandatory_rundown_due = self.field_rundown_director.is_due_or_active(
                 current_lap,
                 total_laps,
                 race_state.green_lap_count,
-            )
+            ) if not closing_feature_blocked else False
             if mandatory_rundown_due:
                 if self.has_pending_race_control():
                     return self.broadcast_queue.next_item()
@@ -195,13 +203,15 @@ class BroadcastEngine:
                     return self.broadcast_queue.next_item()
                 return None
 
-            queued_quarter_rundown = self._queue_mandatory_field_rundown(
-                results,
-                driver_lookup,
-                current_lap,
-                total_laps,
-                race_state.green_lap_count,
-            )
+            queued_quarter_rundown = False
+            if not closing_feature_blocked:
+                queued_quarter_rundown = self._queue_mandatory_field_rundown(
+                    results,
+                    driver_lookup,
+                    current_lap,
+                    total_laps,
+                    race_state.green_lap_count,
+                )
             if queued_quarter_rundown:
                 return self.broadcast_queue.next_item()
             queued_final_battle = self._queue_final_laps_battle(
@@ -215,6 +225,7 @@ class BroadcastEngine:
             queued_crank_it_up = self._queue_crank_it_up(
                 story_results,
                 race_state.green_lap_count,
+                race_state.laps_remaining,
             )
             if queued_crank_it_up:
                 return self.broadcast_queue.next_item()
@@ -822,10 +833,36 @@ class BroadcastEngine:
         )
         return True
 
-    def _queue_crank_it_up(self, results, green_lap_count):
+    def closing_lap_feature_blocked(self, current_lap, total_laps):
+        total_laps = self.safe_int(total_laps)
+        current_lap = self.safe_int(current_lap)
+        if total_laps <= 0 or current_lap <= 0:
+            return False
+        return max(total_laps - current_lap, 0) < 10
+
+    def clear_closing_lap_features(self):
+        blocked_prefixes = (
+            "quarter_field_rundown",
+            "three_quarter_field_rundown",
+            "long_green_field_rundown",
+        )
+        blocked_categories = {
+            "crank_it_up_intro",
+            "crank_it_up",
+        }
+        self.broadcast_queue.items = [
+            item for item in self.broadcast_queue.items
+            if item.category not in blocked_categories
+            and not str(item.category).startswith(blocked_prefixes)
+        ]
+
+    def _queue_crank_it_up(self, results, green_lap_count, laps_remaining=None):
         if self.crank_it_up_sent_this_green_run:
             return False
         if green_lap_count < 10:
+            return False
+        laps_remaining = self.safe_int(laps_remaining) if laps_remaining is not None else 0
+        if 0 < laps_remaining < 10:
             return False
         if self.broadcast_queue.items or not self.broadcast_queue.can_speak():
             return False
