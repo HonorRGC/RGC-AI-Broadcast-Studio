@@ -115,4 +115,8 @@ def test_prompt_forbids_script_style_broadcaster_name_prefixes():
     assert "Mike," not in prompt["system"]
     assert "Jeff," not in prompt["system"]
     assert "Do not directly call out another broadcaster by name" in prompt["system"]
+    assert "Do not refer to another booth member in third person" in prompt["system"]
+    assert "Do not ask another booth member a question" in prompt["system"]
     assert "what the booth just framed" in prompt["user"]
+    assert "ask another broadcaster a question" in prompt["user"]
+    assert "refer to the booth in third person" in prompt["user"]

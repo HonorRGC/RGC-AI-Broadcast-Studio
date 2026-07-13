@@ -16,19 +16,64 @@ class CommentaryCleaner:
         cleaned = str(message)
 
         cleaned = self.remove_broadcaster_prefix(cleaned)
+        cleaned = self.remove_broadcaster_asides(cleaned)
+        cleaned = self.remove_broadcaster_third_person(cleaned)
         cleaned = self.remove_debug_phrases(cleaned)
         cleaned = self.remove_duplicate_sentences(cleaned)
+        cleaned = self.remove_wrapping_quotes(cleaned)
         cleaned = self.fix_spacing(cleaned)
 
         return cleaned.strip()
 
     def remove_broadcaster_prefix(self, message):
+        cleaned = re.sub(r"^\s*[\"'“”‘’]+", "", message)
         return re.sub(
             r"^\s*(Mike|Jeff|Sarah|Lead|Color|Pit)\s*[:,-]\s*",
             "",
+            cleaned,
+            flags=re.IGNORECASE,
+        )
+
+    def remove_broadcaster_asides(self, message):
+        cleaned = re.sub(
+            r"\s*,\s*(Mike|Jeff|Sarah)\s*,\s*",
+            " ",
             message,
             flags=re.IGNORECASE,
         )
+        cleaned = re.sub(
+            r"^\s*(Mike|Jeff|Sarah)\s*,\s+",
+            "",
+            cleaned,
+            flags=re.IGNORECASE,
+        )
+        return cleaned
+
+    def remove_broadcaster_third_person(self, message):
+        patterns = [
+            (
+                r"\b(Mike|Jeff|Sarah)\s+will be watching whether\b",
+                "We'll watch whether",
+            ),
+            (
+                r"\b(Mike|Jeff|Sarah)\s+will be watching to see if\b",
+                "We'll watch to see if",
+            ),
+            (
+                r"\b(Mike|Jeff|Sarah)\s+will be watching\b",
+                "We'll be watching",
+            ),
+        ]
+        cleaned = message
+        for pattern, replacement in patterns:
+            cleaned = re.sub(pattern, replacement, cleaned, flags=re.IGNORECASE)
+        return cleaned
+
+    def remove_wrapping_quotes(self, message):
+        cleaned = message.strip()
+        cleaned = re.sub(r"^[\"'“”‘’]+", "", cleaned)
+        cleaned = re.sub(r"[\"'“”‘’]+$", "", cleaned)
+        return cleaned
 
     def remove_debug_phrases(self, message):
         patterns = [

@@ -6,6 +6,9 @@
 - First-time setup checklist in the Studio help tab for release/admin readiness
 - Prompt guidance for more natural Mike, Jeff, and Sarah booth handoffs
 
+### Fixed
+- Prevented AI commentary from calling out broadcaster names or using script-style booth labels
+
 ## Version 0.18.1 - Tester Installer Refresh
 
 ### Added

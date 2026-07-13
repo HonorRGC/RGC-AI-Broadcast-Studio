@@ -19,3 +19,28 @@ def test_commentary_cleaner_removes_broadcaster_script_prefixes():
     assert cleaner.clean("Mike: Green flag is in the air.") == "Green flag is in the air."
     assert cleaner.clean("Jeff, he is saving the right rear.") == "he is saving the right rear."
     assert cleaner.clean("Sarah - Pit road is busy.") == "Pit road is busy."
+
+
+def test_commentary_cleaner_removes_broadcaster_asides_from_openai_lines():
+    cleaner = CommentaryCleaner()
+
+    assert cleaner.clean(
+        "Clean air is Armstrong's prize right now, Jeff, but he's going to have to defend."
+    ) == "Clean air is Armstrong's prize right now but he's going to have to defend."
+    assert cleaner.clean(
+        "The question now, Jeff, is whether the challenger can stay close enough."
+    ) == "The question now is whether the challenger can stay close enough."
+    assert cleaner.clean(
+        "Mike, Porter has done the hard part by getting right to Armstrong's bumper."
+    ) == "Porter has done the hard part by getting right to Armstrong's bumper."
+
+
+def test_commentary_cleaner_rewrites_third_person_booth_references():
+    cleaner = CommentaryCleaner()
+
+    assert cleaner.clean(
+        "Jeff will be watching whether that's traffic exposing the handling."
+    ) == "We'll watch whether that's traffic exposing the handling."
+    assert cleaner.clean(
+        "Jeff: “That’s a tight three-car shelf forming with Hindley.”"
+    ) == "That’s a tight three-car shelf forming with Hindley."

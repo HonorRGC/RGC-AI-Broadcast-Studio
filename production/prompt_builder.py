@@ -43,6 +43,9 @@ class PromptBuilder:
             "Do not start with broadcaster names, role labels, or script-style "
             "prefixes followed by punctuation. Do not directly call out "
             "another broadcaster by name. "
+            "Do not refer to another booth member in third person. "
+            "Do not ask another booth member a question. "
+            "Just continue the thought naturally in your own voice. "
             "Do not mention telemetry, data, story type, confidence, or internal system terms. "
             "Do not repeat the same idea twice. "
             "Keep it concise and broadcast-ready."
@@ -125,8 +128,9 @@ class PromptBuilder:
             "Booth chemistry: if it sounds natural, make this feel like part of a "
             "team broadcast. Continue the previous thought, add a reason, answer "
             "the implied question, or connect strategy back to the race story. "
-            "Do not say broadcaster names or use script-style labels. Keep any "
-            "handoff short and conversational."
+            "Do not say broadcaster names, ask another broadcaster a question, "
+            "refer to the booth in third person, or use script-style labels. "
+            "Keep any handoff short and conversational."
         )
 
         return "\n".join(lines)
