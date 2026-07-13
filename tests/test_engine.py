@@ -987,6 +987,73 @@ def test_final_lap_pack_wreck_is_called_live_without_replay():
     assert incident.camera_focus_incident is True
 
 
+def test_pack_wreck_detector_stays_quiet_while_field_forms_under_caution():
+    drivers = {
+        index: {"name": f"Driver {index + 1}", "number": str(index + 1)}
+        for index in range(5)
+    }
+    first = TelemetrySnapshot(
+        lap=20,
+        total_laps=50,
+        session_flags=RaceFlags.CAUTION,
+        session_num=2,
+        session_time=200.0,
+        results=[
+            {"CarIdx": index, "Position": index + 1, "LapsComplete": 20, "Incidents": 0}
+            for index in range(5)
+        ],
+        driver_lookup=drivers,
+        pit_road_status=[False] * 5,
+        track_surface=[3] * 5,
+        track_surface_material=[0] * 5,
+        lap_dist_pct=[0.50, 0.51, 0.52, 0.53, 0.54],
+        est_time=[20.0, 20.2, 20.4, 20.6, 20.8],
+    )
+    shuffled = TelemetrySnapshot(
+        lap=20,
+        total_laps=50,
+        session_flags=RaceFlags.CAUTION,
+        session_num=2,
+        session_time=202.0,
+        results=[
+            {"CarIdx": 0, "Position": 8, "LapsComplete": 20, "Incidents": 0},
+            {"CarIdx": 1, "Position": 9, "LapsComplete": 20, "Incidents": 0},
+            {"CarIdx": 2, "Position": 10, "LapsComplete": 20, "Incidents": 0},
+            {"CarIdx": 3, "Position": 11, "LapsComplete": 20, "Incidents": 0},
+            {"CarIdx": 4, "Position": 5, "LapsComplete": 20, "Incidents": 0},
+        ],
+        driver_lookup=drivers,
+        pit_road_status=[False] * 5,
+        track_surface=[0, 0, 0, 0, 3],
+        track_surface_material=[0] * 5,
+        lap_dist_pct=[0.49, 0.50, 0.51, 0.52, 0.54],
+        est_time=[22.0, 22.2, 22.4, 22.6, 20.8],
+    )
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    engine.race_director.phase = RacePhase.CAUTION
+    engine.race_director.previous_phase = RacePhase.CAUTION
+    engine.race_director.phase_changed = False
+
+    engine._collect_incidents(
+        telemetry=SnapshotSource(first),
+        results=first.results,
+        driver_lookup=drivers,
+        pit_road_status=first.pit_road_status,
+        current_lap=20,
+        total_laps=50,
+    )
+    engine._collect_incidents(
+        telemetry=SnapshotSource(shuffled),
+        results=shuffled.results,
+        driver_lookup=drivers,
+        pit_road_status=shuffled.pit_road_status,
+        current_lap=20,
+        total_laps=50,
+    )
+
+    assert not any(item.category == "incident" for item in engine.broadcast_queue.items)
+
+
 def test_high_confidence_caution_candidate_anchors_replay_to_car_and_time():
     drivers = {0: {"name": "Driver One", "number": "1"}}
     source = SnapshotSource(
@@ -1638,6 +1705,45 @@ def test_engine_ignores_generic_black_flag_without_reason():
     engine.tick(source)
 
     assert not any(item.category == "penalty" for item in engine.broadcast_queue.items)
+
+
+def test_meatball_flag_waits_when_caution_replay_is_pending():
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    engine.race_director.phase = RacePhase.CAUTION
+    drivers = {4: {"name": "Damaged Driver", "number": "44"}}
+    snapshot = TelemetrySnapshot(
+        lap=10,
+        total_laps=40,
+        session_flags=RaceFlags.CAUTION,
+        results=[{"CarIdx": 4, "Position": 1, "LapsComplete": 10}],
+        driver_lookup=drivers,
+        pit_road_status=[False] * 5,
+        track_surface=[3] * 5,
+        track_surface_material=[0] * 5,
+        lap_dist_pct=[0.0] * 5,
+        est_time=[0.0] * 5,
+        car_idx_session_flags=[0, 0, 0, 0, PenaltyDetector.REPAIR_FLAG],
+        car_idx_penalty_reasons=[""] * 5,
+    )
+    engine.broadcast_queue.add(
+        "We are going to take a look at what brought out this caution.",
+        priority=10,
+        category="incident",
+        protected=True,
+        replay_use_incident_marker=True,
+    )
+
+    engine._collect_penalty_stories(
+        telemetry=SnapshotSource(snapshot),
+        results=snapshot.results,
+        driver_lookup=drivers,
+        current_lap=10,
+    )
+
+    item = next(item for item in engine.broadcast_queue.items if item.category == "penalty")
+    assert "meatball flag" in item.message
+    assert item.delay_seconds >= 35
+    assert item.protected is False
 
 
 def test_final_laps_battle_prioritizes_closest_top_five_gap():

@@ -953,18 +953,26 @@ class BroadcastEngine:
                 lambda: [],
             )(),
         )
+        defer_penalties = self.should_defer_penalty_stories()
+        penalty_delay_seconds = 35.0 if defer_penalties else 0.0
         for event in events:
             self.broadcast_queue.add(
                 event.message,
                 priority=event.priority,
                 category="penalty",
-                protected=event.event_type == "meatball",
+                protected=(event.event_type == "meatball" and not defer_penalties),
                 speaker="lead" if event.event_type == "meatball" else "sarah",
+                delay_seconds=penalty_delay_seconds,
                 expires_after=45,
                 dedupe_key=f"penalty:{event.event_type}:{event.car_idx}",
                 camera_target_car_idx=event.car_idx,
                 participant_car_indices=(event.car_idx,),
             )
+
+    def should_defer_penalty_stories(self):
+        if self.race_director.phase in (RacePhase.CAUTION, RacePhase.ONE_TO_GREEN):
+            return True
+        return any(item.category == "incident" for item in self.broadcast_queue.items)
 
     def _queue_long_green_insight(self, race_state, current_lap):
         if self.broadcast_queue.items:
@@ -1404,6 +1412,14 @@ class BroadcastEngine:
             session_time=getattr(telemetry, "get_session_time", lambda: 0.0)(),
             suppress_soft_events=self.should_suppress_soft_incidents(),
         )
+        if (
+            self.race_director.phase in (RacePhase.CAUTION, RacePhase.ONE_TO_GREEN)
+            and not caution_just_started
+        ):
+            events = [
+                event for event in events
+                if getattr(event, "trouble_type", "") != "pack wreck"
+            ]
         if not events and caution_just_started:
             fallback = (
                 self.incident_detector.build_big_wreck_fallback(current_lap)
