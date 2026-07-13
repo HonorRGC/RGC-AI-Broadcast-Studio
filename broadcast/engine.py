@@ -176,6 +176,7 @@ class BroadcastEngine:
                 pit_road_status,
                 current_lap,
                 race_state.green_lap_count,
+                total_laps=total_laps,
             )
             self._collect_penalty_stories(
                 telemetry,
@@ -1370,6 +1371,7 @@ class BroadcastEngine:
         pit_road_status,
         current_lap,
         green_lap_count=0,
+        total_laps=0,
     ):
         caution_just_started = (
             self.race_director.phase == RacePhase.CAUTION
@@ -1440,10 +1442,11 @@ class BroadcastEngine:
             else session_time
         )
         for event in events:
+            is_pack_wreck = event.trouble_type == "pack wreck"
             replay_eligible = (
-                event.incident_delta >= 2
-                or event.trouble_type == "caution candidate"
-                or event.trouble_type == "pack wreck"
+                (not is_pack_wreck and event.incident_delta >= 2)
+                or (not is_pack_wreck and event.trouble_type == "caution candidate")
+                or (is_pack_wreck and caution_just_started)
             )
             candidate_replay_time = getattr(event, "replay_session_time", None)
             candidate_confidence = str(
@@ -1458,10 +1461,12 @@ class BroadcastEngine:
                 caution_just_started
                 and replay_eligible
             )
-            replay_message = (
-                "We are going to take a look at what brought out this caution."
-                if use_incident_marker_replay or high_confidence_candidate
-                else event.message
+            replay_message = self.incident_broadcast_message(
+                event,
+                current_lap=current_lap,
+                total_laps=total_laps,
+                use_incident_marker_replay=use_incident_marker_replay,
+                high_confidence_candidate=high_confidence_candidate,
             )
             self.broadcast_queue.add(
                 self.commentary_cleaner.clean(replay_message),
@@ -1505,6 +1510,40 @@ class BroadcastEngine:
                     else None
                 ),
             )
+
+    def incident_broadcast_message(
+        self,
+        event,
+        current_lap,
+        total_laps=0,
+        use_incident_marker_replay=False,
+        high_confidence_candidate=False,
+    ):
+        if use_incident_marker_replay or high_confidence_candidate:
+            return "We are going to take a look at what brought out this caution."
+
+        if event.trouble_type != "pack wreck":
+            return event.message
+
+        if self.is_final_lap_window(current_lap, total_laps):
+            return (
+                "Big trouble in the pack on the final lap. Multiple cars are "
+                "involved, and the rest of the field still has to race back to "
+                "the checkered flag."
+            )
+
+        return (
+            "Big trouble in the pack. Several cars are suddenly showing trouble, "
+            "and this could change the whole shape of the race if the caution "
+            "does not come out."
+        )
+
+    def is_final_lap_window(self, current_lap, total_laps):
+        current_lap = self.safe_int(current_lap)
+        total_laps = self.safe_int(total_laps)
+        if total_laps <= 0:
+            return False
+        return current_lap >= max(0, total_laps - 1)
 
     def queue_incident_marker_replay(
         self,
