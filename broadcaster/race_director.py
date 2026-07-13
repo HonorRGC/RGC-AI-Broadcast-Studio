@@ -263,7 +263,8 @@ class RaceDirector:
 
         if self.race_started:
             scheduler.clear_for_race_control(
-                preserve_categories=("caution_pit_summary", "sponsor_read")
+                preserve_categories=("caution_pit_summary", "sponsor_read"),
+                reset_busy=False,
             )
             message = (
                 f"One lap to green here at {track_name}. "
@@ -477,7 +478,7 @@ class RaceDirector:
             (white_flag_is_out or 0 < laps_to_go <= 1)
             and not self.white_flag_announced
         ):
-            scheduler.clear_for_race_control()
+            scheduler.clear_for_race_control(reset_busy=False)
             scheduler.add(
                 "White flag. One lap to go.",
                 priority=13,
@@ -502,7 +503,8 @@ class RaceDirector:
             return
 
         scheduler.clear_for_race_control(
-            preserve_categories=("caution_pit_summary", "sponsor_read")
+            preserve_categories=("caution_pit_summary", "sponsor_read"),
+            reset_busy=False,
         )
         scheduler.add(
             message,

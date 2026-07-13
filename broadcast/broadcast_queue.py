@@ -197,7 +197,8 @@ class BroadcastQueue:
 
         return selected
 
-    def clear_for_race_control(self, preserve_categories=()):
+    def clear_for_race_control(self, preserve_categories=(), reset_busy=True):
         preserved = set(preserve_categories)
         self.items = [item for item in self.items if item.category in preserved]
-        self.busy_until = 0.0
+        if reset_busy:
+            self.busy_until = 0.0

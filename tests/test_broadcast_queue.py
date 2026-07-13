@@ -50,6 +50,24 @@ def test_race_control_clear_resets_busy_timer_for_immediate_interrupt():
     assert item.message == "Trouble on the speedway."
 
 
+def test_race_control_clear_can_preserve_current_voice_line():
+    queue = BroadcastQueue()
+    now = time.time()
+    queue.busy_until = now + 30
+    queue.add("Normal story", category="race_story")
+
+    queue.clear_for_race_control(reset_busy=False)
+    queue.add(
+        "White flag. One lap to go.",
+        category="race_control",
+        protected=True,
+        priority=13,
+    )
+
+    assert queue.next_item(now=now) is None
+    assert queue.busy_until == now + 30
+
+
 def test_one_driver_lineup_items_have_a_shorter_air_gap():
     queue = BroadcastQueue()
     queue.add(
