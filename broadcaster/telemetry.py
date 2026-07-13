@@ -226,11 +226,23 @@ class IRacingTelemetry:
         for driver in driver_info.get("Drivers", []):
             car_idx = driver.get("CarIdx")
             raw_name = driver.get("UserName", f"CarIdx {car_idx}")
+            cust_id = (
+                driver.get("UserID")
+                or driver.get("CustID")
+                or driver.get("CustomerID")
+            )
 
             lookup[car_idx] = {
                 "name": self.clean_driver_name(raw_name),
                 "raw_name": raw_name,
                 "number": driver.get("CarNumber", "?"),
+                "cust_id": cust_id,
+                "user_id": cust_id,
+                "car_path": driver.get("CarPath", ""),
+                "car_id": driver.get("CarID", ""),
+                "car_class_id": driver.get("CarClassID", ""),
+                "car_screen_name": driver.get("CarScreenName", ""),
+                "car_screen_name_short": driver.get("CarScreenNameShort", ""),
                 "country": driver.get("Country", ""),
                 "club": driver.get("ClubName", ""),
                 "team_name": driver.get("TeamName", ""),

@@ -196,3 +196,34 @@ def test_live_results_include_per_car_incident_counts_when_available():
 
     assert results[0]["Incidents"] == 4
     assert results[1]["Incidents"] == 6
+
+
+def test_live_driver_lookup_exposes_paint_matching_fields():
+    telemetry = IRacingTelemetry.__new__(IRacingTelemetry)
+    telemetry.ir = {
+        "DriverInfo": {
+            "Drivers": [
+                {
+                    "CarIdx": 12,
+                    "UserName": "T.J. Lee2",
+                    "CarNumber": "34",
+                    "UserID": 90223,
+                    "CarPath": "stockcars/truck",
+                    "CarID": 123,
+                    "CarClassID": 456,
+                    "CarScreenName": "NASCAR Truck",
+                    "CarScreenNameShort": "Truck",
+                    "Country": "USA",
+                }
+            ]
+        }
+    }
+
+    driver = telemetry.get_driver_lookup()[12]
+
+    assert driver["name"] == "T.J. Lee"
+    assert driver["number"] == "34"
+    assert driver["cust_id"] == 90223
+    assert driver["car_path"] == "stockcars/truck"
+    assert driver["car_id"] == 123
+    assert driver["car_class_id"] == 456
