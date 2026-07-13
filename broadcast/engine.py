@@ -5,6 +5,7 @@ from production.commentary_cleaner import CommentaryCleaner
 from production.caution_pit_reporter import CautionPitReporter
 from production.action_detector import ActionDetector
 from production.broadcast_story_producer import BroadcastStoryProducer
+from production.booth_followup_director import BoothFollowupDirector
 from production.editorial_producer import EditorialDecisionType, EditorialProducer
 from production.field_rundown_director import FieldRundownDirector
 from production.fastest_lap_tracker import FastestLapTracker
@@ -50,6 +51,7 @@ class BroadcastEngine:
         self.formation_detector = FormationDetector()
         self.editorial_producer = EditorialProducer()
         self.broadcast_story_producer = BroadcastStoryProducer()
+        self.booth_followup_director = BoothFollowupDirector()
         self.penalty_detector = PenaltyDetector()
         self.pit_strategy_detector = PitStrategyDetector()
         self.caution_pit_reporter = CautionPitReporter()
@@ -1401,7 +1403,10 @@ class BroadcastEngine:
             suppress_soft_events=self.should_suppress_soft_incidents(),
         )
         if not events and caution_just_started:
-            fallback = self.incident_detector.build_caution_fallback(current_lap)
+            fallback = (
+                self.incident_detector.build_big_wreck_fallback(current_lap)
+                or self.incident_detector.build_caution_fallback(current_lap)
+            )
             if fallback:
                 events = [fallback]
         if not events:
@@ -1438,6 +1443,7 @@ class BroadcastEngine:
             replay_eligible = (
                 event.incident_delta >= 2
                 or event.trouble_type == "caution candidate"
+                or event.trouble_type == "pack wreck"
             )
             candidate_replay_time = getattr(event, "replay_session_time", None)
             candidate_confidence = str(
@@ -1474,6 +1480,8 @@ class BroadcastEngine:
                 participant_car_indices=(
                     () if use_incident_marker_replay else (event.car_idx,)
                 ),
+                camera_focus_incident=event.trouble_type == "pack wreck",
+                camera_incident_group="Far Chase",
                 replay_session_num=(
                     caution_replay_session_num
                     if use_incident_marker_replay
@@ -1676,4 +1684,26 @@ class BroadcastEngine:
             dedupe_key=self.editorial_producer.build_story_id(item),
             camera_target_car_idx=item.camera_target_car_idx,
             participant_car_indices=item.participant_car_indices,
+        )
+        self._queue_booth_follow_up(item, race_state)
+
+    def _queue_booth_follow_up(self, item, race_state):
+        follow_up = self.booth_followup_director.follow_up_for(
+            item,
+            race_state=race_state,
+        )
+        if not follow_up:
+            return
+
+        self.broadcast_queue.add(
+            self.commentary_cleaner.clean(follow_up),
+            priority=max(1, self.safe_int(getattr(item, "priority", 5)) - 1),
+            category="race_story_follow_up",
+            protected=False,
+            speaker="jeff",
+            delay_seconds=0.5,
+            expires_after=35,
+            dedupe_key=f"booth_follow_up:{self.editorial_producer.build_story_id(item)}",
+            camera_target_car_idx=None,
+            participant_car_indices=(),
         )

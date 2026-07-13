@@ -64,6 +64,8 @@ class IncidentDetector:
         self.driver_states: Dict[int, IncidentDriverState] = {}
 
         self.report_cooldown_seconds = 25
+        self.pack_report_cooldown_seconds = 45
+        self.last_pack_reported_at = 0.0
         self.debug = False
 
         self.position_loss_threshold = 4
@@ -85,6 +87,7 @@ class IncidentDetector:
         suppress_soft_events=False,
     ) -> List[IncidentEvent]:
         events = []
+        pack_candidates = []
 
         if not results:
             return events
@@ -163,6 +166,18 @@ class IncidentDetector:
                 current_lap=current_lap,
                 suppress_soft_events=suppress_soft_events,
             )
+            pack_candidate = self.build_pack_trouble_candidate(
+                state=state,
+                incident_count=incident_count,
+                position=position,
+                lap_dist_pct=lap_dist_pct,
+                est_time=est_time,
+                track_surface=track_surface,
+                current_lap=current_lap,
+                session_time=session_time,
+            )
+            if pack_candidate:
+                pack_candidates.append(pack_candidate)
 
             self.remember_caution_candidate(
                 state=state,
@@ -187,6 +202,10 @@ class IncidentDetector:
                 est_time,
                 on_pit_road,
             )
+
+        pack_event = self.build_pack_wreck_event(pack_candidates, current_lap)
+        if pack_event:
+            return [pack_event]
 
         return events
 
@@ -228,6 +247,30 @@ class IncidentDetector:
             trouble_type="caution candidate",
             replay_session_time=candidate.session_time if high_confidence else None,
             replay_confidence="high" if high_confidence else "low",
+        )
+
+    def build_big_wreck_fallback(
+        self,
+        current_lap,
+        max_age_seconds=8.0,
+        minimum_cars=4,
+    ):
+        now = time.time()
+        candidates = [
+            candidate
+            for candidate in self.recent_caution_candidates
+            if now - candidate.observed_at <= max_age_seconds
+            and abs(current_lap - candidate.lap) <= 1
+            and candidate.score >= 3.0
+        ]
+        if len(candidates) < minimum_cars:
+            return None
+
+        candidates.sort(key=lambda item: item.score, reverse=True)
+        return self.build_pack_wreck_event(
+            candidates[:8],
+            current_lap=current_lap,
+            force=True,
         )
 
     def remember_caution_candidate(
@@ -285,6 +328,119 @@ class IncidentDetector:
             )
         )
         self.recent_caution_candidates = self.recent_caution_candidates[-30:]
+
+    def build_pack_trouble_candidate(
+        self,
+        state,
+        incident_count,
+        position,
+        lap_dist_pct,
+        est_time,
+        track_surface,
+        current_lap,
+        session_time=None,
+    ):
+        incident_delta = max(0, incident_count - state.last_incident_count)
+        position_loss = max(0, position - state.last_position)
+        lap_distance_loss = self.calculate_lap_distance_loss(
+            state.last_lap_dist_pct,
+            lap_dist_pct,
+        )
+        est_time_loss = max(0.0, est_time - state.last_est_time)
+        abnormal_surface = self.is_abnormal_surface(track_surface)
+
+        reasons = []
+        if incident_delta > 0:
+            reasons.append("incident counter changed")
+        if position_loss >= 2:
+            reasons.append("lost positions")
+        if lap_distance_loss >= 0.006:
+            reasons.append("lost track position quickly")
+        if est_time_loss >= 1.5:
+            reasons.append("lost estimated time")
+        if abnormal_surface:
+            reasons.append("abnormal track surface")
+
+        score = (
+            incident_delta * 3.0
+            + position_loss
+            + lap_distance_loss * 100.0
+            + est_time_loss
+            + (2.5 if abnormal_surface else 0.0)
+        )
+        if incident_delta >= 2:
+            enough_signal = True
+        else:
+            enough_signal = score >= 3.0 and len(reasons) >= 2
+        if not enough_signal:
+            return None
+
+        return CautionCandidate(
+            driver_name=state.driver_name,
+            car_number=state.car_number,
+            car_idx=state.car_idx,
+            score=score,
+            lap=current_lap,
+            observed_at=time.time(),
+            session_time=self.safe_optional_float(session_time),
+            signal_count=len(reasons),
+            reasons=tuple(reasons),
+        )
+
+    def build_pack_wreck_event(self, candidates, current_lap, force=False):
+        unique = []
+        seen = set()
+        for candidate in sorted(candidates or [], key=lambda item: item.score, reverse=True):
+            if candidate.car_idx in seen:
+                continue
+            seen.add(candidate.car_idx)
+            unique.append(candidate)
+
+        if len(unique) < 4:
+            return None
+
+        now = time.time()
+        if not force and now - self.last_pack_reported_at < self.pack_report_cooldown_seconds:
+            return None
+
+        self.last_pack_reported_at = now
+        featured = unique[:3]
+        if len(featured) >= 2:
+            names = ", ".join(
+                f"the {candidate.car_number} of {candidate.driver_name}"
+                for candidate in featured[:-1]
+            )
+            names = f"{names}, and the {featured[-1].car_number} of {featured[-1].driver_name}"
+        else:
+            names = f"the {featured[0].car_number} of {featured[0].driver_name}"
+
+        replay_time = next(
+            (
+                candidate.session_time
+                for candidate in unique
+                if candidate.session_time is not None
+            ),
+            None,
+        )
+
+        return IncidentEvent(
+            event_type="INCIDENT",
+            driver_name=featured[0].driver_name,
+            car_number=featured[0].car_number,
+            car_idx=featured[0].car_idx,
+            message=(
+                "Big trouble in the pack. Several cars are suddenly showing "
+                f"trouble, including {names}. This looks like what could have "
+                "brought out the caution."
+            ),
+            importance=10,
+            lap=current_lap,
+            incident_delta=max(candidate.score for candidate in unique),
+            total_incidents=len(unique),
+            trouble_type="pack wreck",
+            replay_session_time=replay_time,
+            replay_confidence="high" if replay_time is not None else "low",
+        )
 
     def detect_trouble(
         self,
