@@ -143,12 +143,45 @@ class PlaylistAudioPlayer:
             self.is_playing = True
             return True
 
+    def play_playlist_once(self, playlist):
+        paths = [Path(str(path or "")).expanduser() for path in playlist]
+        paths = [path.resolve() for path in paths if path.exists()]
+        if not paths:
+            return False
+
+        playlist_key = [str(path) for path in paths]
+        with self.lock:
+            if self.is_playing and self.active_playlist == playlist_key:
+                return True
+            self.stop_locked()
+            self.stop_event.clear()
+            self.active_playlist = playlist_key
+            self.thread = threading.Thread(
+                target=self.play_sequence_once,
+                args=(playlist_key,),
+                daemon=True,
+            )
+            self.thread.start()
+            self.is_playing = True
+            return True
+
     def loop_playlist(self, playlist):
         while not self.stop_event.is_set():
             for path in playlist:
                 if self.stop_event.is_set():
                     break
                 self.play_one(path)
+
+    def play_sequence_once(self, playlist):
+        for path in playlist:
+            if self.stop_event.is_set():
+                break
+            self.play_one(path)
+        with self.lock:
+            if self.active_playlist == playlist:
+                self.active_playlist = []
+                self.is_playing = False
+                self.thread = None
 
     def play_one(self, path):
         if self.stop_event.is_set():

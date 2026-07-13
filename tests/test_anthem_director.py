@@ -18,10 +18,15 @@ class OverlaySpy:
 class HiddenPlayerSpy:
     def __init__(self):
         self.plays = []
+        self.playlists = []
         self.stops = 0
 
     def play(self, path, duration_seconds=None):
         self.plays.append((path, duration_seconds))
+        return True
+
+    def play_playlist_once(self, paths):
+        self.playlists.append(paths)
         return True
 
     def stop(self):
@@ -82,7 +87,27 @@ def test_rgc_anthem_uses_hidden_player_without_overlay_duration(tmp_path):
     decision = director.update("Qualifying", OverlaySpy())
 
     assert decision.status == "played"
-    assert player.plays == [(str(audio.resolve()), None)]
+    assert player.playlists == [[str(audio.resolve())]]
+
+
+def test_rgc_anthem_can_play_multiple_audio_files_once(tmp_path):
+    first_audio = tmp_path / "anthem_one.mp3"
+    second_audio = tmp_path / "anthem_two.mp3"
+    first_audio.write_bytes(b"audio")
+    second_audio.write_bytes(b"audio")
+    player = HiddenPlayerSpy()
+    director = NationalAnthemDirector(
+        enabled=True,
+        audio_path=f"{first_audio};{second_audio}",
+        player=player,
+    )
+
+    decision = director.update("Qualifying", OverlaySpy())
+
+    assert decision.status == "played"
+    assert player.playlists == [
+        [str(first_audio.resolve()), str(second_audio.resolve())]
+    ]
 
 
 def test_rgc_anthem_can_show_without_audio_file():

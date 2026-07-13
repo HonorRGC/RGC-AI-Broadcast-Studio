@@ -381,7 +381,10 @@ def format_playlist_paths(paths):
 
 
 def apply_audio_file_selection(values, field_name, path):
-    values[field_name] = str(Path(path))
+    if isinstance(path, (list, tuple)):
+        values[field_name] = format_playlist_paths(path)
+    else:
+        values[field_name] = str(Path(path))
     if field_name == "NATIONAL_ANTHEM_AUDIO":
         values["USE_NATIONAL_ANTHEM"] = "true"
     return values
@@ -904,16 +907,29 @@ def run_gui():
         status.set(f"Added {len(paths)} practice music file(s). Save settings before starting.")
 
     def choose_single_audio(field_name, title):
-        path = filedialog.askopenfilename(
-            title=title,
-            filetypes=[
-                ("Audio files", "*.mp3 *.wav *.m4a *.aac *.flac *.wma"),
-                ("All files", "*.*"),
-            ],
-        )
-        if not path:
+        if field_name == "NATIONAL_ANTHEM_AUDIO":
+            selected = filedialog.askopenfilenames(
+                title=title,
+                filetypes=[
+                    ("Audio files", "*.mp3 *.wav *.m4a *.aac *.flac *.wma"),
+                    ("All files", "*.*"),
+                ],
+            )
+        else:
+            selected = filedialog.askopenfilename(
+                title=title,
+                filetypes=[
+                    ("Audio files", "*.mp3 *.wav *.m4a *.aac *.flac *.wma"),
+                    ("All files", "*.*"),
+                ],
+            )
+        if not selected:
             return
-        updated_values = apply_audio_file_selection(collect_values(), field_name, path)
+        updated_values = apply_audio_file_selection(
+            collect_values(),
+            field_name,
+            selected,
+        )
         for key, value in updated_values.items():
             if key not in entries:
                 continue
@@ -921,7 +937,10 @@ def run_gui():
             field.delete(0, "end")
             field.insert(0, value)
         if field_name == "NATIONAL_ANTHEM_AUDIO":
-            status.set("Set RGC Anthem audio and turned USE_NATIONAL_ANTHEM on. Save settings before starting.")
+            count = len(selected) if isinstance(selected, tuple) else 1
+            status.set(
+                f"Set {count} RGC Anthem audio file(s) and turned USE_NATIONAL_ANTHEM on. Save settings before starting."
+            )
             return
         status.set(f"Set {field_name}. Save settings before starting.")
 

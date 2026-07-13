@@ -7,7 +7,7 @@ from config import (
     STUDIO_VOLUME,
     USE_NATIONAL_ANTHEM,
 )
-from production.audio_bed import OneShotAudioPlayer, percent_to_mci_volume
+from production.audio_bed import PlaylistAudioPlayer, percent_to_mci_volume
 from production.session_tracker import SessionTracker, WeekendSession
 
 
@@ -28,7 +28,7 @@ class NationalAnthemDirector:
     ):
         self.enabled = bool(enabled)
         self.audio_path = str(audio_path or "").strip()
-        self.player = player or OneShotAudioPlayer(
+        self.player = player or PlaylistAudioPlayer(
             normal_volume=percent_to_mci_volume(studio_volume),
             alias="rgc_anthem_audio",
         )
@@ -65,21 +65,22 @@ class NationalAnthemDirector:
         return AnthemDecision("ignored", "No anthem action is due.")
 
     def play_audio(self):
-        if not self.audio_path:
+        playlist = self.audio_playlist()
+        if not playlist:
             return AnthemDecision(
                 "shown",
                 "RGC Anthem overlay shown; no audio file is configured.",
             )
 
-        path = Path(self.audio_path).expanduser()
-        if not path.exists():
+        existing_paths = [path.resolve() for path in playlist if path.exists()]
+        if not existing_paths:
             return AnthemDecision(
                 "missing_audio",
-                f"RGC Anthem audio file was not found: {path}",
+                f"RGC Anthem audio file was not found: {playlist[0]}",
             )
 
         try:
-            if self.play_with_player(str(path.resolve())) is False:
+            if self.play_with_player([str(path) for path in existing_paths]) is False:
                 return AnthemDecision(
                     "audio_failed",
                     "RGC Anthem audio could not be played by the hidden audio player.",
@@ -92,10 +93,21 @@ class NationalAnthemDirector:
 
         return AnthemDecision("played", "RGC Anthem presentation started.")
 
-    def play_with_player(self, path):
+    def audio_playlist(self):
+        return [
+            Path(item.strip()).expanduser()
+            for item in self.audio_path.split(";")
+            if item.strip()
+        ]
+
+    def play_with_player(self, paths):
+        if hasattr(self.player, "play_playlist_once"):
+            return self.player.play_playlist_once(paths)
+        if hasattr(self.player, "play_playlist"):
+            return self.player.play_playlist(paths)
         if hasattr(self.player, "play"):
-            return self.player.play(path)
-        return self.player(path)
+            return self.player.play(paths[0])
+        return self.player(paths[0])
 
     def stop_audio(self):
         stopper = getattr(self.player, "stop", None)

@@ -280,6 +280,20 @@ def test_launcher_turns_on_anthem_when_audio_is_selected():
     assert values["NATIONAL_ANTHEM_AUDIO"] == str(Path("D:/Music/anthem.mp3"))
 
 
+def test_launcher_can_select_multiple_anthem_audio_files():
+    values = apply_audio_file_selection(
+        {"USE_NATIONAL_ANTHEM": "false"},
+        "NATIONAL_ANTHEM_AUDIO",
+        ["D:/Music/anthem_one.mp3", "D:/Music/anthem_two.mp3"],
+    )
+
+    assert values["USE_NATIONAL_ANTHEM"] == "true"
+    assert values["NATIONAL_ANTHEM_AUDIO"].split(";") == [
+        str(Path("D:/Music/anthem_one.mp3")),
+        str(Path("D:/Music/anthem_two.mp3")),
+    ]
+
+
 def test_launcher_sanitizes_overlay_asset_names():
     assert sanitize_asset_name("D:/Editor/decals/RGC Motorsports Logo.PNG") == "rgc_motorsports_logo.png"
 
