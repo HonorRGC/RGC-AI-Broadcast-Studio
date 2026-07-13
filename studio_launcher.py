@@ -1559,6 +1559,7 @@ def build_help_tab(parent, label, frame, button):
         "5. Music, anthem, caution, and sponsor graphics",
         """
         Practice music loops during practice. RGC Anthem audio plays once during qualifying when enabled.
+        MP3 or WAV files are recommended. OGA/OGG files are not supported by the hidden Windows audio player.
         Caution audio and caution presentation graphics are used during caution periods.
         The Studio Volume slider controls program audio, including music beds and ElevenLabs voice playback.
         """,

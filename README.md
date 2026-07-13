@@ -48,7 +48,7 @@ The launcher can save the main `.env` settings, create `league\drivers.csv` and 
 
 Use `Choose Sponsor Logos` to copy sponsor or league graphics into the overlay assets folder and update the title-logo rotation shown in the upper-left of the broadcast overlay.
 
-Practice music, RGC Anthem audio, caution replay audio, and presentation graphics can also be selected in the launcher. These local audio files play through hidden Windows audio controls so testers do not get a media-player window popping up on the desktop. Practice music loops through the playlist until practice ends. The RGC Anthem remains a one-time qualifying ceremony. Use semicolons between multiple practice songs if editing the playlist manually.
+Practice music, RGC Anthem audio, caution replay audio, and presentation graphics can also be selected in the launcher. These local audio files play through hidden Windows audio controls so testers do not get a media-player window popping up on the desktop. MP3 or WAV files are recommended; OGA/OGG files are not supported by the hidden Windows player. Practice music loops through the playlist until practice ends. The RGC Anthem remains a one-time qualifying ceremony and can play multiple selected songs once in order. Use semicolons between multiple songs if editing a playlist manually.
 Use the **Studio Volume** slider in the launcher to control program audio, including practice music, RGC Anthem audio, caution replay audio, and ElevenLabs voice playback. The slider is a percentage from 0 to 100.
 
 Turn on `POST_RACE_INTERVIEWS_ENABLED` when the league admin plans to interview the podium after the race. With that option enabled, the broadcast still reads the top ten finishers, then hands off to post-race interviews in third, second, winner order instead of playing the normal sign-off.
@@ -191,7 +191,7 @@ NATIONAL_ANTHEM_AUDIO=C:\Path\To\rgc_anthem.mp3
 NATIONAL_ANTHEM_GRAPHICS=/assets/rgc_motorsports.png,/assets/autism_awareness.png
 ```
 
-If you start the program during practice or qualifying, the overlay can show the RGC Anthem graphics near the top of the screen and play the configured local audio file once qualifying begins. The anthem graphic stays up through the qualifying session and clears automatically when the race session starts. The qualifying board stays visible underneath. Once the race session starts, the normal brand graphics cycle cleanly in the title banner. The project does not include an anthem recording; use your own recording or a properly licensed audio file.
+If you start the program during practice or qualifying, the overlay can show the RGC Anthem graphics near the top of the screen and play the configured local audio file once qualifying begins. To play more than one anthem/sponsor song, separate the files with semicolons. The anthem graphic stays up through the qualifying session and clears automatically when the race session starts. The qualifying board stays visible underneath. Once the race session starts, the normal brand graphics cycle cleanly in the title banner. The project does not include an anthem recording; use your own recording or a properly licensed MP3/WAV audio file.
 
 Optional music beds:
 

@@ -110,6 +110,23 @@ def test_rgc_anthem_can_play_multiple_audio_files_once(tmp_path):
     ]
 
 
+def test_rgc_anthem_reports_unsupported_audio_type(tmp_path):
+    unsupported = tmp_path / "anthem.oga"
+    unsupported.write_bytes(b"audio")
+    player = HiddenPlayerSpy()
+    director = NationalAnthemDirector(
+        enabled=True,
+        audio_path=str(unsupported),
+        player=player,
+    )
+
+    decision = director.update("Qualifying", OverlaySpy())
+
+    assert decision.status == "unsupported_audio"
+    assert "Convert it to MP3 or WAV" in decision.reason
+    assert player.playlists == []
+
+
 def test_rgc_anthem_can_show_without_audio_file():
     overlay = OverlaySpy()
     director = NationalAnthemDirector(enabled=True, audio_path="")

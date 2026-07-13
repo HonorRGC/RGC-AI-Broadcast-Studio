@@ -6,6 +6,29 @@ import time
 from config import CAUTION_REPLAY_AUDIO
 
 
+SUPPORTED_MCI_AUDIO_EXTENSIONS = {
+    ".aac",
+    ".flac",
+    ".m4a",
+    ".mp3",
+    ".wav",
+    ".wma",
+}
+
+
+def is_supported_hidden_audio_file(path):
+    return Path(str(path or "")).suffix.lower() in SUPPORTED_MCI_AUDIO_EXTENSIONS
+
+
+def existing_hidden_audio_paths(playlist):
+    paths = [Path(str(path or "")).expanduser() for path in playlist]
+    return [
+        path.resolve()
+        for path in paths
+        if path.exists() and is_supported_hidden_audio_file(path)
+    ]
+
+
 def percent_to_mci_volume(volume_percent):
     try:
         percent = int(volume_percent)
@@ -122,8 +145,7 @@ class PlaylistAudioPlayer:
         self.is_playing = False
 
     def play_playlist(self, playlist):
-        paths = [Path(str(path or "")).expanduser() for path in playlist]
-        paths = [path.resolve() for path in paths if path.exists()]
+        paths = existing_hidden_audio_paths(playlist)
         if not paths:
             return False
 
@@ -144,8 +166,7 @@ class PlaylistAudioPlayer:
             return True
 
     def play_playlist_once(self, playlist):
-        paths = [Path(str(path or "")).expanduser() for path in playlist]
-        paths = [path.resolve() for path in paths if path.exists()]
+        paths = existing_hidden_audio_paths(playlist)
         if not paths:
             return False
 

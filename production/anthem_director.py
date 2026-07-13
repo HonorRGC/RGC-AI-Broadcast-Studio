@@ -7,7 +7,12 @@ from config import (
     STUDIO_VOLUME,
     USE_NATIONAL_ANTHEM,
 )
-from production.audio_bed import PlaylistAudioPlayer, percent_to_mci_volume
+from production.audio_bed import (
+    PlaylistAudioPlayer,
+    existing_hidden_audio_paths,
+    is_supported_hidden_audio_file,
+    percent_to_mci_volume,
+)
 from production.session_tracker import SessionTracker, WeekendSession
 
 
@@ -72,8 +77,19 @@ class NationalAnthemDirector:
                 "RGC Anthem overlay shown; no audio file is configured.",
             )
 
-        existing_paths = [path.resolve() for path in playlist if path.exists()]
+        existing_paths = existing_hidden_audio_paths(playlist)
         if not existing_paths:
+            unsupported_paths = [
+                path
+                for path in playlist
+                if path.exists() and not is_supported_hidden_audio_file(path)
+            ]
+            if unsupported_paths:
+                return AnthemDecision(
+                    "unsupported_audio",
+                    "RGC Anthem audio uses an unsupported file type. Convert it to MP3 or WAV: "
+                    f"{unsupported_paths[0]}",
+                )
             return AnthemDecision(
                 "missing_audio",
                 f"RGC Anthem audio file was not found: {playlist[0]}",
