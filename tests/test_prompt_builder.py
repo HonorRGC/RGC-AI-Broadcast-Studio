@@ -94,4 +94,25 @@ def test_prompt_encourages_natural_booth_chemistry_without_forcing_banter():
     assert "three-person booth" in prompt["system"]
     assert "do not force banter" in prompt["system"]
     assert "Booth chemistry" in prompt["user"]
-    assert "Keep any handoff short" in prompt["user"]
+    assert "Continue the previous thought" in prompt["user"]
+    assert "Do not say broadcaster names" in prompt["user"]
+    assert "Keep any handoff short and conversational" in prompt["user"]
+
+
+def test_prompt_forbids_script_style_broadcaster_name_prefixes():
+    assignment = EditorialItem(
+        story_type="pit_strategy",
+        headline="Pit strategy developing",
+        summary="Several cars are short-pitting under green.",
+    )
+
+    prompt = PromptBuilder().build_prompt("sarah", assignment)
+
+    assert "Do not start with broadcaster names" in prompt["system"]
+    assert "Mike:" not in prompt["system"]
+    assert "Jeff:" not in prompt["system"]
+    assert "Sarah:" not in prompt["system"]
+    assert "Mike," not in prompt["system"]
+    assert "Jeff," not in prompt["system"]
+    assert "Do not directly call out another broadcaster by name" in prompt["system"]
+    assert "what the booth just framed" in prompt["user"]

@@ -35,11 +35,14 @@ class PromptBuilder:
         return (
             f"You are {role} for a professional motorsports broadcast. "
             f"The broadcast style is {broadcast_style}. "
-            "You are part of a three-person booth: Mike is the lead announcer, "
-            "Jeff is the analyst, and Sarah covers pit road and strategy. "
+            "You are part of a three-person booth with a lead announcer, "
+            "analyst, and pit-road strategy reporter. "
             "Sound natural, human, and conversational. "
             "When it fits naturally, briefly answer, build on, or hand off to "
             "another broadcaster, but do not force banter into every call. "
+            "Do not start with broadcaster names, role labels, or script-style "
+            "prefixes followed by punctuation. Do not directly call out "
+            "another broadcaster by name. "
             "Do not mention telemetry, data, story type, confidence, or internal system terms. "
             "Do not repeat the same idea twice. "
             "Keep it concise and broadcast-ready."
@@ -120,9 +123,10 @@ class PromptBuilder:
         )
         lines.append(
             "Booth chemistry: if it sounds natural, make this feel like part of a "
-            "team broadcast. Mike can tee up Jeff or Sarah, Jeff can answer or "
-            "add context to Mike, and Sarah can connect pit strategy back to "
-            "what Mike and Jeff are describing. Keep any handoff short."
+            "team broadcast. Continue the previous thought, add a reason, answer "
+            "the implied question, or connect strategy back to the race story. "
+            "Do not say broadcaster names or use script-style labels. Keep any "
+            "handoff short and conversational."
         )
 
         return "\n".join(lines)
@@ -141,8 +145,8 @@ class PromptBuilder:
             return (
                 "Give one sharp analyst-style observation. "
                 "Explain why this matters or what the driver did well. "
-                "It is okay to sound like you are answering Mike or adding "
-                "onto the lead call when that fits the assignment. "
+                "It is okay to sound like you are answering the lead call or "
+                "adding onto the previous thought when that fits the assignment. "
                 "If verified league driver notes are provided, use at most one "
                 "naturally fitting detail and do not force it. "
                 "Limit it to 1 or 2 sentences."
@@ -152,8 +156,8 @@ class PromptBuilder:
             return (
                 "Give a short pit-road or strategy-style update. "
                 "Focus on race strategy, timing, or consequences. "
-                "It is okay to connect your update back to what Mike or Jeff "
-                "just framed, as long as the information stays specific. "
+                "It is okay to connect your update back to what the booth just "
+                "framed, as long as the information stays specific. "
                 "If verified league driver notes are provided, use at most one "
                 "naturally fitting detail and do not force it. "
                 "Limit it to 1 or 2 sentences."
@@ -162,8 +166,8 @@ class PromptBuilder:
         return (
             "Deliver this like a lead announcer on a live race broadcast. "
             "Make it exciting but not overdone. "
-            "When a story needs analysis or pit context, you may tee up Jeff "
-            "or Sarah in a short natural way. "
+            "When a story needs analysis or pit context, you may set up a "
+            "short natural handoff without naming another broadcaster. "
             "If verified league driver notes are provided, use at most one "
             "naturally fitting detail and do not force it. "
             "Limit it to 1 or 2 sentences."

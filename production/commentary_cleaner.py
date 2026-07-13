@@ -15,11 +15,20 @@ class CommentaryCleaner:
 
         cleaned = str(message)
 
+        cleaned = self.remove_broadcaster_prefix(cleaned)
         cleaned = self.remove_debug_phrases(cleaned)
         cleaned = self.remove_duplicate_sentences(cleaned)
         cleaned = self.fix_spacing(cleaned)
 
         return cleaned.strip()
+
+    def remove_broadcaster_prefix(self, message):
+        return re.sub(
+            r"^\s*(Mike|Jeff|Sarah|Lead|Color|Pit)\s*[:,-]\s*",
+            "",
+            message,
+            flags=re.IGNORECASE,
+        )
 
     def remove_debug_phrases(self, message):
         patterns = [
