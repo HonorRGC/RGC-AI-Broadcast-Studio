@@ -80,3 +80,18 @@ def test_prompt_includes_producer_notes_and_broadcast_angle():
     assert "Broadcast Angle: quiet charge through traffic" in prompt["user"]
     assert "Do not make this only a position-gain read" in prompt["user"]
     assert "not reading a timing screen" in prompt["user"]
+
+
+def test_prompt_encourages_natural_booth_chemistry_without_forcing_banter():
+    assignment = EditorialItem(
+        story_type="battle",
+        headline="Lead battle tightening",
+        summary="The second-place car is closing on the leader.",
+    )
+
+    prompt = PromptBuilder().build_prompt("lead", assignment)
+
+    assert "three-person booth" in prompt["system"]
+    assert "do not force banter" in prompt["system"]
+    assert "Booth chemistry" in prompt["user"]
+    assert "Keep any handoff short" in prompt["user"]

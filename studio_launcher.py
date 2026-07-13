@@ -330,6 +330,127 @@ def build_health_status(values, root=ROOT, broadcast_running=False):
     return rows
 
 
+def build_first_time_setup_checklist(
+    values,
+    root=ROOT,
+    broadcast_running=False,
+    profile_names=None,
+):
+    """Return setup checklist rows as (name, state, detail, level)."""
+
+    profile_names = list_profiles() if profile_names is None else list(profile_names)
+    rows = []
+
+    if sys.version_info >= (3, 11):
+        rows.append(
+            (
+                "Python runtime",
+                "Ready",
+                f"Python {sys.version_info.major}.{sys.version_info.minor} detected.",
+                "ok",
+            )
+        )
+    else:
+        rows.append(
+            (
+                "Python runtime",
+                "Needs 3.11+",
+                "Install Python 3.11 or newer and check Add Python to PATH.",
+                "warn",
+            )
+        )
+
+    health = {name: (state, detail, level) for name, state, detail, level in build_health_status(values, root, broadcast_running)}
+    for name in ("OpenAI", "ElevenLabs", "League Notes", "Practice Music"):
+        state, detail, level = health.get(name, ("Unknown", "Refresh Broadcast Health.", "warn"))
+        rows.append((name, state, detail, level))
+
+    event_title = str(values.get("OVERLAY_EVENT_TITLE", "")).strip()
+    sponsor = str(values.get("OVERLAY_RACE_SPONSOR", "")).strip()
+    graphics = [
+        item.strip()
+        for item in str(values.get("OVERLAY_BRAND_GRAPHICS", "")).split(",")
+        if item.strip()
+    ]
+    if event_title and sponsor and graphics:
+        rows.append(
+            (
+                "Overlay branding",
+                "Ready",
+                "Event title, race sponsor, and title graphics are set.",
+                "ok",
+            )
+        )
+    elif event_title:
+        rows.append(
+            (
+                "Overlay branding",
+                "Usable",
+                "Add race sponsor and sponsor logos when you want the overlay to look complete.",
+                "off",
+            )
+        )
+    else:
+        rows.append(
+            (
+                "Overlay branding",
+                "Needs title",
+                "Add an event title before release or league-night testing.",
+                "warn",
+            )
+        )
+
+    if profile_names:
+        rows.append(
+            (
+                "Profiles",
+                "Ready",
+                f"{len(profile_names)} saved profile(s) available.",
+                "ok",
+            )
+        )
+    else:
+        rows.append(
+            (
+                "Profiles",
+                "Recommended",
+                "Save at least one profile for your league or official-race setup.",
+                "warn",
+            )
+        )
+
+    rows.append(("Overlay link", "Ready", DEFAULT_OVERLAY_URL, "ok"))
+    rows.append(
+        (
+            "iRacing / OBS",
+            "Manual check",
+            "Open iRacing, add the browser overlay in OBS/Streamlabs, then run a short smoke test.",
+            "off",
+        )
+    )
+
+    if broadcast_running:
+        rows.append(
+            (
+                "Broadcast process",
+                "Running",
+                "Use Stop Broadcast before changing release settings.",
+                "warn",
+            )
+        )
+    else:
+        rows.append(
+            (
+                "Broadcast process",
+                "Stopped",
+                "Ready for setup changes or a clean start.",
+                "ok",
+            )
+        )
+
+    return rows
+
+
 def ensure_league_files(root=ROOT):
     root = Path(root)
     league_dir = root / "league"
@@ -1287,7 +1408,15 @@ def run_gui():
         existing,
         sim_racer_hub_state,
     )
-    build_help_tab(help_content, label, frame, button)
+    build_help_tab(
+        help_content,
+        label,
+        frame,
+        button,
+        get_values=collect_values,
+        broadcast_running=has_running_broadcast,
+        status=status,
+    )
     refresh_health()
     root.protocol("WM_DELETE_WINDOW", on_close)
 
@@ -1456,7 +1585,15 @@ def build_league_tab(
     ).pack(side="left", padx=12)
 
 
-def build_help_tab(parent, label, frame, button):
+def build_help_tab(
+    parent,
+    label,
+    frame,
+    button,
+    get_values=None,
+    broadcast_running=None,
+    status=None,
+):
     content = frame(parent, bg=PANEL_BG)
     content.pack(fill="both", expand=True, padx=18, pady=16)
 
@@ -1522,6 +1659,118 @@ def build_help_tab(parent, label, frame, button):
         command=lambda: open_external_link(GITHUB_RELEASES_URL),
         color="#334b64",
     ).pack(side="left", padx=(0, 8))
+
+    checklist_panel = frame(content, bg="#0b1520")
+    checklist_panel.pack(fill="x", pady=(4, 14))
+    checklist_header = frame(checklist_panel, bg="#0b1520")
+    checklist_header.pack(fill="x", padx=12, pady=(10, 4))
+    label(
+        checklist_header,
+        text="First-Time Setup Checklist",
+        bg="#0b1520",
+        fg=TEXT_FG,
+        font=("Segoe UI", 13, "bold"),
+        anchor="w",
+    ).pack(side="left")
+    checklist_summary = label(
+        checklist_header,
+        text="",
+        bg="#0b1520",
+        fg=MUTED_FG,
+        anchor="w",
+    )
+    checklist_summary.pack(side="left", padx=(12, 0))
+    checklist_rows = frame(checklist_panel, bg="#0b1520")
+    checklist_rows.pack(fill="x", padx=12, pady=(0, 10))
+
+    def render_checklist():
+        for widget in checklist_rows.winfo_children():
+            widget.destroy()
+        values = get_values() if get_values else launcher_defaults(load_env_file())
+        rows = build_first_time_setup_checklist(
+            values,
+            root=ROOT,
+            broadcast_running=broadcast_running() if broadcast_running else False,
+        )
+        level_colors = {
+            "ok": GREEN,
+            "warn": "#d19a2a",
+            "off": MUTED_FG,
+        }
+        icons = {
+            "ok": "✓",
+            "warn": "!",
+            "off": "○",
+        }
+        ready_count = sum(1 for _name, _state, _detail, level in rows if level == "ok")
+        warn_count = sum(1 for _name, _state, _detail, level in rows if level == "warn")
+        checklist_summary.configure(
+            text=f"{ready_count} ready | {warn_count} need attention"
+        )
+        for index, (name, state_text, detail, level) in enumerate(rows):
+            row = frame(checklist_rows, bg="#0b1520")
+            row.grid(
+                row=index,
+                column=0,
+                sticky="ew",
+                pady=2,
+            )
+            label(
+                row,
+                text=icons.get(level, "○"),
+                width=3,
+                anchor="w",
+                bg="#0b1520",
+                fg=level_colors.get(level, MUTED_FG),
+                font=("Segoe UI", 10, "bold"),
+            ).pack(side="left")
+            label(
+                row,
+                text=name,
+                width=20,
+                anchor="w",
+                bg="#0b1520",
+                fg=TEXT_FG,
+                font=("Segoe UI", 9, "bold"),
+            ).pack(side="left")
+            label(
+                row,
+                text=state_text,
+                width=14,
+                anchor="w",
+                bg="#0b1520",
+                fg=level_colors.get(level, MUTED_FG),
+                font=("Segoe UI", 9, "bold"),
+            ).pack(side="left")
+            label(
+                row,
+                text=detail,
+                anchor="w",
+                bg="#0b1520",
+                fg=MUTED_FG,
+                justify="left",
+                wraplength=620,
+            ).pack(side="left", fill="x", expand=True)
+        checklist_rows.columnconfigure(0, weight=1)
+        if status:
+            status.set("First-time setup checklist refreshed.")
+
+    checklist_button_row = frame(checklist_panel, bg="#0b1520")
+    checklist_button_row.pack(fill="x", padx=12, pady=(0, 10))
+    button(
+        checklist_button_row,
+        text="Refresh Checklist",
+        command=render_checklist,
+        color="#334b64",
+    ).pack(side="left")
+    label(
+        checklist_button_row,
+        text="Use this before sending a build to an admin or before league night.",
+        bg="#0b1520",
+        fg=MUTED_FG,
+        anchor="w",
+    ).pack(side="left", padx=(12, 0))
+    render_checklist()
 
     section(
         "1. Install and open the studio",

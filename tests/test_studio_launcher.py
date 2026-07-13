@@ -7,6 +7,7 @@ from studio_launcher import (
     RGC_DISCORD_URL,
     RGC_WEBSITE_URL,
     apply_audio_file_selection,
+    build_first_time_setup_checklist,
     build_health_status,
     broadcast_command,
     clear_broadcast_pid,
@@ -125,6 +126,51 @@ def test_launcher_health_reports_missing_ai_keys():
     assert row_map["OpenAI"][0] == "Needs key"
     assert row_map["ElevenLabs"][0] == "Needs setup"
     assert row_map["Broadcast"][0] == "Stopped"
+
+
+def test_first_time_setup_checklist_flags_missing_profile_and_keys(tmp_path):
+    values = launcher_defaults({})
+
+    rows = build_first_time_setup_checklist(
+        values,
+        root=tmp_path,
+        broadcast_running=False,
+        profile_names=[],
+    )
+    row_map = {name: (state, detail, level) for name, state, detail, level in rows}
+
+    assert row_map["OpenAI"][0] == "Needs key"
+    assert row_map["ElevenLabs"][0] == "Needs setup"
+    assert row_map["Profiles"][0] == "Recommended"
+    assert row_map["Broadcast process"][0] == "Stopped"
+
+
+def test_first_time_setup_checklist_reports_ready_release_basics(tmp_path):
+    values = launcher_defaults(
+        {
+            "OPENAI_API_KEY": "sk-test",
+            "ELEVENLABS_API_KEY": "eleven-test",
+            "LEAD_VOICE_ID": "lead",
+            "COLOR_VOICE_ID": "jeff",
+            "PIT_VOICE_ID": "sarah",
+            "OVERLAY_EVENT_TITLE": "WFO Truck Series",
+            "OVERLAY_RACE_SPONSOR": "RGC Motorsports",
+            "OVERLAY_BRAND_GRAPHICS": "/assets/rgc_motorsports.png",
+        }
+    )
+
+    rows = build_first_time_setup_checklist(
+        values,
+        root=tmp_path,
+        broadcast_running=False,
+        profile_names=["League Race"],
+    )
+    row_map = {name: (state, detail, level) for name, state, detail, level in rows}
+
+    assert row_map["OpenAI"][0] == "Ready"
+    assert row_map["ElevenLabs"][0] == "Ready"
+    assert row_map["Overlay branding"][0] == "Ready"
+    assert row_map["Profiles"][0] == "Ready"
 
 
 def test_launcher_health_reports_disabled_ai_as_off():

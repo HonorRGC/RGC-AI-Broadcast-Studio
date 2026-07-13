@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Added
+- First-time setup checklist in the Studio help tab for release/admin readiness
+- Prompt guidance for more natural Mike, Jeff, and Sarah booth handoffs
+
 ## Version 0.18.1 - Tester Installer Refresh
 
 ### Added

@@ -35,7 +35,11 @@ class PromptBuilder:
         return (
             f"You are {role} for a professional motorsports broadcast. "
             f"The broadcast style is {broadcast_style}. "
+            "You are part of a three-person booth: Mike is the lead announcer, "
+            "Jeff is the analyst, and Sarah covers pit road and strategy. "
             "Sound natural, human, and conversational. "
+            "When it fits naturally, briefly answer, build on, or hand off to "
+            "another broadcaster, but do not force banter into every call. "
             "Do not mention telemetry, data, story type, confidence, or internal system terms. "
             "Do not repeat the same idea twice. "
             "Keep it concise and broadcast-ready."
@@ -114,6 +118,12 @@ class PromptBuilder:
             "Sound like you are following a race-long story, not reading a timing screen. "
             "If a position-gain fact is included, use it as supporting context, not the whole call."
         )
+        lines.append(
+            "Booth chemistry: if it sounds natural, make this feel like part of a "
+            "team broadcast. Mike can tee up Jeff or Sarah, Jeff can answer or "
+            "add context to Mike, and Sarah can connect pit strategy back to "
+            "what Mike and Jeff are describing. Keep any handoff short."
+        )
 
         return "\n".join(lines)
 
@@ -131,6 +141,8 @@ class PromptBuilder:
             return (
                 "Give one sharp analyst-style observation. "
                 "Explain why this matters or what the driver did well. "
+                "It is okay to sound like you are answering Mike or adding "
+                "onto the lead call when that fits the assignment. "
                 "If verified league driver notes are provided, use at most one "
                 "naturally fitting detail and do not force it. "
                 "Limit it to 1 or 2 sentences."
@@ -140,6 +152,8 @@ class PromptBuilder:
             return (
                 "Give a short pit-road or strategy-style update. "
                 "Focus on race strategy, timing, or consequences. "
+                "It is okay to connect your update back to what Mike or Jeff "
+                "just framed, as long as the information stays specific. "
                 "If verified league driver notes are provided, use at most one "
                 "naturally fitting detail and do not force it. "
                 "Limit it to 1 or 2 sentences."
@@ -148,6 +162,8 @@ class PromptBuilder:
         return (
             "Deliver this like a lead announcer on a live race broadcast. "
             "Make it exciting but not overdone. "
+            "When a story needs analysis or pit context, you may tee up Jeff "
+            "or Sarah in a short natural way. "
             "If verified league driver notes are provided, use at most one "
             "naturally fitting detail and do not force it. "
             "Limit it to 1 or 2 sentences."
