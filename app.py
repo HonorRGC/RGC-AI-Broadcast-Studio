@@ -86,11 +86,17 @@ def parse_args():
     parser.add_argument(
         "--incident-marker-preroll-seconds",
         type=float,
-        default=20.0,
+        default=25.0,
         help=(
             "Seconds to back up before iRacing's incident marker when the "
             "broadcast cannot identify a specific incident car"
         ),
+    )
+    parser.add_argument(
+        "--replay-play-speed",
+        type=int,
+        default=2,
+        help="iRacing replay playback speed for caution replays (default: 2)",
     )
     parser.add_argument(
         "--incident-debug",
@@ -703,6 +709,7 @@ def main():
         incident_marker_pre_roll_frames=round(
             max(0.0, args.incident_marker_preroll_seconds) * 60
         ),
+        play_speed=args.replay_play_speed,
         audio_player=caution_audio_bed,
     )
     anthem_director = NationalAnthemDirector()

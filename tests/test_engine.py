@@ -1474,9 +1474,9 @@ def test_late_caution_note_mentions_green_white_checkered():
 def test_restart_caution_marker_replay_uses_extra_preroll():
     engine = BroadcastEngine(openai_director=SilentOpenAI())
 
-    assert engine.restart_caution_marker_pre_roll_frames(0) == 1200
-    assert engine.restart_caution_marker_pre_roll_frames(2) == 1200
-    assert engine.restart_caution_marker_pre_roll_frames(3) == 1200
+    assert engine.restart_caution_marker_pre_roll_frames(0) == 1500
+    assert engine.restart_caution_marker_pre_roll_frames(2) == 1500
+    assert engine.restart_caution_marker_pre_roll_frames(3) == 1500
 
 
 def test_caution_marker_replay_uses_saved_caution_start_time():

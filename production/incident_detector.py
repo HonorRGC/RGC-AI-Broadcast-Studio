@@ -430,7 +430,7 @@ class IncidentDetector:
             car_idx=featured[0].car_idx,
             message=(
                 "Big trouble in the pack. Several cars are suddenly showing "
-                f"trouble, including {names}. This looks like what could have "
+                f"trouble, including {names}. That may be the moment that "
                 "brought out the caution."
             ),
             importance=10,

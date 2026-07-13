@@ -1536,7 +1536,7 @@ class BroadcastEngine:
         high_confidence_candidate=False,
     ):
         if use_incident_marker_replay or high_confidence_candidate:
-            return "We are going to take a look at what brought out this caution."
+            return "We are going to see if we can find the cause of this caution."
 
         if event.trouble_type != "pack wreck":
             return event.message
@@ -1580,7 +1580,7 @@ class BroadcastEngine:
             session_time = self.caution_started_session_time
         self.caution_marker_replay_count += 1
         self.broadcast_queue.add(
-            "We are going to take a look at what may have brought out this caution.",
+            "We are going to see if we can find the cause of this caution.",
             priority=10,
             category="incident",
             protected=True,
@@ -1601,7 +1601,7 @@ class BroadcastEngine:
         )
 
     def restart_caution_marker_pre_roll_frames(self, green_lap_count):
-        return 20 * 60
+        return 25 * 60
 
     def has_pending_non_restart_story(self):
         for item in self.broadcast_queue.items:

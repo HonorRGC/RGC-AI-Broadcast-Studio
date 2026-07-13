@@ -25,6 +25,7 @@ class ReplayDirector:
         pre_roll_seconds=15.0,
         incident_marker_pre_roll_frames=720,
         angle_seconds=12.0,
+        play_speed=2,
         replay_audio_path=CAUTION_REPLAY_AUDIO,
         audio_player=None,
         clock=None,
@@ -36,6 +37,7 @@ class ReplayDirector:
         self.pre_roll_seconds = float(pre_roll_seconds)
         self.incident_marker_pre_roll_frames = int(incident_marker_pre_roll_frames)
         self.angle_seconds = float(angle_seconds)
+        self.play_speed = max(1, int(play_speed or 1))
         self.replay_audio_path = str(replay_audio_path or "").strip()
         self.audio_player = audio_player
         self.clock = clock or time.monotonic
@@ -132,6 +134,7 @@ class ReplayDirector:
                     "failed",
                     "iRacing did not accept the incident replay pre-roll.",
                 )
+            self.apply_replay_play_speed(telemetry)
 
         self.active = True
         self.angle_started_at = self.clock()
@@ -185,6 +188,7 @@ class ReplayDirector:
                 return self.finish(telemetry, camera_director, failed=True)
             if self.use_incident_marker and not self.apply_incident_marker_preroll(telemetry):
                 return self.finish(telemetry, camera_director, failed=True)
+            self.apply_replay_play_speed(telemetry)
 
         self.angle_started_at = now
         return ReplayDecision(
@@ -258,6 +262,12 @@ class ReplayDirector:
         if not rewinder:
             return True
         return bool(rewinder(self.current_incident_marker_pre_roll_frames()))
+
+    def apply_replay_play_speed(self, telemetry):
+        setter = getattr(telemetry, "set_replay_play_speed", None)
+        if not setter:
+            return True
+        return bool(setter(self.play_speed))
 
     def replay_seek_is_valid(self, telemetry):
         if getattr(self, "use_incident_marker", False):

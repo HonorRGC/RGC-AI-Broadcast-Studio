@@ -7,6 +7,7 @@ class ReplayTelemetry:
     def __init__(self):
         self.seeks = []
         self.rewinds = []
+        self.speeds = []
         self.live_returns = 0
         self.session_flags = 0
         self.session_state = 0
@@ -30,6 +31,10 @@ class ReplayTelemetry:
 
     def return_to_live(self):
         self.live_returns += 1
+        return True
+
+    def set_replay_play_speed(self, speed=1):
+        self.speeds.append(speed)
         return True
 
     def get_session_flags(self):
@@ -363,7 +368,23 @@ def test_timed_incident_marker_replay_seeks_to_absolute_caution_time():
     assert started.status == "started"
     assert telemetry.seeks == [(2, 100.0)]
     assert telemetry.rewinds == [1200]
+    assert telemetry.speeds == [2]
     assert camera.focuses == [("incident", "Far Chase")]
+
+
+def test_replay_play_speed_is_configurable():
+    telemetry = ReplayTelemetry()
+    camera = ReplayCamera()
+    director = ReplayDirector(
+        mode="auto",
+        play_speed=3,
+        incident_marker_pre_roll_frames=1500,
+        clock=lambda: 10.0,
+    )
+
+    director.handle_item(timed_incident_marker_item(), telemetry, camera)
+
+    assert telemetry.speeds == [3]
 
 
 def test_incident_marker_replay_pre_roll_frames_are_configurable():
