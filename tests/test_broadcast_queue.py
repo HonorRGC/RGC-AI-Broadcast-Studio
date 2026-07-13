@@ -96,3 +96,26 @@ def test_spoken_feature_reserves_its_runtime():
 
     assert item.silent is False
     assert queue.busy_until == now + 21.0
+
+
+def test_booth_follow_up_gets_tight_handoff_after_race_story():
+    queue = BroadcastQueue()
+    queue.add(
+        "The leader has a strong run off the corner and opens the gap slightly.",
+        priority=9,
+        category="race_story",
+        dedupe_key="story:lead",
+    )
+    queue.add(
+        "Yeah, that clean exit matters here.",
+        priority=8,
+        category="race_story_follow_up",
+        speaker="jeff",
+        dedupe_key="follow:lead",
+    )
+    now = time.time()
+
+    item = queue.next_item(now=now)
+
+    assert item.dedupe_key == "story:lead"
+    assert queue.busy_until < now + 5.0

@@ -132,6 +132,19 @@ class BroadcastQueue:
             return 1.0
         return self.minimum_gap_seconds
 
+    def has_pending_booth_follow_up(self, now):
+        return any(
+            item.category == "race_story_follow_up" and item.ready_at <= now
+            for item in self.items
+        )
+
+    def tight_handoff_speech_seconds(self, message, category, default_seconds):
+        if category != "race_story":
+            return default_seconds
+
+        words = len(str(message).split())
+        return min(default_seconds, max(3.6, words / 3.25))
+
     def next_item(self, now=None):
         now = time.time() if now is None else now
         if not self.items or not self.can_speak(now):
@@ -156,9 +169,16 @@ class BroadcastQueue:
             if selected.feature_duration_seconds > 0
             else self.estimate_speech_seconds(selected.message, selected.category)
         )
-        self.busy_until = now + speech_time + self.estimate_gap_seconds(
-            selected.category
-        )
+        if self.has_pending_booth_follow_up(now):
+            speech_time = self.tight_handoff_speech_seconds(
+                selected.message,
+                selected.category,
+                speech_time,
+            )
+            gap_time = 0.15
+        else:
+            gap_time = self.estimate_gap_seconds(selected.category)
+        self.busy_until = now + speech_time + gap_time
 
         return selected
 
