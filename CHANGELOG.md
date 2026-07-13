@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+## Version 0.18.1 - Tester Installer Refresh
+
+### Added
+- Windows Setup.exe build for tester/admin installs
+- Multiple RGC Anthem audio files during qualifying
+- Clear MP3/WAV guidance for hidden Windows audio playback
+
+### Fixed
+- Top-ten reset gap wording now uses the gap to the car directly ahead
+- Unsupported OGA/OGG anthem files are reported instead of failing silently
+- Selected black flag and meatball flag calls can be detected without calling every black flag
+
 ### Added
 - Progressive pre-race welcome, track, weather, and complete starting-field segments
 - Support for grid positions reported as either zero- or one-based values

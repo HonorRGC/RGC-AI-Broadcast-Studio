@@ -1,6 +1,6 @@
 # Project State
 
-Current version: **v0.18 - Platform Foundation**
+Current version: **v0.18.1 - Platform Foundation**
 
 ## Working foundation
 
