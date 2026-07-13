@@ -307,6 +307,7 @@ def test_two_to_go_is_called_before_white_flag():
 
     assert any("Two laps to go" in item.message for item in queue.items)
     assert any(item.dedupe_key == "race_control:two_to_go" for item in queue.items)
+    assert next(item for item in queue.items if item.dedupe_key == "race_control:two_to_go").message == "Two laps to go."
 
 
 def test_only_key_final_lap_calls_are_announced():

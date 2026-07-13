@@ -119,3 +119,20 @@ def test_booth_follow_up_gets_tight_handoff_after_race_story():
 
     assert item.dedupe_key == "story:lead"
     assert queue.busy_until < now + 5.0
+
+
+def test_short_lap_calls_do_not_reserve_long_broadcast_window():
+    queue = BroadcastQueue()
+    queue.add(
+        "White flag. One lap to go.",
+        priority=13,
+        category="race_control",
+        protected=True,
+        dedupe_key="race_control:white_flag",
+    )
+    now = time.time()
+
+    item = queue.next_item(now=now)
+
+    assert item.dedupe_key == "race_control:white_flag"
+    assert queue.busy_until < now + 4.0

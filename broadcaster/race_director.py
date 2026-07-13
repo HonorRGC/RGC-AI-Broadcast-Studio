@@ -479,7 +479,7 @@ class RaceDirector:
         ):
             scheduler.clear_for_race_control()
             scheduler.add(
-                "White flag is in the air. One lap to go.",
+                "White flag. One lap to go.",
                 priority=13,
                 category="race_control",
                 protected=True,
@@ -495,7 +495,7 @@ class RaceDirector:
 
         messages = {
             5: "Five laps to go. The pressure is about to ramp up.",
-            2: "Two laps to go. This race is coming down to the final miles.",
+            2: "Two laps to go.",
         }
         message = messages.get(laps_to_go)
         if not message:

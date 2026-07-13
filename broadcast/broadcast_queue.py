@@ -115,6 +115,8 @@ class BroadcastQueue:
         if category == "crank_it_up":
             return 50.0
         words = len(str(message).split())
+        if category == "race_control" and self.is_short_lap_call(message):
+            return max(1.2, words / 3.6)
         if category.startswith("opening_field_rundown"):
             return max(1.6, min(10.0, words / 3.35))
         if category.startswith(
@@ -122,6 +124,14 @@ class BroadcastQueue:
         ):
             return max(3.0, min(16.0, words / 2.85))
         return max(5.0, min(45.0, words / 2.45))
+
+    @staticmethod
+    def is_short_lap_call(message):
+        text = str(message or "").strip().lower()
+        return text in {
+            "two laps to go.",
+            "white flag. one lap to go.",
+        }
 
     def estimate_gap_seconds(self, category=""):
         if category.startswith("opening_field_rundown"):
@@ -131,6 +141,11 @@ class BroadcastQueue:
         ):
             return 1.0
         return self.minimum_gap_seconds
+
+    def estimate_item_gap_seconds(self, item):
+        if item.category == "race_control" and self.is_short_lap_call(item.message):
+            return 0.6
+        return self.estimate_gap_seconds(item.category)
 
     def has_pending_booth_follow_up(self, now):
         return any(
@@ -177,7 +192,7 @@ class BroadcastQueue:
             )
             gap_time = 0.15
         else:
-            gap_time = self.estimate_gap_seconds(selected.category)
+            gap_time = self.estimate_item_gap_seconds(selected)
         self.busy_until = now + speech_time + gap_time
 
         return selected
