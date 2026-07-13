@@ -59,12 +59,6 @@ class IRacingTelemetry:
         except Exception:
             return False
 
-    def set_replay_play_speed(self, speed=1):
-        try:
-            return bool(self.ir.replay_set_play_speed(max(1, int(speed or 1))))
-        except Exception:
-            return False
-
     def get_session_time(self):
         try:
             return float(self.ir["SessionTime"] or 0.0)

@@ -93,12 +93,6 @@ def parse_args():
         ),
     )
     parser.add_argument(
-        "--replay-play-speed",
-        type=int,
-        default=2,
-        help="iRacing replay playback speed for caution replays (default: 2)",
-    )
-    parser.add_argument(
         "--incident-debug",
         action="store_true",
         help="Print caution incident-detection diagnostics when no replay is queued",
@@ -709,7 +703,6 @@ def main():
         incident_marker_pre_roll_frames=round(
             max(0.0, args.incident_marker_preroll_seconds) * 60
         ),
-        play_speed=args.replay_play_speed,
         audio_player=caution_audio_bed,
     )
     anthem_director = NationalAnthemDirector()
