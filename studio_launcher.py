@@ -295,6 +295,27 @@ def driver_profile_label(row):
     return f"#{number} {name}" if number else name
 
 
+def league_folder_slug(name):
+    cleaned = sanitize_profile_name(name)
+    if not cleaned:
+        return ""
+    return cleaned.replace(" ", "_")
+
+
+def league_csv_paths_for_profile(profile_name):
+    slug = league_folder_slug(profile_name)
+    if not slug:
+        return ("league/drivers.csv", "league/stats.csv")
+    return (f"league/{slug}/drivers.csv", f"league/{slug}/stats.csv")
+
+
+def ensure_empty_driver_profile_csv(csv_path):
+    path = Path(csv_path)
+    if path.exists():
+        return path
+    return save_driver_profile_rows(path, [])
+
+
 def build_health_status(values, root=ROOT, broadcast_running=False):
     """Return launcher health rows as (name, state, detail, level)."""
 
@@ -983,6 +1004,7 @@ def run_gui():
 
     entries = {}
     sim_racer_hub_state = {"entries": {}, "career_mode": None}
+    league_tab_state = {}
     overlay_brand_row = LAUNCHER_FIELDS.index(
         (
             "OVERLAY_BRAND_GRAPHICS",
@@ -1189,6 +1211,9 @@ def run_gui():
             career_mode.set(setting_enabled(values, "SIMRACERHUB_CAREER_MODE", "false"))
         volume_var.set(int(values.get("STUDIO_VOLUME", "65") or 65))
         update_volume_label(volume_var.get())
+        sync_league_editor = league_tab_state.get("sync_driver_csv_from_settings")
+        if sync_league_editor:
+            sync_league_editor(values)
         refresh_health()
 
     def refresh_profile_list():
@@ -1455,6 +1480,9 @@ def run_gui():
         button,
         existing,
         sim_racer_hub_state,
+        settings_entries=entries,
+        get_profile_name=lambda: profile_var.get().strip() or profile_name_var.get().strip(),
+        league_tab_state=league_tab_state,
     )
     build_help_tab(
         help_content,
@@ -1480,12 +1508,18 @@ def build_league_tab(
     button,
     existing=None,
     sim_racer_hub_state=None,
+    settings_entries=None,
+    get_profile_name=None,
+    league_tab_state=None,
 ):
     import tkinter as tk
     from tkinter import filedialog
+    from tkinter import simpledialog
 
     existing = launcher_defaults(existing or {})
     sim_racer_hub_state = sim_racer_hub_state if sim_racer_hub_state is not None else {}
+    settings_entries = settings_entries or {}
+    league_tab_state = league_tab_state if league_tab_state is not None else {}
 
     intro = (
         "Import league stats from Sim Racer Hub. You can use the clean URL "
@@ -1710,6 +1744,36 @@ def build_league_tab(
     def selected_driver_csv_path():
         return resolve_project_path(driver_csv_var.get() or "league/drivers.csv", ROOT)
 
+    def set_entry_value(entry_widget, value):
+        entry_widget.delete(0, "end")
+        entry_widget.insert(0, value)
+
+    def set_driver_csv_value(driver_csv, stats_csv=""):
+        driver_csv = str(driver_csv or "league/drivers.csv").strip()
+        driver_csv_var.set(driver_csv)
+        if "LEAGUE_DRIVERS_CSV" in settings_entries:
+            set_entry_value(settings_entries["LEAGUE_DRIVERS_CSV"], driver_csv)
+        if "SIMRACERHUB_DRIVERS_OUTPUT" in entries:
+            set_entry_value(entries["SIMRACERHUB_DRIVERS_OUTPUT"], driver_csv)
+        if stats_csv:
+            if "LEAGUE_STATS_CSV" in settings_entries:
+                set_entry_value(settings_entries["LEAGUE_STATS_CSV"], stats_csv)
+            if "SIMRACERHUB_STATS_OUTPUT" in entries:
+                set_entry_value(entries["SIMRACERHUB_STATS_OUTPUT"], stats_csv)
+
+    def sync_driver_csv_from_settings(values):
+        set_driver_csv_value(
+            values.get("LEAGUE_DRIVERS_CSV")
+            or values.get("SIMRACERHUB_DRIVERS_OUTPUT")
+            or "league/drivers.csv",
+            values.get("LEAGUE_STATS_CSV")
+            or values.get("SIMRACERHUB_STATS_OUTPUT")
+            or "",
+        )
+        load_driver_profiles()
+
+    league_tab_state["sync_driver_csv_from_settings"] = sync_driver_csv_from_settings
+
     field_labels = [
         ("Name", "name"),
         ("Car Number", "car_number"),
@@ -1770,6 +1834,56 @@ def build_league_tab(
         refresh_driver_list()
         status.set(f"Loaded {len(editor_state['rows'])} driver profile(s) from {path}.")
 
+    def browse_driver_csv():
+        selected = filedialog.askopenfilename(
+            title="Choose league drivers.csv",
+            initialdir=str(ROOT / "league"),
+            filetypes=[
+                ("CSV files", "*.csv"),
+                ("All files", "*.*"),
+            ],
+        )
+        if not selected:
+            return
+        path = Path(selected)
+        try:
+            relative = path.relative_to(ROOT)
+            display_path = str(relative).replace("\\", "/")
+        except ValueError:
+            display_path = str(path)
+        set_driver_csv_value(display_path)
+        load_driver_profiles()
+
+    def create_profile_league_csv():
+        profile_name = get_profile_name() if get_profile_name else ""
+        if not profile_name:
+            profile_name = simpledialog.askstring(
+                "League profile name",
+                "Enter a name for this league/profile:",
+            )
+        profile_name = sanitize_profile_name(profile_name)
+        if not profile_name:
+            messagebox.showerror("Missing profile", "Enter or select a profile name first.")
+            return
+        drivers_csv, stats_csv = league_csv_paths_for_profile(profile_name)
+        ensure_empty_driver_profile_csv(resolve_project_path(drivers_csv, ROOT))
+        stats_path = resolve_project_path(stats_csv, ROOT)
+        stats_path.parent.mkdir(parents=True, exist_ok=True)
+        if not stats_path.exists():
+            stats_path.write_text(
+                (
+                    "name,car_number,starts,wins,top_fives,top_tens,poles,"
+                    "avg_finish,last_finish,points_position,points_to_next,"
+                    "track_starts,track_wins,best_track_finish,notes\n"
+                ),
+                encoding="utf-8",
+            )
+        set_driver_csv_value(drivers_csv, stats_csv)
+        load_driver_profiles()
+        status.set(
+            f"Created/selected league CSVs for {profile_name}: {drivers_csv} and {stats_csv}."
+        )
+
     def save_driver_profiles():
         path = save_driver_profile_rows(selected_driver_csv_path(), editor_state["rows"])
         status.set(f"Saved {len(editor_state['rows'])} driver profile(s) to {path}.")
@@ -1829,6 +1943,19 @@ def build_league_tab(
     button(editor_buttons, text="Load Drivers", command=load_driver_profiles, color="#334b64").pack(
         side="left",
         padx=(0, 6),
+    )
+    button(editor_buttons, text="Browse CSV", command=browse_driver_csv, color="#334b64").pack(
+        side="left",
+        padx=6,
+    )
+    button(
+        editor_buttons,
+        text="Create CSV for Profile",
+        command=create_profile_league_csv,
+        color="#334b64",
+    ).pack(
+        side="left",
+        padx=6,
     )
     button(editor_buttons, text="New Driver", command=clear_profile_fields, color="#334b64").pack(
         side="left",

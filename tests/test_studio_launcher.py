@@ -16,6 +16,8 @@ from studio_launcher import (
     install_overlay_brand_graphics,
     is_newer_version,
     is_process_running,
+    league_csv_paths_for_profile,
+    league_folder_slug,
     launcher_defaults,
     list_profiles,
     load_profile,
@@ -24,6 +26,7 @@ from studio_launcher import (
     read_broadcast_pid,
     running_broadcast_pids,
     save_env_file,
+    ensure_empty_driver_profile_csv,
     save_profile,
     sanitize_asset_name,
     sanitize_profile_name,
@@ -255,6 +258,15 @@ def test_launcher_saves_sim_racer_hub_settings(tmp_path):
 def test_launcher_sanitizes_profile_names():
     assert sanitize_profile_name(" WFO / Truck: League! ") == "WFO Truck League"
     assert sanitize_profile_name("") == ""
+
+
+def test_launcher_builds_profile_specific_league_csv_paths():
+    assert league_folder_slug("DSR Electric Series") == "DSR_Electric_Series"
+    assert league_csv_paths_for_profile("DSR Electric Series") == (
+        "league/DSR_Electric_Series/drivers.csv",
+        "league/DSR_Electric_Series/stats.csv",
+    )
+    assert league_csv_paths_for_profile("") == ("league/drivers.csv", "league/stats.csv")
 
 
 def test_launcher_saves_lists_and_loads_profiles(tmp_path):
@@ -514,6 +526,15 @@ def test_studio_driver_profile_rows_round_trip(tmp_path):
             "car_image": "cars/tj.png",
         }
     ]
+
+
+def test_studio_can_create_empty_driver_profile_csv(tmp_path):
+    path = tmp_path / "league" / "DSR_Electric_Series" / "drivers.csv"
+
+    ensure_empty_driver_profile_csv(path)
+
+    assert path.exists()
+    assert path.read_text(encoding="utf-8").splitlines()[0].endswith(",car_image")
 
 
 def test_tester_zip_excludes_private_local_files():
