@@ -121,6 +121,64 @@ def test_league_context_labels_career_stats_when_imported_all_seasons(tmp_path):
     assert "season wins" not in enriched[4]["league_stats_summary"]
 
 
+def test_league_context_keeps_season_and_career_stats_for_same_driver(tmp_path):
+    csv_path = tmp_path / "mixed_stats.csv"
+    csv_path.write_text(
+        "\n".join(
+            [
+                "name,car_number,stats_scope,starts,wins,top_fives,top_tens,poles,avg_finish,last_finish,points_position,points_to_next,track_starts,track_wins,best_track_finish,notes",
+                "Austin Peterson,77,career,182,4,50,80,12,8.1,12,,,,,,Career import",
+                "Austin Peterson,77,season,6,0,2,4,1,9.2,7,,,,,,Season import",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    context = LeagueContext(tmp_path / "missing.csv", stats_csv_path=csv_path, enabled=True)
+
+    enriched = context.enrich_driver_lookup({4: {"name": "Austin Peterson", "number": "77"}})
+
+    assert enriched[4]["league_stats"]["stats_scope"] == "season"
+    assert len(enriched[4]["league_stats_by_scope"]) == 2
+    assert any("season wins: 0" in summary for summary in enriched[4]["league_stats_summaries"])
+    assert any("career wins: 4" in summary for summary in enriched[4]["league_stats_summaries"])
+
+
+def test_league_context_assignment_notes_include_profile_season_and_career(tmp_path):
+    stats_csv = tmp_path / "mixed_stats.csv"
+    stats_csv.write_text(
+        "\n".join(
+            [
+                "name,car_number,stats_scope,starts,wins,top_fives,top_tens,poles,avg_finish,last_finish,points_position,points_to_next,track_starts,track_wins,best_track_finish,notes",
+                "Austin Peterson,77,career,182,4,50,80,12,8.1,12,,,,,,Career import",
+                "Austin Peterson,77,season,6,0,2,4,1,9.2,7,,,,,,Season import",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    context = LeagueContext(
+        write_drivers_csv(tmp_path),
+        stats_csv_path=stats_csv,
+        enabled=True,
+    )
+    driver_lookup = context.enrich_driver_lookup(
+        {4: {"name": "Austin Peterson", "number": "77"}}
+    )
+    item = EditorialItem(
+        story_type="driver_update",
+        headline="Austin Peterson update",
+        summary="Austin Peterson is inside the top five.",
+        driver_name="Austin Peterson",
+        car_number="77",
+        participant_car_indices=(4,),
+    )
+
+    notes = context.context_for_item(item, driver_lookup, max_profiles=3)
+
+    assert any("driving style" in note for note in notes)
+    assert any("season wins: 0" in note for note in notes)
+    assert any("career wins: 4" in note for note in notes)
+
+
 def test_league_context_can_match_by_car_number(tmp_path):
     context = LeagueContext(write_drivers_csv(tmp_path), enabled=True)
 

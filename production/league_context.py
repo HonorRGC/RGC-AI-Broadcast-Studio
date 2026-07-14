@@ -213,9 +213,13 @@ class LeagueContext:
                 if not stats.name and not stats.car_number:
                     continue
                 if stats.name:
-                    self.stats_by_name[self.normalize(stats.name)] = stats
+                    self.add_scoped_stats(self.stats_by_name, self.normalize(stats.name), stats)
                 if stats.car_number:
-                    self.stats_by_number[self.normalize_number(stats.car_number)] = stats
+                    self.add_scoped_stats(
+                        self.stats_by_number,
+                        self.normalize_number(stats.car_number),
+                        stats,
+                    )
 
     def profile_from_row(self, row):
         return DriverProfile(
@@ -275,6 +279,18 @@ class LeagueContext:
                 summary = stats.context_summary()
                 if summary:
                     updated_info["league_stats_summary"] = summary
+            all_stats = self.stats_list_for_driver(updated_info)
+            if all_stats:
+                updated_info["league_stats_by_scope"] = [
+                    stats.as_dict() for stats in all_stats
+                ]
+                summaries = [
+                    stats.context_summary()
+                    for stats in all_stats
+                    if stats.context_summary()
+                ]
+                if summaries:
+                    updated_info["league_stats_summaries"] = summaries
             enriched[car_idx] = updated_info
 
         return enriched
@@ -302,19 +318,17 @@ class LeagueContext:
             seen,
         )
         for car_idx in getattr(item, "participant_car_indices", ()) or ():
-            self.add_summary(
-                self.stats_for_driver((driver_lookup or {}).get(car_idx, {})),
-                summaries,
-                seen,
-            )
+            for stats in self.stats_list_for_driver((driver_lookup or {}).get(car_idx, {})):
+                self.add_summary(stats, summaries, seen)
+                if len(summaries) >= max_profiles:
+                    return summaries[:max_profiles]
             if len(summaries) >= max_profiles:
                 return summaries[:max_profiles]
 
-        self.add_summary(
-            self.stats_for_driver(assignment_info),
-            summaries,
-            seen,
-        )
+        for stats in self.stats_list_for_driver(assignment_info):
+            self.add_summary(stats, summaries, seen)
+            if len(summaries) >= max_profiles:
+                return summaries[:max_profiles]
         return summaries[:max_profiles]
 
     def profile_for_driver(self, driver_info):
@@ -335,6 +349,10 @@ class LeagueContext:
         return None
 
     def stats_for_driver(self, driver_info):
+        stats_list = self.stats_list_for_driver(driver_info)
+        return stats_list[0] if stats_list else None
+
+    def stats_list_for_driver(self, driver_info):
         name = self.clean((driver_info or {}).get("name"))
         number = self.clean(
             (driver_info or {}).get("number")
@@ -342,14 +360,42 @@ class LeagueContext:
         )
 
         if name:
-            stats = self.stats_by_name.get(self.normalize(name))
-            if stats:
-                return stats
+            stats_list = self.scoped_stats_as_list(
+                self.stats_by_name.get(self.normalize(name))
+            )
+            if stats_list:
+                return stats_list
 
         if number:
-            return self.stats_by_number.get(self.normalize_number(number))
+            return self.scoped_stats_as_list(
+                self.stats_by_number.get(self.normalize_number(number))
+            )
 
-        return None
+        return []
+
+    def add_scoped_stats(self, target, key, stats):
+        if not key:
+            return
+        scoped = target.setdefault(key, {})
+        scoped[self.normalized_stats_scope(stats)] = stats
+
+    def scoped_stats_as_list(self, scoped):
+        if not scoped:
+            return []
+        if isinstance(scoped, DriverStats):
+            return [scoped]
+        ordered = []
+        for scope in ("season", "career"):
+            stats = scoped.get(scope)
+            if stats:
+                ordered.append(stats)
+        for scope, stats in scoped.items():
+            if scope not in {"season", "career"}:
+                ordered.append(stats)
+        return ordered
+
+    def normalized_stats_scope(self, stats):
+        return stats.scope_label()
 
     def add_summary(self, profile, summaries, seen):
         if not profile:
@@ -357,7 +403,8 @@ class LeagueContext:
         summary = profile.context_summary()
         if not summary:
             return
-        key = f"{profile.__class__.__name__}:{self.normalize(profile.name or profile.car_number)}"
+        scope = getattr(profile, "stats_scope", "")
+        key = f"{profile.__class__.__name__}:{scope}:{self.normalize(profile.name or profile.car_number)}"
         if key in seen:
             return
         seen.add(key)

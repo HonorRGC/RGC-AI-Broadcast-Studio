@@ -120,6 +120,39 @@ def test_merge_stats_row_updates_existing_driver_by_name(tmp_path):
     assert rows[0]["wins"] == "1"
 
 
+def test_merge_stats_row_keeps_season_and_career_for_same_driver(tmp_path):
+    output = tmp_path / "stats.csv"
+    output.write_text(
+        "name,car_number,stats_scope,starts,wins,top_fives,top_tens,poles,avg_finish,last_finish,points_position,points_to_next,track_starts,track_wins,best_track_finish,notes\n"
+        "T.J. Lee,34,career,100,4,20,40,3,9.1,5,,,,,,career row\n",
+        encoding="utf-8",
+    )
+
+    merge_stats_row(
+        output,
+        {
+            "name": "T.J. Lee",
+            "car_number": "34",
+            "stats_scope": "season",
+            "starts": "6",
+            "wins": "0",
+            "top_fives": "2",
+            "top_tens": "4",
+            "poles": "1",
+            "avg_finish": "8.2",
+            "last_finish": "7",
+            "notes": "season row",
+        },
+    )
+
+    with output.open(newline="", encoding="utf-8") as csv_file:
+        rows = list(csv.DictReader(csv_file))
+
+    assert [row["stats_scope"] for row in rows] == ["career", "season"]
+    assert rows[0]["wins"] == "4"
+    assert rows[1]["wins"] == "0"
+
+
 def test_merge_stats_row_updates_old_sim_racer_hub_suffix_name(tmp_path):
     output = tmp_path / "stats.csv"
     output.write_text(

@@ -416,13 +416,15 @@ def merge_stats_row(output_path, new_row):
 
     key_name = normalize_driver_name(new_row.get("name"))
     key_number = normalize_number(new_row.get("car_number"))
+    key_scope = normalize_stats_scope(new_row.get("stats_scope"))
     updated = False
     merged = []
 
     for row in rows:
         same_name = key_name and normalize_driver_name(row.get("name")) == key_name
         same_number = key_number and normalize_number(row.get("car_number")) == key_number
-        if same_name or same_number:
+        same_scope = normalize_stats_scope(row.get("stats_scope")) == key_scope
+        if (same_name or same_number) and same_scope:
             merged.append({field: new_row.get(field, "") for field in STATS_FIELDS})
             updated = True
         else:
@@ -440,6 +442,13 @@ def merge_stats_row(output_path, new_row):
 def merge_stats_rows(output_path, new_rows):
     for row in new_rows:
         merge_stats_row(output_path, row)
+
+
+def normalize_stats_scope(value):
+    text = str(value or "season").strip().casefold()
+    if text in ("career", "all", "all_seasons", "all seasons"):
+        return "career"
+    return "season"
 
 
 def merge_driver_roster(output_path, new_rows):
