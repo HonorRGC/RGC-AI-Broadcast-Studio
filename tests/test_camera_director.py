@@ -429,6 +429,43 @@ def test_crank_fixed_falls_back_to_onboard_car_cameras_when_static_is_missing():
     assert telemetry.switches == [("14", 8, 0)]
 
 
+def test_crank_fixed_cycles_onboard_cameras_when_static_is_missing():
+    telemetry = CameraTelemetry()
+    telemetry.get_camera_groups = lambda: [
+        {"GroupNum": 4, "GroupName": "TV1"},
+        {"GroupNum": 5, "GroupName": "TV Mixed"},
+        {"GroupNum": 8, "GroupName": "Gearbox"},
+        {"GroupNum": 9, "GroupName": "Nose"},
+        {"GroupNum": 10, "GroupName": "Gyro"},
+    ]
+    times = iter([100.0, 105.0, 110.0])
+    director = CameraDirector(mode="auto", clock=lambda: next(times))
+    feature = SimpleNamespace(
+        camera_target_car_idx=None,
+        camera_sequence=(),
+        camera_sequence_steps=(
+            (3, "Crank Fixed", 0),
+            (4, "Crank Fixed", 0),
+            (0, "Crank Fixed", 0),
+        ),
+        dedupe_key="crank_it_up:10",
+        category="crank_it_up",
+        message="Crank It Up",
+        silent=True,
+        feature_duration_seconds=12.0,
+        camera_return_home_after_sequence=True,
+    )
+
+    first = director.follow(feature, telemetry)
+    second = director.update(telemetry)
+    third = director.update(telemetry)
+
+    assert first.group_name == "Gearbox"
+    assert second.group_name == "Nose"
+    assert third.group_name == "Gyro"
+    assert telemetry.switches == [("14", 8, 0), ("24", 9, 0), ("77", 10, 0)]
+
+
 def test_crank_fixed_skips_scenic_before_onboard_fallback():
     telemetry = CameraTelemetry()
     telemetry.get_camera_groups = lambda: [

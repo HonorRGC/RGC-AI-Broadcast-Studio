@@ -172,6 +172,7 @@ class CameraDirector:
 
         sequence = self.build_sequence_steps(item)
         if sequence:
+            sequence = self.resolve_special_sequence(item, sequence, telemetry)
             self.return_home_at = None
             self.sequence = sequence
             self.sequence_return_home = bool(
@@ -406,6 +407,57 @@ class CameraDirector:
             (car_idx, self.preferred_group, self.lineup_camera_number)
             for car_idx in tuple(getattr(item, "camera_sequence", ()) or ())
         )
+
+    def resolve_special_sequence(self, item, sequence, telemetry):
+        if getattr(item, "category", "") != "crank_it_up":
+            return sequence
+        if not sequence:
+            return sequence
+
+        groups = telemetry.get_camera_groups()
+        if self.find_crank_static_group(groups):
+            return sequence
+
+        onboard_groups = self.available_crank_onboard_groups(groups)
+        if not onboard_groups:
+            return sequence
+
+        return tuple(
+            (car_idx, onboard_groups[index % len(onboard_groups)], camera_number)
+            for index, (car_idx, _group_name, camera_number) in enumerate(sequence)
+        )
+
+    def find_crank_static_group(self, groups):
+        static_aliases = (
+            "tv fixed",
+            "tv static",
+            "fixed",
+            "static",
+            "spectator",
+            "turn",
+        )
+        for alias in static_aliases:
+            for group in groups or []:
+                name = str(group.get("GroupName", "")).casefold()
+                if alias in name:
+                    return group
+        return None
+
+    def available_crank_onboard_groups(self, groups):
+        preferred = ("gearbox", "nose", "gyro", "roll bar", "roof", "bumper", "cockpit", "in car")
+        available = []
+        seen = set()
+        for alias in preferred:
+            for group in groups or []:
+                name = str(group.get("GroupName", ""))
+                key = name.casefold()
+                if key in seen:
+                    continue
+                if alias in key:
+                    available.append(name)
+                    seen.add(key)
+                    break
+        return tuple(available)
 
     def normalize_sequence_step(self, step):
         if isinstance(step, dict):

@@ -1197,10 +1197,12 @@ class BroadcastEngine:
         ordered = self.sorted_running_order(results)
         if not ordered:
             return ()
-        leader_idx = ordered[0].get("CarIdx")
-        if leader_idx is None:
-            return ()
-        return ((leader_idx, "Crank Fixed", 0),)
+        steps = []
+        for car in ordered[:4]:
+            car_idx = car.get("CarIdx")
+            if car_idx is not None:
+                steps.append((car_idx, "Crank Fixed", 0))
+        return tuple(steps)
 
     def _queue_caution_race_insight(self):
         insight = self.race_insight_director.caution_insight(

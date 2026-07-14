@@ -535,7 +535,12 @@ def test_engine_queues_silent_crank_it_up_after_ten_green_laps():
     assert silent_item.silent is True
     assert silent_item.protected is True
     assert silent_item.feature_duration_seconds == 50.0
-    assert silent_item.camera_sequence_steps == ((0, "Crank Fixed", 0),)
+    assert silent_item.camera_sequence_steps == (
+        (0, "Crank Fixed", 0),
+        (1, "Crank Fixed", 0),
+        (2, "Crank Fixed", 0),
+        (3, "Crank Fixed", 0),
+    )
     assert silent_item.camera_return_home_after_sequence is True
 
 
@@ -586,7 +591,12 @@ def test_crank_it_up_silent_feature_uses_tv_fixed_camera():
     assert item.silent is True
     assert item.protected is True
     assert item.feature_duration_seconds == 50.0
-    assert item.camera_sequence_steps == ((0, "Crank Fixed", 0),)
+    assert item.camera_sequence_steps == (
+        (0, "Crank Fixed", 0),
+        (1, "Crank Fixed", 0),
+        (2, "Crank Fixed", 0),
+        (3, "Crank Fixed", 0),
+    )
     assert item.camera_return_home_after_sequence is True
 
 
