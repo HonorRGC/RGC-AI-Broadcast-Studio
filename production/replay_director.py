@@ -53,6 +53,7 @@ class ReplayDirector:
         self.camera_engaged = False
         self.use_incident_marker = False
         self.marker_pre_roll_override_frames = None
+        self.preroll_already_applied = False
         self.audio_played_for_story_ids = set()
         self.played_story_ids = set()
 
@@ -90,6 +91,7 @@ class ReplayDirector:
         self.replay_session_time = float(session_time or 0.0)
         self.replay_start_time = self.current_replay_start_time()
         self.use_incident_marker = use_incident_marker
+        self.preroll_already_applied = False
         self.marker_pre_roll_override_frames = getattr(
             item,
             "replay_marker_pre_roll_frames",
@@ -234,36 +236,34 @@ class ReplayDirector:
         if self.mode == "observe":
             return True
         if getattr(self, "use_incident_marker", False):
+            self.preroll_already_applied = False
             if self.angle_index > 0:
                 return_live = getattr(telemetry, "return_to_live", None)
                 if return_live:
                     return_live()
+
+            marker_seeker = getattr(telemetry, "seek_previous_incident_marker", None)
+            if marker_seeker and bool(marker_seeker()):
+                return True
+
             if self.use_absolute_incident_time():
                 return telemetry.seek_replay_session_time(
                     self.session_num,
-                    self.current_replay_start_time(),
+                    self.replay_session_time,
                 )
-            marker_seeker = getattr(telemetry, "seek_previous_incident_marker", None)
-            seek_with_preroll = getattr(telemetry, "seek_previous_incident", None)
-            if seek_with_preroll:
-                return bool(seek_with_preroll(self.current_incident_marker_pre_roll_frames()))
-            if marker_seeker:
-                marker_sent = bool(marker_seeker())
-                if not marker_sent:
-                    return False
-                return self.apply_incident_marker_preroll(telemetry)
+
             seeker = getattr(telemetry, "seek_previous_incident", None)
-            return bool(seeker and seeker(self.current_incident_marker_pre_roll_frames()))
+            if seeker and bool(seeker(self.current_incident_marker_pre_roll_frames())):
+                self.preroll_already_applied = True
+                return True
+            return False
         return telemetry.seek_replay_session_time(
             self.session_num,
             self.current_replay_start_time(),
         )
 
     def apply_incident_marker_preroll(self, telemetry):
-        if self.use_absolute_incident_time():
-            return True
-        seek_with_preroll = getattr(telemetry, "seek_previous_incident", None)
-        if seek_with_preroll:
+        if self.preroll_already_applied:
             return True
         rewinder = getattr(telemetry, "rewind_replay_frames", None)
         if not rewinder:
