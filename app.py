@@ -223,6 +223,40 @@ def run_source(
             time.sleep(tick_seconds)
 
 
+def cleanup_live_broadcast_session(
+    source,
+    replay_director=None,
+    anthem_director=None,
+    practice_presentation_director=None,
+    caution_audio_bed=None,
+):
+    if replay_director:
+        replay_director.stop_replay_audio()
+
+    for controller, method_name in (
+        (anthem_director, "stop_audio"),
+        (practice_presentation_director, "stop_music"),
+        (caution_audio_bed, "stop"),
+    ):
+        method = getattr(controller, method_name, None)
+        if method:
+            try:
+                method()
+            except Exception:
+                pass
+
+    return_live = getattr(source, "return_to_live", None)
+    if return_live:
+        try:
+            returned = bool(return_live())
+            if returned:
+                print("REPLAY: live edge synced.")
+            return returned
+        except Exception:
+            return False
+    return False
+
+
 def report_anthem_decision(decision):
     if decision.status == "ignored":
         return
@@ -818,6 +852,13 @@ def main():
             continue
 
         print("\nConnected to iRacing!")
+        cleanup_live_broadcast_session(
+            source,
+            replay_director,
+            anthem_director,
+            practice_presentation_director,
+            caution_audio_bed,
+        )
         engine.reset()
         camera_director.reset()
         replay_director.reset()
@@ -840,6 +881,13 @@ def main():
             overlay_server,
             caution_audio_bed,
             args.tick_seconds,
+        )
+        cleanup_live_broadcast_session(
+            source,
+            replay_director,
+            anthem_director,
+            practice_presentation_director,
+            caution_audio_bed,
         )
         print("Disconnected from iRacing. Resetting broadcast session.")
         engine.reset()
