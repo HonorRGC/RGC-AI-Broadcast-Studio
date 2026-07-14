@@ -6,7 +6,8 @@ The v1 league goal is to let a league admin configure a broadcast without editin
 
 1. Fill out league files:
    - `league/drivers.csv` for hometown, country, driving style, team, sponsor, and notes.
-   - `league/stats.csv` for season stats, points, prior finish, and track history.
+   - `league/season.csv` for current-season stats, points, prior finish, and track history.
+   - `league/career.csv` for all-season/career stats from the selected series.
 2. Set broadcast settings in the app or `.env`.
 3. Start the race broadcast in one of two modes:
    - Full AI broadcast: OpenAI + ElevenLabs speak the show.
@@ -14,7 +15,7 @@ The v1 league goal is to let a league admin configure a broadcast without editin
 
 ## Stats currently supported
 
-`league/stats.csv` supports:
+`league/season.csv` and `league/career.csv` support:
 
 - starts
 - wins
@@ -47,18 +48,18 @@ Useful placeholders for your league:
 - `--season-id YOUR_SEASON_ID` filters to one season.
 - Leave off `--season-id` for career totals across the selected series.
 
-The importer currently reads one driver page at a time and updates `league/stats.csv` with starts, wins, top fives, top tens, poles, average finish, last finish, optional track-history stats, and a stat note containing Sim Racer Hub values like laps led, passes, quality passes, closing passes, incidents, average start, and average running position.
+The importer currently reads one driver page at a time and updates a stats CSV with starts, wins, top fives, top tens, poles, average finish, last finish, optional track-history stats, and a stat note containing Sim Racer Hub values like laps led, passes, quality passes, closing passes, incidents, average start, and average running position. Use `league/season.csv` for current season imports and `league/career.csv` for all-season imports.
 
 It can also bulk import a whole season from a Sim Racer Hub `league_stats.php` page:
 
 ```powershell
-python tools\sim_racer_hub_import.py "https://simracerhub.com/league_stats.php?series_id=YOUR_SERIES_ID" --bulk --league-id YOUR_LEAGUE_ID --series-id YOUR_SERIES_ID --season-id YOUR_SEASON_ID --output league\stats.csv
+python tools\sim_racer_hub_import.py "https://simracerhub.com/league_stats.php?series_id=YOUR_SERIES_ID" --bulk --league-id YOUR_LEAGUE_ID --series-id YOUR_SERIES_ID --season-id YOUR_SEASON_ID --output league\season.csv
 ```
 
 You can also pass the Sim Racer Hub series seasons URL; bulk mode automatically follows it to the matching stats page:
 
 ```powershell
-python tools\sim_racer_hub_import.py "https://simracerhub.com/series_seasons.php?series_id=YOUR_SERIES_ID&reset_series=y" --bulk --league-id YOUR_LEAGUE_ID --series-id YOUR_SERIES_ID --season-id YOUR_SEASON_ID --output league\stats.csv
+python tools\sim_racer_hub_import.py "https://simracerhub.com/series_seasons.php?series_id=YOUR_SERIES_ID&reset_series=y" --bulk --league-id YOUR_LEAGUE_ID --series-id YOUR_SERIES_ID --season-id YOUR_SEASON_ID --output league\season.csv
 ```
 
 Use `--min-starts 2` or higher if you want to skip one-off substitute drivers.
@@ -66,7 +67,7 @@ Use `--min-starts 2` or higher if you want to skip one-off substitute drivers.
 For career stats across every season in the selected series, leave off `--season-id`:
 
 ```powershell
-python tools\sim_racer_hub_import.py "https://simracerhub.com/series_seasons.php?series_id=YOUR_SERIES_ID&reset_series=y" --bulk --league-id YOUR_LEAGUE_ID --series-id YOUR_SERIES_ID --min-starts 10 --output league\stats.csv
+python tools\sim_racer_hub_import.py "https://simracerhub.com/series_seasons.php?series_id=YOUR_SERIES_ID&reset_series=y" --bulk --league-id YOUR_LEAGUE_ID --series-id YOUR_SERIES_ID --min-starts 10 --output league\career.csv
 ```
 
 That produces series-career totals for each driver, including total starts, wins, top fives, top tens, poles, average finish, laps led, passes, quality passes, closing passes, and incidents. Use a higher `--min-starts` value if you only want regular league drivers.
@@ -106,6 +107,6 @@ The first league-stats workflow now exists in the launcher under `League / Sim R
 - choose season mode or career mode
 - add the upcoming track name for track-history stats
 - preview the import
-- write stats into `league/stats.csv`
+- write season stats into `league/season.csv` or career stats into `league/career.csv`
 
 The launcher can also import a safe driver roster into `league/drivers.csv`. It adds missing drivers and cleans Sim Racer Hub suffixes, but preserves manual fields such as hometown, driving style, sponsor, and notes.

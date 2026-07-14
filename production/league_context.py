@@ -2,7 +2,13 @@ import csv
 from dataclasses import dataclass
 from pathlib import Path
 
-from config import LEAGUE_DRIVERS_CSV, LEAGUE_STATS_CSV, USE_LEAGUE_DRIVER_NOTES
+from config import (
+    LEAGUE_CAREER_STATS_CSV,
+    LEAGUE_DRIVERS_CSV,
+    LEAGUE_SEASON_STATS_CSV,
+    LEAGUE_STATS_CSV,
+    USE_LEAGUE_DRIVER_NOTES,
+)
 
 
 @dataclass(frozen=True)
@@ -160,10 +166,14 @@ class LeagueContext:
         self,
         drivers_csv_path=LEAGUE_DRIVERS_CSV,
         stats_csv_path=LEAGUE_STATS_CSV,
+        season_stats_csv_path=LEAGUE_SEASON_STATS_CSV,
+        career_stats_csv_path=LEAGUE_CAREER_STATS_CSV,
         enabled=USE_LEAGUE_DRIVER_NOTES,
     ):
         self.drivers_csv_path = Path(drivers_csv_path)
         self.stats_csv_path = Path(stats_csv_path)
+        self.season_stats_csv_path = Path(season_stats_csv_path)
+        self.career_stats_csv_path = Path(career_stats_csv_path)
         self.enabled = bool(enabled)
         self.profiles_by_name = {}
         self.profiles_by_number = {}
@@ -205,11 +215,30 @@ class LeagueContext:
                     self.profiles_by_number[self.normalize_number(profile.car_number)] = profile
 
     def load_driver_stats(self):
-        if not self.stats_csv_path.exists():
+        for csv_path, default_scope in self.stats_csv_paths():
+            self.load_driver_stats_file(csv_path, default_scope)
+
+    def stats_csv_paths(self):
+        paths = []
+        for path, default_scope in (
+            (self.stats_csv_path, ""),
+            (self.season_stats_csv_path, "season"),
+            (self.career_stats_csv_path, "career"),
+        ):
+            if not path:
+                continue
+            path = Path(path)
+            if any(existing == path for existing, _ in paths):
+                continue
+            paths.append((path, default_scope))
+        return paths
+
+    def load_driver_stats_file(self, csv_path, default_scope=""):
+        if not csv_path.exists():
             return
-        with self.stats_csv_path.open(newline="", encoding="utf-8-sig") as csv_file:
+        with csv_path.open(newline="", encoding="utf-8-sig") as csv_file:
             for row in csv.DictReader(csv_file):
-                stats = self.stats_from_row(row)
+                stats = self.stats_from_row(row, default_scope=default_scope)
                 if not stats.name and not stats.car_number:
                     continue
                 if stats.name:
@@ -234,11 +263,11 @@ class LeagueContext:
             car_image=self.clean(row.get("car_image") or row.get("car_image_url")),
         )
 
-    def stats_from_row(self, row):
+    def stats_from_row(self, row, default_scope=""):
         return DriverStats(
             name=self.clean(row.get("name") or row.get("driver")),
             car_number=self.clean(row.get("car_number") or row.get("number")),
-            stats_scope=self.clean(row.get("stats_scope") or row.get("scope")),
+            stats_scope=self.clean(row.get("stats_scope") or row.get("scope") or default_scope),
             starts=self.clean(row.get("starts") or row.get("races")),
             wins=self.clean(row.get("wins")),
             top_fives=self.clean(row.get("top_fives") or row.get("top5")),

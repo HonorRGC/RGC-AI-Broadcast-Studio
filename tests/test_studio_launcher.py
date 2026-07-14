@@ -105,6 +105,8 @@ def test_launcher_defaults_include_league_stats_csv():
 
     assert defaults["LEAGUE_DRIVERS_CSV"] == "league/drivers.csv"
     assert defaults["LEAGUE_STATS_CSV"] == "league/stats.csv"
+    assert defaults["LEAGUE_SEASON_STATS_CSV"] == "league/season.csv"
+    assert defaults["LEAGUE_CAREER_STATS_CSV"] == "league/career.csv"
     assert defaults["STAGE_END_LAPS"] == ""
     assert "/assets/rgc_motorsports.png" in defaults["OVERLAY_BRAND_GRAPHICS"]
     assert defaults["PRACTICE_MUSIC_PLAYLIST"] == ""
@@ -265,9 +267,14 @@ def test_launcher_builds_profile_specific_league_csv_paths():
     assert league_folder_slug("DSR Electric Series") == "DSR_Electric_Series"
     assert league_csv_paths_for_profile("DSR Electric Series") == (
         "league/DSR_Electric_Series/drivers.csv",
-        "league/DSR_Electric_Series/stats.csv",
+        "league/DSR_Electric_Series/season.csv",
+        "league/DSR_Electric_Series/career.csv",
     )
-    assert league_csv_paths_for_profile("") == ("league/drivers.csv", "league/stats.csv")
+    assert league_csv_paths_for_profile("") == (
+        "league/drivers.csv",
+        "league/season.csv",
+        "league/career.csv",
+    )
 
 
 def test_launcher_saves_lists_and_loads_profiles(tmp_path):

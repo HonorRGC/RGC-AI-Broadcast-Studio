@@ -239,7 +239,8 @@ Use:
 
 - **Preview** first, to make sure the import looks right.
 - **Import Drivers** to create or update `league\drivers.csv`.
-- **Import Stats** to create or update `league\stats.csv`.
+- **Import Stats** with Career Mode off to create or update `league\season.csv`.
+- **Import Stats** with Career Mode on to create or update `league\career.csv`.
 
 The driver import is designed to preserve manual notes. That means you can add hometown, sponsor, team, driving style, or other notes later without the import wiping them out.
 

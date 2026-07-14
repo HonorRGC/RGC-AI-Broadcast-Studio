@@ -143,6 +143,42 @@ def test_league_context_keeps_season_and_career_stats_for_same_driver(tmp_path):
     assert any("career wins: 4" in summary for summary in enriched[4]["league_stats_summaries"])
 
 
+def test_league_context_reads_season_and_career_from_separate_csv_files(tmp_path):
+    season_csv = tmp_path / "season.csv"
+    season_csv.write_text(
+        "\n".join(
+            [
+                "name,car_number,starts,wins,top_fives,top_tens,poles,avg_finish,last_finish,points_position,points_to_next,track_starts,track_wins,best_track_finish,notes",
+                "Austin Peterson,77,6,0,2,4,1,9.2,7,,,,,,Season import",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    career_csv = tmp_path / "career.csv"
+    career_csv.write_text(
+        "\n".join(
+            [
+                "name,car_number,starts,wins,top_fives,top_tens,poles,avg_finish,last_finish,points_position,points_to_next,track_starts,track_wins,best_track_finish,notes",
+                "Austin Peterson,77,182,4,50,80,12,8.1,12,,,,,,Career import",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    context = LeagueContext(
+        tmp_path / "missing.csv",
+        stats_csv_path=tmp_path / "legacy_missing.csv",
+        season_stats_csv_path=season_csv,
+        career_stats_csv_path=career_csv,
+        enabled=True,
+    )
+
+    enriched = context.enrich_driver_lookup({4: {"name": "Austin Peterson", "number": "77"}})
+
+    assert enriched[4]["league_stats"]["stats_scope"] == "season"
+    assert any("season wins: 0" in summary for summary in enriched[4]["league_stats_summaries"])
+    assert any("career wins: 4" in summary for summary in enriched[4]["league_stats_summaries"])
+
+
 def test_league_context_assignment_notes_include_profile_season_and_career(tmp_path):
     stats_csv = tmp_path / "mixed_stats.csv"
     stats_csv.write_text(

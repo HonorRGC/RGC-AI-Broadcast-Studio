@@ -59,7 +59,7 @@ After the checkered flag, the camera holds the winner/leader shot for celebratio
 POST_RACE_FINISH_CAMERA_DELAY_SECONDS=180
 ```
 
-The launcher also includes a `League / Sim Racer Hub` tab. Paste a Sim Racer Hub series or stats URL, choose season mode or career mode, optionally enter the upcoming track name, preview the import, and then write the results to `league\stats.csv`.
+The launcher also includes a `League / Sim Racer Hub` tab. Paste a Sim Racer Hub series or stats URL, choose season mode or career mode, optionally enter the upcoming track name, preview the import, and then write season results to `league\season.csv` or career results to `league\career.csv`.
 
 The same tab can import a driver roster into `league\drivers.csv`. Roster import is safe for manual edits: it adds missing drivers and fills empty basics, but keeps your hometown, sponsor, driving-style, and notes fields.
 
@@ -72,7 +72,8 @@ To let the broadcast use real league details, copy the example driver and stats 
 ```powershell
 New-Item -ItemType Directory -Force league
 Copy-Item league.example\drivers.csv league\drivers.csv
-Copy-Item league.example\stats.csv league\stats.csv
+Copy-Item league.example\season.csv league\season.csv
+Copy-Item league.example\career.csv league\career.csv
 ```
 
 Then enable league context in `.env`:
@@ -80,7 +81,8 @@ Then enable league context in `.env`:
 ```text
 USE_LEAGUE_DRIVER_NOTES=true
 LEAGUE_DRIVERS_CSV=league/drivers.csv
-LEAGUE_STATS_CSV=league/stats.csv
+LEAGUE_SEASON_STATS_CSV=league/season.csv
+LEAGUE_CAREER_STATS_CSV=league/career.csv
 STAGE_END_LAPS=30,60
 ```
 
@@ -102,10 +104,10 @@ See [docs/V1_LEAGUE_MODE.md](docs/V1_LEAGUE_MODE.md) for the league-mode and Sim
 
 ### Import Sim Racer Hub driver stats
 
-Public Sim Racer Hub driver stat pages can be imported into `league\stats.csv`:
+Public Sim Racer Hub driver stat pages can be imported into `league\season.csv`:
 
 ```powershell
-python tools\sim_racer_hub_import.py "https://simracerhub.com/driver_stats.php?driver_id=YOUR_DRIVER_ID" --league-id YOUR_LEAGUE_ID --season-id YOUR_SEASON_ID --output league\stats.csv
+python tools\sim_racer_hub_import.py "https://simracerhub.com/driver_stats.php?driver_id=YOUR_DRIVER_ID" --league-id YOUR_LEAGUE_ID --season-id YOUR_SEASON_ID --output league\season.csv
 ```
 
 Use `--dry-run` first if you want to preview the row before updating the CSV.
@@ -113,7 +115,7 @@ Use `--dry-run` first if you want to preview the row before updating the CSV.
 To import a current league season from the series stats page:
 
 ```powershell
-python tools\sim_racer_hub_import.py "https://simracerhub.com/league_stats.php?series_id=YOUR_SERIES_ID" --bulk --league-id YOUR_LEAGUE_ID --series-id YOUR_SERIES_ID --season-id YOUR_SEASON_ID --output league\stats.csv
+python tools\sim_racer_hub_import.py "https://simracerhub.com/league_stats.php?series_id=YOUR_SERIES_ID" --bulk --league-id YOUR_LEAGUE_ID --series-id YOUR_SERIES_ID --season-id YOUR_SEASON_ID --output league\season.csv
 ```
 
 The same bulk command also accepts the Sim Racer Hub series seasons URL and automatically follows it to the matching stats page.
@@ -121,13 +123,13 @@ The same bulk command also accepts the Sim Racer Hub series seasons URL and auto
 For career stats across every season in a series, leave off `--season-id`:
 
 ```powershell
-python tools\sim_racer_hub_import.py "https://simracerhub.com/series_seasons.php?series_id=YOUR_SERIES_ID&reset_series=y" --bulk --league-id YOUR_LEAGUE_ID --series-id YOUR_SERIES_ID --min-starts 10 --output league\stats.csv
+python tools\sim_racer_hub_import.py "https://simracerhub.com/series_seasons.php?series_id=YOUR_SERIES_ID&reset_series=y" --bulk --league-id YOUR_LEAGUE_ID --series-id YOUR_SERIES_ID --min-starts 10 --output league\career.csv
 ```
 
 To include prior history at the upcoming track:
 
 ```powershell
-python tools\sim_racer_hub_import.py "https://simracerhub.com/league_stats.php?series_id=YOUR_SERIES_ID" --bulk --league-id YOUR_LEAGUE_ID --series-id YOUR_SERIES_ID --track-name Nashville --min-starts 10 --output league\stats.csv
+python tools\sim_racer_hub_import.py "https://simracerhub.com/league_stats.php?series_id=YOUR_SERIES_ID" --bulk --league-id YOUR_LEAGUE_ID --series-id YOUR_SERIES_ID --track-name Nashville --min-starts 10 --output league\career.csv
 ```
 
 ## Run a live broadcast
