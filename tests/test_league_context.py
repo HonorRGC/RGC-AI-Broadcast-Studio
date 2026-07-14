@@ -7,10 +7,10 @@ def write_drivers_csv(tmp_path):
     csv_path.write_text(
         "\n".join(
             [
-                "name,car_number,hometown,state,country,driving_style,sponsor,notes",
+                "name,car_number,hometown,state,country,driving_style,sponsor,notes,car_image",
                 (
                     "Austin Peterson,77,Nashville,TN,USA,aggressive on restarts,"
-                    "RGC Motorsports,Usually strong when clean air matters"
+                    "RGC Motorsports,Usually strong when clean air matters,cars/austin.png"
                 ),
             ]
         ),
@@ -54,6 +54,7 @@ def test_league_context_enriches_driver_lookup_by_name(tmp_path):
 
     assert enriched[4]["hometown"] == "Nashville"
     assert enriched[4]["sponsor"] == "RGC Motorsports"
+    assert enriched[4]["car_image"] == "cars/austin.png"
     assert "aggressive on restarts" in enriched[4]["league_context_summary"]
 
 

@@ -37,6 +37,7 @@ DRIVER_FIELDS = [
     "driving_style",
     "sponsor",
     "notes",
+    "car_image",
 ]
 
 
@@ -290,6 +291,7 @@ def summarize_driver_roster(
                 "driving_style": "",
                 "sponsor": "",
                 "notes": "",
+                "car_image": "",
             }
         )
 

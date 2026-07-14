@@ -6,6 +6,7 @@ import re
 import shutil
 import subprocess
 import sys
+import csv
 import urllib.error
 import urllib.request
 import webbrowser
@@ -42,6 +43,18 @@ ACCENT = "#8b1e2d"
 ACCENT_HOVER = "#a72a3a"
 GREEN = "#158a4d"
 STOP_RED = "#b73535"
+
+DRIVER_PROFILE_FIELDS = [
+    "name",
+    "car_number",
+    "hometown",
+    "state",
+    "country",
+    "driving_style",
+    "sponsor",
+    "notes",
+    "car_image",
+]
 
 LAUNCHER_FIELDS = [
     ("USE_OPENAI", "true"),
@@ -245,6 +258,41 @@ def resolve_project_path(path_value, root=ROOT):
     if path.is_absolute():
         return path
     return Path(root) / path
+
+
+def load_driver_profile_rows(csv_path):
+    path = Path(csv_path)
+    if not path.exists():
+        return []
+    rows = []
+    with path.open(newline="", encoding="utf-8-sig") as csv_file:
+        reader = csv.DictReader(csv_file)
+        for row in reader:
+            normalized = {field: str(row.get(field, "") or "").strip() for field in DRIVER_PROFILE_FIELDS}
+            if normalized["name"] or normalized["car_number"]:
+                rows.append(normalized)
+    return rows
+
+
+def save_driver_profile_rows(csv_path, rows):
+    path = Path(csv_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    clean_rows = []
+    for row in rows:
+        clean_row = {field: str((row or {}).get(field, "") or "").strip() for field in DRIVER_PROFILE_FIELDS}
+        if clean_row["name"] or clean_row["car_number"]:
+            clean_rows.append(clean_row)
+    with path.open("w", newline="", encoding="utf-8") as csv_file:
+        writer = csv.DictWriter(csv_file, fieldnames=DRIVER_PROFILE_FIELDS)
+        writer.writeheader()
+        writer.writerows(clean_rows)
+    return path
+
+
+def driver_profile_label(row):
+    name = str((row or {}).get("name", "") or "").strip() or "Unnamed Driver"
+    number = str((row or {}).get("car_number", "") or "").strip()
+    return f"#{number} {name}" if number else name
 
 
 def build_health_status(values, root=ROOT, broadcast_running=False):
@@ -1434,6 +1482,7 @@ def build_league_tab(
     sim_racer_hub_state=None,
 ):
     import tkinter as tk
+    from tkinter import filedialog
 
     existing = launcher_defaults(existing or {})
     sim_racer_hub_state = sim_racer_hub_state if sim_racer_hub_state is not None else {}
@@ -1583,6 +1632,222 @@ def build_league_tab(
         bg=PANEL_BG,
         fg=MUTED_FG,
     ).pack(side="left", padx=12)
+
+    editor_panel = frame(parent, bg="#0b1520")
+    editor_panel.pack(fill="both", expand=True, padx=14, pady=(4, 14))
+    label(
+        editor_panel,
+        text="League Driver Profile Editor",
+        bg="#0b1520",
+        fg=TEXT_FG,
+        font=("Segoe UI", 13, "bold"),
+        anchor="w",
+    ).pack(fill="x", padx=12, pady=(12, 4))
+    label(
+        editor_panel,
+        text=(
+            "Use this for league-only driver information. These fields update drivers.csv "
+            "and are preserved when you import a Sim Racer Hub roster."
+        ),
+        bg="#0b1520",
+        fg=MUTED_FG,
+        justify="left",
+        anchor="w",
+        wraplength=900,
+    ).pack(fill="x", padx=12, pady=(0, 8))
+
+    editor_body = frame(editor_panel, bg="#0b1520")
+    editor_body.pack(fill="both", expand=True, padx=12, pady=(0, 12))
+
+    list_panel = frame(editor_body, bg="#0b1520")
+    list_panel.pack(side="left", fill="both", expand=False, padx=(0, 14))
+    label(
+        list_panel,
+        text="Drivers",
+        bg="#0b1520",
+        fg=MUTED_FG,
+        font=("Segoe UI", 9, "bold"),
+        anchor="w",
+    ).pack(fill="x", pady=(0, 4))
+    driver_list = tk.Listbox(
+        list_panel,
+        height=14,
+        width=34,
+        bg=FIELD_BG,
+        fg=TEXT_FG,
+        selectbackground=ACCENT,
+        selectforeground="white",
+        relief="flat",
+        highlightthickness=1,
+        highlightbackground="#26384c",
+    )
+    driver_list.pack(fill="both", expand=True)
+
+    edit_panel = frame(editor_body, bg="#0b1520")
+    edit_panel.pack(side="left", fill="both", expand=True)
+
+    editor_path_row = frame(edit_panel, bg="#0b1520")
+    editor_path_row.pack(fill="x", pady=(0, 8))
+    label(
+        editor_path_row,
+        text="Driver CSV",
+        bg="#0b1520",
+        fg=MUTED_FG,
+        width=14,
+        anchor="w",
+    ).pack(side="left")
+    driver_csv_var = tk.StringVar(
+        value=existing.get("LEAGUE_DRIVERS_CSV")
+        or existing.get("SIMRACERHUB_DRIVERS_OUTPUT")
+        or "league/drivers.csv"
+    )
+    driver_csv_entry = entry(editor_path_row, textvariable=driver_csv_var, width=72)
+    driver_csv_entry.pack(side="left", fill="x", expand=True)
+
+    editor_state = {"rows": [], "selected_index": None}
+    profile_entries = {}
+
+    def selected_driver_csv_path():
+        return resolve_project_path(driver_csv_var.get() or "league/drivers.csv", ROOT)
+
+    field_labels = [
+        ("Name", "name"),
+        ("Car Number", "car_number"),
+        ("Hometown", "hometown"),
+        ("State", "state"),
+        ("Country", "country"),
+        ("Driving Style", "driving_style"),
+        ("Sponsor", "sponsor"),
+        ("Notes", "notes"),
+        ("Car Image", "car_image"),
+    ]
+
+    fields_frame = frame(edit_panel, bg="#0b1520")
+    fields_frame.pack(fill="x")
+    for row_number, (label_text, key) in enumerate(field_labels):
+        label(
+            fields_frame,
+            text=label_text,
+            bg="#0b1520",
+            fg=MUTED_FG,
+            width=14,
+            anchor="w",
+        ).grid(row=row_number, column=0, sticky="w", pady=3)
+        widget = entry(fields_frame, width=76)
+        widget.grid(row=row_number, column=1, sticky="ew", pady=3)
+        profile_entries[key] = widget
+    fields_frame.columnconfigure(1, weight=1)
+
+    def clear_profile_fields():
+        for widget in profile_entries.values():
+            widget.delete(0, "end")
+        editor_state["selected_index"] = None
+        driver_list.selection_clear(0, "end")
+
+    def set_profile_fields(row):
+        for key, widget in profile_entries.items():
+            widget.delete(0, "end")
+            widget.insert(0, row.get(key, ""))
+
+    def current_profile_row():
+        return {key: widget.get().strip() for key, widget in profile_entries.items()}
+
+    def refresh_driver_list(select_index=None):
+        driver_list.delete(0, "end")
+        for row in editor_state["rows"]:
+            driver_list.insert("end", driver_profile_label(row))
+        if select_index is not None and 0 <= select_index < len(editor_state["rows"]):
+            driver_list.selection_set(select_index)
+            driver_list.see(select_index)
+            editor_state["selected_index"] = select_index
+            set_profile_fields(editor_state["rows"][select_index])
+
+    def load_driver_profiles():
+        path = selected_driver_csv_path()
+        editor_state["rows"] = load_driver_profile_rows(path)
+        editor_state["selected_index"] = None
+        clear_profile_fields()
+        refresh_driver_list()
+        status.set(f"Loaded {len(editor_state['rows'])} driver profile(s) from {path}.")
+
+    def save_driver_profiles():
+        path = save_driver_profile_rows(selected_driver_csv_path(), editor_state["rows"])
+        status.set(f"Saved {len(editor_state['rows'])} driver profile(s) to {path}.")
+
+    def save_current_driver():
+        row = current_profile_row()
+        if not row["name"] and not row["car_number"]:
+            messagebox.showerror("Missing driver", "Add at least a driver name or car number.")
+            return
+        index = editor_state.get("selected_index")
+        if index is None or index >= len(editor_state["rows"]):
+            editor_state["rows"].append(row)
+            index = len(editor_state["rows"]) - 1
+        else:
+            editor_state["rows"][index] = row
+        save_driver_profiles()
+        refresh_driver_list(index)
+
+    def delete_current_driver():
+        index = editor_state.get("selected_index")
+        if index is None or index >= len(editor_state["rows"]):
+            return
+        removed = driver_profile_label(editor_state["rows"][index])
+        del editor_state["rows"][index]
+        clear_profile_fields()
+        save_driver_profiles()
+        refresh_driver_list()
+        status.set(f"Deleted driver profile: {removed}.")
+
+    def choose_driver_image():
+        selected = filedialog.askopenfilename(
+            title="Choose driver car image",
+            filetypes=[
+                ("Image files", "*.png *.jpg *.jpeg *.webp *.gif *.tga"),
+                ("All files", "*.*"),
+            ],
+        )
+        if not selected:
+            return
+        widget = profile_entries["car_image"]
+        widget.delete(0, "end")
+        widget.insert(0, selected)
+        status.set("Selected driver car image. Click Save Driver to update drivers.csv.")
+
+    def on_driver_selected(_event=None):
+        selection = driver_list.curselection()
+        if not selection:
+            return
+        index = int(selection[0])
+        editor_state["selected_index"] = index
+        set_profile_fields(editor_state["rows"][index])
+
+    driver_list.bind("<<ListboxSelect>>", on_driver_selected)
+
+    editor_buttons = frame(edit_panel, bg="#0b1520")
+    editor_buttons.pack(fill="x", pady=(10, 0))
+    button(editor_buttons, text="Load Drivers", command=load_driver_profiles, color="#334b64").pack(
+        side="left",
+        padx=(0, 6),
+    )
+    button(editor_buttons, text="New Driver", command=clear_profile_fields, color="#334b64").pack(
+        side="left",
+        padx=6,
+    )
+    button(editor_buttons, text="Choose Car Image", command=choose_driver_image, color="#334b64").pack(
+        side="left",
+        padx=6,
+    )
+    button(editor_buttons, text="Save Driver", command=save_current_driver, color=GREEN).pack(
+        side="left",
+        padx=6,
+    )
+    button(editor_buttons, text="Delete Driver", command=delete_current_driver, color=STOP_RED).pack(
+        side="left",
+        padx=6,
+    )
+
+    load_driver_profiles()
 
 
 def build_help_tab(

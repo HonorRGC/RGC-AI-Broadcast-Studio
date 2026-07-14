@@ -1,5 +1,6 @@
 import argparse
 import time
+from pathlib import Path
 
 from config import (
     CRANK_IT_UP_ICON_GRAPHIC,
@@ -23,7 +24,7 @@ from production.non_race_presentation import (
 )
 from production.live_broadcast_validator import LiveBroadcastValidator
 from production.overlay import OverlayServer
-from production.car_paint_preview import build_car_paint_preview_url
+from production.car_paint_preview import ensure_preview_file
 from production.replay_director import ReplayDirector
 
 DEFAULT_CRANK_IT_UP_SECONDS = 50.0
@@ -652,13 +653,21 @@ def build_featured_driver_story(driver):
 
 
 def build_featured_driver_image(driver):
-    for key in ("car_image_url", "car_image", "paint_image_url"):
+    for key in ("car_image_url", "paint_image_url"):
         value = str(driver.get(key, "") or "").strip()
         if value.startswith(("http://", "https://", "/")):
             return value
-    auto_preview_url = build_car_paint_preview_url(driver)
-    if auto_preview_url:
-        return auto_preview_url
+
+    manual_image = str(driver.get("car_image", "") or "").strip()
+    if manual_image.startswith(("http://", "https://", "/assets/", "/paint-previews/")):
+        return manual_image
+    if manual_image:
+        image_path = Path(manual_image).expanduser()
+        if not image_path.is_absolute():
+            image_path = Path(__file__).resolve().parent / image_path
+        preview_path = ensure_preview_file(image_path, driver)
+        if preview_path:
+            return f"/paint-previews/{preview_path.name}"
     return ""
 
 

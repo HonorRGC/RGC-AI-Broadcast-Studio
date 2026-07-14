@@ -1,6 +1,7 @@
 from types import SimpleNamespace
 
 from app import (
+    build_featured_driver_image,
     find_brand_graphic_for_name,
     split_sponsor_names,
     should_show_movers_graphic,
@@ -147,3 +148,19 @@ def test_sponsor_graphic_matching_uses_configured_brand_graphics(monkeypatch):
     )
 
     assert find_brand_graphic_for_name("Bob's Auto Parts") == "/assets/bobs_auto_parts.png"
+
+
+def test_featured_driver_image_uses_manual_league_image_only():
+    assert build_featured_driver_image({"car_image": "/assets/custom_driver.png"}) == "/assets/custom_driver.png"
+
+
+def test_featured_driver_image_does_not_auto_use_trading_paints_fields():
+    assert (
+        build_featured_driver_image(
+            {
+                "cust_id": "251830",
+                "car_path": "stockcars2 camaro2019",
+            }
+        )
+        == ""
+    )

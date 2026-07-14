@@ -478,6 +478,44 @@ def test_launcher_builds_sim_racer_hub_driver_roster_command():
     ]
 
 
+def test_studio_driver_profile_rows_round_trip(tmp_path):
+    from studio_launcher import load_driver_profile_rows, save_driver_profile_rows
+
+    path = tmp_path / "drivers.csv"
+    save_driver_profile_rows(
+        path,
+        [
+            {
+                "name": "T.J. Lee",
+                "car_number": "34",
+                "hometown": "Richmond",
+                "state": "VA",
+                "country": "USA",
+                "driving_style": "patient",
+                "sponsor": "RGC Motorsports",
+                "notes": "Strong on long runs",
+                "car_image": "cars/tj.png",
+            }
+        ],
+    )
+
+    rows = load_driver_profile_rows(path)
+
+    assert rows == [
+        {
+            "name": "T.J. Lee",
+            "car_number": "34",
+            "hometown": "Richmond",
+            "state": "VA",
+            "country": "USA",
+            "driving_style": "patient",
+            "sponsor": "RGC Motorsports",
+            "notes": "Strong on long runs",
+            "car_image": "cars/tj.png",
+        }
+    ]
+
+
 def test_tester_zip_excludes_private_local_files():
     assert should_include("README.md")
     assert should_include("install_studio.bat")

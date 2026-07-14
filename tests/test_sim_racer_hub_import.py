@@ -181,13 +181,14 @@ def test_summarize_driver_roster_from_bulk_page():
     assert rows[0]["country"] == "USA"
     assert rows[0]["driving_style"] == ""
     assert rows[0]["notes"] == ""
+    assert rows[0]["car_image"] == ""
 
 
 def test_merge_driver_roster_preserves_manual_notes(tmp_path):
     output = tmp_path / "drivers.csv"
     output.write_text(
-        "name,car_number,hometown,state,country,driving_style,sponsor,notes\n"
-        "Richard Holland2,51,Richmond,VA,USA,tire saver,RGC Motorsports,Great on long runs\n",
+        "name,car_number,hometown,state,country,driving_style,sponsor,notes,car_image\n"
+        "Richard Holland2,51,Richmond,VA,USA,tire saver,RGC Motorsports,Great on long runs,cars/richard.png\n",
         encoding="utf-8",
     )
 
@@ -203,6 +204,7 @@ def test_merge_driver_roster_preserves_manual_notes(tmp_path):
                 "driving_style": "",
                 "sponsor": "",
                 "notes": "",
+                "car_image": "",
             },
             {
                 "name": "T.J. Lee",
@@ -213,6 +215,7 @@ def test_merge_driver_roster_preserves_manual_notes(tmp_path):
                 "driving_style": "",
                 "sponsor": "",
                 "notes": "",
+                "car_image": "",
             },
         ],
     )
@@ -225,6 +228,7 @@ def test_merge_driver_roster_preserves_manual_notes(tmp_path):
     assert rows[0]["driving_style"] == "tire saver"
     assert rows[0]["sponsor"] == "RGC Motorsports"
     assert rows[0]["notes"] == "Great on long runs"
+    assert rows[0]["car_image"] == "cars/richard.png"
     assert rows[1]["name"] == "T.J. Lee"
     assert rows[1]["car_number"] == "34"
 

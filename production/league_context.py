@@ -15,6 +15,7 @@ class DriverProfile:
     driving_style: str = ""
     sponsor: str = ""
     notes: str = ""
+    car_image: str = ""
 
     def location(self):
         parts = [self.hometown, self.state, self.country]
@@ -30,6 +31,7 @@ class DriverProfile:
             "driving_style": self.driving_style,
             "sponsor": self.sponsor,
             "notes": self.notes,
+            "car_image": self.car_image,
             "location": self.location(),
         }
 
@@ -217,6 +219,7 @@ class LeagueContext:
             driving_style=self.clean(row.get("driving_style") or row.get("style")),
             sponsor=self.clean(row.get("sponsor")),
             notes=self.clean(row.get("notes")),
+            car_image=self.clean(row.get("car_image") or row.get("car_image_url")),
         )
 
     def stats_from_row(self, row):
