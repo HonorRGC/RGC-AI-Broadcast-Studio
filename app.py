@@ -799,7 +799,8 @@ def main():
         "League context: "
         f"{'ON' if engine.league_context.is_configured() else 'OFF'} "
         f"(drivers={engine.league_context.drivers_csv_path}, "
-        f"stats={engine.league_context.stats_csv_path})"
+        f"season={engine.league_context.season_stats_csv_path}, "
+        f"career={engine.league_context.career_stats_csv_path})"
     )
     voice_ready, voice_reason = booth.voice_status()
     voice_ids = booth.voice_id_status()
