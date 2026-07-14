@@ -60,6 +60,7 @@ class DriverProfile:
 class DriverStats:
     name: str = ""
     car_number: str = ""
+    stats_scope: str = ""
     starts: str = ""
     wins: str = ""
     top_fives: str = ""
@@ -78,6 +79,7 @@ class DriverStats:
         return {
             "name": self.name,
             "car_number": self.car_number,
+            "stats_scope": self.stats_scope,
             "starts": self.starts,
             "wins": self.wins,
             "top_fives": self.top_fives,
@@ -103,7 +105,7 @@ class DriverStats:
         if self.last_finish:
             details.append(f"last race finish: {self.ordinal(self.last_finish)}")
         if self.wins:
-            details.append(f"season wins: {self.wins}")
+            details.append(f"{self.scope_label()} wins: {self.wins}")
         if self.top_fives:
             details.append(f"top fives: {self.top_fives}")
         if self.avg_finish:
@@ -125,6 +127,12 @@ class DriverStats:
         if self.car_number:
             label = f"{label} in the number {self.car_number}"
         return f"{label} stats: " + "; ".join(details)
+
+    def scope_label(self):
+        scope = str(self.stats_scope or "season").strip().casefold()
+        if scope in ("career", "all", "all_seasons", "all seasons"):
+            return "career"
+        return "season"
 
     @staticmethod
     def ordinal(value):
@@ -226,6 +234,7 @@ class LeagueContext:
         return DriverStats(
             name=self.clean(row.get("name") or row.get("driver")),
             car_number=self.clean(row.get("car_number") or row.get("number")),
+            stats_scope=self.clean(row.get("stats_scope") or row.get("scope")),
             starts=self.clean(row.get("starts") or row.get("races")),
             wins=self.clean(row.get("wins")),
             top_fives=self.clean(row.get("top_fives") or row.get("top5")),

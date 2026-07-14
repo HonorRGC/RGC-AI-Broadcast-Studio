@@ -1872,7 +1872,7 @@ def build_league_tab(
         if not stats_path.exists():
             stats_path.write_text(
                 (
-                    "name,car_number,starts,wins,top_fives,top_tens,poles,"
+                    "name,car_number,stats_scope,starts,wins,top_fives,top_tens,poles,"
                     "avg_finish,last_finish,points_position,points_to_next,"
                     "track_starts,track_wins,best_track_finish,notes\n"
                 ),

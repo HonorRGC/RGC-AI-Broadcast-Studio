@@ -13,6 +13,7 @@ from urllib.request import Request, urlopen
 STATS_FIELDS = [
     "name",
     "car_number",
+    "stats_scope",
     "starts",
     "wins",
     "top_fives",
@@ -206,6 +207,7 @@ def summarize_driver_stats(
         races,
         driver_name=driver_name,
         track_ids=resolve_track_ids(page_html, track_name, track_id, track_config_id),
+        stats_scope=stats_scope_for_filters(season_id),
     )
 
 
@@ -241,6 +243,7 @@ def summarize_bulk_driver_stats(
                 driver_races,
                 driver_name=clean_driver_name(driver_info.get("driver_name", "")),
                 track_ids=track_ids,
+                stats_scope=stats_scope_for_filters(season_id),
             )
         )
 
@@ -302,6 +305,7 @@ def summarize_races(
     races,
     driver_name="",
     track_ids=None,
+    stats_scope="season",
 ):
     races = sorted(
         races,
@@ -378,6 +382,7 @@ def summarize_races(
     return {
         "name": driver_name,
         "car_number": str(most_recent.get("driver_number") or ""),
+        "stats_scope": stats_scope or "season",
         "starts": str(len(races)),
         "wins": str(count_finishes_at_or_better(finishes, 1)),
         "top_fives": str(count_finishes_at_or_better(finishes, 5)),
@@ -392,6 +397,10 @@ def summarize_races(
         "best_track_finish": str(min(track_finishes)) if track_finishes else "",
         "notes": "; ".join(notes),
     }
+
+
+def stats_scope_for_filters(season_id=""):
+    return "season" if str(season_id or "").strip() else "career"
 
 
 def merge_stats_row(output_path, new_row):

@@ -85,6 +85,7 @@ def test_summarizes_sim_racer_hub_driver_stats_for_filtered_season():
 
     assert row["name"] == "T.J. Lee"
     assert row["car_number"] == "34"
+    assert row["stats_scope"] == "season"
     assert row["starts"] == "2"
     assert row["wins"] == "1"
     assert row["top_fives"] == "1"
@@ -102,8 +103,8 @@ def test_summarizes_sim_racer_hub_driver_stats_for_filtered_season():
 def test_merge_stats_row_updates_existing_driver_by_name(tmp_path):
     output = tmp_path / "stats.csv"
     output.write_text(
-        "name,car_number,starts,wins,top_fives,top_tens,poles,avg_finish,last_finish,points_position,points_to_next,track_starts,track_wins,best_track_finish,notes\n"
-        "T.J. Lee,34,1,0,0,1,0,8.0,8,,,,,,old\n",
+        "name,car_number,stats_scope,starts,wins,top_fives,top_tens,poles,avg_finish,last_finish,points_position,points_to_next,track_starts,track_wins,best_track_finish,notes\n"
+        "T.J. Lee,34,season,1,0,0,1,0,8.0,8,,,,,,old\n",
         encoding="utf-8",
     )
 
@@ -122,8 +123,8 @@ def test_merge_stats_row_updates_existing_driver_by_name(tmp_path):
 def test_merge_stats_row_updates_old_sim_racer_hub_suffix_name(tmp_path):
     output = tmp_path / "stats.csv"
     output.write_text(
-        "name,car_number,starts,wins,top_fives,top_tens,poles,avg_finish,last_finish,points_position,points_to_next,track_starts,track_wins,best_track_finish,notes\n"
-        "Richard Holland2,,100,1,2,3,4,8.0,8,,,,,,old\n",
+        "name,car_number,stats_scope,starts,wins,top_fives,top_tens,poles,avg_finish,last_finish,points_position,points_to_next,track_starts,track_wins,best_track_finish,notes\n"
+        "Richard Holland2,,season,100,1,2,3,4,8.0,8,,,,,,old\n",
         encoding="utf-8",
     )
 
@@ -131,6 +132,7 @@ def test_merge_stats_row_updates_old_sim_racer_hub_suffix_name(tmp_path):
         output,
         {
             "name": "Richard Holland",
+            "stats_scope": "season",
             "starts": "182",
             "wins": "47",
             "top_fives": "124",
@@ -161,12 +163,23 @@ def test_bulk_import_summarizes_all_matching_drivers():
     )
 
     assert [row["name"] for row in rows] == ["T.J. Lee", "Justin Gledhill"]
+    assert rows[0]["stats_scope"] == "season"
     assert rows[0]["starts"] == "2"
     assert rows[0]["wins"] == "1"
     assert rows[0]["track_starts"] == "1"
     assert rows[1]["starts"] == "1"
     assert rows[1]["top_fives"] == "1"
     assert "37 race points" in rows[1]["notes"]
+
+
+def test_bulk_import_marks_career_scope_without_season_filter():
+    rows = summarize_bulk_driver_stats(
+        BULK_HTML,
+        league_id="1598",
+        series_id="3872",
+    )
+
+    assert rows[0]["stats_scope"] == "career"
 
 
 def test_summarize_driver_roster_from_bulk_page():
