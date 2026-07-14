@@ -1,12 +1,24 @@
 from __future__ import annotations
 
+import argparse
 from pathlib import Path
 
 from broadcaster.telemetry import IRacingTelemetry
 from production.car_paint_locator import default_paint_roots, find_car_paint
+from production.car_paint_preview import ensure_preview_file
 
 
 def main():
+    parser = argparse.ArgumentParser(
+        description="Probe local iRacing/Trading Paints car paint auto-detection."
+    )
+    parser.add_argument(
+        "--preview",
+        action="store_true",
+        help="Also create/test the PNG overlay preview cache for matched car paints.",
+    )
+    args = parser.parse_args()
+
     print("=" * 80)
     print("RGC AI Broadcast Studio - Paint Auto-Detect Probe")
     print("=" * 80)
@@ -33,6 +45,8 @@ def main():
 
     found = 0
     missing = 0
+    preview_ok = 0
+    preview_failed = 0
     for car_idx, driver in sorted(drivers.items(), key=lambda item: str(item[1].get("number", ""))):
         match = find_car_paint(driver, roots)
         label = f"#{driver.get('number', '?')} {driver.get('name', f'CarIdx {car_idx}')}"
@@ -44,14 +58,28 @@ def main():
             ready = "browser-ready" if match.browser_ready else "needs preview conversion"
             print(f"FOUND   {label} | car paint | cust_id={cust_id} | {ready}")
             print(f"        {match.path}")
+            if args.preview:
+                preview = ensure_preview_file(match.path, driver)
+                if preview:
+                    preview_ok += 1
+                    print(f"        preview OK: {preview}")
+                else:
+                    preview_failed += 1
+                    print("        preview FAILED: install/update Pillow or use a PNG/JPG paint.")
         else:
             missing += 1
             print(f"MISSING {label} | cust_id={cust_id} | car_path={car_path}")
 
     print("-" * 80)
     print(f"Paint matches: {found} found, {missing} missing")
+    if args.preview:
+        print(f"Overlay previews: {preview_ok} ready, {preview_failed} failed")
     if missing:
-        print("Tip: make sure Trading Paints Downloader is running and refresh/re-download current session paints.")
+        print(
+            "Tip: make sure Trading Paints Downloader is running and "
+            "refresh/re-download current session paints. Some drivers may simply "
+            "not have a custom car paint downloaded."
+        )
 
 
 if __name__ == "__main__":

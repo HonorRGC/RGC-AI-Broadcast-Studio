@@ -56,6 +56,8 @@ def normalize_cust_id(value):
     if value in (None, ""):
         return ""
     text = str(value).strip()
+    if text.startswith("-"):
+        return ""
     if text.endswith(".0"):
         text = text[:-2]
     return "".join(ch for ch in text if ch.isdigit())

@@ -3,6 +3,7 @@ from production.car_paint_locator import (
     car_path_candidates,
     default_paint_roots,
     find_car_paint,
+    normalize_cust_id,
 )
 
 
@@ -14,6 +15,11 @@ def test_candidate_filenames_include_trading_paints_car_files():
     assert "car_decal_90223.tga" in names
     assert "helmet_90223.tga" not in names
     assert "suit_90223.tga" not in names
+
+
+def test_normalize_cust_id_ignores_pace_car_negative_id():
+    assert normalize_cust_id("-1") == ""
+    assert candidate_filenames("-1") == []
 
 
 def test_car_path_candidates_include_exact_and_last_folder(tmp_path):
