@@ -429,6 +429,32 @@ def test_crank_fixed_falls_back_to_onboard_car_cameras_when_static_is_missing():
     assert telemetry.switches == [("14", 8, 0)]
 
 
+def test_crank_fixed_skips_scenic_before_onboard_fallback():
+    telemetry = CameraTelemetry()
+    telemetry.get_camera_groups = lambda: [
+        {"GroupNum": 1, "GroupName": "Scenic"},
+        {"GroupNum": 8, "GroupName": "Gearbox"},
+    ]
+    director = CameraDirector(mode="auto")
+    feature = SimpleNamespace(
+        camera_target_car_idx=None,
+        camera_sequence=(),
+        camera_sequence_steps=((3, "Crank Fixed", 0),),
+        dedupe_key="crank_it_up:10",
+        category="crank_it_up",
+        message="Crank It Up",
+        silent=True,
+        feature_duration_seconds=10.0,
+        camera_return_home_after_sequence=True,
+    )
+
+    decision = director.follow(feature, telemetry)
+
+    assert decision.status == "switched"
+    assert decision.group_name == "Gearbox"
+    assert telemetry.switches == [("14", 8, 0)]
+
+
 def test_tv_fixed_request_prefers_exact_tv_fixed_camera_group():
     telemetry = CameraTelemetry()
     director = CameraDirector(mode="auto", preferred_group="TV Fixed")

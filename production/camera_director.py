@@ -460,7 +460,6 @@ class CameraDirector:
                 "tv static",
                 "fixed",
                 "static",
-                "scenic",
                 "spectator",
                 "turn",
                 "gearbox",
