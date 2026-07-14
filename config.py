@@ -12,6 +12,18 @@ def env_int(name, default):
         return int(default)
 
 
+def env_int_list(name, default=""):
+    values = []
+    for raw_value in os.getenv(name, default).replace(";", ",").split(","):
+        try:
+            value = int(str(raw_value).strip())
+        except (TypeError, ValueError):
+            continue
+        if value > 0 and value not in values:
+            values.append(value)
+    return values
+
+
 # OpenAI
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 USE_OPENAI = os.getenv("USE_OPENAI", "true").lower() == "true"
@@ -33,6 +45,7 @@ PIT_VOICE_ID = os.getenv("PIT_VOICE_ID")
 USE_LEAGUE_DRIVER_NOTES = os.getenv("USE_LEAGUE_DRIVER_NOTES", "false").lower() == "true"
 LEAGUE_DRIVERS_CSV = os.getenv("LEAGUE_DRIVERS_CSV", "league/drivers.csv")
 LEAGUE_STATS_CSV = os.getenv("LEAGUE_STATS_CSV", "league/stats.csv")
+STAGE_END_LAPS = env_int_list("STAGE_END_LAPS", "")
 
 
 # Overlay graphics

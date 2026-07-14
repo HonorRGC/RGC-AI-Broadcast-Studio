@@ -1,6 +1,7 @@
 from broadcast.broadcast_queue import BroadcastQueue
 from broadcaster.race_brain import RaceBrain
 from broadcaster.race_director import RaceDirector, RacePhase
+from config import STAGE_END_LAPS
 from production.commentary_cleaner import CommentaryCleaner
 from production.caution_pit_reporter import CautionPitReporter
 from production.action_detector import ActionDetector
@@ -82,6 +83,8 @@ class BroadcastEngine:
         self.restart_launch_story_queued = False
         self.caution_started_session_num = None
         self.caution_started_session_time = None
+        self.stage_end_laps = tuple(sorted(set(int(lap) for lap in STAGE_END_LAPS if int(lap) > 0)))
+        self.stages_announced = set()
 
     def tick(self, telemetry):
         session_type_reader = getattr(telemetry, "get_session_type", None)
@@ -151,7 +154,12 @@ class BroadcastEngine:
             scheduler=self.broadcast_queue,
         )
         self._handle_green_phase_change()
-        self._handle_caution_phase_change(telemetry)
+        self._handle_caution_phase_change(
+            telemetry,
+            current_lap=current_lap,
+            results=results,
+            driver_lookup=driver_lookup,
+        )
         self._queue_mid_race_join_note(current_lap, total_laps, telemetry.get_track_info())
 
         if self.race_director.phase == RacePhase.CAUTION:
@@ -229,6 +237,14 @@ class BroadcastEngine:
                     race_state.green_lap_count,
                 )
             if queued_quarter_rundown:
+                return self.broadcast_queue.next_item()
+            queued_stage_end = self._queue_stage_end_if_due(
+                results,
+                driver_lookup,
+                current_lap,
+                caution=False,
+            )
+            if queued_stage_end:
                 return self.broadcast_queue.next_item()
             queued_final_battle = self._queue_final_laps_battle(
                 story_results,
@@ -331,7 +347,13 @@ class BroadcastEngine:
         self.editorial_producer.clear()
         self.restart_launch_story_queued = False
 
-    def _handle_caution_phase_change(self, telemetry):
+    def _handle_caution_phase_change(
+        self,
+        telemetry,
+        current_lap=0,
+        results=None,
+        driver_lookup=None,
+    ):
         if not (
             self.race_director.phase_changed
             and self.race_director.phase == RacePhase.CAUTION
@@ -345,6 +367,12 @@ class BroadcastEngine:
         )
         self.caution_started_session_time = (
             session_time_reader() if session_time_reader else None
+        )
+        self._queue_stage_end_if_due(
+            results or [],
+            driver_lookup or {},
+            current_lap,
+            caution=True,
         )
 
     def _detect_mid_race_start(
@@ -1276,6 +1304,100 @@ class BroadcastEngine:
             "Before this restart, here is the top ten: "
             f"{'; '.join(entries)}."
         )
+
+    def _queue_stage_end_if_due(self, results, driver_lookup, current_lap, caution=False):
+        stage_number, stage_lap = self.stage_due(current_lap)
+        if not stage_number:
+            return False
+
+        message = self.build_stage_end_message(
+            stage_number,
+            stage_lap,
+            results,
+            driver_lookup,
+            caution=caution,
+        )
+        if not message:
+            return False
+
+        self.stages_announced.add(stage_number)
+        if caution:
+            self.rewrite_pending_caution_as_stage_break(stage_number, stage_lap)
+            delay = 2.0
+            priority = 11
+        else:
+            delay = 0.0
+            priority = 12
+
+        self.broadcast_queue.add(
+            message,
+            priority=priority,
+            category="stage_end",
+            protected=True,
+            speaker="lead",
+            delay_seconds=delay,
+            expires_after=90,
+            dedupe_key=f"stage_end:{stage_number}:{stage_lap}",
+        )
+        return True
+
+    def stage_due(self, current_lap):
+        current_lap = self.safe_int(current_lap, 0)
+        if current_lap <= 0:
+            return (0, 0)
+
+        for index, stage_lap in enumerate(self.stage_end_laps, start=1):
+            if index in self.stages_announced:
+                continue
+            if current_lap >= stage_lap:
+                return (index, stage_lap)
+        return (0, 0)
+
+    def build_stage_end_message(
+        self,
+        stage_number,
+        stage_lap,
+        results,
+        driver_lookup,
+        caution=False,
+    ):
+        ordered = self.sorted_running_order(results)[:10]
+        if not ordered:
+            return ""
+
+        winner = self.driver_label(ordered[0], driver_lookup)
+        top_ten = [
+            f"{self.position_word(index)}, {self.driver_label(car, driver_lookup)}"
+            for index, car in enumerate(ordered, start=1)
+        ]
+        caution_phrase = (
+            " The caution is for the scheduled stage break."
+            if caution
+            else " The race stays green, but those stage points are now locked in."
+        )
+        return (
+            f"Stage {stage_number} is complete at lap {stage_lap}. "
+            f"{winner} wins the stage.{caution_phrase} "
+            f"The stage points top ten: {'; '.join(top_ten)}."
+        )
+
+    def driver_label(self, car, driver_lookup):
+        car_idx = car.get("CarIdx")
+        driver = driver_lookup.get(car_idx, {})
+        number = driver.get("number", "?")
+        name = driver.get("name", f"Car {car_idx}")
+        return f"the {number} of {name}"
+
+    def rewrite_pending_caution_as_stage_break(self, stage_number, stage_lap):
+        for item in self.broadcast_queue.items:
+            if item.dedupe_key != "race_control:caution":
+                continue
+            item.message = (
+                f"Caution is out for the end of Stage {stage_number} at lap {stage_lap}. "
+                "That is a scheduled stage break, and the field will reset under yellow."
+            )
+            return True
+        return False
 
     def position_word(self, position):
         words = {

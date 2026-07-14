@@ -121,6 +121,75 @@ def test_engine_queues_exactly_one_initial_green_flag():
     assert pending_green == []
 
 
+def test_engine_queues_stage_end_points_top_ten_under_green():
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    engine.stage_end_laps = (30,)
+    results = [
+        {"CarIdx": index, "Position": index}
+        for index in range(10)
+    ]
+    drivers = {
+        index: {"name": f"Driver {index + 1}", "number": str(index + 1)}
+        for index in range(10)
+    }
+
+    queued = engine._queue_stage_end_if_due(
+        results,
+        drivers,
+        current_lap=30,
+        caution=False,
+    )
+
+    assert queued is True
+    item = engine.broadcast_queue.next_item()
+    assert item.category == "stage_end"
+    assert "Stage 1 is complete at lap 30" in item.message
+    assert "wins the stage" in item.message
+    assert "stage points top ten" in item.message
+
+
+def test_engine_rewrites_caution_as_stage_break_when_stage_caution_flies():
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    engine.stage_end_laps = (30,)
+    engine.broadcast_queue.add(
+        "Trouble on the speedway - caution is out here at Daytona.",
+        priority=12,
+        category="race_control",
+        protected=True,
+        dedupe_key="race_control:caution",
+    )
+    results = [{"CarIdx": 0, "Position": 0}]
+    drivers = {0: {"name": "Stage Winner", "number": "24"}}
+
+    queued = engine._queue_stage_end_if_due(
+        results,
+        drivers,
+        current_lap=30,
+        caution=True,
+    )
+
+    assert queued is True
+    caution_item = [
+        item for item in engine.broadcast_queue.items
+        if item.dedupe_key == "race_control:caution"
+    ][0]
+    assert "scheduled stage break" in caution_item.message
+    assert "Stage 1" in caution_item.message
+
+
+def test_engine_stage_end_only_queues_once():
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    engine.stage_end_laps = (30,)
+    results = [{"CarIdx": 0, "Position": 0}]
+    drivers = {0: {"name": "Stage Winner", "number": "24"}}
+
+    first = engine._queue_stage_end_if_due(results, drivers, current_lap=30)
+    second = engine._queue_stage_end_if_due(results, drivers, current_lap=31)
+
+    assert first is True
+    assert second is False
+
+
 def test_engine_uses_field_lap_when_spectator_lap_lags():
     engine = BroadcastEngine(openai_director=SilentOpenAI())
 

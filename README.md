@@ -81,6 +81,7 @@ Then enable league context in `.env`:
 USE_LEAGUE_DRIVER_NOTES=true
 LEAGUE_DRIVERS_CSV=league/drivers.csv
 LEAGUE_STATS_CSV=league/stats.csv
+STAGE_END_LAPS=30,60
 ```
 
 For official races or unknown fields, leave this off:
@@ -94,6 +95,8 @@ Fill in hometown, state, country, driving style, sponsor, and notes for the driv
 When OpenAI is enabled, race-story commentary can use one verified league detail when it naturally fits. For example, it may mention a driver’s hometown, driving style, or sponsor during a pass, battle, pit call, or momentum update. It should not invent missing facts or force a sponsor mention into every call.
 
 League stats are also treated as verified context. For example, the broadcast may mention points position, last finish, wins, average finish, or prior track history when it naturally fits the current story.
+
+For leagues that use stages, set `STAGE_END_LAPS` to the laps where stage points are awarded, such as `30,60`. If the race stays green, the broadcast will still call the stage end and read the stage-points top ten. If a caution comes out at that stage lap, the caution call is treated as a scheduled stage break instead of an accident caution.
 
 See [docs/V1_LEAGUE_MODE.md](docs/V1_LEAGUE_MODE.md) for the league-mode and Sim Racer Hub importer plan.
 

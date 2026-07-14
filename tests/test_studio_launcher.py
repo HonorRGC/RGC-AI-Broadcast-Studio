@@ -105,6 +105,7 @@ def test_launcher_defaults_include_league_stats_csv():
 
     assert defaults["LEAGUE_DRIVERS_CSV"] == "league/drivers.csv"
     assert defaults["LEAGUE_STATS_CSV"] == "league/stats.csv"
+    assert defaults["STAGE_END_LAPS"] == ""
     assert "/assets/rgc_motorsports.png" in defaults["OVERLAY_BRAND_GRAPHICS"]
     assert defaults["PRACTICE_MUSIC_PLAYLIST"] == ""
     assert defaults["STUDIO_VOLUME"] == "65"

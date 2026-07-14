@@ -87,6 +87,7 @@ LAUNCHER_FIELDS = [
     ("USE_LEAGUE_DRIVER_NOTES", "false"),
     ("LEAGUE_DRIVERS_CSV", "league/drivers.csv"),
     ("LEAGUE_STATS_CSV", "league/stats.csv"),
+    ("STAGE_END_LAPS", ""),
 ]
 
 SIM_RACER_HUB_FIELDS = [
