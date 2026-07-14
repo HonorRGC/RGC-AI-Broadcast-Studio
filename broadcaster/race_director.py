@@ -237,18 +237,28 @@ class RaceDirector:
             return
 
         track_name = self.get_track_name(track_info)
+        extended_yellow = self.race_started and self.previous_phase == RacePhase.ONE_TO_GREEN
+        if extended_yellow:
+            message = (
+                f"The yellow is being extended one more lap here at {track_name}. "
+                "Race control is giving the field another lap to get lined up for the restart."
+            )
+            dedupe_key = "race_control:caution_extended"
+            camera_focus_incident = False
+        else:
+            message = f"Trouble on the speedway - caution is out here at {track_name}."
+            dedupe_key = "race_control:caution"
+            camera_focus_incident = True
 
         scheduler.add(
-            (
-                f"Trouble on the speedway - caution is out here at {track_name}."
-            ),
+            message,
             priority=12,
             category="race_control",
             protected=True,
             speaker="lead",
             expires_after=30,
-            dedupe_key="race_control:caution",
-            camera_focus_incident=True,
+            dedupe_key=dedupe_key,
+            camera_focus_incident=camera_focus_incident,
             camera_incident_group="Far Chase",
         )
 

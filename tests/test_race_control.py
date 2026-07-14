@@ -193,6 +193,20 @@ def test_caution_uses_immediate_trouble_language():
     assert queue.items[0].camera_incident_group == "Far Chase"
 
 
+def test_extended_yellow_is_not_called_new_trouble():
+    director = RaceDirector()
+    director.race_started = True
+    director.previous_phase = RacePhase.ONE_TO_GREEN
+    queue = BroadcastQueue()
+
+    director.handle_caution(queue, {"track_name": "Homestead"})
+
+    assert "yellow is being extended" in queue.items[0].message
+    assert "Trouble on the speedway" not in queue.items[0].message
+    assert queue.items[0].dedupe_key == "race_control:caution_extended"
+    assert queue.items[0].camera_focus_incident is False
+
+
 def test_one_to_green_preserves_a_pending_caution_pit_summary():
     director = RaceDirector()
     director.race_started = True

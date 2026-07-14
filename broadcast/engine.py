@@ -1506,7 +1506,10 @@ class BroadcastEngine:
         caution_just_started = (
             self.race_director.phase == RacePhase.CAUTION
             and self.race_director.phase_changed
-            and self.race_director.previous_phase != RacePhase.CAUTION
+            and self.race_director.previous_phase not in (
+                RacePhase.CAUTION,
+                RacePhase.ONE_TO_GREEN,
+            )
         )
         if current_lap < self.INCIDENT_DETECTION_AFTER_LAP:
             if caution_just_started:
