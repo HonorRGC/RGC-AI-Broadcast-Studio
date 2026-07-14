@@ -6,7 +6,6 @@ from config import (
     LEAGUE_CAREER_STATS_CSV,
     LEAGUE_DRIVERS_CSV,
     LEAGUE_SEASON_STATS_CSV,
-    LEAGUE_STATS_CSV,
     USE_LEAGUE_DRIVER_NOTES,
 )
 
@@ -165,13 +164,11 @@ class LeagueContext:
     def __init__(
         self,
         drivers_csv_path=LEAGUE_DRIVERS_CSV,
-        stats_csv_path=LEAGUE_STATS_CSV,
         season_stats_csv_path=LEAGUE_SEASON_STATS_CSV,
         career_stats_csv_path=LEAGUE_CAREER_STATS_CSV,
         enabled=USE_LEAGUE_DRIVER_NOTES,
     ):
         self.drivers_csv_path = Path(drivers_csv_path)
-        self.stats_csv_path = Path(stats_csv_path)
         self.season_stats_csv_path = Path(season_stats_csv_path)
         self.career_stats_csv_path = Path(career_stats_csv_path)
         self.enabled = bool(enabled)
@@ -221,7 +218,6 @@ class LeagueContext:
     def stats_csv_paths(self):
         paths = []
         for path, default_scope in (
-            (self.stats_csv_path, ""),
             (self.season_stats_csv_path, "season"),
             (self.career_stats_csv_path, "career"),
         ):

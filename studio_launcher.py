@@ -86,7 +86,6 @@ LAUNCHER_FIELDS = [
     ("POST_RACE_FINISH_CAMERA_DELAY_SECONDS", "180"),
     ("USE_LEAGUE_DRIVER_NOTES", "false"),
     ("LEAGUE_DRIVERS_CSV", "league/drivers.csv"),
-    ("LEAGUE_STATS_CSV", "league/stats.csv"),
     ("LEAGUE_SEASON_STATS_CSV", "league/season.csv"),
     ("LEAGUE_CAREER_STATS_CSV", "league/career.csv"),
     ("STAGE_END_LAPS", ""),
@@ -99,7 +98,6 @@ SIM_RACER_HUB_FIELDS = [
     ("SIMRACERHUB_SEASON_ID", ""),
     ("SIMRACERHUB_TRACK_NAME", ""),
     ("SIMRACERHUB_MIN_STARTS", "2"),
-    ("SIMRACERHUB_STATS_OUTPUT", "league/stats.csv"),
     ("SIMRACERHUB_SEASON_STATS_OUTPUT", "league/season.csv"),
     ("SIMRACERHUB_CAREER_STATS_OUTPUT", "league/career.csv"),
     ("SIMRACERHUB_DRIVERS_OUTPUT", "league/drivers.csv"),
@@ -368,7 +366,6 @@ def build_health_status(values, root=ROOT, broadcast_running=False):
         drivers_path = resolve_project_path(values.get("LEAGUE_DRIVERS_CSV"), root)
         season_path = resolve_project_path(values.get("LEAGUE_SEASON_STATS_CSV"), root)
         career_path = resolve_project_path(values.get("LEAGUE_CAREER_STATS_CSV"), root)
-        legacy_stats_path = resolve_project_path(values.get("LEAGUE_STATS_CSV"), root)
         missing_files = [
             label
             for label, path in (
@@ -378,10 +375,6 @@ def build_health_status(values, root=ROOT, broadcast_running=False):
             )
             if not path.exists()
         ]
-        if missing_files and legacy_stats_path.exists():
-            missing_files = [
-                label for label in missing_files if label not in {"season stats", "career stats"}
-            ]
         if missing_files:
             rows.append(
                 (
@@ -552,7 +545,7 @@ def ensure_league_files(root=ROOT):
     league_dir.mkdir(exist_ok=True)
 
     copied = []
-    for name in ("drivers.csv", "stats.csv", "season.csv", "career.csv"):
+    for name in ("drivers.csv", "season.csv", "career.csv"):
         source = root / "league.example" / name
         target = league_dir / name
         if source.exists() and not target.exists():
@@ -719,7 +712,7 @@ def sim_racer_hub_import_command(
     season_id="",
     track_name="",
     min_starts="1",
-    output="league/stats.csv",
+    output="league/season.csv",
     drivers_output="league/drivers.csv",
     career_mode=False,
     dry_run=False,
@@ -758,7 +751,7 @@ def run_sim_racer_hub_import(
     season_id="",
     track_name="",
     min_starts="1",
-    output="league/stats.csv",
+    output="league/season.csv",
     drivers_output="league/drivers.csv",
     career_mode=False,
     dry_run=False,
@@ -1350,7 +1343,7 @@ def run_gui():
         else:
             messagebox.showinfo(
                 "League files ready",
-                "league/drivers.csv and league/stats.csv already exist.",
+                "league/drivers.csv, league/season.csv, and league/career.csv already exist.",
             )
 
     def start_full_ai():
@@ -1580,7 +1573,7 @@ def build_league_tab(
         "SIMRACERHUB_MIN_STARTS": existing.get("SIMRACERHUB_MIN_STARTS", "2"),
         "SIMRACERHUB_SEASON_STATS_OUTPUT": existing.get(
             "SIMRACERHUB_SEASON_STATS_OUTPUT",
-            existing.get("SIMRACERHUB_STATS_OUTPUT", "league/season.csv"),
+            "league/season.csv",
         ),
         "SIMRACERHUB_CAREER_STATS_OUTPUT": existing.get(
             "SIMRACERHUB_CAREER_STATS_OUTPUT",
@@ -1799,7 +1792,7 @@ def build_league_tab(
         entry_widget.delete(0, "end")
         entry_widget.insert(0, value)
 
-    def set_driver_csv_value(driver_csv, season_stats_csv="", career_stats_csv="", legacy_stats_csv=""):
+    def set_driver_csv_value(driver_csv, season_stats_csv="", career_stats_csv=""):
         driver_csv = str(driver_csv or "league/drivers.csv").strip()
         driver_csv_var.set(driver_csv)
         if "LEAGUE_DRIVERS_CSV" in settings_entries:
@@ -1816,8 +1809,6 @@ def build_league_tab(
                 set_entry_value(settings_entries["LEAGUE_CAREER_STATS_CSV"], career_stats_csv)
             if "SIMRACERHUB_CAREER_STATS_OUTPUT" in entries:
                 set_entry_value(entries["SIMRACERHUB_CAREER_STATS_OUTPUT"], career_stats_csv)
-        if legacy_stats_csv and "LEAGUE_STATS_CSV" in settings_entries:
-            set_entry_value(settings_entries["LEAGUE_STATS_CSV"], legacy_stats_csv)
 
     def sync_driver_csv_from_settings(values):
         set_driver_csv_value(
@@ -1829,9 +1820,6 @@ def build_league_tab(
             or "",
             values.get("LEAGUE_CAREER_STATS_CSV")
             or values.get("SIMRACERHUB_CAREER_STATS_OUTPUT")
-            or "",
-            values.get("LEAGUE_STATS_CSV")
-            or values.get("SIMRACERHUB_STATS_OUTPUT")
             or "",
         )
         load_driver_profiles()

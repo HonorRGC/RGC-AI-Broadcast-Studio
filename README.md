@@ -44,7 +44,7 @@ An early Windows-friendly launcher is available:
 python studio_launcher.py
 ```
 
-The launcher can save the main `.env` settings, create `league\drivers.csv` and `league\stats.csv` from the examples, and start either a full AI broadcast or a Producer Assist broadcast with OpenAI and ElevenLabs disabled. Use `Start Broadcast` for normal AI testing with overlay, cameras, and incident replay; use `Start Producer Assist` when a human broadcaster wants live graphics, camera direction, and race information without AI voices; use `Stop Broadcast` to stop a broadcast launched from the program.
+The launcher can save the main `.env` settings, create `league\drivers.csv`, `league\season.csv`, and `league\career.csv` from the examples, and start either a full AI broadcast or a Producer Assist broadcast with OpenAI and ElevenLabs disabled. Use `Start Broadcast` for normal AI testing with overlay, cameras, and incident replay; use `Start Producer Assist` when a human broadcaster wants live graphics, camera direction, and race information without AI voices; use `Stop Broadcast` to stop a broadcast launched from the program.
 
 Use `Choose Sponsor Logos` to copy sponsor or league graphics into the overlay assets folder and update the title-logo rotation shown in the upper-left of the broadcast overlay.
 

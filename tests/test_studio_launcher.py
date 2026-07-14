@@ -100,11 +100,10 @@ def test_update_status_from_release_detects_current_version():
     assert "up to date" in message
 
 
-def test_launcher_defaults_include_league_stats_csv():
+def test_launcher_defaults_include_split_league_stats_csvs():
     defaults = launcher_defaults({})
 
     assert defaults["LEAGUE_DRIVERS_CSV"] == "league/drivers.csv"
-    assert defaults["LEAGUE_STATS_CSV"] == "league/stats.csv"
     assert defaults["LEAGUE_SEASON_STATS_CSV"] == "league/season.csv"
     assert defaults["LEAGUE_CAREER_STATS_CSV"] == "league/career.csv"
     assert defaults["STAGE_END_LAPS"] == ""
@@ -194,14 +193,16 @@ def test_launcher_health_reports_league_files_ready(tmp_path):
     league_dir = tmp_path / "league"
     league_dir.mkdir()
     (league_dir / "drivers.csv").write_text("name,car_number\n", encoding="utf-8")
-    (league_dir / "stats.csv").write_text("name,starts\n", encoding="utf-8")
+    (league_dir / "season.csv").write_text("name,starts\n", encoding="utf-8")
+    (league_dir / "career.csv").write_text("name,starts\n", encoding="utf-8")
     values = launcher_defaults(
         {
             "USE_OPENAI": "false",
             "USE_ELEVENLABS": "false",
             "USE_LEAGUE_DRIVER_NOTES": "true",
             "LEAGUE_DRIVERS_CSV": "league/drivers.csv",
-            "LEAGUE_STATS_CSV": "league/stats.csv",
+            "LEAGUE_SEASON_STATS_CSV": "league/season.csv",
+            "LEAGUE_CAREER_STATS_CSV": "league/career.csv",
         }
     )
 
@@ -224,7 +225,7 @@ def test_launcher_saves_known_settings(tmp_path):
         {
             "USE_OPENAI": "false",
             "OVERLAY_EVENT_TITLE": "League Race",
-            "LEAGUE_STATS_CSV": "league/stats.csv",
+            "LEAGUE_SEASON_STATS_CSV": "league/season.csv",
         },
         env_path,
     )
@@ -232,7 +233,7 @@ def test_launcher_saves_known_settings(tmp_path):
     saved = env_path.read_text(encoding="utf-8")
     assert "USE_OPENAI=false" in saved
     assert "OVERLAY_EVENT_TITLE=League Race" in saved
-    assert "LEAGUE_STATS_CSV=league/stats.csv" in saved
+    assert "LEAGUE_SEASON_STATS_CSV=league/season.csv" in saved
 
 
 def test_launcher_saves_sim_racer_hub_settings(tmp_path):
@@ -456,7 +457,7 @@ def test_launcher_builds_sim_racer_hub_season_import_command():
         season_id="29247",
         track_name="Nashville",
         min_starts="2",
-        output="league/stats.csv",
+        output="league/season.csv",
     )
 
     assert command[0] == sys.executable

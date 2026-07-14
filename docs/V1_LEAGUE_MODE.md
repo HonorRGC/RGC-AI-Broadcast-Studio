@@ -38,7 +38,7 @@ These stats are added to the verified driver context OpenAI receives, so the bro
 The first Sim Racer Hub importer is available as a command-line bridge:
 
 ```powershell
-python tools\sim_racer_hub_import.py "https://simracerhub.com/driver_stats.php?driver_id=YOUR_DRIVER_ID" --league-id YOUR_LEAGUE_ID --season-id YOUR_SEASON_ID --output league\stats.csv
+python tools\sim_racer_hub_import.py "https://simracerhub.com/driver_stats.php?driver_id=YOUR_DRIVER_ID" --league-id YOUR_LEAGUE_ID --season-id YOUR_SEASON_ID --output league\season.csv
 ```
 
 Useful placeholders for your league:
@@ -75,7 +75,7 @@ That produces series-career totals for each driver, including total starts, wins
 To add track-history stats for the race you are about to broadcast, include `--track-name`:
 
 ```powershell
-python tools\sim_racer_hub_import.py "https://simracerhub.com/league_stats.php?series_id=YOUR_SERIES_ID" --bulk --league-id YOUR_LEAGUE_ID --series-id YOUR_SERIES_ID --track-name Nashville --min-starts 10 --output league\stats.csv
+python tools\sim_racer_hub_import.py "https://simracerhub.com/league_stats.php?series_id=YOUR_SERIES_ID" --bulk --league-id YOUR_LEAGUE_ID --series-id YOUR_SERIES_ID --track-name Nashville --min-starts 10 --output league\career.csv
 ```
 
 The importer matches the name against Sim Racer Hub track names and config names, then fills `track_starts`, `track_wins`, `best_track_finish`, and a note about the driver's most recent race at that track.

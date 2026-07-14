@@ -44,7 +44,6 @@ PIT_VOICE_ID = os.getenv("PIT_VOICE_ID")
 # League context
 USE_LEAGUE_DRIVER_NOTES = os.getenv("USE_LEAGUE_DRIVER_NOTES", "false").lower() == "true"
 LEAGUE_DRIVERS_CSV = os.getenv("LEAGUE_DRIVERS_CSV", "league/drivers.csv")
-LEAGUE_STATS_CSV = os.getenv("LEAGUE_STATS_CSV", "league/stats.csv")
 LEAGUE_SEASON_STATS_CSV = os.getenv("LEAGUE_SEASON_STATS_CSV", "league/season.csv")
 LEAGUE_CAREER_STATS_CSV = os.getenv("LEAGUE_CAREER_STATS_CSV", "league/career.csv")
 STAGE_END_LAPS = env_int_list("STAGE_END_LAPS", "")
