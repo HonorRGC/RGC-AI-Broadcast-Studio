@@ -1581,6 +1581,12 @@ class BroadcastEngine:
         )
         for event in events:
             is_pack_wreck = event.trouble_type == "pack wreck"
+            if (
+                is_pack_wreck
+                and not caution_just_started
+                and not self.is_final_lap_window(current_lap, total_laps)
+            ):
+                continue
             replay_eligible = (
                 (not is_pack_wreck and event.incident_delta >= 2)
                 or (not is_pack_wreck and event.trouble_type == "caution candidate")

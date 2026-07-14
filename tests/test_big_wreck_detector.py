@@ -68,3 +68,53 @@ def test_pack_wreck_needs_multiple_cars():
     )
 
     assert events == []
+
+
+def test_green_flag_pit_exit_does_not_create_pack_wreck():
+    detector = IncidentDetector()
+    drivers = {
+        index: {"name": f"Driver {index + 1}", "number": str(index + 1)}
+        for index in range(5)
+    }
+    initial_results = [
+        {"CarIdx": index, "Position": index + 1, "Incidents": 0}
+        for index in range(5)
+    ]
+    pit_results = [
+        {"CarIdx": index, "Position": index + 1, "Incidents": 0}
+        for index in range(5)
+    ]
+    exit_results = [
+        {"CarIdx": index, "Position": index + 12, "Incidents": 0}
+        for index in range(5)
+    ]
+
+    detector.analyze(
+        results=initial_results,
+        driver_lookup=drivers,
+        current_lap=30,
+        lap_dist_pct_status=[0.80, 0.81, 0.82, 0.83, 0.84],
+        est_time_status=[30.0, 30.2, 30.4, 30.6, 30.8],
+        pit_road_status=[False] * 5,
+        suppress_soft_events=True,
+    )
+    detector.analyze(
+        results=pit_results,
+        driver_lookup=drivers,
+        current_lap=31,
+        lap_dist_pct_status=[0.90, 0.91, 0.92, 0.93, 0.94],
+        est_time_status=[35.0, 35.2, 35.4, 35.6, 35.8],
+        pit_road_status=[True] * 5,
+        suppress_soft_events=True,
+    )
+    events = detector.analyze(
+        results=exit_results,
+        driver_lookup=drivers,
+        current_lap=32,
+        lap_dist_pct_status=[0.10, 0.11, 0.12, 0.13, 0.14],
+        est_time_status=[60.0, 60.2, 60.4, 60.6, 60.8],
+        pit_road_status=[False] * 5,
+        suppress_soft_events=True,
+    )
+
+    assert events == []

@@ -155,6 +155,17 @@ class IncidentDetector:
                 )
                 continue
 
+            if state.last_on_pit_road:
+                self.update_state(
+                    state,
+                    incident_count,
+                    position,
+                    lap_dist_pct,
+                    est_time,
+                    on_pit_road,
+                )
+                continue
+
             event = self.detect_trouble(
                 state=state,
                 incident_count=incident_count,

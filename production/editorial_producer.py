@@ -48,10 +48,12 @@ class EditorialProducer:
         self.items: List[EditorialItem] = []
         self.recent_headlines: Dict[str, float] = {}
         self.recent_driver_mentions: Dict[str, float] = {}
+        self.driver_normal_story_counts: Dict[str, int] = {}
 
         self.timeline = EditorialTimeline()
         self.minimum_repeat_seconds = 120
         self.minimum_driver_repeat_seconds = 150
+        self.max_normal_driver_stories = 2
         self.max_items = 50
 
     # ---------------------------------------------------------
@@ -217,11 +219,22 @@ class EditorialProducer:
                 reason="Late race is focused on the leaders.",
             )
 
+        if self.should_hold_for_driver_saturation(matching_item):
+            return EditorialDecision(
+                decision_type=EditorialDecisionType.HOLD,
+                reason="Driver has already had enough routine story airtime.",
+            )
+
         matching_item.aired_count += 1
         matching_item.last_aired_at = time.time()
         self.recent_headlines[matching_item.headline] = time.time()
         if matching_item.driver_name:
             self.recent_driver_mentions[matching_item.driver_name.casefold()] = time.time()
+            if self.is_normal_driver_story(matching_item):
+                key = matching_item.driver_name.casefold()
+                self.driver_normal_story_counts[key] = (
+                    self.driver_normal_story_counts.get(key, 0) + 1
+                )
 
         return EditorialDecision(
             decision_type=EditorialDecisionType.AIR_NOW,
@@ -325,6 +338,32 @@ class EditorialProducer:
             return False
         return True
 
+    def should_hold_for_driver_saturation(self, item):
+        if not self.is_normal_driver_story(item):
+            return False
+
+        key = item.driver_name.casefold()
+        return (
+            self.driver_normal_story_counts.get(key, 0)
+            >= self.max_normal_driver_stories
+        )
+
+    def is_normal_driver_story(self, item):
+        if not item.driver_name:
+            return False
+        if item.priority >= 9:
+            return False
+        return item.story_type in {
+            "biggest_mover",
+            "top_five_charge",
+            "momentum",
+            "fading_driver",
+            "race_recovery",
+            "race_fade",
+            "pit_cycle_memory",
+            "pit_strategy_context",
+        }
+
     def can_air(self, item):
         if item.driver_name and item.priority < 10:
             last_driver_time = self.recent_driver_mentions.get(
@@ -369,4 +408,5 @@ class EditorialProducer:
         self.items = []
         self.recent_headlines = {}
         self.recent_driver_mentions = {}
+        self.driver_normal_story_counts = {}
         self.timeline = EditorialTimeline()
