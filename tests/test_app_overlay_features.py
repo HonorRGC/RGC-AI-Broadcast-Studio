@@ -68,6 +68,41 @@ def test_pit_updates_do_not_show_overlay_graphic():
     assert overlay.stat_panels == []
 
 
+def test_green_pit_cycle_update_shows_recent_stop_overlay():
+    overlay = OverlaySpy()
+    pit_state = SimpleNamespace(
+        car_idx=4,
+        car_number="24",
+        driver_name="Dean Marsh",
+        last_pit_lap=30,
+        pit_entry_position=8,
+        on_pit_road=False,
+        last_pit_lane_seconds=42.0,
+        last_pit_stop_seconds=7.0,
+    )
+    engine = SimpleNamespace(
+        pit_strategy_detector=SimpleNamespace(driver_states={4: pit_state})
+    )
+    source = SimpleNamespace(
+        get_lap=lambda: 34,
+        get_results=lambda: [{"CarIdx": 4, "Position": 6}],
+    )
+
+    show_overlay_feature(
+        item(category="green_pit_cycle_update", target=None),
+        overlay,
+        source=source,
+        engine=engine,
+    )
+
+    panel = overlay.stat_panels[0]
+    assert panel["kind"] == "green_pit_cycle"
+    assert panel["title"] == "Green Flag Pit Cycle"
+    assert panel["rows"][0]["value"] == "4 lap tires"
+    assert "tires 4 laps old" in panel["rows"][0]["detail"]
+    assert panel["minimum_interval"] == 30.0
+
+
 def test_biggest_movers_graphic_does_not_show_for_routine_position_gain():
     engine = engine_with_movers(mover(24, 3))
 

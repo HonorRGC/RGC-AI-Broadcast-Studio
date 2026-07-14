@@ -70,6 +70,9 @@ class BroadcastEngine:
         self.final_laps_battle_queued = False
         self.caution_lucky_dog_queued = False
         self.late_caution_note_queued = False
+        self.green_pit_cycle_announced = False
+        self.green_pit_cycle_last_update_lap = 0
+        self.green_pit_cycle_update_count = 0
         self.crank_it_up_sent_this_green_run = False
         self.last_leader_story_lap = 0
         self.current_leader_car_idx = None
@@ -964,6 +967,87 @@ class BroadcastEngine:
         )
         for event in events:
             self.editorial_producer.submit_pit_event(event)
+        self._queue_green_pit_cycle_update(
+            events,
+            results,
+            driver_lookup,
+            pit_road_status,
+            current_lap,
+        )
+
+    def _queue_green_pit_cycle_update(
+        self,
+        events,
+        results,
+        driver_lookup,
+        pit_road_status,
+        current_lap,
+    ):
+        if current_lap <= 1 or not results:
+            return False
+        if self.race_director.phase != RacePhase.GREEN:
+            return False
+        race_state = self.race_intelligence.get_race_state()
+        laps_remaining = self.safe_int(getattr(race_state, "laps_remaining", 999), 999)
+        if 0 < laps_remaining <= 5:
+            return False
+        if (
+            self.green_pit_cycle_update_count >= 3
+            or current_lap - self.green_pit_cycle_last_update_lap < 4
+        ):
+            return False
+
+        on_pit_road = [
+            car for car in results or []
+            if self.is_on_pit_road(car.get("CarIdx"), pit_road_status)
+        ]
+        recent_states = [
+            state
+            for state in self.pit_strategy_detector.driver_states.values()
+            if getattr(state, "last_pit_lap", 0) > 0
+            and current_lap - int(getattr(state, "last_pit_lap", 0) or 0) <= 5
+        ]
+        new_green_entries = [
+            event for event in events or []
+            if getattr(event, "event_type", "") == "PIT_STOP"
+            and not getattr(event, "under_caution", False)
+        ]
+
+        if not self.green_pit_cycle_announced:
+            if len(on_pit_road) < 2 and len(new_green_entries) < 2:
+                return False
+            message = (
+                "Green flag pit stops are starting. Sarah will be watching who "
+                "short-pits, who stays out, and how the tire age starts to split "
+                "the field."
+            )
+        else:
+            if len(recent_states) < 2:
+                return False
+            pitted_count = len({
+                getattr(state, "car_idx", None)
+                for state in recent_states
+                if getattr(state, "car_idx", None) is not None
+            })
+            message = (
+                f"Green flag pit cycle update: {pitted_count} cars have made stops "
+                "in the last few laps. The drivers who came early will have older "
+                "tires as this cycle keeps working through."
+            )
+
+        self.broadcast_queue.add(
+            message,
+            priority=8,
+            category="green_pit_cycle_update",
+            protected=False,
+            speaker="sarah",
+            expires_after=40,
+            dedupe_key=f"green_pit_cycle_update:{current_lap}",
+        )
+        self.green_pit_cycle_announced = True
+        self.green_pit_cycle_last_update_lap = current_lap
+        self.green_pit_cycle_update_count += 1
+        return True
 
     def _collect_penalty_stories(self, telemetry, results, driver_lookup, current_lap):
         events = self.penalty_detector.analyze(

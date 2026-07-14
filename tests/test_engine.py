@@ -607,6 +607,58 @@ def test_crank_it_up_runs_once_per_green_run_until_caution_reset():
     assert engine._queue_crank_it_up(results, green_lap_count=10) is True
 
 
+def test_green_flag_pit_cycle_update_starts_when_multiple_cars_pit():
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    engine.race_director.phase = RacePhase.GREEN
+    engine.race_intelligence.race_state.laps_remaining = 40
+    events = [
+        SimpleNamespace(event_type="PIT_STOP", under_caution=False),
+        SimpleNamespace(event_type="PIT_STOP", under_caution=False),
+    ]
+    results = [
+        {"CarIdx": 0, "Position": 1},
+        {"CarIdx": 1, "Position": 2},
+    ]
+
+    queued = engine._queue_green_pit_cycle_update(
+        events,
+        results,
+        {},
+        [True, True],
+        current_lap=30,
+    )
+
+    assert queued is True
+    item = engine.broadcast_queue.next_item()
+    assert item.category == "green_pit_cycle_update"
+    assert item.speaker == "sarah"
+    assert "Green flag pit stops are starting" in item.message
+
+
+def test_green_flag_pit_cycle_update_reports_recent_stops_after_start():
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    engine.race_director.phase = RacePhase.GREEN
+    engine.race_intelligence.race_state.laps_remaining = 35
+    engine.green_pit_cycle_announced = True
+    engine.green_pit_cycle_last_update_lap = 20
+    engine.pit_strategy_detector.driver_states = {
+        0: SimpleNamespace(car_idx=0, last_pit_lap=30),
+        1: SimpleNamespace(car_idx=1, last_pit_lap=31),
+    }
+
+    queued = engine._queue_green_pit_cycle_update(
+        [],
+        [{"CarIdx": 0, "Position": 1}, {"CarIdx": 1, "Position": 2}],
+        {},
+        [False, False],
+        current_lap=33,
+    )
+
+    assert queued is True
+    item = engine.broadcast_queue.next_item()
+    assert "2 cars have made stops" in item.message
+
+
 def test_due_field_rundown_blocks_normal_stories_until_booth_is_clear():
     results = [
         {"CarIdx": index, "Position": index, "LapsComplete": 20}

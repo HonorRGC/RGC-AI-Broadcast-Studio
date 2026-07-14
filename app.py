@@ -298,6 +298,20 @@ def show_overlay_feature(item, overlay_server, source=None, engine=None):
 
     show_sponsor_mention_bug(item, overlay_server)
 
+    if category == "green_pit_cycle_update":
+        rows = build_pit_update_rows(source, engine)
+        if rows:
+            overlay_server.show_stat_panel(
+                kind="green_pit_cycle",
+                title="Green Flag Pit Cycle",
+                subtitle="Recent stops and estimated tire age",
+                rows=rows,
+                duration=13.0,
+                dedupe_key=f"green_pit_cycle:{latest_pit_lap(engine)}",
+                minimum_interval=30.0,
+            )
+        return
+
     if category in ("pit_strategy", "caution_pit_summary"):
         return
 
@@ -520,6 +534,7 @@ def build_biggest_movers_rows(engine, limit=5):
 def build_pit_update_rows(source, engine, limit=5):
     if not source or not engine:
         return []
+    current_lap = safe_int(getattr(source, "get_lap", lambda: 0)(), 0)
     current_positions = build_current_position_lookup(source.get_results())
     states = list(getattr(engine.pit_strategy_detector, "driver_states", {}).values())
     states = [state for state in states if getattr(state, "last_pit_lap", 0) > 0]
@@ -532,6 +547,9 @@ def build_pit_update_rows(source, engine, limit=5):
             detail_parts.append(f"entered P{state.pit_entry_position}")
         if current_position:
             detail_parts.append(f"now P{current_position}")
+        tire_age = max(0, current_lap - safe_int(getattr(state, "last_pit_lap", 0), 0))
+        if tire_age > 0 and not state.on_pit_road:
+            detail_parts.append(f"tires {tire_age} laps old")
         lane_seconds = (
             state.current_pit_lane_seconds
             if state.on_pit_road
@@ -550,8 +568,9 @@ def build_pit_update_rows(source, engine, limit=5):
             {
                 "label": f"#{state.car_number} {state.driver_name}",
                 "value": (
-                    format_seconds(lane_seconds)
-                    if lane_seconds > 0
+                    "Pitting"
+                    if state.on_pit_road
+                    else f"{tire_age} lap tires" if tire_age > 0
                     else f"Lap {state.last_pit_lap}"
                 ),
                 "detail": " | ".join(detail_parts),
