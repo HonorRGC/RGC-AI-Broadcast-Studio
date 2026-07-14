@@ -466,6 +466,7 @@ class OverlayServer:
         self.httpd = None
         self.thread = None
         self.static_dir = Path(__file__).resolve().parent / "static"
+        self.paint_preview_dir = self.default_paint_preview_dir()
 
     @property
     def url(self):
@@ -613,6 +614,10 @@ class OverlayServer:
                     self.send_asset(self.path.removeprefix("/assets/"))
                     return
 
+                if self.path.startswith("/paint-previews/"):
+                    self.send_paint_preview(self.path.removeprefix("/paint-previews/"))
+                    return
+
                 self.send_error(404)
 
             def send_json(self, data: dict[str, Any]):
@@ -654,10 +659,40 @@ class OverlayServer:
                 self.end_headers()
                 self.wfile.write(body)
 
+            def send_paint_preview(self, raw_name):
+                name = unquote(raw_name).replace("\\", "/").split("/")[-1]
+                path = (server.paint_preview_dir / name).resolve()
+                try:
+                    path.relative_to(server.paint_preview_dir.resolve())
+                except ValueError:
+                    self.send_error(404)
+                    return
+                if not path.exists() or not path.is_file():
+                    self.send_error(404)
+                    return
+
+                body = path.read_bytes()
+                content_type = mimetypes.guess_type(path.name)[0] or "image/png"
+                self.send_response(200)
+                self.send_header("Content-Type", content_type)
+                self.send_header("Cache-Control", "public, max-age=3600")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
             def log_message(self, *_):
                 return
 
         return Handler
+
+    @staticmethod
+    def default_paint_preview_dir():
+        try:
+            from production.car_paint_preview import default_preview_cache_dir
+
+            return default_preview_cache_dir()
+        except Exception:
+            return Path.home() / ".rgc_ai_broadcast_studio" / "paint_previews"
 
 
 OVERLAY_HTML = r"""<!doctype html>

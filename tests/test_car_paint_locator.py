@@ -12,6 +12,8 @@ def test_candidate_filenames_include_trading_paints_car_files():
     assert "car_num_90223.tga" in names
     assert "car_90223.tga" in names
     assert "car_decal_90223.tga" in names
+    assert "helmet_90223.tga" not in names
+    assert "suit_90223.tga" not in names
 
 
 def test_car_path_candidates_include_exact_and_last_folder(tmp_path):
@@ -61,4 +63,3 @@ def test_default_paint_roots_include_documents_folder(tmp_path):
     roots = default_paint_roots(home=tmp_path)
 
     assert tmp_path / "Documents" / "iRacing" / "paint" in roots
-

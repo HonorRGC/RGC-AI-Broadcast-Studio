@@ -95,8 +95,6 @@ def candidate_filenames(cust_id):
         f"car_num_{cust_id}",
         f"car_{cust_id}",
         f"car_decal_{cust_id}",
-        f"helmet_{cust_id}",
-        f"suit_{cust_id}",
     ]
     return [f"{base}{extension}" for base in bases for extension in PAINT_EXTENSIONS]
 
@@ -170,4 +168,3 @@ def scan_for_paint(root: Path, filenames):
     except OSError:
         return None
     return None
-

@@ -23,6 +23,7 @@ from production.non_race_presentation import (
 )
 from production.live_broadcast_validator import LiveBroadcastValidator
 from production.overlay import OverlayServer
+from production.car_paint_preview import build_car_paint_preview_url
 from production.replay_director import ReplayDirector
 
 DEFAULT_CRANK_IT_UP_SECONDS = 50.0
@@ -655,6 +656,9 @@ def build_featured_driver_image(driver):
         value = str(driver.get(key, "") or "").strip()
         if value.startswith(("http://", "https://", "/")):
             return value
+    auto_preview_url = build_car_paint_preview_url(driver)
+    if auto_preview_url:
+        return auto_preview_url
     return ""
 
 

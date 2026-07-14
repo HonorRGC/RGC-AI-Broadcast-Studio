@@ -360,3 +360,13 @@ def test_crank_it_up_graphics_default_to_sponsor_then_side_icon():
         "/assets/rgc_motorsports.png",
         "/assets/crank_it_up.png",
     ]
+
+
+def test_overlay_server_has_paint_preview_route(tmp_path):
+    from production.overlay import OverlayServer
+
+    server = OverlayServer()
+    server.paint_preview_dir = tmp_path
+    handler = server.make_handler()
+
+    assert hasattr(handler, "send_paint_preview")

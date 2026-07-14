@@ -42,7 +42,7 @@ def main():
         if match:
             found += 1
             ready = "browser-ready" if match.browser_ready else "needs preview conversion"
-            print(f"FOUND   {label} | cust_id={cust_id} | {ready}")
+            print(f"FOUND   {label} | car paint | cust_id={cust_id} | {ready}")
             print(f"        {match.path}")
         else:
             missing += 1
@@ -56,4 +56,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
