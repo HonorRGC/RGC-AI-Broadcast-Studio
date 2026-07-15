@@ -107,6 +107,47 @@ SIM_RACER_HUB_FIELDS = [
 
 SAVED_FIELDS = LAUNCHER_FIELDS + SIM_RACER_HUB_FIELDS
 
+BROADCAST_FIELD_LABELS = {
+    "USE_OPENAI": "Use OpenAI Commentary",
+    "OPENAI_API_KEY": "OpenAI API Key",
+    "OPENAI_MODEL": "OpenAI Model",
+    "USE_ELEVENLABS": "Use ElevenLabs Voices",
+    "ELEVENLABS_API_KEY": "ElevenLabs API Key",
+    "LEAD_VOICE_ID": "Mike Voice ID",
+    "COLOR_VOICE_ID": "Jeff Voice ID",
+    "PIT_VOICE_ID": "Sarah Voice ID",
+    "OVERLAY_EVENT_TITLE": "Overlay Event Title",
+    "OVERLAY_RACE_SPONSOR": "Race Sponsor",
+    "OVERLAY_SERIES_NAME": "Series Name",
+    "OVERLAY_BRAND_GRAPHICS": "Overlay Brand Graphics",
+    "USE_SPONSOR_READS": "Use Sponsor Reads",
+    "SPONSOR_READ_NAME": "Sponsor Read Name",
+    "SPONSOR_READ_CAUSE": "Sponsor / Cause Message",
+    "USE_NATIONAL_ANTHEM": "Use RGC Anthem",
+    "NATIONAL_ANTHEM_AUDIO": "RGC Anthem Audio",
+    "NATIONAL_ANTHEM_GRAPHICS": "RGC Anthem Graphics",
+    "PRACTICE_MUSIC_PLAYLIST": "Practice Music Playlist",
+    "CAUTION_REPLAY_AUDIO": "Caution Replay Music",
+    "CAUTION_PRESENTATION_GRAPHICS": "Caution Sponsor Graphics",
+    "POST_RACE_INTERVIEWS_ENABLED": "Post-Race Interviews",
+    "POST_RACE_FINISH_CAMERA_DELAY_SECONDS": "Finish Camera Delay",
+    "USE_LEAGUE_DRIVER_NOTES": "Use League Driver Notes",
+    "LEAGUE_DRIVERS_CSV": "Driver Notes CSV",
+    "LEAGUE_SEASON_STATS_CSV": "Season Stats CSV",
+    "LEAGUE_CAREER_STATS_CSV": "Career Stats CSV",
+    "STAGE_END_LAPS": "Stage End Laps",
+}
+
+BROADCAST_FIELD_SECTIONS = {
+    "USE_OPENAI": "AI Commentary",
+    "USE_ELEVENLABS": "Broadcaster Voices",
+    "OVERLAY_EVENT_TITLE": "Overlay Branding",
+    "USE_SPONSOR_READS": "Sponsor Reads",
+    "USE_NATIONAL_ANTHEM": "Practice / Qualifying / Caution Media",
+    "POST_RACE_INTERVIEWS_ENABLED": "Race Flow",
+    "USE_LEAGUE_DRIVER_NOTES": "League Data",
+}
+
 
 def load_env_file(path=ENV_PATH):
     values = {}
@@ -1035,88 +1076,112 @@ def run_gui():
     settings_frame.pack(fill="both", expand=True, padx=14, pady=12)
 
     entries = {}
+    settings_rows_by_key = {}
     sim_racer_hub_state = {"entries": {}, "career_mode": None}
     league_tab_state = {}
-    overlay_brand_row = LAUNCHER_FIELDS.index(
-        (
-            "OVERLAY_BRAND_GRAPHICS",
-            "/assets/rgc_motorsports.png,/assets/autism_awareness.png,/assets/keep_it_real.webp",
+    settings_grid_row = 0
+
+    def add_settings_section(title):
+        nonlocal settings_grid_row
+        section = frame(settings_frame, bg="#152233")
+        section.grid(
+            row=settings_grid_row,
+            column=0,
+            columnspan=3,
+            sticky="ew",
+            pady=(12 if settings_grid_row else 0, 6),
         )
-    )
-    overlay_link_row = overlay_brand_row + 1
-    producer_link_row = overlay_brand_row + 2
+        label(
+            section,
+            text=title,
+            bg="#152233",
+            fg=TEXT_FG,
+            font=("Segoe UI", 10, "bold"),
+            anchor="w",
+        ).pack(fill="x", padx=10, pady=6)
+        settings_grid_row += 1
 
-    def settings_grid_row(field_row):
-        return field_row + 2 if field_row > overlay_brand_row else field_row
-
-    for row, (key, _default) in enumerate(LAUNCHER_FIELDS):
+    for key, _default in LAUNCHER_FIELDS:
         if key == "STUDIO_VOLUME":
             continue
-        grid_row = settings_grid_row(row)
-        label(settings_frame, text=key, anchor="w", width=24, bg=PANEL_BG, fg=MUTED_FG).grid(
-            row=grid_row,
+        if key in BROADCAST_FIELD_SECTIONS:
+            add_settings_section(BROADCAST_FIELD_SECTIONS[key])
+        settings_rows_by_key[key] = settings_grid_row
+        label(
+            settings_frame,
+            text=BROADCAST_FIELD_LABELS.get(key, key.replace("_", " ").title()),
+            anchor="w",
+            width=24,
+            bg=PANEL_BG,
+            fg=MUTED_FG,
+        ).grid(
+            row=settings_grid_row,
             column=0,
             sticky="w",
             pady=3,
         )
         entry_widget = entry(settings_frame, width=72)
         entry_widget.insert(0, existing.get(key, ""))
-        entry_widget.grid(row=grid_row, column=1, sticky="ew", pady=3)
+        entry_widget.grid(row=settings_grid_row, column=1, sticky="ew", pady=3)
         entries[key] = entry_widget
+        settings_grid_row += 1
 
-    label(
-        settings_frame,
-        text="Streamlabs / OBS Link",
-        anchor="w",
-        width=24,
-        bg=PANEL_BG,
-        fg=MUTED_FG,
-    ).grid(row=overlay_link_row, column=0, sticky="w", pady=3)
-    overlay_url_var = tk.StringVar(value=DEFAULT_OVERLAY_URL)
-    overlay_url_entry = entry(
-        settings_frame,
-        textvariable=overlay_url_var,
-        width=72,
-        state="readonly",
-        readonlybackground=FIELD_BG,
-    )
-    overlay_url_entry.grid(row=overlay_link_row, column=1, sticky="ew", pady=3)
-    button(
-        settings_frame,
-        text="Copy Overlay Link",
-        command=lambda: (
-            copy_to_clipboard(root, DEFAULT_OVERLAY_URL),
-            status.set("Copied overlay browser-source link for Streamlabs / OBS."),
-        ),
-        color="#334b64",
-    ).grid(row=overlay_link_row, column=2, padx=(8, 0), sticky="w")
+        if key == "OVERLAY_BRAND_GRAPHICS":
+            label(
+                settings_frame,
+                text="Streamlabs / OBS Link",
+                anchor="w",
+                width=24,
+                bg=PANEL_BG,
+                fg=MUTED_FG,
+            ).grid(row=settings_grid_row, column=0, sticky="w", pady=3)
+            overlay_url_var = tk.StringVar(value=DEFAULT_OVERLAY_URL)
+            overlay_url_entry = entry(
+                settings_frame,
+                textvariable=overlay_url_var,
+                width=72,
+                state="readonly",
+                readonlybackground=FIELD_BG,
+            )
+            overlay_url_entry.grid(row=settings_grid_row, column=1, sticky="ew", pady=3)
+            button(
+                settings_frame,
+                text="Copy Overlay Link",
+                command=lambda: (
+                    copy_to_clipboard(root, DEFAULT_OVERLAY_URL),
+                    status.set("Copied overlay browser-source link for Streamlabs / OBS."),
+                ),
+                color="#334b64",
+            ).grid(row=settings_grid_row, column=2, padx=(8, 0), sticky="w")
+            settings_grid_row += 1
 
-    label(
-        settings_frame,
-        text="Producer Assist Link",
-        anchor="w",
-        width=24,
-        bg=PANEL_BG,
-        fg=MUTED_FG,
-    ).grid(row=producer_link_row, column=0, sticky="w", pady=3)
-    producer_url_var = tk.StringVar(value=DEFAULT_PRODUCER_URL)
-    producer_url_entry = entry(
-        settings_frame,
-        textvariable=producer_url_var,
-        width=72,
-        state="readonly",
-        readonlybackground=FIELD_BG,
-    )
-    producer_url_entry.grid(row=producer_link_row, column=1, sticky="ew", pady=3)
-    button(
-        settings_frame,
-        text="Copy Producer Link",
-        command=lambda: (
-            copy_to_clipboard(root, DEFAULT_PRODUCER_URL),
-            status.set("Copied Producer Assist control-room link."),
-        ),
-        color="#334b64",
-    ).grid(row=producer_link_row, column=2, padx=(8, 0), sticky="w")
+            label(
+                settings_frame,
+                text="Producer Assist Link",
+                anchor="w",
+                width=24,
+                bg=PANEL_BG,
+                fg=MUTED_FG,
+            ).grid(row=settings_grid_row, column=0, sticky="w", pady=3)
+            producer_url_var = tk.StringVar(value=DEFAULT_PRODUCER_URL)
+            producer_url_entry = entry(
+                settings_frame,
+                textvariable=producer_url_var,
+                width=72,
+                state="readonly",
+                readonlybackground=FIELD_BG,
+            )
+            producer_url_entry.grid(row=settings_grid_row, column=1, sticky="ew", pady=3)
+            button(
+                settings_frame,
+                text="Copy Producer Link",
+                command=lambda: (
+                    copy_to_clipboard(root, DEFAULT_PRODUCER_URL),
+                    status.set("Copied Producer Assist control-room link."),
+                ),
+                color="#334b64",
+            ).grid(row=settings_grid_row, column=2, padx=(8, 0), sticky="w")
+            settings_grid_row += 1
 
     def choose_graphics_for_field(field_name, title, status_label):
         paths = filedialog.askopenfilenames(
@@ -1200,13 +1265,13 @@ def run_gui():
         text="Choose Sponsor Logos",
         command=choose_brand_graphics,
         color="#334b64",
-    ).grid(row=settings_grid_row(overlay_brand_row), column=2, padx=(8, 0), sticky="w")
+    ).grid(row=settings_rows_by_key["OVERLAY_BRAND_GRAPHICS"], column=2, padx=(8, 0), sticky="w")
     button(
         settings_frame,
         text="Choose Anthem Audio",
         command=lambda: choose_single_audio("NATIONAL_ANTHEM_AUDIO", "Choose RGC Anthem audio"),
         color="#334b64",
-    ).grid(row=settings_grid_row(LAUNCHER_FIELDS.index(("NATIONAL_ANTHEM_AUDIO", ""))), column=2, padx=(8, 0), sticky="w")
+    ).grid(row=settings_rows_by_key["NATIONAL_ANTHEM_AUDIO"], column=2, padx=(8, 0), sticky="w")
     button(
         settings_frame,
         text="Choose Anthem Graphics",
@@ -1216,19 +1281,19 @@ def run_gui():
             "the RGC Anthem presentation",
         ),
         color="#334b64",
-    ).grid(row=settings_grid_row(LAUNCHER_FIELDS.index(("NATIONAL_ANTHEM_GRAPHICS", ""))), column=2, padx=(8, 0), sticky="w")
+    ).grid(row=settings_rows_by_key["NATIONAL_ANTHEM_GRAPHICS"], column=2, padx=(8, 0), sticky="w")
     button(
         settings_frame,
         text="Choose Practice Music",
         command=choose_practice_music,
         color="#334b64",
-    ).grid(row=settings_grid_row(LAUNCHER_FIELDS.index(("PRACTICE_MUSIC_PLAYLIST", ""))), column=2, padx=(8, 0), sticky="w")
+    ).grid(row=settings_rows_by_key["PRACTICE_MUSIC_PLAYLIST"], column=2, padx=(8, 0), sticky="w")
     button(
         settings_frame,
         text="Choose Caution Audio",
         command=lambda: choose_single_audio("CAUTION_REPLAY_AUDIO", "Choose caution replay audio"),
         color="#334b64",
-    ).grid(row=settings_grid_row(LAUNCHER_FIELDS.index(("CAUTION_REPLAY_AUDIO", ""))), column=2, padx=(8, 0), sticky="w")
+    ).grid(row=settings_rows_by_key["CAUTION_REPLAY_AUDIO"], column=2, padx=(8, 0), sticky="w")
     button(
         settings_frame,
         text="Choose Caution Graphics",
@@ -1238,7 +1303,7 @@ def run_gui():
             "the caution presentation",
         ),
         color="#334b64",
-    ).grid(row=settings_grid_row(LAUNCHER_FIELDS.index(("CAUTION_PRESENTATION_GRAPHICS", ""))), column=2, padx=(8, 0), sticky="w")
+    ).grid(row=settings_rows_by_key["CAUTION_PRESENTATION_GRAPHICS"], column=2, padx=(8, 0), sticky="w")
 
     settings_frame.columnconfigure(1, weight=1)
 
@@ -1495,10 +1560,10 @@ def run_gui():
         pady=8,
     )
     volume_frame = frame(action_bar, bg=PANEL_BG)
-    volume_frame.pack(side="left", padx=(14, 6), pady=8)
+    volume_frame.pack(side="right", padx=(14, 10), pady=8)
     label(
         volume_frame,
-        text="Studio Volume",
+        text="Master Volume",
         bg=PANEL_BG,
         fg=MUTED_FG,
         font=("Segoe UI", 9, "bold"),

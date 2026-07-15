@@ -3,6 +3,8 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from studio_launcher import (
+    BROADCAST_FIELD_LABELS,
+    BROADCAST_FIELD_SECTIONS,
     DEFAULT_OVERLAY_URL,
     DEFAULT_PRODUCER_URL,
     RGC_DISCORD_URL,
@@ -65,6 +67,14 @@ def test_launcher_includes_rgc_links():
     assert RGC_WEBSITE_URL == "https://www.realisticgamingcrew.com"
     assert DEFAULT_OVERLAY_URL == "http://127.0.0.1:8765/overlay"
     assert DEFAULT_PRODUCER_URL == "http://127.0.0.1:8765/producer"
+
+
+def test_broadcast_settings_have_friendly_labels_and_sections():
+    assert BROADCAST_FIELD_LABELS["USE_OPENAI"] == "Use OpenAI Commentary"
+    assert BROADCAST_FIELD_LABELS["OVERLAY_EVENT_TITLE"] == "Overlay Event Title"
+    assert "STUDIO_VOLUME" not in BROADCAST_FIELD_LABELS
+    assert BROADCAST_FIELD_SECTIONS["USE_OPENAI"] == "AI Commentary"
+    assert BROADCAST_FIELD_SECTIONS["OVERLAY_EVENT_TITLE"] == "Overlay Branding"
 
 
 def test_launcher_version_comparison_helpers():
