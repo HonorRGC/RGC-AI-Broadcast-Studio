@@ -821,15 +821,12 @@ def run_sim_racer_hub_import(
     )
 
 
-def launch_broadcast(producer_assist=False):
+def launch_broadcast():
     global BROADCAST_PROCESS
     if is_process_running(BROADCAST_PROCESS):
         return BROADCAST_PROCESS
 
     env = os.environ.copy()
-    if producer_assist:
-        env["USE_OPENAI"] = "false"
-        env["USE_ELEVENLABS"] = "false"
     BROADCAST_PROCESS = subprocess.Popen(broadcast_command(), cwd=ROOT, env=env)
     write_broadcast_pid(BROADCAST_PROCESS.pid)
     return BROADCAST_PROCESS
@@ -1455,20 +1452,13 @@ def run_gui():
                 "league/drivers.csv, league/season.csv, and league/career.csv already exist.",
             )
 
-    def start_full_ai():
+    def start_broadcast():
         save_settings()
-        process = launch_broadcast(producer_assist=False)
-        if process:
-            status.set("Started full AI broadcast with overlay, cameras, and incident replay.")
-        refresh_health()
-
-    def start_producer_assist():
-        save_settings()
-        process = launch_broadcast(producer_assist=True)
+        process = launch_broadcast()
         if process:
             status.set(
-                "Started Producer Assist broadcast with overlay and cameras. "
-                "AI voices are disabled so a human broadcaster can call the race."
+                "Started broadcast with overlay, Producer Assist, cameras, and incident replay. "
+                "Use Producer Assist to toggle OpenAI, ElevenLabs, and auto cameras."
             )
         refresh_health()
 
@@ -1522,12 +1512,7 @@ def run_gui():
             return
         root.destroy()
 
-    button(broadcast_bar, text="Start Broadcast", command=start_full_ai, color=GREEN).pack(
-        side="left",
-        padx=6,
-        pady=8,
-    )
-    button(broadcast_bar, text="Start Producer Assist", command=start_producer_assist, color=ACCENT).pack(
+    button(broadcast_bar, text="Start Broadcast", command=start_broadcast, color=GREEN).pack(
         side="left",
         padx=6,
         pady=8,
@@ -2326,7 +2311,7 @@ def build_help_tab(
         "2. OpenAI setup",
         """
         OpenAI writes the broadcast commentary. Put your OpenAI API key into OPENAI_API_KEY.
-        Keep USE_OPENAI set to true for the full AI broadcast. Turn it false if you only want overlays, cameras, and Producer Assist.
+        USE_OPENAI controls the default startup setting. During a live broadcast, Producer Assist can turn OpenAI on or off.
         OPENAI_MODEL controls which OpenAI model writes the broadcast. Never stream or share your API key.
         """,
     )
@@ -2335,7 +2320,7 @@ def build_help_tab(
         """
         ElevenLabs creates the spoken broadcaster voices. Put your ElevenLabs API key into ELEVENLABS_API_KEY.
         LEAD_VOICE_ID is the play-by-play voice. COLOR_VOICE_ID is the analyst voice. PIT_VOICE_ID is pit road and strategy.
-        Turn USE_ELEVENLABS false if a human broadcaster is talking instead.
+        USE_ELEVENLABS controls the default startup setting. During a live broadcast, Producer Assist can mute or enable voice playback.
         """,
     )
     section(
@@ -2368,14 +2353,14 @@ def build_help_tab(
         "7. Profiles",
         """
         Click Save Settings, then save a profile. Profiles let you keep separate setups for league races,
-        official testing, Producer Assist, or no-voice camera/overlay mode. Before race night, load the correct profile and refresh Broadcast Health.
+        official testing, AI broadcast defaults, or human-broadcaster defaults. Before race night, load the correct profile and refresh Broadcast Health.
         """,
     )
     section(
-        "8. Broadcast modes",
+        "8. Start Broadcast and Producer Assist",
         """
-        Start Broadcast runs the full AI broadcast with OpenAI commentary, ElevenLabs voices, overlays, cameras, and race control.
-        Start Producer Assist keeps overlays, cameras, and race information active without AI voices, so a human broadcaster can call the race.
+        Start Broadcast runs the broadcast engine, overlay, Producer Assist control room, cameras, replay controls, and race control.
+        Open Producer Assist to turn OpenAI, ElevenLabs, and auto cameras on or off during the same running broadcast.
         Stop Broadcast stops a broadcast launched by the studio.
         """,
     )

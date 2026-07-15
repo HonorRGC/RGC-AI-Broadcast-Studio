@@ -77,8 +77,8 @@ In the launcher:
 
 ## Start a test
 
-- Use **Start Broadcast** for the full AI broadcast.
-- Use **Start Producer Assist** for overlays, cameras, and race information without AI voices.
+- Use **Start Broadcast** for AI or human-broadcaster testing.
+- Open Producer Assist to turn OpenAI, ElevenLabs, and auto cameras on or off while it is running.
 - Use **Stop Broadcast** to stop a broadcast launched from the program.
 
 ## Streamlabs / OBS overlay

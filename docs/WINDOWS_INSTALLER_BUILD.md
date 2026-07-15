@@ -92,7 +92,7 @@ Do this smoke test:
 3. Confirm the launcher opens.
 4. Save settings.
 5. Save and load a profile.
-6. Start Producer Assist or Start Broadcast.
+6. Start Broadcast.
 7. Confirm the overlay URL opens:
 
    ```text

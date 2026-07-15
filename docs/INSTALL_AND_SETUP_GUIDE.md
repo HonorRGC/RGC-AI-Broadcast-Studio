@@ -19,7 +19,7 @@ You need:
 - An OpenAI API key if you want AI-written commentary
 - An ElevenLabs API key and voice IDs if you want spoken AI broadcasters
 
-If you only want overlays, cameras, and race information for a human broadcaster, you can use **Producer Assist** mode without OpenAI or ElevenLabs voices.
+If you only want overlays, cameras, and race information for a human broadcaster, start the broadcast and use **Producer Assist** to turn OpenAI and ElevenLabs off.
 
 ## 2. Install Python
 
@@ -261,19 +261,18 @@ Profiles are useful because you can keep separate setups, such as:
 
 - League race
 - Official race testing
-- Producer Assist
-- No-voice overlay/camera mode
+- Human-broadcaster defaults
+- No-voice overlay/camera defaults
 
 Before race night, load the correct profile and check the Broadcast Health panel.
 
-## 11. Choose how you want to broadcast
+## 11. Start the broadcast
 
-### Full AI Broadcast
+Start Broadcast launches:
 
-Use this when you want:
-
-- AI commentary writing
-- ElevenLabs spoken voices
+- AI commentary controls
+- ElevenLabs voice controls
+- Producer Assist
 - camera direction
 - overlay graphics
 - race control and caution handling
@@ -284,20 +283,7 @@ Click:
 Start Broadcast
 ```
 
-### Producer Assist
-
-Use this when a human broadcaster is calling the race, but still wants:
-
-- overlays
-- camera movement
-- live race information
-- suggested talking points
-
-Click:
-
-```text
-Start Producer Assist
-```
+Then open Producer Assist if you want to switch between AI broadcast and human-broadcaster control during the same running session.
 
 ## 12. Recommended race-night flow
 
@@ -379,4 +365,4 @@ Check:
 - Do not stream your launcher while keys are visible.
 - Do not send your personal `.env` file to another user.
 - Each league/admin should use their own OpenAI and ElevenLabs accounts.
-- Use Producer Assist if you want to test overlays and cameras without AI costs.
+- Use Producer Assist to turn OpenAI and ElevenLabs off if you want to test overlays and cameras without AI costs.

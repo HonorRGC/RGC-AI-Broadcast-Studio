@@ -58,9 +58,9 @@ Add it as a browser source at `1920 x 1080`.
 
 ## Recommended first test
 
-For the first run, use `Start Producer Assist` if they only want cameras, overlays, and live broadcast prompts.
+For the first run, use `Start Broadcast`. The overlay, Producer Assist control room, cameras, and replay controls launch together.
 
-Use `Start Broadcast` when they are ready to test OpenAI and ElevenLabs voices.
+If they only want a human-broadcaster workflow, open Producer Assist and turn OpenAI and ElevenLabs off.
 
 ## Admin first-run checklist
 
