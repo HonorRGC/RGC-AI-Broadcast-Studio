@@ -230,6 +230,38 @@ class CameraDirector:
             force=True,
         )
 
+    def manual_focus_car(self, car_idx, group_name, telemetry):
+        self.clear_sequence()
+        self.return_home_at = None
+        return self.focus_car(
+            car_idx,
+            group_name or self.preferred_group,
+            telemetry,
+            self.clock(),
+            role="manual",
+            force=True,
+            force_switch=True,
+        )
+
+    def manual_focus_home(self, telemetry):
+        self.clear_sequence()
+        self.return_home_at = None
+        car_idx = self.get_leader_car_idx(telemetry)
+        if car_idx is None:
+            return CameraDecision(
+                "failed",
+                "The leader is unavailable for the manual home shot.",
+            )
+        return self.focus_car(
+            car_idx,
+            self.home_group,
+            telemetry,
+            self.clock(),
+            role="home",
+            force=True,
+            force_switch=True,
+        )
+
     def focus_incident_replay(self, group_name, telemetry):
         now = self.clock()
         group = self.resolve_camera_group(telemetry.get_camera_groups(), group_name)
@@ -303,6 +335,7 @@ class CameraDirector:
         role,
         force=False,
         camera_number=0,
+        force_switch=False,
     ):
         if (
             not force
@@ -350,7 +383,7 @@ class CameraDirector:
 
         status = "suggested"
         reason = "Observe-only camera target."
-        if self.mode == "auto":
+        if self.mode == "auto" or force_switch:
             switch = getattr(telemetry, "switch_camera_to_car", None)
             if switch is None or not switch(car_number, group_number, camera_number):
                 return CameraDecision(

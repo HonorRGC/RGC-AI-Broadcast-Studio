@@ -143,6 +143,14 @@ def run_source(
     while source.is_connected():
         if overlay_server:
             overlay_server.update_from_telemetry(source)
+            process_producer_commands(
+                overlay_server,
+                source,
+                engine,
+                booth,
+                camera_director,
+                replay_director,
+            )
         report_practice_presentation(
             practice_presentation_director.update(
                 source.get_session_type(),
@@ -267,6 +275,183 @@ def publish_producer_event(overlay_server, kind="info", title="", message="", sp
     publisher = getattr(overlay_server, "add_producer_event", None)
     if publisher:
         publisher(kind=kind, title=title, message=message, speaker=speaker)
+
+
+def sync_producer_control_state(overlay_server, engine, booth, camera_director):
+    if not overlay_server:
+        return
+    overlay_server.set_control_state(
+        auto_camera=getattr(camera_director, "mode", "") == "auto",
+        openai=engine.openai_director.is_enabled(),
+        elevenlabs=booth.voice_status()[0],
+    )
+
+
+def process_producer_commands(
+    overlay_server,
+    source,
+    engine,
+    booth,
+    camera_director,
+    replay_director=None,
+):
+    commands = overlay_server.drain_commands()
+    if not commands:
+        sync_producer_control_state(overlay_server, engine, booth, camera_director)
+        return
+
+    for item in commands:
+        command = str(item.get("command", "") or "")
+        payload = item.get("payload", {}) or {}
+        handle_producer_command(
+            command,
+            payload,
+            overlay_server,
+            source,
+            engine,
+            booth,
+            camera_director,
+            replay_director,
+        )
+
+    sync_producer_control_state(overlay_server, engine, booth, camera_director)
+
+
+def handle_producer_command(
+    command,
+    payload,
+    overlay_server,
+    source,
+    engine,
+    booth,
+    camera_director,
+    replay_director=None,
+):
+    if command == "auto_camera_on":
+        camera_director.mode = "auto"
+        publish_producer_event(overlay_server, "info", "Producer Control", "Auto camera enabled.")
+        return
+
+    if command == "auto_camera_off":
+        camera_director.mode = "off"
+        publish_producer_event(
+            overlay_server,
+            "warning",
+            "Producer Control",
+            "Auto camera disabled. Manual camera buttons still work.",
+        )
+        return
+
+    if command == "openai_on":
+        engine.openai_director.set_enabled(True)
+        message = (
+            "OpenAI commentary enabled."
+            if engine.openai_director.is_enabled()
+            else "OpenAI was requested, but it is not configured."
+        )
+        publish_producer_event(overlay_server, "info", "Producer Control", message)
+        return
+
+    if command == "openai_off":
+        engine.openai_director.set_enabled(False)
+        publish_producer_event(
+            overlay_server,
+            "warning",
+            "Producer Control",
+            "OpenAI commentary disabled. Broadcast will use rule-based/helper text.",
+        )
+        return
+
+    if command == "elevenlabs_on":
+        booth.set_voice_enabled(True)
+        ready, reason = booth.voice_status()
+        message = "ElevenLabs voice playback enabled." if ready else f"ElevenLabs unavailable: {reason}."
+        publish_producer_event(overlay_server, "info", "Producer Control", message)
+        return
+
+    if command == "elevenlabs_off":
+        booth.set_voice_enabled(False)
+        publish_producer_event(
+            overlay_server,
+            "warning",
+            "Producer Control",
+            "ElevenLabs voice playback disabled. Text will still appear in Producer Assist.",
+        )
+        return
+
+    if command == "camera_follow_driver":
+        car_idx = safe_int(payload.get("car_idx"), default=None)
+        if car_idx is None:
+            publish_producer_event(overlay_server, "warning", "Camera", "No driver was selected.")
+            return
+        decision = camera_director.manual_focus_car(
+            car_idx,
+            str(payload.get("group_name", "") or camera_director.preferred_group),
+            source,
+        )
+        report_camera_decision(decision, overlay_server)
+        return
+
+    if command == "camera_follow_leader":
+        decision = camera_director.manual_focus_home(source)
+        report_camera_decision(decision, overlay_server)
+        return
+
+    if command == "replay_return_live":
+        returned = bool(getattr(source, "return_to_live", lambda: False)())
+        if replay_director:
+            replay_director.reset()
+        camera_director.replay_active = False
+        message = "Returned to live racing." if returned else "Return-to-live command was not accepted."
+        publish_producer_event(
+            overlay_server,
+            "replay" if returned else "warning",
+            "Replay Control",
+            message,
+        )
+        return
+
+    if command in ("replay_pause", "replay_play"):
+        method_name = "pause_replay" if command == "replay_pause" else "play_replay"
+        accepted = bool(getattr(source, method_name, lambda: False)())
+        label = "Pause replay" if command == "replay_pause" else "Play replay"
+        publish_producer_event(
+            overlay_server,
+            "replay" if accepted else "warning",
+            "Replay Control",
+            f"{label} command sent." if accepted else f"{label} command was not accepted by iRacing.",
+        )
+        return
+
+    if command in ("replay_rewind", "replay_fast_forward"):
+        seconds = max(1, min(60, safe_int(payload.get("seconds"), default=10) or 10))
+        frames = seconds * 60
+        method_name = (
+            "rewind_replay_frames"
+            if command == "replay_rewind"
+            else "fast_forward_replay_frames"
+        )
+        moved = bool(getattr(source, method_name, lambda *_: False)(frames))
+        direction = "Rewind" if command == "replay_rewind" else "Fast forward"
+        message = (
+            f"{direction} {seconds} seconds."
+            if moved
+            else f"{direction} command was not accepted by iRacing."
+        )
+        publish_producer_event(
+            overlay_server,
+            "replay" if moved else "warning",
+            "Replay Control",
+            message,
+        )
+        return
+
+    publish_producer_event(
+        overlay_server,
+        "warning",
+        "Producer Control",
+        f"Unknown command: {command}",
+    )
 
 
 def report_anthem_decision(decision, overlay_server=None):
@@ -835,6 +1020,7 @@ def main():
         )
     if overlay_server:
         overlay_url = overlay_server.start()
+        sync_producer_control_state(overlay_server, engine, booth, camera_director)
         print(f"Overlay: ON ({overlay_url})")
         overlay_server.add_producer_event(
             kind="info",

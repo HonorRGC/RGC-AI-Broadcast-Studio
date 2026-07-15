@@ -44,3 +44,17 @@ def test_ai_director_allows_enough_output_room_for_complete_sentences():
     )
 
     assert responses.kwargs["max_output_tokens"] == 300
+
+
+def test_ai_director_runtime_toggle_uses_fallback_text():
+    director, _ = build_director("The battle is building.")
+    assignment = SimpleNamespace(headline="Battle", summary="Fallback.")
+
+    director.set_enabled(False)
+    commentary = director.generate_commentary(
+        speaker="lead",
+        assignment=assignment,
+        fallback_text="Fallback.",
+    )
+
+    assert commentary == "Fallback."

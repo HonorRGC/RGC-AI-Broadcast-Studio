@@ -23,6 +23,7 @@ class BroadcastBooth:
         self.audio_bed = audio_bed
         self.studio_volume = int(studio_volume)
         self.producer_sink = producer_sink
+        self.voice_runtime_enabled = True
 
         if enable_voice and USE_ELEVENLABS and ELEVENLABS_API_KEY:
             self.voice_client = ElevenLabsClient(
@@ -33,6 +34,8 @@ class BroadcastBooth:
             self.voice_client = None
 
     def voice_status(self):
+        if not self.voice_runtime_enabled:
+            return False, "disabled from Producer Assist"
         if not self.enable_voice:
             return False, "disabled by --no-voice"
         if not USE_ELEVENLABS:
@@ -44,6 +47,9 @@ class BroadcastBooth:
         if not self.voice_client:
             return False, "voice client did not initialize"
         return True, "ready"
+
+    def set_voice_enabled(self, enabled):
+        self.voice_runtime_enabled = bool(enabled)
 
     def voice_id_status(self):
         return {
@@ -75,7 +81,7 @@ class BroadcastBooth:
 
         voice_id = self.get_voice_id(speaker)
 
-        if self.voice_client and voice_id:
+        if self.voice_runtime_enabled and self.voice_client and voice_id:
             if self.audio_bed:
                 self.audio_bed.duck()
             try:
@@ -85,7 +91,7 @@ class BroadcastBooth:
                     self.audio_bed.restore_after(
                         self.estimate_speech_seconds(commentary)
                     )
-        elif self.voice_client and not voice_id:
+        elif self.voice_runtime_enabled and self.voice_client and not voice_id:
             print(f"Voice output skipped: no voice ID is configured for {speaker_label}.")
 
     def get_speaker_label(self, speaker):

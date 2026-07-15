@@ -386,6 +386,9 @@ def test_producer_assist_html_reads_overlay_state():
     assert 'id="leaderboard-rows"' in PRODUCER_HTML
     assert 'id="producer-feed"' in PRODUCER_HTML
     assert "renderProducerFeed" in PRODUCER_HTML
+    assert 'sendProducerCommand("camera_follow_leader")' in PRODUCER_HTML
+    assert 'sendProducerCommand(on ? "openai_off" : "openai_on")' in PRODUCER_HTML
+    assert 'sendProducerCommand("replay_pause")' in PRODUCER_HTML
     assert "Move Camera to Driver" in PRODUCER_HTML
 
 
@@ -404,3 +407,17 @@ def test_overlay_server_exposes_producer_feed_in_state():
     assert state["producer_feed"][0]["kind"] == "camera"
     assert state["producer_feed"][0]["title"] == "Camera"
     assert state["producer_feed"][0]["message"] == "following car #24 on TV1"
+
+
+def test_overlay_server_queues_producer_commands():
+    from production.overlay import OverlayServer
+
+    server = OverlayServer()
+    server.enqueue_command("auto_camera_off", {"reason": "human broadcaster"})
+
+    commands = server.drain_commands()
+
+    assert commands[0]["command"] == "auto_camera_off"
+    assert commands[0]["payload"] == {"reason": "human broadcaster"}
+    assert isinstance(commands[0]["created_at"], float)
+    assert server.drain_commands() == []

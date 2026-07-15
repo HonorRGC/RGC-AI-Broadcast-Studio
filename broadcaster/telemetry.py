@@ -123,6 +123,32 @@ class IRacingTelemetry:
         except Exception:
             return False
 
+    def fast_forward_replay_frames(self, frames=0):
+        try:
+            if frames:
+                position_sent = self.ir.replay_set_play_position(
+                    irsdk.RpyPosMode.current,
+                    abs(int(frames)),
+                )
+            else:
+                position_sent = True
+            speed_sent = self.ir.replay_set_play_speed(1)
+            return bool(position_sent and speed_sent)
+        except Exception:
+            return False
+
+    def pause_replay(self):
+        try:
+            return bool(self.ir.replay_set_play_speed(0))
+        except Exception:
+            return False
+
+    def play_replay(self):
+        try:
+            return bool(self.ir.replay_set_play_speed(1))
+        except Exception:
+            return False
+
     def get_current_session_num(self):
         try:
             return int(self.ir["SessionNum"])

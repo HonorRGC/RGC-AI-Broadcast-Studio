@@ -483,6 +483,12 @@ class OverlayServer:
         self.last_stat_panel_at = 0.0
         self.producer_feed = []
         self.max_producer_feed_items = 60
+        self.pending_commands = []
+        self.control_state = {
+            "auto_camera": True,
+            "openai": False,
+            "elevenlabs": False,
+        }
         self.httpd = None
         self.thread = None
         self.static_dir = Path(__file__).resolve().parent / "static"
@@ -630,10 +636,31 @@ class OverlayServer:
             self.producer_feed = self.producer_feed[: self.max_producer_feed_items]
         return item
 
+    def set_control_state(self, **updates):
+        with self.lock:
+            self.control_state.update(updates)
+
+    def enqueue_command(self, command, payload=None):
+        command_item = {
+            "command": str(command or ""),
+            "payload": dict(payload or {}),
+            "created_at": time.time(),
+        }
+        with self.lock:
+            self.pending_commands.append(command_item)
+        return command_item
+
+    def drain_commands(self):
+        with self.lock:
+            commands = list(self.pending_commands)
+            self.pending_commands = []
+        return commands
+
     def current_state_dict(self):
         with self.lock:
             data = self.state.to_dict()
             data["producer_feed"] = [item.to_dict() for item in self.producer_feed]
+            data["control_state"] = dict(self.control_state)
             return data
 
     def make_handler(self):
@@ -659,6 +686,29 @@ class OverlayServer:
 
                 if self.path.startswith("/paint-previews/"):
                     self.send_paint_preview(self.path.removeprefix("/paint-previews/"))
+                    return
+
+                self.send_error(404)
+
+            def do_POST(self):
+                if self.path == "/producer/command":
+                    try:
+                        length = int(self.headers.get("Content-Length", "0") or 0)
+                    except ValueError:
+                        length = 0
+                    raw_body = self.rfile.read(max(0, length))
+                    try:
+                        data = json.loads(raw_body.decode("utf-8") or "{}")
+                    except json.JSONDecodeError:
+                        self.send_json({"ok": False, "error": "Invalid JSON"})
+                        return
+                    command = str(data.get("command", "") or "")
+                    payload = data.get("payload", {}) or {}
+                    if not command:
+                        self.send_json({"ok": False, "error": "Missing command"})
+                        return
+                    server.enqueue_command(command, payload)
+                    self.send_json({"ok": True})
                     return
 
                 self.send_error(404)
@@ -1001,6 +1051,16 @@ PRODUCER_HTML = r"""<!doctype html>
       opacity: 0.72;
     }
 
+    .control-button {
+      cursor: pointer;
+      opacity: 1;
+      background: #294b73;
+    }
+
+    .control-button.danger { background: #8f2e37; }
+    .control-button.good { background: #1f7550; }
+    .control-button.warn { background: #8b6a1c; }
+
     .panel {
       padding: 12px;
       background: rgba(255, 255, 255, 0.045);
@@ -1109,8 +1169,22 @@ PRODUCER_HTML = r"""<!doctype html>
         </div>
 
         <div class="button-row">
-          <button title="Coming soon">Move Camera to Driver</button>
-          <button title="Coming soon">Send Driver Note</button>
+          <button class="control-button" id="follow-driver-button">Move Camera to Driver</button>
+          <button class="control-button" id="leader-camera-button">Back to Leader</button>
+        </div>
+
+        <div class="panel">
+          <h3>Control Room Toggles</h3>
+          <div class="button-row">
+            <button class="control-button" id="auto-camera-button">Auto Camera</button>
+            <button class="control-button" id="openai-button">OpenAI</button>
+            <button class="control-button" id="elevenlabs-button">ElevenLabs</button>
+            <button class="control-button" id="return-live-button">Return Live</button>
+            <button class="control-button warn" id="pause-replay-button">Pause Replay</button>
+            <button class="control-button warn" id="play-replay-button">Play Replay</button>
+            <button class="control-button warn" id="rewind-button">Rewind 10 sec</button>
+            <button class="control-button warn" id="fast-forward-button">Forward 10 sec</button>
+          </div>
         </div>
 
         <div class="panel" id="featured-panel">
@@ -1292,6 +1366,37 @@ PRODUCER_HTML = r"""<!doctype html>
       `;
     }
 
+    function controlEnabled(state, key) {
+      return Boolean((state.control_state || {})[key]);
+    }
+
+    function renderControlButtons(state) {
+      const autoButton = document.getElementById("auto-camera-button");
+      const openAiButton = document.getElementById("openai-button");
+      const elevenButton = document.getElementById("elevenlabs-button");
+      const autoOn = controlEnabled(state, "auto_camera");
+      const openAiOn = controlEnabled(state, "openai");
+      const elevenOn = controlEnabled(state, "elevenlabs");
+      autoButton.textContent = autoOn ? "Auto Camera: ON" : "Auto Camera: OFF";
+      openAiButton.textContent = openAiOn ? "OpenAI: ON" : "OpenAI: OFF";
+      elevenButton.textContent = elevenOn ? "ElevenLabs: ON" : "ElevenLabs: OFF";
+      autoButton.className = `control-button ${autoOn ? "good" : "danger"}`;
+      openAiButton.className = `control-button ${openAiOn ? "good" : "danger"}`;
+      elevenButton.className = `control-button ${elevenOn ? "good" : "danger"}`;
+    }
+
+    async function sendProducerCommand(command, payload = {}) {
+      try {
+        await fetch("/producer/command", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ command, payload })
+        });
+      } catch (error) {
+        console.warn("Producer command failed", command, error);
+      }
+    }
+
     function renderProducerFeed(state) {
       const feed = document.getElementById("producer-feed");
       const items = state.producer_feed || [];
@@ -1325,7 +1430,47 @@ PRODUCER_HTML = r"""<!doctype html>
       renderFeatured(state);
       renderStatPanel(state);
       renderProducerFeed(state);
+      renderControlButtons(state);
     }
+
+    document.getElementById("follow-driver-button").addEventListener("click", () => {
+      const driver = selectedDriver(lastState || {});
+      if (!driver) return;
+      sendProducerCommand("camera_follow_driver", {
+        car_idx: driver.car_idx,
+        group_name: "TV1"
+      });
+    });
+    document.getElementById("leader-camera-button").addEventListener("click", () => {
+      sendProducerCommand("camera_follow_leader");
+    });
+    document.getElementById("auto-camera-button").addEventListener("click", () => {
+      const on = controlEnabled(lastState || {}, "auto_camera");
+      sendProducerCommand(on ? "auto_camera_off" : "auto_camera_on");
+    });
+    document.getElementById("openai-button").addEventListener("click", () => {
+      const on = controlEnabled(lastState || {}, "openai");
+      sendProducerCommand(on ? "openai_off" : "openai_on");
+    });
+    document.getElementById("elevenlabs-button").addEventListener("click", () => {
+      const on = controlEnabled(lastState || {}, "elevenlabs");
+      sendProducerCommand(on ? "elevenlabs_off" : "elevenlabs_on");
+    });
+    document.getElementById("return-live-button").addEventListener("click", () => {
+      sendProducerCommand("replay_return_live");
+    });
+    document.getElementById("pause-replay-button").addEventListener("click", () => {
+      sendProducerCommand("replay_pause");
+    });
+    document.getElementById("play-replay-button").addEventListener("click", () => {
+      sendProducerCommand("replay_play");
+    });
+    document.getElementById("rewind-button").addEventListener("click", () => {
+      sendProducerCommand("replay_rewind", { seconds: 10 });
+    });
+    document.getElementById("fast-forward-button").addEventListener("click", () => {
+      sendProducerCommand("replay_fast_forward", { seconds: 10 });
+    });
 
     async function refreshProducerAssist() {
       try {

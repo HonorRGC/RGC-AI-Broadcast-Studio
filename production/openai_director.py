@@ -8,6 +8,7 @@ class OpenAIDirector:
     def __init__(self, model=OPENAI_MODEL):
         self.model = model
         self.prompt_builder = PromptBuilder()
+        self.runtime_enabled = True
 
         if USE_OPENAI and OPENAI_API_KEY:
             self.client = OpenAI(api_key=OPENAI_API_KEY)
@@ -15,7 +16,10 @@ class OpenAIDirector:
             self.client = None
 
     def is_enabled(self):
-        return self.client is not None
+        return self.runtime_enabled and self.client is not None
+
+    def set_enabled(self, enabled):
+        self.runtime_enabled = bool(enabled)
 
     def generate_commentary(
         self,

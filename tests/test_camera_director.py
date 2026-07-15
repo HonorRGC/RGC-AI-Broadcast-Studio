@@ -76,6 +76,17 @@ def test_observe_mode_reports_target_without_switching_camera():
     assert telemetry.switches == []
 
 
+def test_manual_camera_control_switches_even_when_auto_camera_is_off():
+    telemetry = CameraTelemetry()
+    director = CameraDirector(mode="off", preferred_group="TV1")
+
+    decision = director.manual_focus_car(3, "TV1", telemetry)
+
+    assert decision.status == "switched"
+    assert decision.car_number == "14"
+    assert telemetry.switches == [("14", 4, 0)]
+
+
 def test_auto_mode_switches_to_target_car_and_holds_the_shot():
     telemetry = CameraTelemetry()
     times = iter([100.0, 102.0])

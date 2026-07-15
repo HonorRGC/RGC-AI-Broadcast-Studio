@@ -34,3 +34,16 @@ def test_booth_ducks_audio_bed_while_voice_line_is_playing():
     assert booth.voice_client.spoken == [
         ("Trouble on the speedway, caution is out.", "voice-1")
     ]
+
+
+def test_booth_runtime_voice_toggle_mutes_voice_playback():
+    audio_bed = AudioBedSpy()
+    booth = BroadcastBooth(enable_voice=False, audio_bed=audio_bed)
+    booth.voice_client = VoiceSpy()
+    booth.get_voice_id = lambda speaker: "voice-1"
+
+    booth.set_voice_enabled(False)
+    booth.broadcast("This should only show as text.", speaker="lead")
+
+    assert audio_bed.ducks == 0
+    assert booth.voice_client.spoken == []
