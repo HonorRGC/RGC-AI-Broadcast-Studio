@@ -11,11 +11,18 @@ from voice.elevenlabs_client import ElevenLabsClient
 
 
 class BroadcastBooth:
-    def __init__(self, enable_voice=True, audio_bed=None, studio_volume=STUDIO_VOLUME):
+    def __init__(
+        self,
+        enable_voice=True,
+        audio_bed=None,
+        studio_volume=STUDIO_VOLUME,
+        producer_sink=None,
+    ):
         self.last_comment = ""
         self.enable_voice = enable_voice
         self.audio_bed = audio_bed
         self.studio_volume = int(studio_volume)
+        self.producer_sink = producer_sink
 
         if enable_voice and USE_ELEVENLABS and ELEVENLABS_API_KEY:
             self.voice_client = ElevenLabsClient(
@@ -57,6 +64,14 @@ class BroadcastBooth:
         print("=" * 60)
         print(commentary)
         print("=" * 60)
+
+        if self.producer_sink:
+            self.producer_sink(
+                kind="broadcast",
+                title=f"RGC BROADCAST - {speaker_label}",
+                message=commentary,
+                speaker=speaker_label,
+            )
 
         voice_id = self.get_voice_id(speaker)
 

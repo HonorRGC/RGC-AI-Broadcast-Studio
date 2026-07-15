@@ -112,6 +112,24 @@ class StatPanel:
 
 
 @dataclass
+class ProducerFeedItem:
+    kind: str = "info"
+    title: str = ""
+    message: str = ""
+    speaker: str = ""
+    created_at: float = 0.0
+
+    def to_dict(self):
+        return {
+            "kind": self.kind,
+            "title": self.title,
+            "message": self.message,
+            "speaker": self.speaker,
+            "created_at": self.created_at,
+        }
+
+
+@dataclass
 class OverlayState:
     event: OverlayEventConfig = field(default_factory=OverlayEventConfig)
     session_type: str = "Unknown"
@@ -463,6 +481,8 @@ class OverlayServer:
         self.stat_panel = None
         self.last_stat_panel_key = ""
         self.last_stat_panel_at = 0.0
+        self.producer_feed = []
+        self.max_producer_feed_items = 60
         self.httpd = None
         self.thread = None
         self.static_dir = Path(__file__).resolve().parent / "static"
@@ -597,9 +617,24 @@ class OverlayServer:
             self.state.stat_panel = self.stat_panel
         return True
 
+    def add_producer_event(self, kind="info", title="", message="", speaker=""):
+        item = ProducerFeedItem(
+            kind=str(kind or "info"),
+            title=str(title or ""),
+            message=str(message or ""),
+            speaker=str(speaker or ""),
+            created_at=time.time(),
+        )
+        with self.lock:
+            self.producer_feed.insert(0, item)
+            self.producer_feed = self.producer_feed[: self.max_producer_feed_items]
+        return item
+
     def current_state_dict(self):
         with self.lock:
-            return self.state.to_dict()
+            data = self.state.to_dict()
+            data["producer_feed"] = [item.to_dict() for item in self.producer_feed]
+            return data
 
     def make_handler(self):
         server = self
@@ -981,6 +1016,39 @@ PRODUCER_HTML = r"""<!doctype html>
       letter-spacing: 0.06em;
     }
 
+    .feed {
+      display: grid;
+      gap: 8px;
+      max-height: 300px;
+      overflow: auto;
+    }
+
+    .feed-item {
+      padding: 9px 10px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.045);
+      border-left: 4px solid #56657a;
+    }
+
+    .feed-item.broadcast { border-left-color: var(--green); }
+    .feed-item.camera { border-left-color: var(--blue); }
+    .feed-item.replay { border-left-color: var(--yellow); }
+    .feed-item.warning { border-left-color: var(--red); }
+
+    .feed-title {
+      font-size: 12px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #fff;
+    }
+
+    .feed-message {
+      margin-top: 3px;
+      color: #dbe5f4;
+      line-height: 1.3;
+    }
+
     @keyframes pulse {
       from { filter: brightness(1); }
       to { filter: brightness(1.28); }
@@ -1053,6 +1121,13 @@ PRODUCER_HTML = r"""<!doctype html>
         <div class="panel" id="stat-panel">
           <h3>Active Graphic / Stat Panel</h3>
           <div class="small">No stat panel is active.</div>
+        </div>
+
+        <div class="panel">
+          <h3>Producer Feed</h3>
+          <div class="feed" id="producer-feed">
+            <div class="small">Broadcast notes will appear here once the session starts.</div>
+          </div>
         </div>
       </aside>
     </main>
@@ -1217,6 +1292,30 @@ PRODUCER_HTML = r"""<!doctype html>
       `;
     }
 
+    function renderProducerFeed(state) {
+      const feed = document.getElementById("producer-feed");
+      const items = state.producer_feed || [];
+      feed.innerHTML = "";
+      if (!items.length) {
+        feed.innerHTML = '<div class="small">Broadcast notes will appear here once the session starts.</div>';
+        return;
+      }
+      for (const item of items.slice(0, 30)) {
+        const node = document.createElement("div");
+        node.className = `feed-item ${item.kind || "info"}`;
+        const title = document.createElement("div");
+        title.className = "feed-title";
+        const speaker = item.speaker ? ` • ${String(item.speaker).toUpperCase()}` : "";
+        title.textContent = `${item.title || item.kind || "Producer"}${speaker}`;
+        const message = document.createElement("div");
+        message.className = "feed-message";
+        message.textContent = item.message || "";
+        node.appendChild(title);
+        node.appendChild(message);
+        feed.appendChild(node);
+      }
+    }
+
     function renderAll(state) {
       if (!state) return;
       lastState = state;
@@ -1225,6 +1324,7 @@ PRODUCER_HTML = r"""<!doctype html>
       renderDriverDetail(state);
       renderFeatured(state);
       renderStatPanel(state);
+      renderProducerFeed(state);
     }
 
     async function refreshProducerAssist() {

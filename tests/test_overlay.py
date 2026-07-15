@@ -384,4 +384,23 @@ def test_producer_assist_html_reads_overlay_state():
     assert "RGC Producer Assist" in PRODUCER_HTML
     assert 'fetch("/overlay/state"' in PRODUCER_HTML
     assert 'id="leaderboard-rows"' in PRODUCER_HTML
+    assert 'id="producer-feed"' in PRODUCER_HTML
+    assert "renderProducerFeed" in PRODUCER_HTML
     assert "Move Camera to Driver" in PRODUCER_HTML
+
+
+def test_overlay_server_exposes_producer_feed_in_state():
+    from production.overlay import OverlayServer
+
+    server = OverlayServer()
+    server.add_producer_event(
+        kind="camera",
+        title="Camera",
+        message="following car #24 on TV1",
+    )
+
+    state = server.current_state_dict()
+
+    assert state["producer_feed"][0]["kind"] == "camera"
+    assert state["producer_feed"][0]["title"] == "Camera"
+    assert state["producer_feed"][0]["message"] == "following car #24 on TV1"

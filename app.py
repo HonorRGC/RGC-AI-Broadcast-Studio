@@ -147,17 +147,19 @@ def run_source(
             practice_presentation_director.update(
                 source.get_session_type(),
                 overlay_server,
-            )
+            ),
+            overlay_server,
         )
         report_anthem_decision(
-            anthem_director.update(source.get_session_type(), overlay_server)
+            anthem_director.update(source.get_session_type(), overlay_server),
+            overlay_server,
         )
-        report_replay_decision(replay_director.update(source, camera_director))
-        report_camera_decision(camera_director.update(source))
+        report_replay_decision(replay_director.update(source, camera_director), overlay_server)
+        report_camera_decision(camera_director.update(source), overlay_server)
         non_race_camera_decision = qualifying_camera_director.update(
             source, camera_director
         )
-        report_camera_decision(non_race_camera_decision)
+        report_camera_decision(non_race_camera_decision, overlay_server)
         if overlay_server:
             update_overlay_focused_driver(
                 overlay_server,
@@ -171,12 +173,13 @@ def run_source(
                 engine.race_director.phase,
                 overlay_server,
                 caution_audio_bed,
-            )
+            ),
+            overlay_server,
         )
         if item:
             validation = live_broadcast_validator.validate(item, source)
             if not validation.valid:
-                report_producer_skip(validation.reason)
+                report_producer_skip(validation.reason, overlay_server)
                 if hasattr(source, "next_snapshot"):
                     source.next_snapshot()
                 if tick_seconds > 0:
@@ -185,15 +188,16 @@ def run_source(
             if overlay_server:
                 show_overlay_feature(item, overlay_server, source, engine)
             report_replay_decision(
-                replay_director.handle_item(item, source, camera_director)
+                replay_director.handle_item(item, source, camera_director),
+                overlay_server,
             )
             if should_switch_camera_after_voice_starts(item):
                 if not getattr(item, "silent", False):
                     booth.broadcast(item.message, speaker=item.speaker)
                 else:
-                    report_silent_feature(item)
+                    report_silent_feature(item, overlay_server)
                 camera_decision = camera_director.follow(item, source)
-                report_camera_decision(camera_decision)
+                report_camera_decision(camera_decision, overlay_server)
                 if overlay_server:
                     update_overlay_featured_driver(
                         overlay_server,
@@ -203,7 +207,7 @@ def run_source(
                     )
             else:
                 camera_decision = camera_director.follow(item, source)
-                report_camera_decision(camera_decision)
+                report_camera_decision(camera_decision, overlay_server)
                 if overlay_server:
                     update_overlay_featured_driver(
                         overlay_server,
@@ -214,7 +218,7 @@ def run_source(
                 if not getattr(item, "silent", False):
                     booth.broadcast(item.message, speaker=item.speaker)
                 else:
-                    report_silent_feature(item)
+                    report_silent_feature(item, overlay_server)
 
         if hasattr(source, "next_snapshot"):
             source.next_snapshot()
@@ -257,28 +261,53 @@ def cleanup_live_broadcast_session(
     return False
 
 
-def report_anthem_decision(decision):
+def publish_producer_event(overlay_server, kind="info", title="", message="", speaker=""):
+    if not overlay_server:
+        return
+    publisher = getattr(overlay_server, "add_producer_event", None)
+    if publisher:
+        publisher(kind=kind, title=title, message=message, speaker=speaker)
+
+
+def report_anthem_decision(decision, overlay_server=None):
     if decision.status == "ignored":
         return
-    print(f"CEREMONY: {decision.reason}")
+    message = f"CEREMONY: {decision.reason}"
+    print(message)
+    publish_producer_event(overlay_server, "info", "Ceremony", decision.reason)
 
 
-def report_practice_presentation(message):
+def report_practice_presentation(message, overlay_server=None):
     if message:
         print(f"PRACTICE: {message}")
+        publish_producer_event(overlay_server, "info", "Practice", message)
 
 
-def report_caution_presentation(message):
+def report_caution_presentation(message, overlay_server=None):
     if message:
         print(f"CAUTION: {message}")
+        publish_producer_event(overlay_server, "warning", "Caution Presentation", message)
 
 
-def report_silent_feature(item):
+def report_silent_feature(item, overlay_server=None):
     print(f"FEATURE: {item.message}")
+    publish_producer_event(
+        overlay_server,
+        "info",
+        "Feature",
+        str(getattr(item, "message", "") or ""),
+        speaker=str(getattr(item, "speaker", "") or ""),
+    )
 
 
-def report_producer_skip(reason):
+def report_producer_skip(reason, overlay_server=None):
     print(f"PRODUCER: skipped stale story ({reason}).")
+    publish_producer_event(
+        overlay_server,
+        "warning",
+        "Producer skipped stale story",
+        str(reason or ""),
+    )
 
 
 def show_overlay_feature(item, overlay_server, source=None, engine=None):
@@ -343,6 +372,12 @@ def show_sponsor_mention_bug(item, overlay_server):
         graphics=graphics,
     )
     print(f"SPONSOR: showing graphic for {' / '.join(mentions)}.")
+    publish_producer_event(
+        overlay_server,
+        "info",
+        "Sponsor graphic",
+        f"Showing graphic for {' / '.join(mentions)}.",
+    )
     return True
 
 
@@ -629,24 +664,30 @@ def should_switch_camera_after_voice_starts(item):
     )
 
 
-def report_replay_decision(decision):
+def report_replay_decision(decision, overlay_server=None):
     if decision.status in ("ignored", "held"):
         return
     if decision.status == "failed":
-        print(f"REPLAY: {decision.reason}")
+        message = f"REPLAY: {decision.reason}"
+        print(message)
+        publish_producer_event(overlay_server, "replay", "Replay", decision.reason)
         return
     if decision.status == "live":
-        print("REPLAY: returned to live racing.")
+        message = "REPLAY: returned to live racing."
+        print(message)
+        publish_producer_event(overlay_server, "replay", "Replay", "Returned to live racing.")
         return
     target = (
         f"car index {decision.car_idx}"
         if decision.car_idx is not None
         else "iRacing incident camera"
     )
-    print(
-        f"REPLAY: angle {decision.angle_number} of {decision.total_angles}, "
+    message = (
+        f"angle {decision.angle_number} of {decision.total_angles}, "
         f"{target} on {decision.angle_group}."
     )
+    print(f"REPLAY: {message}")
+    publish_producer_event(overlay_server, "replay", "Replay", message)
 
 
 def update_overlay_featured_driver(overlay_server, item, source, camera_decision):
@@ -724,25 +765,30 @@ def build_featured_driver_image(driver):
     return ""
 
 
-def report_camera_decision(decision):
+def report_camera_decision(decision, overlay_server=None):
     if decision is None:
         return
     if decision.status not in ("suggested", "switched", "failed", "live"):
         return
 
     if decision.status == "live":
-        print("CAMERA: replay view returned to live racing.")
+        message = "replay view returned to live racing."
+        print(f"CAMERA: {message}")
+        publish_producer_event(overlay_server, "camera", "Camera", message)
         return
 
     if decision.status == "failed":
         print(f"CAMERA: {decision.reason}")
+        publish_producer_event(overlay_server, "warning", "Camera", decision.reason)
         return
 
     action = "would follow" if decision.status == "suggested" else "following"
-    print(
-        f"CAMERA: {action} car #{decision.car_number} "
+    message = (
+        f"{action} car #{decision.car_number} "
         f"on {decision.group_name} (CarIdx {decision.car_idx})."
     )
+    print(f"CAMERA: {message}")
+    publish_producer_event(overlay_server, "camera", "Camera", message)
 
 
 def main():
@@ -780,6 +826,8 @@ def main():
         host=args.overlay_host,
         port=args.overlay_port,
     ) if args.overlay else None
+    if overlay_server:
+        booth.producer_sink = overlay_server.add_producer_event
 
     if args.incident_replay == "auto" and args.camera_mode != "auto":
         raise SystemExit(
@@ -788,6 +836,11 @@ def main():
     if overlay_server:
         overlay_url = overlay_server.start()
         print(f"Overlay: ON ({overlay_url})")
+        overlay_server.add_producer_event(
+            kind="info",
+            title="Overlay",
+            message=f"Overlay: ON ({overlay_url}) | Producer: {overlay_server.producer_url}",
+        )
     else:
         print("Overlay: OFF")
 
