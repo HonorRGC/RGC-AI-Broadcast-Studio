@@ -127,7 +127,6 @@ def test_launcher_defaults_include_split_league_stats_csvs():
     assert defaults["NATIONAL_ANTHEM_GRAPHICS"] == ""
     assert defaults["CAUTION_PRESENTATION_GRAPHICS"] == ""
     assert defaults["POST_RACE_INTERVIEWS_ENABLED"] == "false"
-    assert defaults["POST_RACE_FINISH_CAMERA_DELAY_SECONDS"] == "180"
     assert defaults["SIMRACERHUB_SOURCE"] == "https://simracerhub.com"
     assert defaults["SIMRACERHUB_LEAGUE_ID"] == ""
     assert defaults["SIMRACERHUB_SERIES_ID"] == ""

@@ -1,7 +1,6 @@
 from enum import Enum
 
 from config import (
-    POST_RACE_FINISH_CAMERA_DELAY_SECONDS,
     POST_RACE_INTERVIEWS_ENABLED,
     SPONSOR_READ_CAUSE,
     USE_SPONSOR_READS,
@@ -36,13 +35,8 @@ class RaceDirector:
     def __init__(
         self,
         post_race_interviews_enabled=POST_RACE_INTERVIEWS_ENABLED,
-        post_race_finish_camera_delay_seconds=POST_RACE_FINISH_CAMERA_DELAY_SECONDS,
     ):
         self.post_race_interviews_enabled = bool(post_race_interviews_enabled)
-        self.post_race_finish_camera_delay_seconds = max(
-            0,
-            float(post_race_finish_camera_delay_seconds or 0),
-        )
         self.reset()
 
     def reset(self):
@@ -332,30 +326,11 @@ class RaceDirector:
             if winner_car_idx is not None
             else (),
         )
-        self.queue_post_race_finish_camera(scheduler, winner_car_idx)
 
         self.checkered_announced = True
         self.checkered_stabilization_ticks = 0
         self.finish_order_signature = ()
         self.finish_order_stable_ticks = 0
-
-    def queue_post_race_finish_camera(self, scheduler, winner_car_idx):
-        if winner_car_idx is None or self.post_race_finish_camera_delay_seconds <= 0:
-            return
-
-        scheduler.add(
-            "",
-            priority=3,
-            category="post_race_camera",
-            protected=True,
-            speaker="lead",
-            delay_seconds=self.post_race_finish_camera_delay_seconds,
-            expires_after=self.post_race_finish_camera_delay_seconds + 240,
-            dedupe_key="post_race:finish_line_camera",
-            camera_sequence_steps=((winner_car_idx, "TV Fixed", 0),),
-            silent=True,
-            feature_duration_seconds=45.0,
-        )
 
     def handle_post_race_results(
         self,
