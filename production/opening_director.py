@@ -20,6 +20,7 @@ class OpeningDirector:
         self.welcome_sent = False
         self.track_info_sent = False
         self.race_outlook_sent = False
+        self.pit_report_sent = False
         self.lineup_sent = False
         self.hype_sent = False
         self.lineup_ready_ticks = 0
@@ -31,14 +32,15 @@ class OpeningDirector:
         if not self.welcome_sent:
             segments.append(self.build_welcome(track_info))
             self.welcome_sent = True
-
-        if not self.track_info_sent:
-            segments.append(self.build_track_info(track_info))
             self.track_info_sent = True
 
         if not self.race_outlook_sent:
             segments.append(self.build_race_outlook(track_info))
             self.race_outlook_sent = True
+
+        if not self.pit_report_sent:
+            segments.append(self.build_pit_report(track_info))
+            self.pit_report_sent = True
 
         if not self.lineup_sent and self.has_valid_lineup(results):
             self.lineup_ready_ticks += 1
@@ -66,6 +68,7 @@ class OpeningDirector:
             self.welcome_sent
             and self.track_info_sent
             and self.race_outlook_sent
+            and self.pit_report_sent
             and self.lineup_sent
             and self.hype_sent
         )
@@ -79,12 +82,31 @@ class OpeningDirector:
         city = track_info.get("track_city", "")
         state = self.expand_state(track_info.get("track_state", ""))
         location = f" in {city}, {state}" if city and state else ""
+        details = []
+        track_description = self.track_description(track_info)
+        if track_description:
+            details.append(track_description)
+        conditions = self.build_weather_summary(track_info)
+        if conditions:
+            details.append(conditions)
+        detail_text = f" {' '.join(details)}" if details else ""
 
         return OpeningSegment(
-            f"Welcome to {track_name}{location}. The cars are on the grid as we get ready for today's race.",
+            f"Welcome to {track_name}{location}.{detail_text}",
             priority=10,
             category="opening_welcome",
         )
+
+    def track_description(self, track_info):
+        track_name = track_info.get("track_name", "the speedway")
+        track_type = str(track_info.get("track_type", "") or "").lower()
+        track_length = self.format_track_length(track_info.get("track_length"))
+
+        if track_length and track_type:
+            return f"{track_name} is a {track_length} {track_type}."
+        if track_length:
+            return f"{track_name} measures {track_length}."
+        return ""
 
     def build_track_info(self, track_info):
         track_name = track_info.get("track_name", "the speedway")
@@ -111,16 +133,59 @@ class OpeningDirector:
 
     def build_race_outlook(self, track_info):
         track_name = track_info.get("track_name", "this place")
+        track_type = str(track_info.get("track_type", "") or "").lower()
+        length_miles = self.track_length_miles(track_info.get("track_length"))
+        if length_miles and length_miles <= 1.0:
+            message = (
+                "The biggest thing tonight is patience. Restarts will stack up "
+                "quickly, and the drivers who keep the nose clean should have "
+                "options late."
+            )
+        elif self.is_drafting_track(track_name):
+            message = (
+                "The draft is going to shape this race. Runs will build fast, "
+                "and timing the lane changes may matter more than raw speed."
+            )
+        elif "road" in track_type:
+            message = (
+                "The rhythm sections and braking zones will decide this one. "
+                "Clean exits and mistake-free laps should pay off over a full run."
+            )
+        else:
+            message = (
+                "The story to watch is who can balance early track position "
+                "against saving enough tire to attack when the run gets long."
+            )
         return OpeningSegment(
-            (
-                f"As this race unfolds at {track_name}, watch how the opening "
-                "laps settle in. Track position will matter, but the drivers "
-                "who keep the tires underneath them and stay patient in traffic "
-                "could be the ones with something left when it is time to race "
-                "for the win."
-            ),
+            message,
             priority=9,
+            speaker="jeff",
             category="opening_race_outlook",
+        )
+
+    def build_pit_report(self, track_info):
+        track_name = track_info.get("track_name", "this place")
+        length_miles = self.track_length_miles(track_info.get("track_length"))
+        if length_miles and length_miles <= 1.0:
+            message = (
+                "Down here on pit road, track position will be huge. A clean stop "
+                "can keep a driver out of the hornet's nest."
+            )
+        elif self.is_drafting_track(track_name):
+            message = (
+                "Pit road timing could be a big swing tonight. If fuel strategy "
+                "comes into play, the cleanest group stop can win track position."
+            )
+        else:
+            message = (
+                "Pit road should be quiet early, but once tires start to matter, "
+                "the timing of that first stop can change the race."
+            )
+        return OpeningSegment(
+            message,
+            priority=8,
+            speaker="sarah",
+            category="opening_pit_report",
         )
 
     def build_hype(self):
@@ -284,18 +349,24 @@ class OpeningDirector:
         return states.get(str(state).upper(), state)
 
     def format_track_length(self, value):
-        if not value:
+        miles = self.track_length_miles(value)
+        if miles is None:
             return ""
+        return self.broadcast_track_length(miles)
+
+    def track_length_miles(self, value):
+        if not value:
+            return None
         text = str(value).strip()
         try:
             number = float(text.split()[0])
             if "km" in text.lower():
-                return self.broadcast_track_length(number * 0.621371)
+                return number * 0.621371
             if "mi" in text.lower():
-                return self.broadcast_track_length(number)
+                return number
         except (TypeError, ValueError):
-            return text
-        return text
+            return None
+        return number
 
     def broadcast_track_length(self, miles):
         common_lengths = (
@@ -348,6 +419,19 @@ class OpeningDirector:
         if text in ("mostly cloudy skies",):
             return "mostly cloudy"
         return text
+
+    def is_drafting_track(self, track_name):
+        text = str(track_name or "").lower()
+        return any(
+            name in text
+            for name in (
+                "daytona",
+                "talladega",
+                "echopark",
+                "echo park",
+                "atlanta",
+            )
+        )
 
     def format_humidity(self, value):
         try:

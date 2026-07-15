@@ -41,17 +41,19 @@ def test_opening_waits_for_lineup_after_welcome_and_weather():
 
     assert [segment.category for segment in first_segments] == [
         "opening_welcome",
-        "opening_track_info",
         "opening_race_outlook",
+        "opening_pit_report",
     ]
-    track_message = first_segments[1].message
+    track_message = first_segments[0].message
     assert "partly cloudy" in track_message.lower()
     assert "mile-and-a-third oval" in track_message
     assert "81 degrees Fahrenheit" in track_message
     assert "rain chance is 0 percent" in track_message
     assert "dynamic" not in track_message.lower()
     assert "hotter track should make the tires give up faster" in track_message
-    assert "opening laps" in first_segments[2].message
+    assert first_segments[1].speaker == "jeff"
+    assert first_segments[2].speaker == "sarah"
+    assert "Pit road" in first_segments[2].message
     assert director.is_complete() is False
 
     results, drivers = build_lineup()

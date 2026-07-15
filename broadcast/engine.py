@@ -179,6 +179,7 @@ class BroadcastEngine:
                 current_lap,
                 session_time=getattr(telemetry, "get_session_time", lambda: 0.0)(),
                 lap_dist_pct=getattr(telemetry, "get_car_idx_lap_dist_pct", lambda: [])(),
+                track_info=telemetry.get_track_info(),
             )
             self._collect_incidents(
                 telemetry,
@@ -892,6 +893,7 @@ class BroadcastEngine:
         current_lap,
         session_time=0.0,
         lap_dist_pct=None,
+        track_info=None,
     ):
         under_caution = self.race_director.phase in (
             RacePhase.CAUTION,
@@ -951,6 +953,7 @@ class BroadcastEngine:
                     driver_lookup,
                     current_lap,
                     pit_road_status,
+                    track_info,
                 )
                 self._queue_caution_race_insight()
             else:
@@ -1241,8 +1244,13 @@ class BroadcastEngine:
         driver_lookup,
         current_lap,
         pit_road_status=None,
+        track_info=None,
     ):
         if self.caution_top_ten_reset_queued:
+            return
+        if self.is_short_track(track_info):
+            self.caution_top_ten_order_signature = ()
+            self.caution_top_ten_stable_ticks = 0
             return
         if self.top_ten_has_pit_road_cars(results, pit_road_status):
             self.caution_top_ten_order_signature = ()
@@ -1283,6 +1291,40 @@ class BroadcastEngine:
             self.caution_top_ten_order_signature = signature
             self.caution_top_ten_stable_ticks = 1
         return self.caution_top_ten_stable_ticks >= required_ticks
+
+    def is_short_track(self, track_info):
+        if not track_info:
+            return False
+        track_type = str(track_info.get("track_type", "") or "").lower()
+        track_name = str(track_info.get("track_name", "") or "").lower()
+        length = self.track_length_miles(track_info.get("track_length"))
+        if length is not None and length <= 1.0 and "road" not in track_type:
+            return True
+        return any(
+            name in track_name
+            for name in (
+                "martinsville",
+                "bristol",
+                "richmond",
+                "north wilkesboro",
+                "south boston",
+                "stafford",
+                "irwindale",
+                "langley",
+            )
+        )
+
+    def track_length_miles(self, value):
+        if not value:
+            return None
+        text = str(value).strip().lower()
+        try:
+            number = float(text.split()[0])
+        except (TypeError, ValueError, IndexError):
+            return None
+        if "km" in text:
+            return number * 0.621371
+        return number
 
     def top_ten_has_pit_road_cars(self, results, pit_road_status):
         if not pit_road_status:

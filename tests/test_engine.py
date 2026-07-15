@@ -247,9 +247,8 @@ def test_initial_one_to_green_keeps_the_opening_package_available():
         item.dedupe_key == "race_control:one_to_green:initial"
         for item in engine.broadcast_queue.items
     )
-    assert any(
-        item.category == "opening_track_info" for item in engine.broadcast_queue.items
-    )
+    assert any(item.category == "opening_race_outlook" for item in engine.broadcast_queue.items)
+    assert any(item.category == "opening_pit_report" for item in engine.broadcast_queue.items)
     assert any(
         item.category.startswith("opening_field_rundown")
         for item in engine.broadcast_queue.items
@@ -1478,6 +1477,37 @@ def test_one_to_green_top_ten_reset_only_queues_once_per_caution():
         if item.category == "caution_top_ten_reset"
     ]
     assert len(resets) == 1
+
+
+def test_one_to_green_skips_top_ten_reset_on_short_tracks():
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    results = [
+        {"CarIdx": index, "Position": index}
+        for index in range(10)
+    ]
+    drivers = {
+        index: {"name": f"Driver {index + 1}", "number": str(index + 1)}
+        for index in range(10)
+    }
+    engine.race_director.phase = RacePhase.ONE_TO_GREEN
+
+    for lap in (20, 21, 22, 23, 24, 25, 26):
+        engine._collect_pit_stories(
+            results,
+            drivers,
+            [False] * 10,
+            current_lap=lap,
+            track_info={
+                "track_name": "Martinsville Speedway",
+                "track_type": "oval",
+                "track_length": "0.53 mi",
+            },
+        )
+
+    assert not any(
+        item.category == "caution_top_ten_reset"
+        for item in engine.broadcast_queue.items
+    )
 
 
 def test_one_to_green_top_ten_waits_for_stable_running_order():

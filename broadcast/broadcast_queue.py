@@ -43,6 +43,7 @@ class BroadcastQueue:
         self.items: List[ScheduledBroadcast] = []
         self.busy_until = 0.0
         self.minimum_gap_seconds = 2.5
+        self.voice_tail_padding_seconds = 0.55
 
     def add(
         self,
@@ -193,7 +194,8 @@ class BroadcastQueue:
             gap_time = 0.15
         else:
             gap_time = self.estimate_item_gap_seconds(selected)
-        self.busy_until = now + speech_time + gap_time
+        tail_padding = 0.0 if selected.silent else self.voice_tail_padding_seconds
+        self.busy_until = now + speech_time + gap_time + tail_padding
 
         return selected
 

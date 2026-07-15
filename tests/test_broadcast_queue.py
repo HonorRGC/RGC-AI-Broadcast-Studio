@@ -113,7 +113,7 @@ def test_spoken_feature_reserves_its_runtime():
     item = queue.next_item(now=now)
 
     assert item.silent is False
-    assert queue.busy_until == now + 21.0
+    assert queue.busy_until == now + 21.55
 
 
 def test_booth_follow_up_gets_tight_handoff_after_race_story():
@@ -136,7 +136,7 @@ def test_booth_follow_up_gets_tight_handoff_after_race_story():
     item = queue.next_item(now=now)
 
     assert item.dedupe_key == "story:lead"
-    assert queue.busy_until < now + 5.0
+    assert queue.busy_until < now + 5.7
 
 
 def test_short_lap_calls_do_not_reserve_long_broadcast_window():
