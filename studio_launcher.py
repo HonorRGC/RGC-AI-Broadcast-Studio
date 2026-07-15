@@ -996,6 +996,12 @@ def run_gui():
         command=lambda: open_external_link(RGC_WEBSITE_URL),
         color="#334b64",
     ).pack(side="left", padx=5)
+    button(
+        link_bar,
+        text="Check for Updates",
+        command=lambda: check_for_updates(),
+        color="#334b64",
+    ).pack(side="left", padx=5)
 
     status = tk.StringVar(
         value=(
@@ -1031,8 +1037,11 @@ def run_gui():
     profile_name_entry = entry(profile_bar, textvariable=profile_name_var, width=24)
     profile_name_entry.pack(side="left", padx=4, pady=8)
 
-    action_bar = frame(root, bg=PANEL_BG)
-    action_bar.pack(fill="x", padx=18, pady=(4, 10))
+    broadcast_bar = frame(root, bg=PANEL_BG)
+    broadcast_bar.pack(fill="x", padx=18, pady=(4, 6))
+
+    profile_action_bar = frame(root, bg=PANEL_BG)
+    profile_action_bar.pack(fill="x", padx=18, pady=(0, 10))
 
     health_panel = frame(root, bg=PANEL_BG)
     health_panel.pack(fill="x", padx=18, pady=(0, 10))
@@ -1052,6 +1061,12 @@ def run_gui():
         bg=PANEL_BG,
         fg=MUTED_FG,
     ).pack(side="left", padx=(12, 0))
+    button(
+        health_header,
+        text="Refresh Health",
+        command=lambda: refresh_health(),
+        color="#334b64",
+    ).pack(side="right")
     health_rows_frame = frame(health_panel, bg=PANEL_BG)
     health_rows_frame.pack(fill="x", padx=12, pady=(0, 10))
     health_row_widgets = []
@@ -1507,57 +1522,47 @@ def run_gui():
             return
         root.destroy()
 
-    button(action_bar, text="Save Settings", command=save_settings, color="#334b64").pack(
+    button(broadcast_bar, text="Start Broadcast", command=start_full_ai, color=GREEN).pack(
         side="left",
         padx=6,
         pady=8,
     )
-    button(action_bar, text="Save Profile", command=save_current_profile, color="#334b64").pack(
+    button(broadcast_bar, text="Start Producer Assist", command=start_producer_assist, color=ACCENT).pack(
         side="left",
         padx=6,
         pady=8,
     )
-    button(action_bar, text="Load Profile", command=load_selected_profile, color="#334b64").pack(
+    button(broadcast_bar, text="Stop Broadcast", command=stop_running_broadcast, color=STOP_RED).pack(
         side="left",
         padx=6,
         pady=8,
     )
-    button(action_bar, text="Refresh Profiles", command=refresh_profile_list, color="#334b64").pack(
+    button(profile_action_bar, text="Save Settings", command=save_settings, color="#334b64").pack(
         side="left",
         padx=6,
         pady=8,
     )
-    button(action_bar, text="Create League Files", command=create_league_files, color="#334b64").pack(
+    button(profile_action_bar, text="Save Profile", command=save_current_profile, color="#334b64").pack(
         side="left",
         padx=6,
         pady=8,
     )
-    button(action_bar, text="Start Broadcast", command=start_full_ai, color=GREEN).pack(
+    button(profile_action_bar, text="Load Profile", command=load_selected_profile, color="#334b64").pack(
         side="left",
         padx=6,
         pady=8,
     )
-    button(action_bar, text="Start Producer Assist", command=start_producer_assist, color=ACCENT).pack(
+    button(profile_action_bar, text="Refresh Profiles", command=refresh_profile_list, color="#334b64").pack(
         side="left",
         padx=6,
         pady=8,
     )
-    button(action_bar, text="Stop Broadcast", command=stop_running_broadcast, color=STOP_RED).pack(
+    button(profile_action_bar, text="Create League Files", command=create_league_files, color="#334b64").pack(
         side="left",
         padx=6,
         pady=8,
     )
-    button(action_bar, text="Refresh Health", command=refresh_health, color="#334b64").pack(
-        side="left",
-        padx=6,
-        pady=8,
-    )
-    button(action_bar, text="Check for Updates", command=check_for_updates, color="#334b64").pack(
-        side="left",
-        padx=6,
-        pady=8,
-    )
-    volume_frame = frame(action_bar, bg=PANEL_BG)
+    volume_frame = frame(broadcast_bar, bg=PANEL_BG)
     volume_frame.pack(side="right", padx=(14, 10), pady=8)
     label(
         volume_frame,
