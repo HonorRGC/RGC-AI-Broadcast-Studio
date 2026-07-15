@@ -4,6 +4,7 @@ from types import SimpleNamespace
 
 from studio_launcher import (
     DEFAULT_OVERLAY_URL,
+    DEFAULT_PRODUCER_URL,
     RGC_DISCORD_URL,
     RGC_WEBSITE_URL,
     apply_audio_file_selection,
@@ -63,6 +64,7 @@ def test_launcher_includes_rgc_links():
     assert RGC_DISCORD_URL == "https://discord.gg/Axwwa8CUqt"
     assert RGC_WEBSITE_URL == "https://www.realisticgamingcrew.com"
     assert DEFAULT_OVERLAY_URL == "http://127.0.0.1:8765/overlay"
+    assert DEFAULT_PRODUCER_URL == "http://127.0.0.1:8765/producer"
 
 
 def test_launcher_version_comparison_helpers():
@@ -176,6 +178,7 @@ def test_first_time_setup_checklist_reports_ready_release_basics(tmp_path):
     assert row_map["ElevenLabs"][0] == "Ready"
     assert row_map["Overlay branding"][0] == "Ready"
     assert row_map["Profiles"][0] == "Ready"
+    assert row_map["Producer Assist link"][1] == DEFAULT_PRODUCER_URL
 
 
 def test_launcher_health_reports_disabled_ai_as_off():
@@ -186,6 +189,7 @@ def test_launcher_health_reports_disabled_ai_as_off():
 
     assert row_map["OpenAI"][0] == "Off"
     assert row_map["ElevenLabs"][0] == "Off"
+    assert row_map["Producer Assist"][1] == DEFAULT_PRODUCER_URL
     assert row_map["Broadcast"][0] == "Running"
 
 

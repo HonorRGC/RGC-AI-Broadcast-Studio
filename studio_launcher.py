@@ -29,6 +29,7 @@ BROADCAST_PROCESS = None
 RGC_DISCORD_URL = "https://discord.gg/Axwwa8CUqt"
 RGC_WEBSITE_URL = "https://www.realisticgamingcrew.com"
 DEFAULT_OVERLAY_URL = "http://127.0.0.1:8765/overlay"
+DEFAULT_PRODUCER_URL = "http://127.0.0.1:8765/producer"
 GITHUB_RELEASES_URL = "https://github.com/HonorRGC/RGC-AI-Broadcast-Studio/releases"
 GITHUB_LATEST_RELEASE_API = (
     "https://api.github.com/repos/HonorRGC/RGC-AI-Broadcast-Studio/releases/latest"
@@ -361,6 +362,7 @@ def build_health_status(values, root=ROOT, broadcast_running=False):
         rows.append(("ElevenLabs", "Off", "Voice playback disabled.", "off"))
 
     rows.append(("Overlay", "Ready", DEFAULT_OVERLAY_URL, "ok"))
+    rows.append(("Producer Assist", "Ready", DEFAULT_PRODUCER_URL, "ok"))
 
     if setting_enabled(values, "USE_LEAGUE_DRIVER_NOTES", "false"):
         drivers_path = resolve_project_path(values.get("LEAGUE_DRIVERS_CSV"), root)
@@ -508,6 +510,7 @@ def build_first_time_setup_checklist(
         )
 
     rows.append(("Overlay link", "Ready", DEFAULT_OVERLAY_URL, "ok"))
+    rows.append(("Producer Assist link", "Ready", DEFAULT_PRODUCER_URL, "ok"))
     rows.append(
         (
             "iRacing / OBS",
@@ -1041,9 +1044,10 @@ def run_gui():
         )
     )
     overlay_link_row = overlay_brand_row + 1
+    producer_link_row = overlay_brand_row + 2
 
     def settings_grid_row(field_row):
-        return field_row + 1 if field_row > overlay_brand_row else field_row
+        return field_row + 2 if field_row > overlay_brand_row else field_row
 
     for row, (key, _default) in enumerate(LAUNCHER_FIELDS):
         if key == "STUDIO_VOLUME":
@@ -1086,6 +1090,33 @@ def run_gui():
         ),
         color="#334b64",
     ).grid(row=overlay_link_row, column=2, padx=(8, 0), sticky="w")
+
+    label(
+        settings_frame,
+        text="Producer Assist Link",
+        anchor="w",
+        width=24,
+        bg=PANEL_BG,
+        fg=MUTED_FG,
+    ).grid(row=producer_link_row, column=0, sticky="w", pady=3)
+    producer_url_var = tk.StringVar(value=DEFAULT_PRODUCER_URL)
+    producer_url_entry = entry(
+        settings_frame,
+        textvariable=producer_url_var,
+        width=72,
+        state="readonly",
+        readonlybackground=FIELD_BG,
+    )
+    producer_url_entry.grid(row=producer_link_row, column=1, sticky="ew", pady=3)
+    button(
+        settings_frame,
+        text="Copy Producer Link",
+        command=lambda: (
+            copy_to_clipboard(root, DEFAULT_PRODUCER_URL),
+            status.set("Copied Producer Assist control-room link."),
+        ),
+        color="#334b64",
+    ).grid(row=producer_link_row, column=2, padx=(8, 0), sticky="w")
 
     def choose_graphics_for_field(field_name, title, status_label):
         paths = filedialog.askopenfilenames(
@@ -2245,6 +2276,7 @@ def build_help_tab(
         Copy the Streamlabs / OBS browser-source link from Broadcast Settings and add it as a Browser Source.
         Use 1920 x 1080 for the browser source size. Put the overlay source above your iRacing capture.
         Add event title, race sponsor, series name, and sponsor logos before saving settings.
+        The Producer Assist link is a private control-room page for the broadcaster, not a source for the stream.
         """,
     )
     section(

@@ -1,4 +1,4 @@
-from production.overlay import OVERLAY_HTML, OverlayEventConfig, OverlayStateBuilder
+from production.overlay import PRODUCER_HTML, OVERLAY_HTML, OverlayEventConfig, OverlayStateBuilder
 
 
 class OverlayTelemetry:
@@ -370,3 +370,18 @@ def test_overlay_server_has_paint_preview_route(tmp_path):
     handler = server.make_handler()
 
     assert hasattr(handler, "send_paint_preview")
+
+
+def test_overlay_server_exposes_producer_assist_url():
+    from production.overlay import OverlayServer
+
+    server = OverlayServer()
+
+    assert server.producer_url == "http://127.0.0.1:8765/producer"
+
+
+def test_producer_assist_html_reads_overlay_state():
+    assert "RGC Producer Assist" in PRODUCER_HTML
+    assert 'fetch("/overlay/state"' in PRODUCER_HTML
+    assert 'id="leaderboard-rows"' in PRODUCER_HTML
+    assert "Move Camera to Driver" in PRODUCER_HTML

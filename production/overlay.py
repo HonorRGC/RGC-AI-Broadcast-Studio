@@ -472,6 +472,10 @@ class OverlayServer:
     def url(self):
         return f"http://{self.host}:{self.port}/overlay"
 
+    @property
+    def producer_url(self):
+        return f"http://{self.host}:{self.port}/producer"
+
     def start(self):
         handler = self.make_handler()
         self.httpd = ThreadingHTTPServer((self.host, self.port), handler)
@@ -606,6 +610,10 @@ class OverlayServer:
                     self.send_text(OVERLAY_HTML, "text/html; charset=utf-8")
                     return
 
+                if self.path == "/producer":
+                    self.send_text(PRODUCER_HTML, "text/html; charset=utf-8")
+                    return
+
                 if self.path == "/overlay/state":
                     self.send_json(server.current_state_dict())
                     return
@@ -693,6 +701,550 @@ class OverlayServer:
             return default_preview_cache_dir()
         except Exception:
             return Path.home() / ".rgc_ai_broadcast_studio" / "paint_previews"
+
+
+PRODUCER_HTML = r"""<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>RGC Producer Assist</title>
+  <style>
+    :root {
+      --bg: #070a0f;
+      --panel: #101722;
+      --panel-2: #151e2d;
+      --line: rgba(255, 255, 255, 0.13);
+      --text: #eef4ff;
+      --muted: #9aa8bc;
+      --green: #27d17f;
+      --yellow: #ffd447;
+      --red: #e94b5f;
+      --blue: #53a7ff;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Segoe UI", Arial, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(83, 167, 255, 0.18), transparent 30%),
+        linear-gradient(135deg, #05070b, var(--bg));
+    }
+
+    .page {
+      padding: 18px;
+      display: grid;
+      gap: 14px;
+    }
+
+    .topbar,
+    .card,
+    .driver-detail,
+    .leaderboard {
+      background: rgba(16, 23, 34, 0.92);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      box-shadow: 0 18px 45px rgba(0, 0, 0, 0.28);
+    }
+
+    .topbar {
+      padding: 14px 16px;
+      display: grid;
+      grid-template-columns: 1.4fr 1fr;
+      gap: 12px;
+      align-items: center;
+    }
+
+    h1, h2, h3, p { margin: 0; }
+
+    h1 {
+      font-size: 24px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .subtitle {
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .flag {
+      justify-self: end;
+      padding: 10px 16px;
+      border-radius: 999px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      color: #05100a;
+      background: var(--green);
+      text-transform: uppercase;
+    }
+
+    .flag.caution {
+      color: #211600;
+      background: var(--yellow);
+      animation: pulse 1s infinite alternate;
+    }
+
+    .flag.unknown {
+      color: var(--text);
+      background: #313c4f;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(150px, 1fr));
+      gap: 12px;
+    }
+
+    .card {
+      padding: 13px 14px;
+      min-height: 82px;
+    }
+
+    .label {
+      color: var(--muted);
+      text-transform: uppercase;
+      font-size: 11px;
+      letter-spacing: 0.1em;
+    }
+
+    .value {
+      margin-top: 7px;
+      font-size: 24px;
+      font-weight: 900;
+    }
+
+    .main {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 14px;
+      align-items: start;
+    }
+
+    .leaderboard {
+      overflow: hidden;
+    }
+
+    .section-head {
+      padding: 13px 14px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .section-head h2 {
+      font-size: 17px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .rows {
+      max-height: calc(100vh - 295px);
+      overflow: auto;
+    }
+
+    .driver-row {
+      display: grid;
+      grid-template-columns: 48px 74px 1fr 92px 110px;
+      gap: 10px;
+      align-items: center;
+      padding: 9px 14px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+      cursor: pointer;
+      transition: background 0.12s ease, border-color 0.12s ease;
+    }
+
+    .driver-row:hover,
+    .driver-row.selected {
+      background: rgba(83, 167, 255, 0.14);
+    }
+
+    .driver-row.selected {
+      border-left: 4px solid var(--blue);
+      padding-left: 10px;
+    }
+
+    .pos {
+      font-weight: 900;
+      color: var(--blue);
+    }
+
+    .num {
+      font-weight: 900;
+      color: #fff;
+    }
+
+    .name {
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      font-weight: 700;
+    }
+
+    .small {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .driver-detail {
+      padding: 16px;
+      display: grid;
+      gap: 14px;
+    }
+
+    .driver-title {
+      display: grid;
+      grid-template-columns: 90px 1fr;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .big-number {
+      height: 72px;
+      border-radius: 14px;
+      display: grid;
+      place-items: center;
+      background: linear-gradient(135deg, #1d2d45, #101722);
+      border: 1px solid var(--line);
+      font-size: 29px;
+      font-weight: 950;
+    }
+
+    .driver-name {
+      font-size: 24px;
+      font-weight: 950;
+    }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .detail-item {
+      padding: 10px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+    }
+
+    .story-box {
+      padding: 12px;
+      border-radius: 14px;
+      border: 1px solid rgba(83, 167, 255, 0.28);
+      background: rgba(83, 167, 255, 0.09);
+      color: #dcecff;
+      line-height: 1.35;
+    }
+
+    .button-row {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 12px;
+      padding: 11px 12px;
+      color: white;
+      background: #27496d;
+      font-weight: 800;
+      cursor: not-allowed;
+      opacity: 0.72;
+    }
+
+    .panel {
+      padding: 12px;
+      background: rgba(255, 255, 255, 0.045);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+    }
+
+    .panel h3 {
+      margin-bottom: 6px;
+      color: #fff;
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    @keyframes pulse {
+      from { filter: brightness(1); }
+      to { filter: brightness(1.28); }
+    }
+
+    @media (max-width: 1050px) {
+      .grid { grid-template-columns: repeat(2, minmax(150px, 1fr)); }
+      .main { grid-template-columns: 1fr; }
+      .rows { max-height: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="topbar">
+      <div>
+        <h1>RGC Producer Assist</h1>
+        <p class="subtitle" id="event-line">Waiting for broadcast state...</p>
+      </div>
+      <div class="flag unknown" id="flag-pill">Waiting</div>
+    </header>
+
+    <section class="grid">
+      <div class="card"><div class="label">Session</div><div class="value" id="session-value">--</div></div>
+      <div class="card"><div class="label">Race Lap</div><div class="value" id="lap-value">--</div></div>
+      <div class="card"><div class="label">Cautions</div><div class="value" id="cautions-value">--</div></div>
+      <div class="card"><div class="label">Last Caution</div><div class="value" id="last-caution-value">--</div></div>
+      <div class="card"><div class="label">Green / Yellow Laps</div><div class="value" id="lap-mix-value">--</div></div>
+    </section>
+
+    <main class="main">
+      <section class="leaderboard">
+        <div class="section-head">
+          <h2>Live Leaderboard</h2>
+          <span class="hint">Click a driver for notes</span>
+        </div>
+        <div class="rows" id="leaderboard-rows"></div>
+      </section>
+
+      <aside class="driver-detail">
+        <div class="driver-title">
+          <div class="big-number" id="detail-number">--</div>
+          <div>
+            <div class="driver-name" id="detail-name">Select a driver</div>
+            <div class="small" id="detail-subtitle">Live race information will show here.</div>
+          </div>
+        </div>
+
+        <div class="detail-grid">
+          <div class="detail-item"><div class="label">Position</div><div class="value" id="detail-position">--</div></div>
+          <div class="detail-item"><div class="label">Interval</div><div class="value" id="detail-interval">--</div></div>
+          <div class="detail-item"><div class="label">Laps Complete</div><div class="value" id="detail-laps">--</div></div>
+          <div class="detail-item"><div class="label">Fastest Lap</div><div class="value" id="detail-fastest">--</div></div>
+        </div>
+
+        <div class="story-box" id="story-box">
+          Producer note: pick a driver from the leaderboard. This panel is built to become the broadcaster control room.
+        </div>
+
+        <div class="button-row">
+          <button title="Coming soon">Move Camera to Driver</button>
+          <button title="Coming soon">Send Driver Note</button>
+        </div>
+
+        <div class="panel" id="featured-panel">
+          <h3>Current Broadcast Focus</h3>
+          <div class="small">No featured driver on the overlay right now.</div>
+        </div>
+
+        <div class="panel" id="stat-panel">
+          <h3>Active Graphic / Stat Panel</h3>
+          <div class="small">No stat panel is active.</div>
+        </div>
+      </aside>
+    </main>
+  </div>
+
+  <script>
+    let selectedCarIdx = null;
+    let lastState = null;
+
+    function text(id, value) {
+      document.getElementById(id).textContent = value;
+    }
+
+    function ordinal(n) {
+      const value = Number(n);
+      if (!Number.isFinite(value) || value <= 0) return "--";
+      const mod10 = value % 10;
+      const mod100 = value % 100;
+      if (mod10 === 1 && mod100 !== 11) return `${value}st`;
+      if (mod10 === 2 && mod100 !== 12) return `${value}nd`;
+      if (mod10 === 3 && mod100 !== 13) return `${value}rd`;
+      return `${value}th`;
+    }
+
+    function formatLap(state) {
+      const lap = Number(state.lap || 0);
+      const total = Number(state.total_laps || 0);
+      if (total > 0) return `${lap} / ${total}`;
+      return lap > 0 ? String(lap) : "--";
+    }
+
+    function lapHistorySummary(history) {
+      let cautionSegments = 0;
+      let lastCautionLap = "";
+      let greenLaps = 0;
+      let cautionLaps = 0;
+      let previous = "";
+      for (const lap of history || []) {
+        if (lap.status === "caution") {
+          cautionLaps += 1;
+          lastCautionLap = lap.lap;
+          if (previous !== "caution") cautionSegments += 1;
+        }
+        if (lap.status === "green") greenLaps += 1;
+        previous = lap.status;
+      }
+      return { cautionSegments, lastCautionLap, greenLaps, cautionLaps };
+    }
+
+    function renderHeader(state) {
+      const event = state.event || {};
+      text("event-line", `${event.title || "Untitled Event"} • ${state.track_name || "Unknown Track"}${event.sponsor ? " • " + event.sponsor : ""}`);
+      text("session-value", state.session_type || "Unknown");
+      text("lap-value", formatLap(state));
+
+      const flag = document.getElementById("flag-pill");
+      flag.className = "flag";
+      if (state.caution) {
+        flag.classList.add("caution");
+        flag.textContent = "Caution";
+      } else if (state.green) {
+        flag.textContent = "Green";
+      } else {
+        flag.classList.add("unknown");
+        flag.textContent = "Waiting";
+      }
+
+      const summary = lapHistorySummary(state.lap_history);
+      text("cautions-value", summary.cautionSegments || "0");
+      text("last-caution-value", summary.lastCautionLap ? `Lap ${summary.lastCautionLap}` : "--");
+      text("lap-mix-value", `${summary.greenLaps} / ${summary.cautionLaps}`);
+    }
+
+    function driverKey(driver) {
+      return String(driver.car_idx ?? `${driver.position}:${driver.car_number}:${driver.driver_name}`);
+    }
+
+    function renderLeaderboard(state) {
+      const rows = document.getElementById("leaderboard-rows");
+      const leaderboard = state.leaderboard || [];
+      if (!leaderboard.length) {
+        rows.innerHTML = '<div class="driver-row"><div class="small">No leaderboard data yet.</div></div>';
+        return;
+      }
+      if (selectedCarIdx === null || !leaderboard.some(driver => driverKey(driver) === selectedCarIdx)) {
+        selectedCarIdx = driverKey(leaderboard[0]);
+      }
+      rows.innerHTML = "";
+      for (const driver of leaderboard) {
+        const key = driverKey(driver);
+        const row = document.createElement("div");
+        row.className = `driver-row${key === selectedCarIdx ? " selected" : ""}`;
+        row.innerHTML = `
+          <div class="pos">${ordinal(driver.position)}</div>
+          <div class="num">#${driver.car_number || "--"}</div>
+          <div class="name">${driver.driver_name || "Unknown Driver"}</div>
+          <div class="small">${driver.interval || "--"}</div>
+          <div class="small">${driver.fastest_lap || "--"}</div>
+        `;
+        row.addEventListener("click", () => {
+          selectedCarIdx = key;
+          renderAll(lastState);
+        });
+        rows.appendChild(row);
+      }
+    }
+
+    function selectedDriver(state) {
+      const leaderboard = state.leaderboard || [];
+      return leaderboard.find(driver => driverKey(driver) === selectedCarIdx) || leaderboard[0] || null;
+    }
+
+    function renderDriverDetail(state) {
+      const driver = selectedDriver(state);
+      if (!driver) return;
+      text("detail-number", `#${driver.car_number || "--"}`);
+      text("detail-name", driver.driver_name || "Unknown Driver");
+      text("detail-subtitle", `${state.session_type || "Session"} at ${state.track_name || "the track"}`);
+      text("detail-position", ordinal(driver.position));
+      text("detail-interval", driver.interval || "--");
+      text("detail-laps", driver.laps_complete ?? "--");
+      text("detail-fastest", driver.fastest_lap || "--");
+
+      const lap = formatLap(state);
+      const note = [
+        `${driver.driver_name || "This driver"} is currently ${ordinal(driver.position)} in the running order.`,
+        driver.interval ? `Interval shown: ${driver.interval}.` : "",
+        driver.fastest_lap ? `Fastest lap: ${driver.fastest_lap}.` : "",
+        `Race status: ${state.caution ? "under caution" : state.green ? "green flag" : "not green yet"} on lap ${lap}.`
+      ].filter(Boolean).join(" ");
+      text("story-box", note);
+    }
+
+    function renderFeatured(state) {
+      const panel = document.getElementById("featured-panel");
+      const featured = state.featured_driver;
+      if (!featured) {
+        panel.innerHTML = '<h3>Current Broadcast Focus</h3><div class="small">No featured driver on the overlay right now.</div>';
+        return;
+      }
+      panel.innerHTML = `
+        <h3>Current Broadcast Focus</h3>
+        <div><strong>#${featured.car_number || "--"} ${featured.driver_name || ""}</strong></div>
+        <div class="small">${featured.story || "Camera/driver graphic is active."}</div>
+      `;
+    }
+
+    function renderStatPanel(state) {
+      const panel = document.getElementById("stat-panel");
+      const stat = state.stat_panel;
+      if (!stat) {
+        panel.innerHTML = '<h3>Active Graphic / Stat Panel</h3><div class="small">No stat panel is active.</div>';
+        return;
+      }
+      const rows = (stat.rows || []).map(row =>
+        `<div class="small"><strong>${row.label || ""}</strong> ${row.value || ""} ${row.detail || ""}</div>`
+      ).join("");
+      panel.innerHTML = `
+        <h3>${stat.title || "Active Stat Panel"}</h3>
+        <div class="small">${stat.subtitle || ""}</div>
+        ${rows}
+      `;
+    }
+
+    function renderAll(state) {
+      if (!state) return;
+      lastState = state;
+      renderHeader(state);
+      renderLeaderboard(state);
+      renderDriverDetail(state);
+      renderFeatured(state);
+      renderStatPanel(state);
+    }
+
+    async function refreshProducerAssist() {
+      try {
+        const response = await fetch("/overlay/state", { cache: "no-store" });
+        renderAll(await response.json());
+      } catch (error) {
+        text("event-line", "Waiting for the broadcast overlay server...");
+        document.getElementById("flag-pill").className = "flag unknown";
+        document.getElementById("flag-pill").textContent = "Offline";
+        console.warn("Producer Assist update failed", error);
+      }
+    }
+
+    refreshProducerAssist();
+    setInterval(refreshProducerAssist, 1000);
+  </script>
+</body>
+</html>
+"""
 
 
 OVERLAY_HTML = r"""<!doctype html>
