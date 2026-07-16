@@ -52,30 +52,29 @@ def test_cleanup_live_broadcast_session_returns_live_and_stops_audio():
     assert caution_bed.stops == 1
 
 
-class FadeAudioBed:
+class StopAudioBed:
     def __init__(self):
-        self.calls = []
+        self.stops = 0
 
-    def fade_out_and_wait(self, **kwargs):
-        self.calls.append(kwargs)
-        return True
+    def stop(self):
+        self.stops += 1
 
 
-def test_prefade_music_before_restart_call_blocks_for_one_to_green():
-    audio = FadeAudioBed()
+def test_prefade_music_before_restart_call_stops_for_one_to_green():
+    audio = StopAudioBed()
     item = SimpleNamespace(dedupe_key="race_control:one_to_green:restart")
 
-    faded = prefade_music_before_restart_call(item, audio)
+    stopped = prefade_music_before_restart_call(item, audio)
 
-    assert faded is True
-    assert audio.calls == [{"duration_seconds": 1.3, "steps": 12}]
+    assert stopped is True
+    assert audio.stops == 1
 
 
 def test_prefade_music_before_restart_call_ignores_other_broadcasts():
-    audio = FadeAudioBed()
+    audio = StopAudioBed()
     item = SimpleNamespace(dedupe_key="race_control:caution")
 
-    faded = prefade_music_before_restart_call(item, audio)
+    stopped = prefade_music_before_restart_call(item, audio)
 
-    assert faded is False
-    assert audio.calls == []
+    assert stopped is False
+    assert audio.stops == 0

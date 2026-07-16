@@ -17,20 +17,9 @@ class OverlaySpy:
 class AudioBedSpy:
     def __init__(self):
         self.stops = 0
-        self.fades = 0
-        self.fade_kwargs = None
 
     def stop(self):
         self.stops += 1
-
-    def fade_out(self, **kwargs):
-        self.fades += 1
-        self.fade_kwargs = kwargs
-
-    def fade_out_and_wait(self, **kwargs):
-        self.fades += 1
-        self.fade_kwargs = kwargs
-        return True
 
 
 def test_caution_presentation_shows_sponsors_until_green():
@@ -65,7 +54,7 @@ def test_caution_presentation_uses_configured_graphics():
     ]
 
 
-def test_caution_presentation_fades_music_once_at_one_to_green():
+def test_caution_presentation_stops_music_once_at_one_to_green():
     audio = AudioBedSpy()
     director = CautionPresentationDirector()
 
@@ -73,9 +62,7 @@ def test_caution_presentation_fades_music_once_at_one_to_green():
     director.update(RacePhase.ONE_TO_GREEN, audio_bed=audio)
     director.update(RacePhase.ONE_TO_GREEN, audio_bed=audio)
 
-    assert audio.fades == 1
-    assert audio.stops == 0
-    assert audio.fade_kwargs == {"duration_seconds": 1.3, "steps": 12}
+    assert audio.stops == 1
 
 
 def test_caution_presentation_can_fall_back_to_stop_at_one_to_green():

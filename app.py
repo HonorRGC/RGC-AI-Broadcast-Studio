@@ -277,17 +277,6 @@ def prefade_music_before_restart_call(item, caution_audio_bed):
     if not is_one_to_green_restart_call(item) or not caution_audio_bed:
         return False
 
-    fader = getattr(caution_audio_bed, "fade_out_and_wait", None)
-    if fader:
-        return bool(fader(duration_seconds=1.3, steps=12))
-
-    fader = getattr(caution_audio_bed, "fade_out", None)
-    if fader:
-        faded = bool(fader(duration_seconds=1.3, steps=12))
-        if faded:
-            time.sleep(1.4)
-        return faded
-
     stopper = getattr(caution_audio_bed, "stop", None)
     if stopper:
         stopper()
