@@ -82,6 +82,21 @@ def test_audio_bed_fade_out_lowers_volume_before_stopping():
     assert player.is_playing is False
 
 
+def test_audio_bed_fade_out_and_wait_finishes_before_returning():
+    player = AudioBedPlayerSpy()
+    player.is_playing = True
+    player.active_path = "D:/Music/caution.mp3"
+
+    faded = player.fade_out_and_wait(duration_seconds=0.1, steps=2)
+
+    assert faded is True
+    assert player.commands[-2:] == [
+        f"stop {player.alias}",
+        f"close {player.alias}",
+    ]
+    assert player.is_playing is False
+
+
 class OneShotAudioPlayerSpy(OneShotAudioPlayer):
     def __init__(self):
         super().__init__(alias="test_one_shot_audio")

@@ -201,6 +201,7 @@ def run_source(
             )
             if should_switch_camera_after_voice_starts(item):
                 if not getattr(item, "silent", False):
+                    prefade_music_before_restart_call(item, caution_audio_bed)
                     booth.broadcast(item.message, speaker=item.speaker)
                 else:
                     report_silent_feature(item, overlay_server)
@@ -224,6 +225,7 @@ def run_source(
                         camera_decision,
                     )
                 if not getattr(item, "silent", False):
+                    prefade_music_before_restart_call(item, caution_audio_bed)
                     booth.broadcast(item.message, speaker=item.speaker)
                 else:
                     report_silent_feature(item, overlay_server)
@@ -267,6 +269,33 @@ def cleanup_live_broadcast_session(
         except Exception:
             return False
     return False
+
+
+def prefade_music_before_restart_call(item, caution_audio_bed):
+    if not is_one_to_green_restart_call(item) or not caution_audio_bed:
+        return False
+
+    fader = getattr(caution_audio_bed, "fade_out_and_wait", None)
+    if fader:
+        return bool(fader(duration_seconds=0.7, steps=6))
+
+    fader = getattr(caution_audio_bed, "fade_out", None)
+    if fader:
+        faded = bool(fader(duration_seconds=0.7, steps=6))
+        if faded:
+            time.sleep(0.8)
+        return faded
+
+    stopper = getattr(caution_audio_bed, "stop", None)
+    if stopper:
+        stopper()
+        return True
+    return False
+
+
+def is_one_to_green_restart_call(item):
+    key = str(getattr(item, "dedupe_key", "") or "")
+    return key.startswith("race_control:one_to_green")
 
 
 def publish_producer_event(overlay_server, kind="info", title="", message="", speaker=""):

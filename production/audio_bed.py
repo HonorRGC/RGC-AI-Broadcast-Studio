@@ -136,6 +136,22 @@ class AudioBedPlayer:
         thread.start()
         return True
 
+    def fade_out_and_wait(self, duration_seconds=0.7, steps=6):
+        with self.lock:
+            if not self.is_playing:
+                return False
+            if self.restore_timer:
+                self.restore_timer.cancel()
+                self.restore_timer = None
+            if self.fade_stop_event:
+                self.fade_stop_event.set()
+            stop_event = threading.Event()
+            self.fade_stop_event = stop_event
+            start_volume = self.current_volume
+
+        self.fade_out_worker(stop_event, start_volume, duration_seconds, steps)
+        return True
+
     def fade_out_worker(self, stop_event, start_volume, duration_seconds, steps):
         steps = max(1, int(steps or 1))
         duration_seconds = max(0.1, float(duration_seconds or 0.1))
