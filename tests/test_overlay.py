@@ -71,6 +71,46 @@ def test_overlay_leaderboard_sorts_and_formats_zero_based_positions():
     assert leaderboard[2]["interval"] == "+1.6"
 
 
+def test_overlay_leaderboard_includes_producer_driver_stats():
+    class StatsTelemetry(OverlayTelemetry):
+        def get_results(self):
+            return [
+                {
+                    "CarIdx": 3,
+                    "Position": 1,
+                    "LapsComplete": 42,
+                    "Time": 0.0,
+                    "StartingPosition": 8,
+                    "LapsLed": 6,
+                    "Incidents": 4,
+                    "LastPitLap": 31,
+                    "LastPitStopSeconds": 7.4,
+                    "LastPitLaneSeconds": 42.1,
+                    "FastestTime": 30.125,
+                },
+                {
+                    "CarIdx": 7,
+                    "Position": 0,
+                    "LapsComplete": 42,
+                    "Time": 0.0,
+                    "StartingPosition": 1,
+                },
+            ]
+
+    state = OverlayStateBuilder().build_from_telemetry(StatsTelemetry()).to_dict()
+    entry = next(driver for driver in state["leaderboard"] if driver["car_idx"] == 3)
+
+    assert entry["starting_position"] == 8
+    assert entry["position_delta"] == 6
+    assert entry["laps_led"] == 6
+    assert entry["incidents"] == 4
+    assert entry["last_pit_lap"] == 31
+    assert entry["last_pit_stop_seconds"] == 7.4
+    assert entry["last_pit_lane_seconds"] == 42.1
+    assert entry["fastest_lap"] == "30.125"
+    assert entry["producer_note"].startswith("Big mover:")
+
+
 def test_overlay_marks_green_flag_state():
     class GreenTelemetry(OverlayTelemetry):
         def get_session_flags(self):
@@ -384,6 +424,12 @@ def test_producer_assist_html_reads_overlay_state():
     assert "RGC Producer Assist" in PRODUCER_HTML
     assert 'fetch("/overlay/state"' in PRODUCER_HTML
     assert 'id="leaderboard-rows"' in PRODUCER_HTML
+    assert 'id="detail-start"' in PRODUCER_HTML
+    assert 'id="detail-delta"' in PRODUCER_HTML
+    assert 'id="detail-led"' in PRODUCER_HTML
+    assert 'id="detail-last-pit"' in PRODUCER_HTML
+    assert "formatDelta(driver.position_delta)" in PRODUCER_HTML
+    assert "driver.producer_note" in PRODUCER_HTML
     assert 'id="producer-feed"' in PRODUCER_HTML
     assert "renderProducerFeed" in PRODUCER_HTML
     assert 'sendProducerCommand("camera_follow_leader")' in PRODUCER_HTML

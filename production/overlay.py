@@ -33,6 +33,15 @@ class LeaderboardEntry:
     laps_complete: int = 0
     interval: str = ""
     fastest_lap: str = ""
+    starting_position: int = 0
+    position_delta: int = 0
+    laps_led: int = 0
+    incidents: int = 0
+    last_pit_lap: int = 0
+    last_pit_stop_seconds: float = 0.0
+    last_pit_lane_seconds: float = 0.0
+    on_pit_road: bool = False
+    producer_note: str = ""
 
     def to_dict(self):
         return {
@@ -43,6 +52,15 @@ class LeaderboardEntry:
             "laps_complete": self.laps_complete,
             "interval": self.interval,
             "fastest_lap": self.fastest_lap,
+            "starting_position": self.starting_position,
+            "position_delta": self.position_delta,
+            "laps_led": self.laps_led,
+            "incidents": self.incidents,
+            "last_pit_lap": self.last_pit_lap,
+            "last_pit_stop_seconds": self.last_pit_stop_seconds,
+            "last_pit_lane_seconds": self.last_pit_lane_seconds,
+            "on_pit_road": self.on_pit_road,
+            "producer_note": self.producer_note,
         }
 
 
@@ -260,6 +278,17 @@ class OverlayStateBuilder:
             driver = (driver_lookup or {}).get(car_idx, {})
             raw_position = self.safe_int(car.get("Position"), len(leaderboard) + 1)
             display_position = raw_position + 1 if zero_based else raw_position
+            starting_position = self.starting_position(car)
+            position_delta = (
+                starting_position - display_position if starting_position > 0 else 0
+            )
+            laps_led = self.laps_led(car)
+            incidents = self.incident_count(car)
+            last_pit_lap = self.last_pit_lap(car)
+            last_pit_stop_seconds = self.last_pit_stop_seconds(car)
+            last_pit_lane_seconds = self.last_pit_lane_seconds(car)
+            fastest_lap = self.format_lap_time(self.best_lap_value(car))
+            on_pit_road = self.on_pit_road(car)
             leaderboard.append(
                 LeaderboardEntry(
                     position=display_position,
@@ -276,10 +305,139 @@ class OverlayStateBuilder:
                         leader_laps,
                         leader_car,
                     ),
-                    fastest_lap=self.format_lap_time(self.best_lap_value(car)),
+                    fastest_lap=fastest_lap,
+                    starting_position=starting_position,
+                    position_delta=position_delta,
+                    laps_led=laps_led,
+                    incidents=incidents,
+                    last_pit_lap=last_pit_lap,
+                    last_pit_stop_seconds=last_pit_stop_seconds,
+                    last_pit_lane_seconds=last_pit_lane_seconds,
+                    on_pit_road=on_pit_road,
+                    producer_note=self.producer_note(
+                        driver_name=str(driver.get("name") or f"Car {car_idx}"),
+                        display_position=display_position,
+                        starting_position=starting_position,
+                        position_delta=position_delta,
+                        laps_led=laps_led,
+                        incidents=incidents,
+                        last_pit_lap=last_pit_lap,
+                        last_pit_stop_seconds=last_pit_stop_seconds,
+                        last_pit_lane_seconds=last_pit_lane_seconds,
+                        on_pit_road=on_pit_road,
+                        fastest_lap=fastest_lap,
+                    ),
                 )
             )
         return self.visible_leaderboard_window(leaderboard)
+
+    def starting_position(self, car):
+        for key in (
+            "StartingPosition",
+            "StartPosition",
+            "StartPos",
+            "GridPosition",
+            "QualifyingPosition",
+        ):
+            value = self.safe_int(car.get(key), 0)
+            if value > 0:
+                return value
+        return 0
+
+    def laps_led(self, car):
+        for key in ("LapsLed", "LedLaps", "LeaderLaps"):
+            value = self.safe_int(car.get(key), 0)
+            if value > 0:
+                return value
+        return 0
+
+    def incident_count(self, car):
+        for key in ("Incidents", "IncidentCount", "DriverIncidents"):
+            value = self.safe_int(car.get(key), 0)
+            if value > 0:
+                return value
+        return 0
+
+    def last_pit_lap(self, car):
+        for key in ("LastPitLap", "PitStopLap", "last_pit_lap"):
+            value = self.safe_int(car.get(key), 0)
+            if value > 0:
+                return value
+        return 0
+
+    def last_pit_stop_seconds(self, car):
+        for key in ("LastPitStopSeconds", "PitStopTime", "last_pit_stop_seconds"):
+            value = self.safe_float(car.get(key), 0.0)
+            if value > 0:
+                return value
+        return 0.0
+
+    def last_pit_lane_seconds(self, car):
+        for key in ("LastPitLaneSeconds", "PitLaneTime", "last_pit_lane_seconds"):
+            value = self.safe_float(car.get(key), 0.0)
+            if value > 0:
+                return value
+        return 0.0
+
+    def on_pit_road(self, car):
+        for key in ("OnPitRoad", "IsOnPitRoad", "PitRoad"):
+            value = car.get(key)
+            if value in (True, 1, "1", "true", "True", "YES", "yes"):
+                return True
+        return False
+
+    def producer_note(
+        self,
+        driver_name="",
+        display_position=0,
+        starting_position=0,
+        position_delta=0,
+        laps_led=0,
+        incidents=0,
+        last_pit_lap=0,
+        last_pit_stop_seconds=0.0,
+        last_pit_lane_seconds=0.0,
+        on_pit_road=False,
+        fastest_lap="",
+    ):
+        name = driver_name or "This driver"
+        if on_pit_road:
+            return f"{name} is on pit road now; watch whether this is strategy or damage repair."
+        if position_delta >= 5:
+            return (
+                f"Big mover: {name} is up {position_delta} spots from "
+                f"{self.ordinal(starting_position)} on the grid."
+            )
+        if position_delta <= -5:
+            return (
+                f"{name} has lost {abs(position_delta)} spots from "
+                f"{self.ordinal(starting_position)}; worth watching for trouble or strategy."
+            )
+        if laps_led > 0:
+            lap_word = "lap" if laps_led == 1 else "laps"
+            return f"{name} has led {laps_led} {lap_word} today."
+        if last_pit_lap > 0:
+            details = f"Last pit stop came around lap {last_pit_lap}"
+            if last_pit_stop_seconds > 0:
+                details += f" with {last_pit_stop_seconds:.1f} seconds stopped"
+            if last_pit_lane_seconds > 0:
+                details += f" and {last_pit_lane_seconds:.1f} seconds on pit lane"
+            return details + "."
+        if incidents >= 4:
+            return f"{name} is carrying {incidents} incident points; keep an eye on the penalty limit."
+        if fastest_lap:
+            return f"Best lap for {name}: {fastest_lap}."
+        return f"{name} is running {self.ordinal(display_position)}; check for nearby battles before making the call."
+
+    def ordinal(self, value):
+        value = self.safe_int(value)
+        if value <= 0:
+            return "--"
+        if 10 <= value % 100 <= 20:
+            suffix = "th"
+        else:
+            suffix = {1: "st", 2: "nd", 3: "rd"}.get(value % 10, "th")
+        return f"{value}{suffix}"
 
     def format_entry_metric(
         self,
@@ -942,7 +1100,7 @@ PRODUCER_HTML = r"""<!doctype html>
 
     .driver-row {
       display: grid;
-      grid-template-columns: 48px 74px 1fr 92px 110px;
+      grid-template-columns: 48px 74px 1fr 64px 92px 110px;
       gap: 10px;
       align-items: center;
       padding: 9px 14px;
@@ -1159,9 +1317,15 @@ PRODUCER_HTML = r"""<!doctype html>
 
         <div class="detail-grid">
           <div class="detail-item"><div class="label">Position</div><div class="value" id="detail-position">--</div></div>
+          <div class="detail-item"><div class="label">Started</div><div class="value" id="detail-start">--</div></div>
+          <div class="detail-item"><div class="label">Spots +/-</div><div class="value" id="detail-delta">--</div></div>
           <div class="detail-item"><div class="label">Interval</div><div class="value" id="detail-interval">--</div></div>
           <div class="detail-item"><div class="label">Laps Complete</div><div class="value" id="detail-laps">--</div></div>
+          <div class="detail-item"><div class="label">Laps Led</div><div class="value" id="detail-led">--</div></div>
+          <div class="detail-item"><div class="label">Incidents</div><div class="value" id="detail-incidents">--</div></div>
           <div class="detail-item"><div class="label">Fastest Lap</div><div class="value" id="detail-fastest">--</div></div>
+          <div class="detail-item"><div class="label">Last Pit</div><div class="value" id="detail-last-pit">--</div></div>
+          <div class="detail-item"><div class="label">Pit Time</div><div class="value" id="detail-pit-time">--</div></div>
         </div>
 
         <div class="story-box" id="story-box">
@@ -1233,6 +1397,24 @@ PRODUCER_HTML = r"""<!doctype html>
       return lap > 0 ? String(lap) : "--";
     }
 
+    function formatDelta(value) {
+      const number = Number(value || 0);
+      if (!Number.isFinite(number) || number === 0) return "--";
+      return number > 0 ? `+${number}` : String(number);
+    }
+
+    function formatSeconds(value) {
+      const number = Number(value || 0);
+      if (!Number.isFinite(number) || number <= 0) return "--";
+      return `${number.toFixed(1)}s`;
+    }
+
+    function formatPit(driver) {
+      const lap = Number(driver.last_pit_lap || 0);
+      if (driver.on_pit_road) return "On pit road";
+      return lap > 0 ? `Lap ${lap}` : "--";
+    }
+
     function lapHistorySummary(history) {
       let cautionSegments = 0;
       let lastCautionLap = "";
@@ -1298,6 +1480,7 @@ PRODUCER_HTML = r"""<!doctype html>
           <div class="pos">${ordinal(driver.position)}</div>
           <div class="num">#${driver.car_number || "--"}</div>
           <div class="name">${driver.driver_name || "Unknown Driver"}</div>
+          <div class="small">${formatDelta(driver.position_delta)}</div>
           <div class="small">${driver.interval || "--"}</div>
           <div class="small">${driver.fastest_lap || "--"}</div>
         `;
@@ -1321,13 +1504,23 @@ PRODUCER_HTML = r"""<!doctype html>
       text("detail-name", driver.driver_name || "Unknown Driver");
       text("detail-subtitle", `${state.session_type || "Session"} at ${state.track_name || "the track"}`);
       text("detail-position", ordinal(driver.position));
+      text("detail-start", driver.starting_position ? ordinal(driver.starting_position) : "--");
+      text("detail-delta", formatDelta(driver.position_delta));
       text("detail-interval", driver.interval || "--");
       text("detail-laps", driver.laps_complete ?? "--");
+      text("detail-led", driver.laps_led || "--");
+      text("detail-incidents", driver.incidents || "--");
       text("detail-fastest", driver.fastest_lap || "--");
+      text("detail-last-pit", formatPit(driver));
+      const pitStop = formatSeconds(driver.last_pit_stop_seconds);
+      const laneTime = formatSeconds(driver.last_pit_lane_seconds);
+      text("detail-pit-time", pitStop !== "--" || laneTime !== "--" ? `${pitStop} / ${laneTime}` : "--");
 
       const lap = formatLap(state);
       const note = [
-        `${driver.driver_name || "This driver"} is currently ${ordinal(driver.position)} in the running order.`,
+        driver.producer_note || `${driver.driver_name || "This driver"} is currently ${ordinal(driver.position)} in the running order.`,
+        driver.starting_position ? `Started ${ordinal(driver.starting_position)}; ${formatDelta(driver.position_delta)} spots.` : "",
+        driver.laps_led ? `Laps led: ${driver.laps_led}.` : "",
         driver.interval ? `Interval shown: ${driver.interval}.` : "",
         driver.fastest_lap ? `Fastest lap: ${driver.fastest_lap}.` : "",
         `Race status: ${state.caution ? "under caution" : state.green ? "green flag" : "not green yet"} on lap ${lap}.`
