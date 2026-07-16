@@ -11,11 +11,13 @@ class CautionPresentationDirector:
         sponsor_cause=SPONSOR_READ_CAUSE,
         overlay_duration=600.0,
         graphics=None,
+        one_to_green_fade_seconds=1.0,
     ):
         self.sponsor_name = sponsor_name
         self.sponsor_cause = sponsor_cause
         self.overlay_duration = float(overlay_duration)
         self.graphics = list(graphics if graphics is not None else CAUTION_PRESENTATION_GRAPHICS)
+        self.one_to_green_fade_seconds = float(one_to_green_fade_seconds)
         self.presentation_shown = False
         self.music_stopped_for_one_to_green = False
 
@@ -52,7 +54,7 @@ class CautionPresentationDirector:
             return
         fader = getattr(audio_bed, "fade_out", None)
         if fader:
-            fader()
+            fader(duration_seconds=self.one_to_green_fade_seconds, steps=8)
         else:
             stopper = getattr(audio_bed, "stop", None)
             if stopper:

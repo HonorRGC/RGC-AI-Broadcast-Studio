@@ -18,12 +18,14 @@ class AudioBedSpy:
     def __init__(self):
         self.stops = 0
         self.fades = 0
+        self.fade_kwargs = None
 
     def stop(self):
         self.stops += 1
 
-    def fade_out(self):
+    def fade_out(self, **kwargs):
         self.fades += 1
+        self.fade_kwargs = kwargs
 
 
 def test_caution_presentation_shows_sponsors_until_green():
@@ -68,6 +70,7 @@ def test_caution_presentation_fades_music_once_at_one_to_green():
 
     assert audio.fades == 1
     assert audio.stops == 0
+    assert audio.fade_kwargs == {"duration_seconds": 1.0, "steps": 8}
 
 
 def test_caution_presentation_can_fall_back_to_stop_at_one_to_green():

@@ -59,6 +59,7 @@ class AudioBedPlayer:
         self.is_playing = False
         self.restore_timer = None
         self.fade_stop_event = None
+        self.current_volume = self.normal_volume
         self.lock = threading.Lock()
 
     def play(self, audio_path=None):
@@ -68,6 +69,9 @@ class AudioBedPlayer:
 
         with self.lock:
             resolved = str(path.resolve())
+            if self.fade_stop_event:
+                self.fade_stop_event.set()
+                self.fade_stop_event = None
             if self.is_playing and self.active_path == resolved:
                 self.set_volume(self.normal_volume)
                 return True
@@ -122,7 +126,7 @@ class AudioBedPlayer:
                 self.fade_stop_event.set()
             stop_event = threading.Event()
             self.fade_stop_event = stop_event
-            start_volume = self.normal_volume
+            start_volume = self.current_volume
 
         thread = threading.Thread(
             target=self.fade_out_worker,
@@ -162,6 +166,7 @@ class AudioBedPlayer:
 
     def set_volume(self, volume):
         volume = max(0, min(1000, int(volume)))
+        self.current_volume = volume
         return self.send(f"setaudio {self.alias} volume to {volume}")
 
     def send(self, command):
