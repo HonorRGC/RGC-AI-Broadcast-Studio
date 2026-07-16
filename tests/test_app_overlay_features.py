@@ -3,6 +3,7 @@ from types import SimpleNamespace
 from app import (
     build_featured_driver_image,
     find_brand_graphic_for_name,
+    handle_producer_command,
     split_sponsor_names,
     should_show_movers_graphic,
     show_overlay_feature,
@@ -22,6 +23,19 @@ class OverlaySpy:
 
     def show_special_presentation(self, **kwargs):
         self.special_presentations.append(kwargs)
+
+
+class ProducerOverlaySpy:
+    def __init__(self):
+        self.styles = []
+        self.events = []
+
+    def set_leaderboard_style(self, style):
+        self.styles.append(style)
+        return style
+
+    def add_producer_event(self, **kwargs):
+        self.events.append(kwargs)
 
 
 class RaceIntelligenceStub:
@@ -142,6 +156,24 @@ def test_sponsor_mention_graphic_pops_for_rgc_and_autism():
     assert "Autism Awareness" in presentation["title"]
     assert "/assets/rgc_motorsports.png" in presentation["graphics"]
     assert "/assets/autism_awareness.png" in presentation["graphics"]
+
+
+def test_producer_command_can_switch_leaderboard_style():
+    overlay = ProducerOverlaySpy()
+
+    handle_producer_command(
+        "leaderboard_ticker",
+        {},
+        overlay,
+        source=None,
+        engine=None,
+        booth=None,
+        camera_director=None,
+    )
+
+    assert overlay.styles == ["ticker"]
+    assert overlay.events[0]["title"] == "Overlay"
+    assert "ticker" in overlay.events[0]["message"]
 
 
 def test_sponsor_mention_detection_is_message_based():

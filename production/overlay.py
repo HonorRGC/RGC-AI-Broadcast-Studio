@@ -649,6 +649,9 @@ class OverlayServer:
             "auto_camera": True,
             "openai": False,
             "elevenlabs": False,
+            "leaderboard_style": self.normalize_leaderboard_style(
+                self.state_builder.event_config.leaderboard_style
+            ),
         }
         self.httpd = None
         self.thread = None
@@ -683,6 +686,7 @@ class OverlayServer:
     def update_from_telemetry(self, telemetry):
         state = self.state_builder.build_from_telemetry(telemetry)
         with self.lock:
+            self.apply_runtime_overrides(state)
             if (
                 self.featured_driver
                 and self.featured_driver.expires_at > time.monotonic()
@@ -702,6 +706,31 @@ class OverlayServer:
             else:
                 self.stat_panel = None
             self.state = state
+
+    @staticmethod
+    def normalize_leaderboard_style(value):
+        style = str(value or "side").strip().lower()
+        return "ticker" if style in ("ticker", "scroll", "top") else "side"
+
+    def apply_runtime_overrides(self, state):
+        state.event.leaderboard_style = self.normalize_leaderboard_style(
+            self.control_state.get("leaderboard_style")
+            or state.event.leaderboard_style
+        )
+
+    def current_leaderboard_style(self):
+        with self.lock:
+            return self.normalize_leaderboard_style(
+                self.control_state.get("leaderboard_style")
+                or self.state.event.leaderboard_style
+            )
+
+    def set_leaderboard_style(self, style):
+        normalized = self.normalize_leaderboard_style(style)
+        with self.lock:
+            self.control_state["leaderboard_style"] = normalized
+            self.state.event.leaderboard_style = normalized
+        return normalized
 
     def show_featured_driver(
         self,
@@ -819,6 +848,7 @@ class OverlayServer:
 
     def current_state_dict(self):
         with self.lock:
+            self.apply_runtime_overrides(self.state)
             data = self.state.to_dict()
             data["producer_feed"] = [item.to_dict() for item in self.producer_feed]
             data["control_state"] = dict(self.control_state)
@@ -1346,6 +1376,7 @@ PRODUCER_HTML = r"""<!doctype html>
             <button class="control-button" id="auto-camera-button">Auto Camera</button>
             <button class="control-button" id="openai-button">OpenAI</button>
             <button class="control-button" id="elevenlabs-button">ElevenLabs</button>
+            <button class="control-button" id="leaderboard-style-button">Leaderboard: Side</button>
             <button class="control-button" id="return-live-button">Return Live</button>
             <button class="control-button warn" id="pause-replay-button">Pause Replay</button>
             <button class="control-button warn" id="play-replay-button">Play Replay</button>
@@ -1566,19 +1597,30 @@ PRODUCER_HTML = r"""<!doctype html>
       return Boolean((state.control_state || {})[key]);
     }
 
+    function currentLeaderboardStyle(state) {
+      const controlStyle = (state.control_state || {}).leaderboard_style;
+      const eventStyle = (state.event || {}).leaderboard_style;
+      const style = String(controlStyle || eventStyle || "side").toLowerCase().trim();
+      return ["ticker", "scroll", "top"].includes(style) ? "ticker" : "side";
+    }
+
     function renderControlButtons(state) {
       const autoButton = document.getElementById("auto-camera-button");
       const openAiButton = document.getElementById("openai-button");
       const elevenButton = document.getElementById("elevenlabs-button");
+      const leaderboardButton = document.getElementById("leaderboard-style-button");
       const autoOn = controlEnabled(state, "auto_camera");
       const openAiOn = controlEnabled(state, "openai");
       const elevenOn = controlEnabled(state, "elevenlabs");
+      const leaderboardStyle = currentLeaderboardStyle(state);
       autoButton.textContent = autoOn ? "Auto Camera: ON" : "Auto Camera: OFF";
       openAiButton.textContent = openAiOn ? "OpenAI: ON" : "OpenAI: OFF";
       elevenButton.textContent = elevenOn ? "ElevenLabs: ON" : "ElevenLabs: OFF";
+      leaderboardButton.textContent = leaderboardStyle === "ticker" ? "Leaderboard: Ticker" : "Leaderboard: Side";
       autoButton.className = `control-button ${autoOn ? "good" : "danger"}`;
       openAiButton.className = `control-button ${openAiOn ? "good" : "danger"}`;
       elevenButton.className = `control-button ${elevenOn ? "good" : "danger"}`;
+      leaderboardButton.className = `control-button ${leaderboardStyle === "ticker" ? "good" : ""}`;
     }
 
     async function sendProducerCommand(command, payload = {}) {
@@ -1651,6 +1693,10 @@ PRODUCER_HTML = r"""<!doctype html>
     document.getElementById("elevenlabs-button").addEventListener("click", () => {
       const on = controlEnabled(lastState || {}, "elevenlabs");
       sendProducerCommand(on ? "elevenlabs_off" : "elevenlabs_on");
+    });
+    document.getElementById("leaderboard-style-button").addEventListener("click", () => {
+      const style = currentLeaderboardStyle(lastState || {});
+      sendProducerCommand(style === "ticker" ? "leaderboard_side" : "leaderboard_ticker");
     });
     document.getElementById("return-live-button").addEventListener("click", () => {
       sendProducerCommand("replay_return_live");
@@ -2177,9 +2223,10 @@ OVERLAY_HTML = r"""<!doctype html>
     }
 
     body.leaderboard-ticker-mode .special-presentation.race_sponsors {
-      left: 260px;
-      right: 260px;
-      top: 170px;
+      left: 330px;
+      right: 330px;
+      top: 188px;
+      height: 96px;
     }
 
     .special-presentation.sponsor_bug {

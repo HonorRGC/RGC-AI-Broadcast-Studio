@@ -311,10 +311,16 @@ def publish_producer_event(overlay_server, kind="info", title="", message="", sp
 def sync_producer_control_state(overlay_server, engine, booth, camera_director):
     if not overlay_server:
         return
+    current_leaderboard_style = getattr(
+        overlay_server,
+        "current_leaderboard_style",
+        lambda: "side",
+    )
     overlay_server.set_control_state(
         auto_camera=getattr(camera_director, "mode", "") == "auto",
         openai=engine.openai_director.is_enabled(),
         elevenlabs=booth.voice_status()[0],
+        leaderboard_style=current_leaderboard_style(),
     )
 
 
@@ -358,6 +364,18 @@ def handle_producer_command(
     camera_director,
     replay_director=None,
 ):
+    if command in ("leaderboard_side", "leaderboard_ticker"):
+        style = "ticker" if command == "leaderboard_ticker" else "side"
+        setter = getattr(overlay_server, "set_leaderboard_style", None)
+        selected = setter(style) if setter else style
+        publish_producer_event(
+            overlay_server,
+            "info",
+            "Overlay",
+            f"Leaderboard style set to {selected}.",
+        )
+        return
+
     if command == "auto_camera_on":
         camera_director.mode = "auto"
         publish_producer_event(overlay_server, "info", "Producer Control", "Auto camera enabled.")

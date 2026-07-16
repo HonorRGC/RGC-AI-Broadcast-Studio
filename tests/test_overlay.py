@@ -385,6 +385,8 @@ def test_overlay_has_optional_ticker_leaderboard_and_compact_lap_bar():
     assert "leaderboard-ticker-mode" in OVERLAY_HTML
     assert "const maxSegments = 54" in OVERLAY_HTML
     assert "min-width: 0;" in OVERLAY_HTML
+    assert "body.leaderboard-ticker-mode .special-presentation.race_sponsors" in OVERLAY_HTML
+    assert "top: 188px" in OVERLAY_HTML
 
 
 def test_race_sponsor_banner_is_compact():
@@ -446,6 +448,8 @@ def test_producer_assist_html_reads_overlay_state():
     assert 'sendProducerCommand("camera_follow_leader")' in PRODUCER_HTML
     assert 'sendProducerCommand(on ? "openai_off" : "openai_on")' in PRODUCER_HTML
     assert 'sendProducerCommand("replay_pause")' in PRODUCER_HTML
+    assert 'id="leaderboard-style-button"' in PRODUCER_HTML
+    assert 'sendProducerCommand(style === "ticker" ? "leaderboard_side" : "leaderboard_ticker")' in PRODUCER_HTML
     assert "Move Camera to Driver" in PRODUCER_HTML
 
 
@@ -478,3 +482,17 @@ def test_overlay_server_queues_producer_commands():
     assert commands[0]["payload"] == {"reason": "human broadcaster"}
     assert isinstance(commands[0]["created_at"], float)
     assert server.drain_commands() == []
+
+
+def test_overlay_server_can_override_leaderboard_style_from_producer():
+    from production.overlay import OverlayServer
+
+    server = OverlayServer()
+    assert server.current_state_dict()["event"]["leaderboard_style"] == "side"
+
+    selected = server.set_leaderboard_style("ticker")
+    state = server.current_state_dict()
+
+    assert selected == "ticker"
+    assert state["event"]["leaderboard_style"] == "ticker"
+    assert state["control_state"]["leaderboard_style"] == "ticker"
