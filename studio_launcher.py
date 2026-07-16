@@ -77,6 +77,7 @@ LAUNCHER_FIELDS = [
     ("USE_SPONSOR_READS", "true"),
     ("SPONSOR_READ_NAME", ""),
     ("SPONSOR_READ_CAUSE", ""),
+    ("SPONSOR_READ_MESSAGE", ""),
     ("USE_NATIONAL_ANTHEM", "false"),
     ("NATIONAL_ANTHEM_AUDIO", ""),
     ("NATIONAL_ANTHEM_GRAPHICS", ""),
@@ -122,8 +123,9 @@ BROADCAST_FIELD_LABELS = {
     "OVERLAY_LEADERBOARD_STYLE": "Leaderboard Style",
     "OVERLAY_BRAND_GRAPHICS": "Overlay Brand Graphics",
     "USE_SPONSOR_READS": "Use Sponsor Reads",
-    "SPONSOR_READ_NAME": "Sponsor Read Name",
-    "SPONSOR_READ_CAUSE": "Sponsor / Cause Message",
+    "SPONSOR_READ_NAME": "Spoken Sponsor Name",
+    "SPONSOR_READ_CAUSE": "Cause / Awareness Message",
+    "SPONSOR_READ_MESSAGE": "Sponsor Read Script",
     "USE_NATIONAL_ANTHEM": "Use RGC Anthem",
     "NATIONAL_ANTHEM_AUDIO": "RGC Anthem Audio",
     "NATIONAL_ANTHEM_GRAPHICS": "RGC Anthem Graphics",
@@ -1113,6 +1115,25 @@ def run_gui():
         ).pack(fill="x", padx=10, pady=6)
         settings_grid_row += 1
 
+    def add_settings_hint(text):
+        nonlocal settings_grid_row
+        label(
+            settings_frame,
+            text=text,
+            anchor="w",
+            bg=PANEL_BG,
+            fg=MUTED_FG,
+            wraplength=760,
+            justify="left",
+        ).grid(
+            row=settings_grid_row,
+            column=1,
+            columnspan=2,
+            sticky="ew",
+            pady=(0, 8),
+        )
+        settings_grid_row += 1
+
     for key, _default in LAUNCHER_FIELDS:
         if key == "STUDIO_VOLUME":
             continue
@@ -1146,6 +1167,13 @@ def run_gui():
         entry_widget.grid(row=settings_grid_row, column=1, sticky="ew", pady=3)
         entries[key] = entry_widget
         settings_grid_row += 1
+
+        if key == "SPONSOR_READ_MESSAGE":
+            add_settings_hint(
+                "Optional exact script for the sponsor reads. It can use {sponsor} and {cause}. "
+                "If blank, RGC AI Broadcast Studio writes a natural read from the sponsor name and cause. "
+                "These reads happen after the starting lineup and during selected caution breaks."
+            )
 
         if key == "OVERLAY_BRAND_GRAPHICS":
             label(

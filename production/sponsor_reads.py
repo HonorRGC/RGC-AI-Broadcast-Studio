@@ -57,7 +57,7 @@ class SponsorReadDirector:
             return ""
 
         if self.custom_message:
-            return self.custom_message
+            return self.apply_custom_message_tokens(self.custom_message)
 
         if not self.sponsor_name and not self.cause:
             return ""
@@ -97,3 +97,10 @@ class SponsorReadDirector:
     @staticmethod
     def is_autism_awareness(cause):
         return "autism" in str(cause or "").lower()
+
+    def apply_custom_message_tokens(self, message):
+        return (
+            str(message or "")
+            .replace("{sponsor}", self.sponsor_name)
+            .replace("{cause}", self.cause)
+        ).strip()

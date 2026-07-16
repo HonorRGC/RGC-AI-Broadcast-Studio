@@ -43,3 +43,20 @@ def test_caution_sponsor_reads_are_capped_and_once_per_lap():
     assert first
     assert same_lap is None
     assert second_caution is None
+
+
+def test_sponsor_read_custom_script_supports_tokens():
+    director = SponsorReadDirector(
+        sponsor_name="RGC Motorsports",
+        cause="Autism Awareness",
+        custom_message=(
+            "Tonight's race is presented by {sponsor}, proudly supporting {cause}."
+        ),
+    )
+
+    message = director.opening_read()
+
+    assert message == (
+        "Tonight's race is presented by RGC Motorsports, "
+        "proudly supporting Autism Awareness."
+    )

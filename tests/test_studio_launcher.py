@@ -73,6 +73,8 @@ def test_broadcast_settings_have_friendly_labels_and_sections():
     assert BROADCAST_FIELD_LABELS["USE_OPENAI"] == "Use OpenAI Commentary"
     assert BROADCAST_FIELD_LABELS["OVERLAY_EVENT_TITLE"] == "Overlay Event Title"
     assert BROADCAST_FIELD_LABELS["OVERLAY_LEADERBOARD_STYLE"] == "Leaderboard Style"
+    assert BROADCAST_FIELD_LABELS["SPONSOR_READ_NAME"] == "Spoken Sponsor Name"
+    assert BROADCAST_FIELD_LABELS["SPONSOR_READ_MESSAGE"] == "Sponsor Read Script"
     assert "STUDIO_VOLUME" not in BROADCAST_FIELD_LABELS
     assert BROADCAST_FIELD_SECTIONS["USE_OPENAI"] == "AI Commentary"
     assert BROADCAST_FIELD_SECTIONS["OVERLAY_EVENT_TITLE"] == "Overlay Branding"
@@ -121,6 +123,7 @@ def test_launcher_defaults_include_split_league_stats_csvs():
     assert defaults["LEAGUE_CAREER_STATS_CSV"] == "league/career.csv"
     assert defaults["STAGE_END_LAPS"] == ""
     assert defaults["OVERLAY_LEADERBOARD_STYLE"] == "side"
+    assert defaults["SPONSOR_READ_MESSAGE"] == ""
     assert "/assets/rgc_motorsports.png" in defaults["OVERLAY_BRAND_GRAPHICS"]
     assert defaults["PRACTICE_MUSIC_PLAYLIST"] == ""
     assert defaults["STUDIO_VOLUME"] == "65"
@@ -241,6 +244,7 @@ def test_launcher_saves_known_settings(tmp_path):
             "USE_OPENAI": "false",
             "OVERLAY_EVENT_TITLE": "League Race",
             "LEAGUE_SEASON_STATS_CSV": "league/season.csv",
+            "SPONSOR_READ_MESSAGE": "Presented by {sponsor}.",
         },
         env_path,
     )
@@ -249,6 +253,7 @@ def test_launcher_saves_known_settings(tmp_path):
     assert "USE_OPENAI=false" in saved
     assert "OVERLAY_EVENT_TITLE=League Race" in saved
     assert "LEAGUE_SEASON_STATS_CSV=league/season.csv" in saved
+    assert "SPONSOR_READ_MESSAGE=Presented by {sponsor}." in saved
 
 
 def test_launcher_saves_sim_racer_hub_settings(tmp_path):
