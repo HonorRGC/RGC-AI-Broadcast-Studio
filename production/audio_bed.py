@@ -58,6 +58,7 @@ class AudioBedPlayer:
         self.active_path = ""
         self.is_playing = False
         self.restore_timer = None
+        self.fade_stop_event = None
         self.lock = threading.Lock()
 
     def play(self, audio_path=None):
@@ -110,10 +111,50 @@ class AudioBedPlayer:
         with self.lock:
             self.close_locked()
 
+    def fade_out(self, duration_seconds=2.5, steps=10):
+        with self.lock:
+            if not self.is_playing:
+                return False
+            if self.restore_timer:
+                self.restore_timer.cancel()
+                self.restore_timer = None
+            if self.fade_stop_event:
+                self.fade_stop_event.set()
+            stop_event = threading.Event()
+            self.fade_stop_event = stop_event
+            start_volume = self.normal_volume
+
+        thread = threading.Thread(
+            target=self.fade_out_worker,
+            args=(stop_event, start_volume, duration_seconds, steps),
+            daemon=True,
+        )
+        thread.start()
+        return True
+
+    def fade_out_worker(self, stop_event, start_volume, duration_seconds, steps):
+        steps = max(1, int(steps or 1))
+        duration_seconds = max(0.1, float(duration_seconds or 0.1))
+        delay = duration_seconds / steps
+        for step in range(steps, -1, -1):
+            if stop_event.is_set():
+                return
+            volume = int(start_volume * step / steps)
+            self.set_volume(volume)
+            time.sleep(delay)
+        if stop_event.is_set():
+            return
+        with self.lock:
+            if self.fade_stop_event is stop_event:
+                self.close_locked()
+
     def close_locked(self):
         if self.restore_timer:
             self.restore_timer.cancel()
             self.restore_timer = None
+        if self.fade_stop_event:
+            self.fade_stop_event.set()
+            self.fade_stop_event = None
         self.send(f"stop {self.alias}")
         self.send(f"close {self.alias}")
         self.active_path = ""

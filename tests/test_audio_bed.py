@@ -1,6 +1,7 @@
 import threading
 
 from production.audio_bed import (
+    AudioBedPlayer,
     OneShotAudioPlayer,
     PlaylistAudioPlayer,
     percent_to_mci_volume,
@@ -10,6 +11,16 @@ from production.audio_bed import (
 class PlaylistAudioPlayerSpy(PlaylistAudioPlayer):
     def __init__(self):
         super().__init__(alias="test_practice_music")
+        self.commands = []
+
+    def send(self, command):
+        self.commands.append(command)
+        return True
+
+
+class AudioBedPlayerSpy(AudioBedPlayer):
+    def __init__(self):
+        super().__init__(alias="test_caution_bed", normal_volume=600)
         self.commands = []
 
     def send(self, command):
@@ -51,6 +62,24 @@ def test_playlist_player_stop_joins_background_thread():
 
     assert player.stop_event.is_set()
     assert player.thread is None
+
+
+def test_audio_bed_fade_out_lowers_volume_before_stopping():
+    player = AudioBedPlayerSpy()
+    player.is_playing = True
+    player.active_path = "D:/Music/caution.mp3"
+
+    faded = player.fade_out(duration_seconds=0.1, steps=2)
+    time_limit = threading.Event()
+    time_limit.wait(0.35)
+
+    assert faded is True
+    assert f"setaudio {player.alias} volume to 600" in player.commands
+    assert f"setaudio {player.alias} volume to 300" in player.commands
+    assert f"setaudio {player.alias} volume to 0" in player.commands
+    assert f"stop {player.alias}" in player.commands
+    assert f"close {player.alias}" in player.commands
+    assert player.is_playing is False
 
 
 class OneShotAudioPlayerSpy(OneShotAudioPlayer):

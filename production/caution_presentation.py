@@ -50,9 +50,13 @@ class CautionPresentationDirector:
     def stop_audio_once(self, audio_bed):
         if self.music_stopped_for_one_to_green:
             return
-        stopper = getattr(audio_bed, "stop", None)
-        if stopper:
-            stopper()
+        fader = getattr(audio_bed, "fade_out", None)
+        if fader:
+            fader()
+        else:
+            stopper = getattr(audio_bed, "stop", None)
+            if stopper:
+                stopper()
         self.music_stopped_for_one_to_green = True
 
     def clear_overlay(self, overlay_server):
