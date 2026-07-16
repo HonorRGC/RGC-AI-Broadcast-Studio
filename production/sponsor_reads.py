@@ -4,6 +4,8 @@ from config import (
     SPONSOR_READ_CAUSE,
     SPONSOR_READ_MESSAGE,
     SPONSOR_READ_NAME,
+    SPONSOR_READ_NAME_2,
+    SPONSOR_READ_NAME_3,
     USE_SPONSOR_READS,
 )
 
@@ -15,6 +17,9 @@ class SponsorReadDirector:
         self,
         enabled=USE_SPONSOR_READS,
         sponsor_name=SPONSOR_READ_NAME,
+        sponsor_name_2=SPONSOR_READ_NAME_2,
+        sponsor_name_3=SPONSOR_READ_NAME_3,
+        sponsor_names=None,
         cause=SPONSOR_READ_CAUSE,
         custom_message=SPONSOR_READ_MESSAGE,
         event_title=OVERLAY_EVENT_TITLE,
@@ -23,12 +28,19 @@ class SponsorReadDirector:
     ):
         self.enabled = bool(enabled)
         self.sponsor_name = (sponsor_name or fallback_sponsor or "").strip()
+        self.sponsor_names = self.clean_sponsor_names(
+            sponsor_names
+            if sponsor_names is not None
+            else [self.sponsor_name, sponsor_name_2, sponsor_name_3]
+        )
+        self.sponsor_name = self.sponsor_names[0] if self.sponsor_names else ""
         self.cause = (cause or self.detect_cause(event_title) or "").strip()
         self.custom_message = (custom_message or "").strip()
         self.max_caution_reads = int(max_caution_reads)
         self.opening_read_sent = False
         self.caution_reads_sent = 0
         self.caution_laps_used = set()
+        self.read_index = 0
 
     def has_read(self):
         return bool(self.enabled and self.build_message())
@@ -36,7 +48,7 @@ class SponsorReadDirector:
     def opening_read(self):
         if self.opening_read_sent:
             return None
-        message = self.build_message(opening=True)
+        message = self.build_message(opening=True, sponsor_name=self.next_sponsor_name())
         if message:
             self.opening_read_sent = True
         return message
@@ -46,46 +58,73 @@ class SponsorReadDirector:
             return None
         if current_lap in self.caution_laps_used:
             return None
-        message = self.build_message(opening=False)
+        message = self.build_message(opening=False, sponsor_name=self.next_sponsor_name())
         if message:
             self.caution_reads_sent += 1
             self.caution_laps_used.add(current_lap)
         return message
 
-    def build_message(self, opening=False):
+    def build_message(self, opening=False, sponsor_name=None):
         if not self.enabled:
             return ""
 
-        if self.custom_message:
-            return self.apply_custom_message_tokens(self.custom_message)
+        sponsor_name = (sponsor_name if sponsor_name is not None else self.current_sponsor_name()).strip()
 
-        if not self.sponsor_name and not self.cause:
+        if self.custom_message:
+            return self.apply_custom_message_tokens(self.custom_message, sponsor_name)
+
+        if not sponsor_name and not self.cause:
             return ""
 
-        if self.sponsor_name and self.cause:
+        if sponsor_name and self.cause:
             if self.is_autism_awareness(self.cause):
                 if opening:
                     return (
-                        f"Tonight's broadcast is presented by {self.sponsor_name}, "
+                        f"Tonight's broadcast is presented by {sponsor_name}, "
                         "as we help shine a light on Autism Awareness and celebrate "
                         "understanding, acceptance, and the families that make this "
                         "community stronger."
                     )
                 return (
-                    f"Tonight's coverage is presented by {self.sponsor_name}. "
+                    f"Tonight's coverage is presented by {sponsor_name}. "
                     "A reminder from all of us at RGC: Autism Awareness is about "
                     "understanding, acceptance, and supporting the families in our "
                     "racing community."
                 )
             return (
-                f"Tonight's coverage is presented by {self.sponsor_name}, "
+                f"Tonight's coverage is presented by {sponsor_name}, "
                 f"proudly supporting {self.cause}."
             )
 
-        if self.sponsor_name:
-            return f"Tonight's coverage is presented by {self.sponsor_name}."
+        if sponsor_name:
+            return f"Tonight's coverage is presented by {sponsor_name}."
 
         return f"Tonight's broadcast is proud to support {self.cause}."
+
+    def next_sponsor_name(self):
+        if not self.sponsor_names:
+            return ""
+        sponsor = self.sponsor_names[self.read_index % len(self.sponsor_names)]
+        self.read_index += 1
+        return sponsor
+
+    def current_sponsor_name(self):
+        return self.sponsor_names[0] if self.sponsor_names else ""
+
+    @staticmethod
+    def clean_sponsor_names(names):
+        seen = set()
+        cleaned = []
+        for name in names or []:
+            text = str(name or "").strip()
+            if not text:
+                continue
+            key = text.lower()
+            if key in seen:
+                continue
+            cleaned.append(text)
+            seen.add(key)
+        return cleaned[:3]
 
     @staticmethod
     def detect_cause(event_title):
@@ -98,9 +137,9 @@ class SponsorReadDirector:
     def is_autism_awareness(cause):
         return "autism" in str(cause or "").lower()
 
-    def apply_custom_message_tokens(self, message):
+    def apply_custom_message_tokens(self, message, sponsor_name=None):
         return (
             str(message or "")
-            .replace("{sponsor}", self.sponsor_name)
+            .replace("{sponsor}", sponsor_name if sponsor_name is not None else self.current_sponsor_name())
             .replace("{cause}", self.cause)
         ).strip()

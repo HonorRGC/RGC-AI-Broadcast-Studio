@@ -76,6 +76,8 @@ LAUNCHER_FIELDS = [
     ),
     ("USE_SPONSOR_READS", "true"),
     ("SPONSOR_READ_NAME", ""),
+    ("SPONSOR_READ_NAME_2", ""),
+    ("SPONSOR_READ_NAME_3", ""),
     ("SPONSOR_READ_CAUSE", ""),
     ("SPONSOR_READ_MESSAGE", ""),
     ("USE_NATIONAL_ANTHEM", "false"),
@@ -123,8 +125,10 @@ BROADCAST_FIELD_LABELS = {
     "OVERLAY_LEADERBOARD_STYLE": "Leaderboard Style",
     "OVERLAY_BRAND_GRAPHICS": "Overlay Brand Graphics",
     "USE_SPONSOR_READS": "Use Sponsor Reads",
-    "SPONSOR_READ_NAME": "Spoken Sponsor Name",
-    "SPONSOR_READ_CAUSE": "Cause / Awareness Message",
+    "SPONSOR_READ_NAME": "Spoken Sponsor 1",
+    "SPONSOR_READ_NAME_2": "Spoken Sponsor 2",
+    "SPONSOR_READ_NAME_3": "Spoken Sponsor 3",
+    "SPONSOR_READ_CAUSE": "Cause / Awareness Read",
     "SPONSOR_READ_MESSAGE": "Sponsor Read Script",
     "USE_NATIONAL_ANTHEM": "Use RGC Anthem",
     "NATIONAL_ANTHEM_AUDIO": "RGC Anthem Audio",
@@ -971,20 +975,26 @@ def run_gui():
         scrollbar.pack(side="right", fill="y")
         return content
 
+    header_bar = frame(root)
+    header_bar.pack(fill="x", padx=18, pady=(10, 6))
+    header_text = frame(header_bar)
+    header_text.pack(side="left", fill="x", expand=True)
     label(
-        root,
+        header_text,
         text=f"RGC AI Broadcast Studio v{APP_VERSION}",
-        font=("Segoe UI", 18, "bold"),
-    ).pack(pady=(14, 4))
+        font=("Segoe UI", 14, "bold"),
+        anchor="w",
+    ).pack(anchor="w")
     label(
-        root,
+        header_text,
         text="Configure your broadcast, league notes, stats, voices, and overlay.",
-        font=("Segoe UI", 10),
+        font=("Segoe UI", 9),
         fg=MUTED_FG,
-    ).pack(pady=(0, 8))
+        anchor="w",
+    ).pack(anchor="w")
 
-    link_bar = frame(root)
-    link_bar.pack(pady=(0, 8))
+    link_bar = frame(header_bar)
+    link_bar.pack(side="right")
     button(
         link_bar,
         text="RGC Discord",
@@ -1071,9 +1081,11 @@ def run_gui():
     health_rows_frame = frame(health_panel, bg=PANEL_BG)
     health_rows_frame.pack(fill="x", padx=12, pady=(0, 10))
     health_row_widgets = []
+    health_panel.pack_forget()
 
     notebook = ttk.Notebook(root)
     notebook.pack(fill="both", expand=True, padx=18)
+    health_panel.pack(fill="x", padx=18, pady=(8, 10))
 
     settings_tab = frame(notebook, bg=PANEL_BG)
     league_tab = frame(notebook, bg=PANEL_BG)
@@ -1171,8 +1183,9 @@ def run_gui():
         if key == "SPONSOR_READ_MESSAGE":
             add_settings_hint(
                 "Optional exact script for the sponsor reads. It can use {sponsor} and {cause}. "
-                "If blank, RGC AI Broadcast Studio writes a natural read from the sponsor name and cause. "
-                "These reads happen after the starting lineup and during selected caution breaks."
+                "The app reads Sponsor 1 first, then Sponsor 2, then Sponsor 3 during later sponsor breaks. "
+                "The cause/awareness read is paired with the active sponsor. If this script is blank, "
+                "RGC AI Broadcast Studio writes a natural read from the sponsor name and cause."
             )
 
         if key == "OVERLAY_BRAND_GRAPHICS":

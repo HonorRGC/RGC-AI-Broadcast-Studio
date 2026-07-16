@@ -9,6 +9,8 @@ from config import (
     OVERLAY_RACE_SPONSOR,
     SPONSOR_READ_CAUSE,
     SPONSOR_READ_NAME,
+    SPONSOR_READ_NAME_2,
+    SPONSOR_READ_NAME_3,
     STUDIO_VOLUME,
 )
 from broadcast.booth import BroadcastBooth
@@ -608,6 +610,8 @@ def configured_sponsor_names():
     names = []
     for raw in (
         SPONSOR_READ_NAME,
+        SPONSOR_READ_NAME_2,
+        SPONSOR_READ_NAME_3,
         OVERLAY_RACE_SPONSOR,
         SPONSOR_READ_CAUSE,
         "RGC Motorsports",

@@ -45,6 +45,22 @@ def test_caution_sponsor_reads_are_capped_and_once_per_lap():
     assert second_caution is None
 
 
+def test_sponsor_reads_rotate_up_to_three_spoken_sponsors_in_order():
+    director = SponsorReadDirector(
+        sponsor_names=["Sponsor One", "Sponsor Two", "Sponsor Three"],
+        cause="Community Night",
+        custom_message="{sponsor} is supporting {cause}.",
+    )
+
+    opening = director.opening_read()
+    first_caution = director.caution_read(current_lap=10)
+    second_caution = director.caution_read(current_lap=20)
+
+    assert opening == "Sponsor One is supporting Community Night."
+    assert first_caution == "Sponsor Two is supporting Community Night."
+    assert second_caution == "Sponsor Three is supporting Community Night."
+
+
 def test_sponsor_read_custom_script_supports_tokens():
     director = SponsorReadDirector(
         sponsor_name="RGC Motorsports",
