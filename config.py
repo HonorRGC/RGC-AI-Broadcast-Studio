@@ -53,6 +53,7 @@ STAGE_END_LAPS = env_int_list("STAGE_END_LAPS", "")
 OVERLAY_EVENT_TITLE = os.getenv("OVERLAY_EVENT_TITLE", "RGC AI Broadcast")
 OVERLAY_RACE_SPONSOR = os.getenv("OVERLAY_RACE_SPONSOR", "")
 OVERLAY_SERIES_NAME = os.getenv("OVERLAY_SERIES_NAME", "")
+OVERLAY_LEADERBOARD_STYLE = os.getenv("OVERLAY_LEADERBOARD_STYLE", "side").strip().lower()
 OVERLAY_BRAND_GRAPHICS = [
     item.strip()
     for item in os.getenv(

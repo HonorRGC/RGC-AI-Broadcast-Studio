@@ -69,6 +69,7 @@ LAUNCHER_FIELDS = [
     ("OVERLAY_EVENT_TITLE", "RGC AI Broadcast"),
     ("OVERLAY_RACE_SPONSOR", ""),
     ("OVERLAY_SERIES_NAME", ""),
+    ("OVERLAY_LEADERBOARD_STYLE", "side"),
     (
         "OVERLAY_BRAND_GRAPHICS",
         "/assets/rgc_motorsports.png,/assets/autism_awareness.png,/assets/keep_it_real.webp",
@@ -118,6 +119,7 @@ BROADCAST_FIELD_LABELS = {
     "OVERLAY_EVENT_TITLE": "Overlay Event Title",
     "OVERLAY_RACE_SPONSOR": "Race Sponsor",
     "OVERLAY_SERIES_NAME": "Series Name",
+    "OVERLAY_LEADERBOARD_STYLE": "Leaderboard Style",
     "OVERLAY_BRAND_GRAPHICS": "Overlay Brand Graphics",
     "USE_SPONSOR_READS": "Use Sponsor Reads",
     "SPONSOR_READ_NAME": "Sponsor Read Name",
@@ -1130,8 +1132,17 @@ def run_gui():
             sticky="w",
             pady=3,
         )
-        entry_widget = entry(settings_frame, width=72)
-        entry_widget.insert(0, existing.get(key, ""))
+        if key == "OVERLAY_LEADERBOARD_STYLE":
+            entry_widget = ttk.Combobox(
+                settings_frame,
+                values=("side", "ticker"),
+                width=69,
+                state="readonly",
+            )
+            entry_widget.set(existing.get(key, "side") or "side")
+        else:
+            entry_widget = entry(settings_frame, width=72)
+            entry_widget.insert(0, existing.get(key, ""))
         entry_widget.grid(row=settings_grid_row, column=1, sticky="ew", pady=3)
         entries[key] = entry_widget
         settings_grid_row += 1
@@ -1336,8 +1347,11 @@ def run_gui():
     def apply_values_to_form(values):
         values = launcher_defaults(values)
         for key, widget in entries.items():
-            widget.delete(0, "end")
-            widget.insert(0, values.get(key, ""))
+            if hasattr(widget, "set"):
+                widget.set(values.get(key, ""))
+            else:
+                widget.delete(0, "end")
+                widget.insert(0, values.get(key, ""))
         for key, widget in sim_racer_hub_state["entries"].items():
             widget.delete(0, "end")
             widget.insert(0, values.get(key, ""))
@@ -1873,6 +1887,9 @@ def build_league_tab(
         return resolve_project_path(driver_csv_var.get() or "league/drivers.csv", ROOT)
 
     def set_entry_value(entry_widget, value):
+        if hasattr(entry_widget, "set"):
+            entry_widget.set(value)
+            return
         entry_widget.delete(0, "end")
         entry_widget.insert(0, value)
 

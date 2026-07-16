@@ -277,13 +277,13 @@ def prefade_music_before_restart_call(item, caution_audio_bed):
 
     fader = getattr(caution_audio_bed, "fade_out_and_wait", None)
     if fader:
-        return bool(fader(duration_seconds=0.7, steps=6))
+        return bool(fader(duration_seconds=1.3, steps=12))
 
     fader = getattr(caution_audio_bed, "fade_out", None)
     if fader:
-        faded = bool(fader(duration_seconds=0.7, steps=6))
+        faded = bool(fader(duration_seconds=1.3, steps=12))
         if faded:
-            time.sleep(0.8)
+            time.sleep(1.4)
         return faded
 
     stopper = getattr(caution_audio_bed, "stop", None)

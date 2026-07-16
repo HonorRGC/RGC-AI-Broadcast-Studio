@@ -68,7 +68,7 @@ def test_prefade_music_before_restart_call_blocks_for_one_to_green():
     faded = prefade_music_before_restart_call(item, audio)
 
     assert faded is True
-    assert audio.calls == [{"duration_seconds": 0.7, "steps": 6}]
+    assert audio.calls == [{"duration_seconds": 1.3, "steps": 12}]
 
 
 def test_prefade_music_before_restart_call_ignores_other_broadcasts():

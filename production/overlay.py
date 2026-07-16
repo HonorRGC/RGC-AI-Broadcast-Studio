@@ -11,6 +11,7 @@ from urllib.parse import unquote
 from config import (
     OVERLAY_BRAND_GRAPHICS,
     OVERLAY_EVENT_TITLE,
+    OVERLAY_LEADERBOARD_STYLE,
     OVERLAY_RACE_SPONSOR,
     OVERLAY_SERIES_NAME,
 )
@@ -21,6 +22,7 @@ class OverlayEventConfig:
     title: str = OVERLAY_EVENT_TITLE
     sponsor: str = OVERLAY_RACE_SPONSOR
     series: str = OVERLAY_SERIES_NAME
+    leaderboard_style: str = OVERLAY_LEADERBOARD_STYLE
     graphics: list[str] = field(default_factory=lambda: list(OVERLAY_BRAND_GRAPHICS))
 
 
@@ -169,6 +171,7 @@ class OverlayState:
                 "title": self.event.title,
                 "sponsor": self.event.sponsor,
                 "series": self.event.series,
+                "leaderboard_style": self.event.leaderboard_style,
                 "graphics": list(self.event.graphics),
             },
             "session_type": self.session_type,
@@ -1809,6 +1812,10 @@ OVERLAY_HTML = r"""<!doctype html>
       border-left: 5px solid var(--rgc-red);
     }
 
+    body.leaderboard-ticker-mode .leaderboard {
+      display: none;
+    }
+
     .leaderboard-header {
       display: grid;
       grid-template-columns: 1fr auto;
@@ -1871,14 +1878,106 @@ OVERLAY_HTML = r"""<!doctype html>
       padding: 7px 8px 8px;
       background: rgba(0, 0, 0, 0.28);
       border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      max-width: 100%;
+      box-sizing: border-box;
+      overflow: hidden;
     }
 
     .lap-history-segment {
       height: 8px;
       flex: 1 1 0;
-      min-width: 2px;
+      min-width: 0;
       border-radius: 3px;
       background: rgba(255, 255, 255, 0.18);
+    }
+
+    .ticker-leaderboard {
+      position: absolute;
+      left: 24px;
+      right: 24px;
+      top: 112px;
+      height: 46px;
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 14px;
+      padding: 0 16px;
+      background: linear-gradient(90deg, rgba(7, 9, 13, 0.96), rgba(24, 30, 42, 0.92));
+      border-left: 5px solid var(--rgc-red);
+      border-bottom: 3px solid var(--rgc-line);
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.38);
+      overflow: hidden;
+      text-transform: uppercase;
+    }
+
+    .ticker-leaderboard.hidden {
+      display: none;
+    }
+
+    .ticker-leaderboard.green {
+      border-left-color: #15c85f;
+      border-bottom-color: #15c85f;
+      box-shadow: inset 0 -9px 16px rgba(21, 200, 95, 0.20), 0 12px 30px rgba(0, 0, 0, 0.38);
+    }
+
+    .ticker-leaderboard.caution {
+      border-left-color: #ffd400;
+      border-bottom-color: #ffd400;
+    }
+
+    .ticker-label {
+      font-size: 14px;
+      font-weight: 950;
+      letter-spacing: 0.08em;
+      color: #fff;
+      white-space: nowrap;
+    }
+
+    .ticker-window {
+      min-width: 0;
+      overflow: hidden;
+      white-space: nowrap;
+    }
+
+    .ticker-track {
+      display: inline-flex;
+      align-items: center;
+      gap: 20px;
+      min-width: max-content;
+      animation: tickerScroll 42s linear infinite;
+    }
+
+    .ticker-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--rgc-text);
+      white-space: nowrap;
+    }
+
+    .ticker-pos {
+      color: var(--rgc-muted);
+      font-weight: 950;
+    }
+
+    .ticker-num {
+      background: #fff;
+      color: #111;
+      border-radius: 3px;
+      padding: 1px 5px;
+      font-weight: 950;
+    }
+
+    .ticker-gap {
+      color: var(--rgc-muted);
+      font-size: 12px;
+    }
+
+    @keyframes tickerScroll {
+      from { transform: translateX(0); }
+      to { transform: translateX(-50%); }
     }
 
     .lap-history-segment.green {
@@ -2075,6 +2174,12 @@ OVERLAY_HTML = r"""<!doctype html>
       right: 150px;
       top: 116px;
       height: 112px;
+    }
+
+    body.leaderboard-ticker-mode .special-presentation.race_sponsors {
+      left: 260px;
+      right: 260px;
+      top: 170px;
     }
 
     .special-presentation.sponsor_bug {
@@ -2319,6 +2424,14 @@ OVERLAY_HTML = r"""<!doctype html>
     <div id="leaderboard-rows"></div>
   </section>
 
+  <section id="ticker-leaderboard" class="ticker-leaderboard hidden">
+    <div class="ticker-label">Leaderboard</div>
+    <div class="ticker-window">
+      <div id="ticker-track" class="ticker-track"></div>
+    </div>
+    <div id="ticker-lap" class="lap">Lap --</div>
+  </section>
+
   <section id="driver-card" class="driver-card hidden">
     <div id="driver-card-number" class="driver-card-number"></div>
     <div id="driver-card-image" class="driver-card-image hidden"></div>
@@ -2366,12 +2479,18 @@ OVERLAY_HTML = r"""<!doctype html>
       setText("track", buildTrackLine(state));
       setText("sponsor", event.sponsor ? `Presented by ${event.sponsor}` : "");
       setText("lap", buildLapLine(state));
+      setText("ticker-lap", buildLapLine(state));
       setText("session-center", buildSessionCenterLine(state));
+      const leaderboardStyle = normalizeLeaderboardStyle(event.leaderboard_style);
+      document.body.classList.toggle("leaderboard-ticker-mode", leaderboardStyle === "ticker");
       document.getElementById("top-banner").classList.toggle("caution", !!state.caution);
       document.getElementById("leaderboard").classList.toggle("green", !!state.green);
       document.getElementById("leaderboard").classList.toggle("caution", !!state.caution);
+      document.getElementById("ticker-leaderboard").classList.toggle("green", !!state.green);
+      document.getElementById("ticker-leaderboard").classList.toggle("caution", !!state.caution);
       renderBrandGraphic(event.graphics || [], state.session_type);
       renderLapHistory(state.lap_history || []);
+      renderTickerLeaderboard(state.leaderboard || [], leaderboardStyle);
       renderDriverCard(state.featured_driver);
       renderSpecialPresentation(state.special_presentation);
       renderStatPanel(state.stat_panel);
@@ -2390,6 +2509,32 @@ OVERLAY_HTML = r"""<!doctype html>
         `;
         rows.appendChild(row);
       }
+    }
+
+    function normalizeLeaderboardStyle(value) {
+      const style = String(value || "side").toLowerCase().trim();
+      return ["ticker", "scroll", "top"].includes(style) ? "ticker" : "side";
+    }
+
+    function renderTickerLeaderboard(leaderboard, leaderboardStyle) {
+      const layer = document.getElementById("ticker-leaderboard");
+      const track = document.getElementById("ticker-track");
+      const active = leaderboardStyle === "ticker" && leaderboard.length;
+      layer.classList.toggle("hidden", !active);
+      if (!active) {
+        track.innerHTML = "";
+        return;
+      }
+
+      const items = leaderboard.slice(0, 40).map((entry) => `
+        <span class="ticker-item">
+          <span class="ticker-pos">P${escapeHtml(entry.position || "")}</span>
+          <span class="ticker-num">${escapeHtml(entry.car_number || "?")}</span>
+          <span>${escapeHtml(entry.driver_name || "Unknown")}</span>
+          <span class="ticker-gap">${escapeHtml(entry.interval || "")}</span>
+        </span>
+      `).join("");
+      track.innerHTML = items + items;
     }
 
     function renderSpecialPresentation(presentation) {
@@ -2449,7 +2594,7 @@ OVERLAY_HTML = r"""<!doctype html>
       const active = !!(history && history.length);
       bar.classList.toggle("hidden", !active);
       if (!active) return;
-      const maxSegments = 80;
+      const maxSegments = 54;
       const step = Math.max(1, Math.ceil(history.length / maxSegments));
       const compacted = [];
       for (let index = 0; index < history.length; index += step) {

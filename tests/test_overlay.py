@@ -41,6 +41,7 @@ def test_overlay_state_includes_title_sponsor_track_and_lap():
             title="RGC 80 at Nashville",
             sponsor="Lee Family Racing",
             series="RGC Cup Series",
+            leaderboard_style="ticker",
         )
     )
 
@@ -49,6 +50,7 @@ def test_overlay_state_includes_title_sponsor_track_and_lap():
     assert state["event"]["title"] == "RGC 80 at Nashville"
     assert state["event"]["sponsor"] == "Lee Family Racing"
     assert state["event"]["series"] == "RGC Cup Series"
+    assert state["event"]["leaderboard_style"] == "ticker"
     assert state["track_name"] == "Nashville Superspeedway"
     assert state["lap"] == 12
     assert state["total_laps"] == 80
@@ -374,6 +376,15 @@ def test_overlay_has_center_session_clock():
     assert 'id="session-center"' in OVERLAY_HTML
     assert "buildSessionCenterLine" in OVERLAY_HTML
     assert "formatClock" in OVERLAY_HTML
+
+
+def test_overlay_has_optional_ticker_leaderboard_and_compact_lap_bar():
+    assert 'id="ticker-leaderboard"' in OVERLAY_HTML
+    assert "normalizeLeaderboardStyle" in OVERLAY_HTML
+    assert "renderTickerLeaderboard" in OVERLAY_HTML
+    assert "leaderboard-ticker-mode" in OVERLAY_HTML
+    assert "const maxSegments = 54" in OVERLAY_HTML
+    assert "min-width: 0;" in OVERLAY_HTML
 
 
 def test_race_sponsor_banner_is_compact():

@@ -27,6 +27,11 @@ class AudioBedSpy:
         self.fades += 1
         self.fade_kwargs = kwargs
 
+    def fade_out_and_wait(self, **kwargs):
+        self.fades += 1
+        self.fade_kwargs = kwargs
+        return True
+
 
 def test_caution_presentation_shows_sponsors_until_green():
     overlay = OverlaySpy()
@@ -70,7 +75,7 @@ def test_caution_presentation_fades_music_once_at_one_to_green():
 
     assert audio.fades == 1
     assert audio.stops == 0
-    assert audio.fade_kwargs == {"duration_seconds": 1.0, "steps": 8}
+    assert audio.fade_kwargs == {"duration_seconds": 1.3, "steps": 12}
 
 
 def test_caution_presentation_can_fall_back_to_stop_at_one_to_green():

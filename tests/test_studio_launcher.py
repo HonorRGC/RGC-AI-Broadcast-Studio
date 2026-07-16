@@ -72,6 +72,7 @@ def test_launcher_includes_rgc_links():
 def test_broadcast_settings_have_friendly_labels_and_sections():
     assert BROADCAST_FIELD_LABELS["USE_OPENAI"] == "Use OpenAI Commentary"
     assert BROADCAST_FIELD_LABELS["OVERLAY_EVENT_TITLE"] == "Overlay Event Title"
+    assert BROADCAST_FIELD_LABELS["OVERLAY_LEADERBOARD_STYLE"] == "Leaderboard Style"
     assert "STUDIO_VOLUME" not in BROADCAST_FIELD_LABELS
     assert BROADCAST_FIELD_SECTIONS["USE_OPENAI"] == "AI Commentary"
     assert BROADCAST_FIELD_SECTIONS["OVERLAY_EVENT_TITLE"] == "Overlay Branding"
@@ -119,6 +120,7 @@ def test_launcher_defaults_include_split_league_stats_csvs():
     assert defaults["LEAGUE_SEASON_STATS_CSV"] == "league/season.csv"
     assert defaults["LEAGUE_CAREER_STATS_CSV"] == "league/career.csv"
     assert defaults["STAGE_END_LAPS"] == ""
+    assert defaults["OVERLAY_LEADERBOARD_STYLE"] == "side"
     assert "/assets/rgc_motorsports.png" in defaults["OVERLAY_BRAND_GRAPHICS"]
     assert defaults["PRACTICE_MUSIC_PLAYLIST"] == ""
     assert defaults["STUDIO_VOLUME"] == "65"
