@@ -1,6 +1,6 @@
 # Project State
 
-Current version: **v0.18.1 - Platform Foundation**
+Current version: **v0.18.2 - Producer Assist Release Candidate**
 
 ## Working foundation
 

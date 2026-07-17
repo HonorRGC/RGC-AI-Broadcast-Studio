@@ -2,12 +2,20 @@
 
 ## Unreleased
 
+## Version 0.18.2 - Producer Assist Release Candidate
+
 ### Added
 - First-time setup checklist in the Studio help tab for release/admin readiness
 - Prompt guidance for more natural Mike, Jeff, and Sarah booth handoffs
+- Long-green booth conversations for more natural race storytelling
+- Driver overlay card position, starting position, and position-change display
+- Producer Assist pit road / strategy panel with last stop, pit lane time, stop time, tire age, position gain, and service guess
+- Producer Assist manual camera handoff that disables auto-camera when moving to a driver or back to the leader
 
 ### Fixed
 - Prevented AI commentary from calling out broadcaster names or using script-style booth labels
+- Voice timing now uses actual generated ElevenLabs MP3 duration when available, reducing cut-off broadcaster calls
+- Soft incident calls are more conservative to reduce false trouble reports
 
 ## Version 0.18.1 - Tester Installer Refresh
 
