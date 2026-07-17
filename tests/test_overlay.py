@@ -386,13 +386,15 @@ def test_overlay_has_optional_ticker_leaderboard_and_compact_lap_bar():
     assert "const maxSegments = 54" in OVERLAY_HTML
     assert "min-width: 0;" in OVERLAY_HTML
     assert "body.leaderboard-ticker-mode .special-presentation.race_sponsors" in OVERLAY_HTML
-    assert "top: 188px" in OVERLAY_HTML
+    assert "top: 174px" in OVERLAY_HTML
 
 
-def test_race_sponsor_banner_is_compact():
+def test_race_sponsor_presentation_is_right_side_square():
     assert ".special-presentation.race_sponsors" in OVERLAY_HTML
-    assert "height: 112px" in OVERLAY_HTML
-    assert "width: min(660px, 100%)" in OVERLAY_HTML
+    assert "right: 48px" in OVERLAY_HTML
+    assert "width: 264px" in OVERLAY_HTML
+    assert "height: 264px" in OVERLAY_HTML
+    assert "grid-template-columns: 1fr" in OVERLAY_HTML
 
 
 def test_sponsor_bug_overlay_is_compact_popup():

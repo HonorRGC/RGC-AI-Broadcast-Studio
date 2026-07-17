@@ -2216,17 +2216,20 @@ OVERLAY_HTML = r"""<!doctype html>
     }
 
     .special-presentation.race_sponsors {
-      left: 390px;
-      right: 150px;
-      top: 116px;
-      height: 112px;
+      left: auto;
+      right: 48px;
+      top: 148px;
+      width: 264px;
+      height: 264px;
+      justify-content: flex-end;
     }
 
     body.leaderboard-ticker-mode .special-presentation.race_sponsors {
-      left: 330px;
-      right: 330px;
-      top: 188px;
-      height: 96px;
+      left: auto;
+      right: 48px;
+      top: 174px;
+      width: 264px;
+      height: 264px;
     }
 
     .special-presentation.sponsor_bug {
@@ -2257,12 +2260,17 @@ OVERLAY_HTML = r"""<!doctype html>
     }
 
     .special-presentation.race_sponsors .ceremony-card {
-      grid-template-columns: 150px 1fr;
-      gap: 22px;
-      width: min(660px, 100%);
-      padding: 12px 20px;
+      grid-template-columns: 1fr;
+      gap: 10px;
+      width: 264px;
+      height: 264px;
+      padding: 18px;
       border-left-width: 4px;
+      border-top: 4px solid var(--rgc-red);
       background: linear-gradient(90deg, rgba(7, 9, 13, 0.88), rgba(24, 30, 42, 0.78));
+      text-align: center;
+      justify-items: center;
+      align-content: center;
     }
 
     .special-presentation.sponsor_bug .ceremony-card {
@@ -2282,8 +2290,8 @@ OVERLAY_HTML = r"""<!doctype html>
     }
 
     .special-presentation.race_sponsors .ceremony-logo {
-      width: 145px;
-      height: 74px;
+      width: 186px;
+      height: 112px;
     }
 
     .special-presentation.sponsor_bug .ceremony-logo {
@@ -2298,7 +2306,7 @@ OVERLAY_HTML = r"""<!doctype html>
     }
 
     .special-presentation.race_sponsors .ceremony-title {
-      font-size: 26px;
+      font-size: 22px;
       letter-spacing: 0.04em;
     }
 
@@ -2316,9 +2324,10 @@ OVERLAY_HTML = r"""<!doctype html>
     }
 
     .special-presentation.race_sponsors .ceremony-subtitle {
-      margin-top: 7px;
-      font-size: 13px;
+      margin-top: 5px;
+      font-size: 12px;
       letter-spacing: 0.06em;
+      line-height: 1.25;
     }
 
     .special-presentation.sponsor_bug .ceremony-subtitle {
