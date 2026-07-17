@@ -2,6 +2,7 @@ from types import SimpleNamespace
 
 from app import (
     build_featured_driver_image,
+    build_producer_pit_road_rows,
     find_brand_graphic_for_name,
     handle_producer_command,
     split_sponsor_names,
@@ -36,6 +37,33 @@ class ProducerOverlaySpy:
 
     def add_producer_event(self, **kwargs):
         self.events.append(kwargs)
+
+
+class CameraSpy:
+    def __init__(self):
+        self.mode = "auto"
+        self.preferred_group = "TV1"
+        self.focused = []
+
+    def manual_focus_car(self, car_idx, group_name, source):
+        self.focused.append((car_idx, group_name))
+        return SimpleNamespace(
+            status="switched",
+            reason="manual",
+            car_idx=car_idx,
+            car_number="7",
+            group_name=group_name,
+        )
+
+    def manual_focus_home(self, source):
+        self.focused.append(("leader", "home"))
+        return SimpleNamespace(
+            status="switched",
+            reason="leader",
+            car_idx=1,
+            car_number="1",
+            group_name="TV Mixed",
+        )
 
 
 class RaceIntelligenceStub:
@@ -117,6 +145,37 @@ def test_green_pit_cycle_update_shows_recent_stop_overlay():
     assert panel["minimum_interval"] == 30.0
 
 
+def test_producer_pit_road_rows_include_service_guess_and_tire_age():
+    pit_state = SimpleNamespace(
+        car_idx=4,
+        car_number="24",
+        driver_name="Dean Marsh",
+        on_pit_road=False,
+        last_pit_lap=30,
+        pit_entry_position=8,
+        pit_exit_position=5,
+        last_pit_position_gain=3,
+        last_pit_lane_seconds=38.0,
+        last_pit_stop_seconds=6.5,
+    )
+    engine = SimpleNamespace(
+        pit_strategy_detector=SimpleNamespace(driver_states={4: pit_state})
+    )
+    source = SimpleNamespace(
+        get_lap=lambda: 36,
+        get_results=lambda: [{"CarIdx": 4, "Position": 4, "LapsComplete": 36}],
+    )
+
+    rows = build_producer_pit_road_rows(source, engine)
+
+    assert rows[0]["last_pit_lap"] == 30
+    assert rows[0]["laps_since_pit"] == 6
+    assert rows[0]["pit_lane_seconds"] == 38.0
+    assert rows[0]["pit_stop_seconds"] == 6.5
+    assert rows[0]["service_guess"] == "Possible two-tire or fuel-only track-position stop"
+    assert rows[0]["position_summary"] == "in P8 / out P5 / +3 on pit road"
+
+
 def test_biggest_movers_graphic_does_not_show_for_routine_position_gain():
     engine = engine_with_movers(mover(24, 3))
 
@@ -174,6 +233,25 @@ def test_producer_command_can_switch_leaderboard_style():
     assert overlay.styles == ["ticker"]
     assert overlay.events[0]["title"] == "Overlay"
     assert "ticker" in overlay.events[0]["message"]
+
+
+def test_manual_camera_follow_disables_auto_camera():
+    overlay = ProducerOverlaySpy()
+    camera = CameraSpy()
+
+    handle_producer_command(
+        "camera_follow_driver",
+        {"car_idx": 7, "group_name": "TV1"},
+        overlay,
+        source=SimpleNamespace(),
+        engine=None,
+        booth=None,
+        camera_director=camera,
+    )
+
+    assert camera.mode == "off"
+    assert camera.focused == [(7, "TV1")]
+    assert any("Auto camera disabled" in event["message"] for event in overlay.events)
 
 
 def test_sponsor_mention_detection_is_message_based():

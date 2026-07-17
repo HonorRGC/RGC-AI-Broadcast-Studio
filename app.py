@@ -178,6 +178,10 @@ def run_source(
                 duration=9.0,
             )
         item = engine.tick(source)
+        if overlay_server:
+            overlay_server.set_pit_road_rows(
+                build_producer_pit_road_rows(source, engine)
+            )
         report_caution_presentation(
             caution_presentation_director.update(
                 engine.race_director.phase,
@@ -431,6 +435,15 @@ def handle_producer_command(
         if car_idx is None:
             publish_producer_event(overlay_server, "warning", "Camera", "No driver was selected.")
             return
+        auto_was_on = getattr(camera_director, "mode", "") == "auto"
+        camera_director.mode = "off"
+        if auto_was_on:
+            publish_producer_event(
+                overlay_server,
+                "warning",
+                "Producer Control",
+                "Auto camera disabled for manual driver focus.",
+            )
         decision = camera_director.manual_focus_car(
             car_idx,
             str(payload.get("group_name", "") or camera_director.preferred_group),
@@ -440,6 +453,15 @@ def handle_producer_command(
         return
 
     if command == "camera_follow_leader":
+        auto_was_on = getattr(camera_director, "mode", "") == "auto"
+        camera_director.mode = "off"
+        if auto_was_on:
+            publish_producer_event(
+                overlay_server,
+                "warning",
+                "Producer Control",
+                "Auto camera disabled for manual leader focus.",
+            )
         decision = camera_director.manual_focus_home(source)
         report_camera_decision(decision, overlay_server)
         return
@@ -846,6 +868,111 @@ def build_pit_update_rows(source, engine, limit=5):
             }
         )
     return rows
+
+
+def build_producer_pit_road_rows(source, engine, limit=12):
+    if not source or not engine:
+        return []
+    current_lap = best_current_lap(source)
+    current_positions = build_current_position_lookup(source.get_results())
+    states = list(getattr(engine.pit_strategy_detector, "driver_states", {}).values())
+    states = [
+        state
+        for state in states
+        if getattr(state, "on_pit_road", False)
+        or safe_int(getattr(state, "last_pit_lap", 0), 0) > 0
+    ]
+    states.sort(
+        key=lambda state: (
+            0 if getattr(state, "on_pit_road", False) else 1,
+            -safe_int(getattr(state, "last_pit_lap", 0), 0),
+            str(getattr(state, "driver_name", "")),
+        )
+    )
+    rows = []
+    for state in states[:limit]:
+        last_pit_lap = safe_int(getattr(state, "last_pit_lap", 0), 0)
+        on_pit_road = bool(getattr(state, "on_pit_road", False))
+        pit_lane_seconds = (
+            float(getattr(state, "current_pit_lane_seconds", 0.0) or 0.0)
+            if on_pit_road
+            else float(getattr(state, "last_pit_lane_seconds", 0.0) or 0.0)
+        )
+        pit_stop_seconds = (
+            float(getattr(state, "current_pit_stop_seconds", 0.0) or 0.0)
+            if on_pit_road
+            else float(getattr(state, "last_pit_stop_seconds", 0.0) or 0.0)
+        )
+        laps_since_pit = (
+            max(0, current_lap - last_pit_lap)
+            if last_pit_lap > 0 and current_lap > 0 and not on_pit_road
+            else 0
+        )
+        rows.append(
+            {
+                "car_idx": safe_int(getattr(state, "car_idx", 0), 0),
+                "car_number": str(getattr(state, "car_number", "") or ""),
+                "driver_name": str(getattr(state, "driver_name", "") or ""),
+                "status": "On pit road" if on_pit_road else "Last stop",
+                "last_pit_lap": last_pit_lap,
+                "laps_since_pit": laps_since_pit,
+                "pit_lane_seconds": pit_lane_seconds,
+                "pit_stop_seconds": pit_stop_seconds,
+                "service_guess": pit_service_guess(state, on_pit_road),
+                "position_summary": pit_position_summary(
+                    state,
+                    current_positions.get(getattr(state, "car_idx", None), 0),
+                ),
+            }
+        )
+    return rows
+
+
+def pit_service_guess(state, on_pit_road=False):
+    if on_pit_road:
+        return "On pit road now — service still developing."
+    lane_seconds = float(getattr(state, "last_pit_lane_seconds", 0.0) or 0.0)
+    stop_seconds = float(getattr(state, "last_pit_stop_seconds", 0.0) or 0.0)
+    gain = safe_int(getattr(state, "last_pit_position_gain", 0), 0)
+    if stop_seconds >= 25.0 or lane_seconds >= 65.0:
+        return "Possible damage repair / extended service"
+    if stop_seconds >= 12.0:
+        return "Likely full service"
+    if stop_seconds >= 8.0:
+        return "Likely normal service"
+    if stop_seconds > 0 and gain >= 2:
+        return "Possible two-tire or fuel-only track-position stop"
+    if stop_seconds > 0 and stop_seconds < 4.0:
+        return "Possible fuel-only, drive-through, or quick adjustment"
+    if stop_seconds > 0:
+        return "Short stop / service call"
+    if lane_seconds > 0:
+        return "Pit lane trip, service unclear"
+    return "Service unknown"
+
+
+def pit_position_summary(state, current_position=0):
+    parts = []
+    entry_position = safe_int(getattr(state, "pit_entry_position", 0), 0)
+    exit_position = safe_int(getattr(state, "pit_exit_position", 0), 0)
+    gain = safe_int(getattr(state, "last_pit_position_gain", 0), 0)
+    if entry_position > 0:
+        parts.append(f"in P{entry_position}")
+    if exit_position > 0:
+        parts.append(f"out P{exit_position}")
+    elif current_position > 0:
+        parts.append(f"now P{current_position}")
+    if gain > 0:
+        parts.append(f"+{gain} on pit road")
+    return " / ".join(parts)
+
+
+def best_current_lap(source):
+    laps = [safe_int(getattr(source, "get_lap", lambda: 0)(), 0)]
+    for car in getattr(source, "get_results", lambda: [])() or []:
+        laps.append(safe_int(car.get("LapsComplete", car.get("Lap", 0)), 0))
+        laps.append(safe_int(car.get("Lap", car.get("LapsComplete", 0)), 0))
+    return max(laps, default=0)
 
 
 def build_current_position_lookup(results):

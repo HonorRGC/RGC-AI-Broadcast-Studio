@@ -156,6 +156,34 @@ class ProducerFeedItem:
 
 
 @dataclass
+class ProducerPitRoadRow:
+    car_idx: int = 0
+    car_number: str = ""
+    driver_name: str = ""
+    status: str = ""
+    last_pit_lap: int = 0
+    laps_since_pit: int = 0
+    pit_lane_seconds: float = 0.0
+    pit_stop_seconds: float = 0.0
+    service_guess: str = ""
+    position_summary: str = ""
+
+    def to_dict(self):
+        return {
+            "car_idx": self.car_idx,
+            "car_number": self.car_number,
+            "driver_name": self.driver_name,
+            "status": self.status,
+            "last_pit_lap": self.last_pit_lap,
+            "laps_since_pit": self.laps_since_pit,
+            "pit_lane_seconds": self.pit_lane_seconds,
+            "pit_stop_seconds": self.pit_stop_seconds,
+            "service_guess": self.service_guess,
+            "position_summary": self.position_summary,
+        }
+
+
+@dataclass
 class OverlayState:
     event: OverlayEventConfig = field(default_factory=OverlayEventConfig)
     session_type: str = "Unknown"
@@ -745,6 +773,7 @@ class OverlayServer:
         self.last_stat_panel_at = 0.0
         self.producer_feed = []
         self.max_producer_feed_items = 60
+        self.pit_road_rows = []
         self.pending_commands = []
         self.control_state = {
             "auto_camera": True,
@@ -933,6 +962,30 @@ class OverlayServer:
             self.producer_feed = self.producer_feed[: self.max_producer_feed_items]
         return item
 
+    def set_pit_road_rows(self, rows):
+        with self.lock:
+            self.pit_road_rows = [
+                row
+                if isinstance(row, ProducerPitRoadRow)
+                else ProducerPitRoadRow(
+                    car_idx=self.state_builder.safe_int((row or {}).get("car_idx")),
+                    car_number=str((row or {}).get("car_number", "")),
+                    driver_name=str((row or {}).get("driver_name", "")),
+                    status=str((row or {}).get("status", "")),
+                    last_pit_lap=self.state_builder.safe_int(
+                        (row or {}).get("last_pit_lap")
+                    ),
+                    laps_since_pit=self.state_builder.safe_int(
+                        (row or {}).get("laps_since_pit")
+                    ),
+                    pit_lane_seconds=float((row or {}).get("pit_lane_seconds") or 0.0),
+                    pit_stop_seconds=float((row or {}).get("pit_stop_seconds") or 0.0),
+                    service_guess=str((row or {}).get("service_guess", "")),
+                    position_summary=str((row or {}).get("position_summary", "")),
+                )
+                for row in (rows or [])
+            ][:12]
+
     def set_control_state(self, **updates):
         with self.lock:
             self.control_state.update(updates)
@@ -959,6 +1012,7 @@ class OverlayServer:
             data = self.state.to_dict()
             data["producer_feed"] = [item.to_dict() for item in self.producer_feed]
             data["control_state"] = dict(self.control_state)
+            data["pit_road"] = [row.to_dict() for row in self.pit_road_rows]
             return data
 
     def make_handler(self):
@@ -1407,6 +1461,48 @@ PRODUCER_HTML = r"""<!doctype html>
       line-height: 1.3;
     }
 
+    .pit-road-list {
+      display: grid;
+      gap: 8px;
+      max-height: 255px;
+      overflow: auto;
+    }
+
+    .pit-road-row {
+      display: grid;
+      grid-template-columns: 58px 1fr auto;
+      gap: 8px;
+      align-items: start;
+      padding: 9px 10px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.045);
+      border-left: 4px solid var(--yellow);
+    }
+
+    .pit-road-row.pitting {
+      border-left-color: var(--green);
+      animation: pulse 0.8s infinite alternate;
+    }
+
+    .pit-road-main {
+      color: #fff;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    .pit-road-meta,
+    .pit-road-service {
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.25;
+    }
+
+    .pit-road-service {
+      color: #dbe5f4;
+    }
+
     @keyframes pulse {
       from { filter: brightness(1); }
       to { filter: brightness(1.28); }
@@ -1503,6 +1599,13 @@ PRODUCER_HTML = r"""<!doctype html>
         </div>
 
         <div class="panel">
+          <h3>Pit Road / Strategy</h3>
+          <div class="pit-road-list" id="pit-road-list">
+            <div class="small">Pit stop data will appear after cars visit pit road.</div>
+          </div>
+        </div>
+
+        <div class="panel">
           <h3>Producer Feed</h3>
           <div class="feed" id="producer-feed">
             <div class="small">Broadcast notes will appear here once the session starts.</div>
@@ -1561,6 +1664,12 @@ PRODUCER_HTML = r"""<!doctype html>
       const lap = Number(driver.last_pit_lap || 0);
       if (driver.on_pit_road) return "On pit road";
       return lap > 0 ? `Lap ${lap}` : "--";
+    }
+
+    function formatPitRoadSeconds(value) {
+      const number = Number(value || 0);
+      if (!Number.isFinite(number) || number <= 0) return "--";
+      return `${number.toFixed(1)}s`;
     }
 
     function lapHistorySummary(history) {
@@ -1707,6 +1816,36 @@ PRODUCER_HTML = r"""<!doctype html>
       `;
     }
 
+    function renderPitRoad(state) {
+      const list = document.getElementById("pit-road-list");
+      const rows = state.pit_road || [];
+      list.innerHTML = "";
+      if (!rows.length) {
+        list.innerHTML = '<div class="small">Pit stop data will appear after cars visit pit road.</div>';
+        return;
+      }
+      for (const row of rows.slice(0, 10)) {
+        const node = document.createElement("div");
+        node.className = `pit-road-row ${row.status === "On pit road" ? "pitting" : ""}`;
+        const lapText = row.status === "On pit road"
+          ? "Pitting"
+          : row.last_pit_lap > 0
+            ? `Lap ${row.last_pit_lap}`
+            : "--";
+        const tireText = row.laps_since_pit > 0 ? `${row.laps_since_pit} laps since stop` : "";
+        node.innerHTML = `
+          <div class="num">#${row.car_number || "--"}</div>
+          <div>
+            <div class="pit-road-main">${row.driver_name || "Unknown Driver"}</div>
+            <div class="pit-road-meta">${lapText}${tireText ? " • " + tireText : ""}${row.position_summary ? " • " + row.position_summary : ""}</div>
+            <div class="pit-road-service">${row.service_guess || "Service unknown"}</div>
+          </div>
+          <div class="small">Stop ${formatPitRoadSeconds(row.pit_stop_seconds)}<br/>Lane ${formatPitRoadSeconds(row.pit_lane_seconds)}</div>
+        `;
+        list.appendChild(node);
+      }
+    }
+
     function controlEnabled(state, key) {
       return Boolean((state.control_state || {})[key]);
     }
@@ -1781,6 +1920,7 @@ PRODUCER_HTML = r"""<!doctype html>
       renderDriverDetail(state);
       renderFeatured(state);
       renderStatPanel(state);
+      renderPitRoad(state);
       renderProducerFeed(state);
       renderControlButtons(state);
     }
