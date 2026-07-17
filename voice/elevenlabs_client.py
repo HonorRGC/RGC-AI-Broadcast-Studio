@@ -42,10 +42,13 @@ class ElevenLabsClient:
             if not self.player.play(str(output_path.resolve())):
                 print("ElevenLabs voice error:")
                 print("Hidden voice audio player could not play the generated file.")
+                return 0.0
+            return float(getattr(self.player, "last_duration_seconds", 0.0) or 0.0)
 
         except Exception as error:
             print("ElevenLabs voice error:")
             print(error)
+            return 0.0
 
     def next_output_path(self):
         timestamp = int(time.time() * 1000)

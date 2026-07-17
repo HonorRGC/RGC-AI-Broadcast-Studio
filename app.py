@@ -204,7 +204,7 @@ def run_source(
             if should_switch_camera_after_voice_starts(item):
                 if not getattr(item, "silent", False):
                     prefade_music_before_restart_call(item, caution_audio_bed)
-                    booth.broadcast(item.message, speaker=item.speaker)
+                    broadcast_with_actual_timing(booth, engine, item)
                 else:
                     report_silent_feature(item, overlay_server)
                 camera_decision = camera_director.follow(item, source)
@@ -228,7 +228,7 @@ def run_source(
                     )
                 if not getattr(item, "silent", False):
                     prefade_music_before_restart_call(item, caution_audio_bed)
-                    booth.broadcast(item.message, speaker=item.speaker)
+                    broadcast_with_actual_timing(booth, engine, item)
                 else:
                     report_silent_feature(item, overlay_server)
 
@@ -282,6 +282,15 @@ def prefade_music_before_restart_call(item, caution_audio_bed):
         stopper()
         return True
     return False
+
+
+def broadcast_with_actual_timing(booth, engine, item):
+    playback_seconds = booth.broadcast(item.message, speaker=item.speaker)
+    if playback_seconds:
+        engine.broadcast_queue.mark_actual_playback_started(
+            item,
+            playback_seconds,
+        )
 
 
 def is_one_to_green_restart_call(item):

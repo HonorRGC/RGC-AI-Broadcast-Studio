@@ -350,6 +350,7 @@ class OneShotAudioPlayer:
         self.alias = alias
         self.active_path = ""
         self.is_playing = False
+        self.last_duration_seconds = 0.0
         self.close_timer = None
         self.lock = threading.Lock()
 
@@ -369,11 +370,15 @@ class OneShotAudioPlayer:
 
             self.active_path = resolved
             self.set_volume(self.normal_volume)
+            self.last_duration_seconds = self.query_length_seconds()
             if not self.send(f"play {self.alias}"):
                 self.close_locked()
                 return False
             self.is_playing = True
-            self.schedule_close(duration_seconds)
+            close_after = duration_seconds
+            if not close_after and self.last_duration_seconds > 0:
+                close_after = self.last_duration_seconds + 0.25
+            self.schedule_close(close_after)
             return True
 
     def stop(self):
@@ -410,3 +415,24 @@ class OneShotAudioPlayer:
             return False
         result = winmm.mciSendStringW(str(command), None, 0, None)
         return int(result or 0) == 0
+
+    def query(self, command):
+        try:
+            winmm = ctypes.windll.winmm
+        except Exception:
+            return ""
+        buffer = ctypes.create_unicode_buffer(128)
+        result = winmm.mciSendStringW(str(command), buffer, len(buffer), None)
+        if int(result or 0) != 0:
+            return ""
+        return buffer.value.strip()
+
+    def query_length_seconds(self):
+        value = self.query(f"status {self.alias} length")
+        try:
+            milliseconds = float(value)
+        except (TypeError, ValueError):
+            return 0.0
+        if milliseconds <= 0:
+            return 0.0
+        return milliseconds / 1000.0

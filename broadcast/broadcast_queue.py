@@ -206,6 +206,19 @@ class BroadcastQueue:
 
         return selected
 
+    def mark_actual_playback_started(self, item, playback_seconds, now=None):
+        """Replace the word-count estimate with generated voice duration."""
+        try:
+            playback_seconds = float(playback_seconds or 0.0)
+        except (TypeError, ValueError):
+            playback_seconds = 0.0
+        if playback_seconds <= 0 or getattr(item, "silent", False):
+            return
+        now = time.time() if now is None else now
+        gap_time = self.estimate_item_gap_seconds(item)
+        tail_padding = self.voice_tail_padding_seconds
+        self.busy_until = now + playback_seconds + gap_time + tail_padding
+
     def clear_for_race_control(self, preserve_categories=(), reset_busy=True):
         preserved = set(preserve_categories)
         self.items = [item for item in self.items if item.category in preserved]

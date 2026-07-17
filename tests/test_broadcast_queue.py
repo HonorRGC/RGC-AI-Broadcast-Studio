@@ -154,3 +154,19 @@ def test_short_lap_calls_do_not_reserve_long_broadcast_window():
 
     assert item.dedupe_key == "race_control:white_flag"
     assert queue.busy_until < now + 4.0
+
+
+def test_actual_voice_duration_replaces_word_count_estimate_after_playback_starts():
+    queue = BroadcastQueue()
+    queue.add(
+        "A short line.",
+        priority=7,
+        category="race_story",
+        dedupe_key="story:voice_timing",
+    )
+    queue.items[0].created_at = 100.0
+    item = queue.next_item(now=100.0)
+
+    queue.mark_actual_playback_started(item, playback_seconds=12.0, now=105.0)
+
+    assert queue.busy_until == 105.0 + 12.0 + 2.5 + 0.55

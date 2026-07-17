@@ -60,7 +60,7 @@ class BroadcastBooth:
 
     def broadcast(self, commentary, speaker="lead"):
         if commentary == self.last_comment:
-            return
+            return 0.0
 
         self.last_comment = commentary
         speaker_label = self.get_speaker_label(speaker)
@@ -84,15 +84,20 @@ class BroadcastBooth:
         if self.voice_runtime_enabled and self.voice_client and voice_id:
             if self.audio_bed:
                 self.audio_bed.duck()
+            playback_seconds = 0.0
             try:
-                self.voice_client.speak(commentary, voice_id)
+                playback_seconds = float(
+                    self.voice_client.speak(commentary, voice_id) or 0.0
+                )
             finally:
                 if self.audio_bed:
                     self.audio_bed.restore_after(
-                        self.estimate_speech_seconds(commentary)
+                        playback_seconds or self.estimate_speech_seconds(commentary)
                     )
+            return playback_seconds
         elif self.voice_runtime_enabled and self.voice_client and not voice_id:
             print(f"Voice output skipped: no voice ID is configured for {speaker_label}.")
+        return 0.0
 
     def get_speaker_label(self, speaker):
         if speaker == "jeff":
