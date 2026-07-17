@@ -115,6 +115,8 @@ class BroadcastQueue:
     def estimate_speech_seconds(self, message, category=""):
         if category == "crank_it_up":
             return 50.0
+        if category == "booth_conversation":
+            return max(4.4, min(12.0, len(str(message).split()) / 2.9))
         words = len(str(message).split())
         if category == "race_control" and self.is_short_lap_call(message):
             return max(1.2, words / 3.6)
@@ -146,6 +148,8 @@ class BroadcastQueue:
     def estimate_item_gap_seconds(self, item):
         if item.category == "race_control" and self.is_short_lap_call(item.message):
             return 0.6
+        if item.category == "booth_conversation":
+            return 0.2
         return self.estimate_gap_seconds(item.category)
 
     def has_pending_booth_follow_up(self, now):
@@ -153,6 +157,9 @@ class BroadcastQueue:
             item.category == "race_story_follow_up" and item.ready_at <= now
             for item in self.items
         )
+
+    def has_pending_booth_conversation(self):
+        return any(item.category == "booth_conversation" for item in self.items)
 
     def tight_handoff_speech_seconds(self, message, category, default_seconds):
         if category != "race_story":

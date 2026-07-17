@@ -1,3 +1,5 @@
+import time
+
 from broadcast.broadcast_queue import BroadcastQueue
 from broadcaster.race_brain import RaceBrain
 from broadcaster.race_director import RaceDirector, RacePhase
@@ -7,6 +9,7 @@ from production.caution_pit_reporter import CautionPitReporter
 from production.action_detector import ActionDetector
 from production.broadcast_story_producer import BroadcastStoryProducer
 from production.booth_followup_director import BoothFollowupDirector
+from production.booth_conversation_director import BoothConversationDirector
 from production.editorial_producer import EditorialDecisionType, EditorialProducer
 from production.field_rundown_director import FieldRundownDirector
 from production.fastest_lap_tracker import FastestLapTracker
@@ -53,6 +56,7 @@ class BroadcastEngine:
         self.editorial_producer = EditorialProducer()
         self.broadcast_story_producer = BroadcastStoryProducer()
         self.booth_followup_director = BoothFollowupDirector()
+        self.booth_conversation_director = BoothConversationDirector()
         self.penalty_detector = PenaltyDetector()
         self.pit_strategy_detector = PitStrategyDetector()
         self.caution_pit_reporter = CautionPitReporter()
@@ -74,6 +78,7 @@ class BroadcastEngine:
         self.green_pit_cycle_last_update_lap = 0
         self.green_pit_cycle_update_count = 0
         self.crank_it_up_sent_this_green_run = False
+        self.booth_conversation_active_until = 0.0
         self.last_leader_story_lap = 0
         self.current_leader_car_idx = None
         self.current_leader_started_lap = 0
@@ -277,6 +282,18 @@ class BroadcastEngine:
                 current_lap,
             )
             if queued_insight:
+                return self.broadcast_queue.next_item()
+            queued_booth_conversation = self._queue_booth_conversation(
+                story_results,
+                driver_lookup,
+                telemetry.get_track_info(),
+                race_state,
+                current_lap,
+                total_laps,
+            )
+            if queued_booth_conversation:
+                return self.broadcast_queue.next_item()
+            if self.booth_conversation_is_active():
                 return self.broadcast_queue.next_item()
             self.editorial_producer.submit_race_knowledge(race_knowledge)
             self._queue_fastest_lap_story(
@@ -1108,6 +1125,75 @@ class BroadcastEngine:
             dedupe_key=insight.category,
         )
         return True
+
+    def _queue_booth_conversation(
+        self,
+        results,
+        driver_lookup,
+        track_info,
+        race_state,
+        current_lap,
+        total_laps,
+    ):
+        if self.broadcast_queue.items or not self.broadcast_queue.can_speak():
+            return False
+        if self.booth_conversation_is_active():
+            return False
+
+        lines = self.booth_conversation_director.build(
+            results=results,
+            driver_lookup=driver_lookup,
+            track_info=track_info,
+            race_state=race_state,
+            current_lap=current_lap,
+            total_laps=total_laps,
+        )
+        if not lines:
+            return False
+
+        self.clear_pending_for_booth_conversation()
+        total_feature_seconds = 0.0
+        for index, line in enumerate(lines):
+            message = self.commentary_cleaner.clean(line.message)
+            total_feature_seconds += self.broadcast_queue.estimate_speech_seconds(
+                message,
+                "booth_conversation",
+            )
+            self.broadcast_queue.add(
+                message,
+                priority=9,
+                category="booth_conversation",
+                protected=False,
+                speaker=line.speaker,
+                delay_seconds=line.delay_seconds,
+                expires_after=50,
+                dedupe_key=f"booth_conversation:{current_lap}:{index}",
+                camera_target_car_idx=line.camera_target_car_idx,
+                participant_car_indices=line.participant_car_indices,
+                camera_return_home_after_sequence=(index == len(lines) - 1),
+            )
+        self.booth_conversation_active_until = (
+            time.time() + total_feature_seconds + 8.0
+        )
+        return True
+
+    def booth_conversation_is_active(self):
+        if self.broadcast_queue.has_pending_booth_conversation():
+            return True
+        return time.time() < self.booth_conversation_active_until
+
+    def clear_pending_for_booth_conversation(self):
+        preserved_categories = {
+            "race_control",
+            "incident",
+            "stage_end",
+            "penalty",
+        }
+        self.broadcast_queue.items = [
+            item
+            for item in self.broadcast_queue.items
+            if item.category in preserved_categories
+        ]
 
     def _queue_race_stat_filler(self, results, driver_lookup, race_state, current_lap):
         if self.broadcast_queue.items or not self.broadcast_queue.can_speak():
