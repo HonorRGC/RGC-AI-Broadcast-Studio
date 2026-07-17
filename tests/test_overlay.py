@@ -113,6 +113,72 @@ def test_overlay_leaderboard_includes_producer_driver_stats():
     assert entry["producer_note"].startswith("Big mover:")
 
 
+def test_overlay_remembers_starting_grid_for_producer_stats():
+    class GridTelemetry(OverlayTelemetry):
+        def __init__(self):
+            self.lap = 0
+            self.results = [
+                {"CarIdx": 3, "Position": 0, "LapsComplete": 0},
+                {"CarIdx": 7, "Position": 1, "LapsComplete": 0},
+                {"CarIdx": 9, "Position": 2, "LapsComplete": 0},
+            ]
+
+        def get_lap(self):
+            return self.lap
+
+        def get_results(self):
+            return self.results
+
+        def get_starting_grid(self):
+            return [
+                {"CarIdx": 3, "Position": 0},
+                {"CarIdx": 7, "Position": 1},
+                {"CarIdx": 9, "Position": 2},
+            ]
+
+    telemetry = GridTelemetry()
+    builder = OverlayStateBuilder()
+    builder.build_from_telemetry(telemetry)
+
+    telemetry.lap = 10
+    telemetry.results = [
+        {"CarIdx": 9, "Position": 0, "LapsComplete": 10},
+        {"CarIdx": 3, "Position": 1, "LapsComplete": 10},
+        {"CarIdx": 7, "Position": 2, "LapsComplete": 10},
+    ]
+    state = builder.build_from_telemetry(telemetry).to_dict()
+    entry = next(driver for driver in state["leaderboard"] if driver["car_idx"] == 7)
+
+    assert entry["starting_position"] == 2
+    assert entry["position_delta"] == -1
+
+
+def test_overlay_uses_qualifying_as_late_start_fallback_for_producer_stats():
+    class LateStartTelemetry(OverlayTelemetry):
+        def get_lap(self):
+            return 24
+
+        def get_results(self):
+            return [
+                {"CarIdx": 9, "Position": 0, "LapsComplete": 24},
+                {"CarIdx": 3, "Position": 1, "LapsComplete": 24},
+                {"CarIdx": 7, "Position": 2, "LapsComplete": 24},
+            ]
+
+        def get_qualifying_results(self):
+            return [
+                {"CarIdx": 3, "Position": 0},
+                {"CarIdx": 7, "Position": 1},
+                {"CarIdx": 9, "Position": 2},
+            ]
+
+    state = OverlayStateBuilder().build_from_telemetry(LateStartTelemetry()).to_dict()
+    entry = next(driver for driver in state["leaderboard"] if driver["car_idx"] == 9)
+
+    assert entry["starting_position"] == 3
+    assert entry["position_delta"] == 2
+
+
 def test_overlay_marks_green_flag_state():
     class GreenTelemetry(OverlayTelemetry):
         def get_session_flags(self):
@@ -444,6 +510,8 @@ def test_producer_assist_html_reads_overlay_state():
     assert 'id="detail-led"' in PRODUCER_HTML
     assert 'id="detail-last-pit"' in PRODUCER_HTML
     assert "formatDelta(driver.position_delta)" in PRODUCER_HTML
+    assert "formatPositionDelta(driver.position_delta)" in PRODUCER_HTML
+    assert 'return "Even"' in PRODUCER_HTML
     assert "driver.producer_note" in PRODUCER_HTML
     assert 'id="producer-feed"' in PRODUCER_HTML
     assert "renderProducerFeed" in PRODUCER_HTML

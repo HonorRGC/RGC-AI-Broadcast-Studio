@@ -211,6 +211,7 @@ class OverlayStateBuilder:
         self.clock = clock or time.monotonic
         self.last_leaderboard = []
         self.lap_status_by_lap = {}
+        self.starting_positions_by_car_idx = {}
 
     def build_from_telemetry(self, telemetry):
         results = telemetry.get_results()
@@ -219,15 +220,23 @@ class OverlayStateBuilder:
         session_type_reader = getattr(telemetry, "get_session_type", None)
         session_type = session_type_reader() if session_type_reader else "Unknown"
 
+        lap = self.best_race_lap(results, telemetry.get_lap())
+        caution = self.is_caution(telemetry)
+        green = self.is_green(telemetry, session_type=session_type, lap=lap, caution=caution)
+        self.update_starting_position_memory(
+            telemetry,
+            results,
+            session_type=session_type,
+            lap=lap,
+            green=green,
+        )
+
         leaderboard = self.build_leaderboard(results, driver_lookup, session_type)
         if leaderboard:
             self.last_leaderboard = leaderboard
         elif self.is_race_session(session_type) and self.last_leaderboard:
             leaderboard = self.last_leaderboard
 
-        lap = self.best_race_lap(results, telemetry.get_lap())
-        caution = self.is_caution(telemetry)
-        green = self.is_green(telemetry, session_type=session_type, lap=lap, caution=caution)
         self.update_lap_history(session_type, lap, caution, green)
 
         return OverlayState(
@@ -281,7 +290,7 @@ class OverlayStateBuilder:
             driver = (driver_lookup or {}).get(car_idx, {})
             raw_position = self.safe_int(car.get("Position"), len(leaderboard) + 1)
             display_position = raw_position + 1 if zero_based else raw_position
-            starting_position = self.starting_position(car)
+            starting_position = self.starting_position(car, car_idx)
             position_delta = (
                 starting_position - display_position if starting_position > 0 else 0
             )
@@ -334,7 +343,93 @@ class OverlayStateBuilder:
             )
         return self.visible_leaderboard_window(leaderboard)
 
-    def starting_position(self, car):
+    def update_starting_position_memory(
+        self,
+        telemetry,
+        results,
+        session_type="Race",
+        lap=0,
+        green=False,
+    ):
+        if not self.is_race_session(session_type):
+            return
+
+        self.merge_starting_positions(
+            self.starting_position_lookup_from_results(results, explicit_only=True),
+            overwrite=True,
+        )
+
+        grid_reader = getattr(telemetry, "get_starting_grid", None)
+        grid = grid_reader() if grid_reader else []
+        if grid and (self.safe_int(lap) <= 1 or not green):
+            self.merge_starting_positions(
+                self.starting_position_lookup_from_results(grid, explicit_only=False),
+                overwrite=False,
+            )
+
+        qualifying_reader = getattr(telemetry, "get_qualifying_results", None)
+        qualifying = qualifying_reader() if qualifying_reader else []
+        if qualifying:
+            self.merge_starting_positions(
+                self.starting_position_lookup_from_results(
+                    qualifying,
+                    explicit_only=False,
+                ),
+                overwrite=False,
+            )
+
+        if not self.starting_positions_by_car_idx and self.safe_int(lap) <= 1:
+            self.merge_starting_positions(
+                self.starting_position_lookup_from_results(
+                    results,
+                    explicit_only=False,
+                ),
+                overwrite=False,
+            )
+
+    def merge_starting_positions(self, lookup, overwrite=False):
+        for car_idx, position in (lookup or {}).items():
+            if car_idx is None or position <= 0:
+                continue
+            if overwrite or car_idx not in self.starting_positions_by_car_idx:
+                self.starting_positions_by_car_idx[car_idx] = position
+
+    def starting_position_lookup_from_results(self, results, explicit_only=False):
+        valid_results = [
+            dict(car)
+            for car in results or []
+            if car.get("CarIdx") is not None
+        ]
+        if not valid_results:
+            return {}
+
+        lookup = {}
+        zero_based = any(
+            self.safe_int(car.get("Position"), 999) == 0 for car in valid_results
+        )
+        valid_results.sort(key=lambda car: self.safe_int(car.get("Position"), 999))
+        for index, car in enumerate(valid_results, start=1):
+            car_idx = car.get("CarIdx")
+            explicit = self.explicit_starting_position(car)
+            if explicit > 0:
+                lookup[car_idx] = explicit
+                continue
+            if explicit_only:
+                continue
+            raw_position = self.safe_int(car.get("Position"), index)
+            lookup[car_idx] = raw_position + 1 if zero_based else raw_position
+        return lookup
+
+    def starting_position(self, car, car_idx=None):
+        explicit = self.explicit_starting_position(car)
+        if explicit > 0:
+            return explicit
+        try:
+            return self.starting_positions_by_car_idx.get(car_idx, 0)
+        except TypeError:
+            return 0
+
+    def explicit_starting_position(self, car):
         for key in (
             "StartingPosition",
             "StartPosition",
@@ -1437,6 +1532,13 @@ PRODUCER_HTML = r"""<!doctype html>
       return number > 0 ? `+${number}` : String(number);
     }
 
+    function formatPositionDelta(value) {
+      const number = Number(value || 0);
+      if (!Number.isFinite(number)) return "--";
+      if (number === 0) return "Even";
+      return number > 0 ? `+${number}` : String(number);
+    }
+
     function formatSeconds(value) {
       const number = Number(value || 0);
       if (!Number.isFinite(number) || number <= 0) return "--";
@@ -1539,7 +1641,7 @@ PRODUCER_HTML = r"""<!doctype html>
       text("detail-subtitle", `${state.session_type || "Session"} at ${state.track_name || "the track"}`);
       text("detail-position", ordinal(driver.position));
       text("detail-start", driver.starting_position ? ordinal(driver.starting_position) : "--");
-      text("detail-delta", formatDelta(driver.position_delta));
+      text("detail-delta", driver.starting_position ? formatPositionDelta(driver.position_delta) : "--");
       text("detail-interval", driver.interval || "--");
       text("detail-laps", driver.laps_complete ?? "--");
       text("detail-led", driver.laps_led || "--");
@@ -1553,7 +1655,7 @@ PRODUCER_HTML = r"""<!doctype html>
       const lap = formatLap(state);
       const note = [
         driver.producer_note || `${driver.driver_name || "This driver"} is currently ${ordinal(driver.position)} in the running order.`,
-        driver.starting_position ? `Started ${ordinal(driver.starting_position)}; ${formatDelta(driver.position_delta)} spots.` : "",
+        driver.starting_position ? `Started ${ordinal(driver.starting_position)}; ${formatPositionDelta(driver.position_delta)} from the start.` : "",
         driver.laps_led ? `Laps led: ${driver.laps_led}.` : "",
         driver.interval ? `Interval shown: ${driver.interval}.` : "",
         driver.fastest_lap ? `Fastest lap: ${driver.fastest_lap}.` : "",
