@@ -1665,6 +1665,12 @@ class BroadcastEngine:
             session_time=getattr(telemetry, "get_session_time", lambda: 0.0)(),
             suppress_soft_events=self.should_suppress_soft_incidents(),
         )
+        if caution_just_started:
+            events = [
+                event
+                for event in events
+                if getattr(event, "trouble_type", "") != "possible trouble"
+            ]
         if (
             self.race_director.phase in (RacePhase.CAUTION, RacePhase.ONE_TO_GREEN)
             and not caution_just_started
@@ -1712,6 +1718,11 @@ class BroadcastEngine:
         )
         for event in events:
             is_pack_wreck = event.trouble_type == "pack wreck"
+            audio_only_final_lap_pack_wreck = (
+                is_pack_wreck
+                and self.is_final_lap_window(current_lap, total_laps)
+                and not caution_just_started
+            )
             if (
                 is_pack_wreck
                 and not caution_just_started
@@ -1755,12 +1766,19 @@ class BroadcastEngine:
                     f"{event.lap}:{event.total_incidents}"
                 ),
                 camera_target_car_idx=(
-                    None if use_incident_marker_replay else event.car_idx
+                    None
+                    if use_incident_marker_replay or audio_only_final_lap_pack_wreck
+                    else event.car_idx
                 ),
                 participant_car_indices=(
-                    () if use_incident_marker_replay else (event.car_idx,)
+                    ()
+                    if use_incident_marker_replay or audio_only_final_lap_pack_wreck
+                    else (event.car_idx,)
                 ),
-                camera_focus_incident=event.trouble_type == "pack wreck",
+                camera_focus_incident=(
+                    event.trouble_type == "pack wreck"
+                    and not audio_only_final_lap_pack_wreck
+                ),
                 camera_incident_group="Far Chase",
                 replay_session_num=(
                     caution_replay_session_num

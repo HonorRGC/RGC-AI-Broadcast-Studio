@@ -496,7 +496,15 @@ class IncidentDetector:
             )
 
         if suppress_soft_events:
-            return None
+            return self.detect_serious_soft_trouble(
+                state=state,
+                position_loss=position_loss,
+                lap_distance_loss=lap_distance_loss,
+                est_time_loss=est_time_loss,
+                track_surface=track_surface,
+                current_lap=current_lap,
+                incident_count=incident_count,
+            )
 
         if position_loss >= self.position_loss_threshold:
             return self.build_event(
@@ -543,6 +551,52 @@ class IncidentDetector:
             )
 
         return None
+
+    def detect_serious_soft_trouble(
+        self,
+        state,
+        position_loss,
+        lap_distance_loss,
+        est_time_loss,
+        track_surface,
+        current_lap,
+        incident_count,
+    ):
+        abnormal_surface = self.is_abnormal_surface(track_surface)
+        reasons = []
+        if position_loss >= 3:
+            reasons.append("lost several positions")
+        if lap_distance_loss >= 0.018:
+            reasons.append("lost track position quickly")
+        if est_time_loss >= 2.5:
+            reasons.append("lost a lot of time")
+        if abnormal_surface and (position_loss >= 2 or est_time_loss >= 1.5):
+            reasons.append("left the racing surface")
+
+        if len(reasons) < 2:
+            return None
+
+        score = (
+            max(0, position_loss)
+            + lap_distance_loss * 100.0
+            + max(0.0, est_time_loss)
+            + (2.0 if abnormal_surface else 0.0)
+        )
+        if score < 7.0:
+            return None
+
+        return self.build_event(
+            state,
+            "possible trouble",
+            (
+                f"Possible trouble for {state.driver_name}. The number "
+                f"{state.car_number} has suddenly lost time and track position."
+            ),
+            8,
+            current_lap,
+            0,
+            incident_count,
+        )
 
     def calculate_lap_distance_loss(self, previous, current):
         """Return backward movement while ignoring the normal 1.0 -> 0.0 lap wrap."""

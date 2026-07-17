@@ -44,7 +44,7 @@ def test_pack_wreck_breaks_through_soft_incident_suppression():
     assert events[0].importance == 10
 
 
-def test_pack_wreck_needs_multiple_cars():
+def test_single_car_trouble_is_not_called_a_pack_wreck():
     detector = IncidentDetector()
     drivers = {0: {"name": "Solo Driver", "number": "7"}}
 
@@ -67,7 +67,39 @@ def test_pack_wreck_needs_multiple_cars():
         suppress_soft_events=True,
     )
 
-    assert events == []
+    assert len(events) == 1
+    assert events[0].trouble_type == "possible trouble"
+
+
+def test_serious_single_car_trouble_breaks_through_soft_suppression():
+    detector = IncidentDetector()
+    drivers = {0: {"name": "Solo Driver", "number": "7"}}
+
+    detector.analyze(
+        results=[{"CarIdx": 0, "Position": 3, "Incidents": 0}],
+        driver_lookup=drivers,
+        current_lap=18,
+        lap_dist_pct_status=[0.70],
+        est_time_status=[20.0],
+        track_surface_status=[3],
+        pit_road_status=[False],
+        suppress_soft_events=True,
+    )
+    events = detector.analyze(
+        results=[{"CarIdx": 0, "Position": 8, "Incidents": 0}],
+        driver_lookup=drivers,
+        current_lap=18,
+        lap_dist_pct_status=[0.67],
+        est_time_status=[24.0],
+        track_surface_status=[3],
+        pit_road_status=[False],
+        suppress_soft_events=True,
+    )
+
+    assert len(events) == 1
+    assert events[0].trouble_type == "possible trouble"
+    assert "Possible trouble" in events[0].message
+    assert events[0].car_idx == 0
 
 
 def test_green_flag_pit_exit_does_not_create_pack_wreck():

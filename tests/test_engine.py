@@ -1114,7 +1114,67 @@ def test_final_lap_pack_wreck_is_called_live_without_replay():
     assert incident.replay_session_num is None
     assert incident.replay_session_time is None
     assert incident.replay_use_incident_marker is False
-    assert incident.camera_focus_incident is True
+    assert incident.camera_focus_incident is False
+    assert incident.camera_target_car_idx is None
+
+
+def test_green_flag_possible_trouble_moves_camera_to_car():
+    drivers = {2: {"name": "Trouble Driver", "number": "27"}}
+    first = TelemetrySnapshot(
+        lap=18,
+        total_laps=50,
+        session_flags=RaceFlags.GREEN,
+        session_num=2,
+        session_time=180.0,
+        results=[{"CarIdx": 2, "Position": 3, "LapsComplete": 18, "Incidents": 0}],
+        driver_lookup=drivers,
+        pit_road_status=[False, False, False],
+        track_surface=[3, 3, 3],
+        track_surface_material=[0, 0, 0],
+        lap_dist_pct=[0.0, 0.0, 0.70],
+        est_time=[0.0, 0.0, 20.0],
+    )
+    trouble = TelemetrySnapshot(
+        lap=18,
+        total_laps=50,
+        session_flags=RaceFlags.GREEN,
+        session_num=2,
+        session_time=183.0,
+        results=[{"CarIdx": 2, "Position": 8, "LapsComplete": 18, "Incidents": 0}],
+        driver_lookup=drivers,
+        pit_road_status=[False, False, False],
+        track_surface=[3, 3, 3],
+        track_surface_material=[0, 0, 0],
+        lap_dist_pct=[0.0, 0.0, 0.67],
+        est_time=[0.0, 0.0, 24.0],
+    )
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    engine.race_director.phase = RacePhase.GREEN
+    engine.race_director.previous_phase = RacePhase.GREEN
+
+    engine._collect_incidents(
+        telemetry=SnapshotSource(first),
+        results=first.results,
+        driver_lookup=drivers,
+        pit_road_status=first.pit_road_status,
+        current_lap=18,
+        total_laps=50,
+    )
+    engine._collect_incidents(
+        telemetry=SnapshotSource(trouble),
+        results=trouble.results,
+        driver_lookup=drivers,
+        pit_road_status=trouble.pit_road_status,
+        current_lap=18,
+        total_laps=50,
+    )
+
+    incident = next(
+        item for item in engine.broadcast_queue.items if item.category == "incident"
+    )
+    assert "Possible trouble" in incident.message
+    assert incident.camera_target_car_idx == 2
+    assert incident.camera_focus_incident is False
 
 
 def test_pack_wreck_detector_stays_quiet_while_field_forms_under_caution():
