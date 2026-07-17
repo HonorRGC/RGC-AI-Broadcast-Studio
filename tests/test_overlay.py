@@ -468,6 +468,28 @@ def test_sponsor_bug_overlay_is_compact_popup():
     assert 'presentation.kind === "sponsor_bug"' in OVERLAY_HTML
 
 
+def test_featured_driver_card_includes_position_line():
+    from production.overlay import OverlayServer
+
+    server = OverlayServer()
+    server.show_featured_driver(
+        car_number="34",
+        driver_name="T.J. Lee",
+        story="RGC Motorsports",
+        position=4,
+        starting_position=12,
+        position_delta=8,
+    )
+
+    featured = server.current_state_dict()["featured_driver"]
+
+    assert featured["position"] == 4
+    assert featured["starting_position"] == 12
+    assert featured["position_delta"] == 8
+    assert "buildDriverCardPositionLine" in OVERLAY_HTML
+    assert 'id="driver-card-position"' in OVERLAY_HTML
+
+
 def test_crank_it_up_overlay_uses_logo_and_racing_speaker_style():
     assert ".special-presentation.crank_it_up .ceremony-logo" in OVERLAY_HTML
     assert "repeating-linear-gradient" in OVERLAY_HTML

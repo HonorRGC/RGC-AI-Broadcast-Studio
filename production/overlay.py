@@ -72,6 +72,9 @@ class FeaturedDriver:
     driver_name: str = ""
     story: str = ""
     car_image_url: str = ""
+    position: int = 0
+    starting_position: int = 0
+    position_delta: int = 0
     expires_at: float = 0.0
 
     def to_dict(self):
@@ -80,6 +83,9 @@ class FeaturedDriver:
             "driver_name": self.driver_name,
             "story": self.story,
             "car_image_url": self.car_image_url,
+            "position": self.position,
+            "starting_position": self.starting_position,
+            "position_delta": self.position_delta,
         }
 
 
@@ -834,6 +840,9 @@ class OverlayServer:
         story="",
         duration=10.0,
         car_image_url="",
+        position=0,
+        starting_position=0,
+        position_delta=0,
     ):
         with self.lock:
             self.featured_driver = FeaturedDriver(
@@ -841,6 +850,9 @@ class OverlayServer:
                 driver_name=str(driver_name or ""),
                 story=str(story or ""),
                 car_image_url=str(car_image_url or ""),
+                position=self.state_builder.safe_int(position),
+                starting_position=self.state_builder.safe_int(starting_position),
+                position_delta=self.state_builder.safe_int(position_delta),
                 expires_at=time.monotonic() + float(duration),
             )
             self.state.featured_driver = self.featured_driver
@@ -2217,6 +2229,17 @@ OVERLAY_HTML = r"""<!doctype html>
       text-overflow: ellipsis;
     }
 
+    .driver-card-position {
+      margin-top: 2px;
+      color: #fff;
+      font-size: 13px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
     .driver-card-story {
       margin-top: 4px;
       color: var(--rgc-muted);
@@ -2595,6 +2618,7 @@ OVERLAY_HTML = r"""<!doctype html>
     <div id="driver-card-image" class="driver-card-image hidden"></div>
     <div class="driver-card-info">
       <div id="driver-card-name" class="driver-card-name"></div>
+      <div id="driver-card-position" class="driver-card-position"></div>
       <div id="driver-card-story" class="driver-card-story"></div>
     </div>
   </section>
@@ -2787,12 +2811,27 @@ OVERLAY_HTML = r"""<!doctype html>
       if (!hasDriver) return;
       setText("driver-card-number", driver.car_number || "?");
       setText("driver-card-name", driver.driver_name || "Unknown Driver");
+      setText("driver-card-position", buildDriverCardPositionLine(driver));
       setText("driver-card-story", driver.story || "Featured driver");
       const image = document.getElementById("driver-card-image");
       const imageUrl = driver.car_image_url || "";
       card.classList.toggle("no-image", !imageUrl);
       image.classList.toggle("hidden", !imageUrl);
       image.style.backgroundImage = imageUrl ? `url("${cssEscapeUrl(imageUrl)}")` : "";
+    }
+
+    function buildDriverCardPositionLine(driver) {
+      const pieces = [];
+      const position = Number(driver.position || 0);
+      const start = Number(driver.starting_position || 0);
+      const delta = Number(driver.position_delta || 0);
+      if (position > 0) pieces.push(`P${position}`);
+      if (start > 0) pieces.push(`Started ${ordinal(start)}`);
+      if (start > 0 && delta !== 0) {
+        const sign = delta > 0 ? "+" : "";
+        pieces.push(`${sign}${delta} spots`);
+      }
+      return pieces.join(" • ");
     }
 
     function buildTrackLine(state) {

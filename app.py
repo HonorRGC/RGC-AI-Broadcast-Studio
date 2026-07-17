@@ -962,13 +962,45 @@ def update_overlay_focused_driver(
 
     story = build_featured_driver_story(driver)
     car_image_url = build_featured_driver_image(driver)
+    position_info = featured_driver_position_info(
+        car_idx,
+        source.get_results(),
+    )
     overlay_server.show_featured_driver(
         car_number=car_number,
         driver_name=driver_name,
         story=story,
         duration=duration,
         car_image_url=car_image_url,
+        position=position_info["position"],
+        starting_position=position_info["starting_position"],
+        position_delta=position_info["position_delta"],
     )
+
+
+def featured_driver_position_info(car_idx, results):
+    zero_based = any(safe_int(car.get("Position"), 999) == 0 for car in results or [])
+    for car in results or []:
+        if car.get("CarIdx") != car_idx:
+            continue
+        raw_position = safe_int(car.get("Position"), 0)
+        position = raw_position + 1 if zero_based and raw_position >= 0 else raw_position
+        starting_position = safe_int(
+            car.get("StartingPosition")
+            or car.get("StartPosition")
+            or car.get("QualifyingPosition"),
+            0,
+        )
+        return {
+            "position": position,
+            "starting_position": starting_position,
+            "position_delta": (
+                starting_position - position
+                if starting_position > 0 and position > 0
+                else 0
+            ),
+        }
+    return {"position": 0, "starting_position": 0, "position_delta": 0}
 
 
 def build_featured_driver_story(driver):
