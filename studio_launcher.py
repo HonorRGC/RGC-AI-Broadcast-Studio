@@ -3,12 +3,14 @@ from __future__ import annotations
 import json
 import os
 import re
+import secrets
 import shutil
 import socket
 import subprocess
 import sys
 import csv
 import urllib.error
+from urllib.parse import quote
 import urllib.request
 import webbrowser
 from pathlib import Path
@@ -72,6 +74,10 @@ LAUNCHER_FIELDS = [
     ("OVERLAY_SERIES_NAME", ""),
     ("OVERLAY_LEADERBOARD_STYLE", "side"),
     ("OVERLAY_HOST", "127.0.0.1"),
+    ("REMOTE_PRODUCER_ENABLED", "false"),
+    ("REMOTE_PRODUCER_RELAY_URL", ""),
+    ("REMOTE_PRODUCER_SESSION_CODE", ""),
+    ("REMOTE_PRODUCER_PIN", ""),
     (
         "OVERLAY_BRAND_GRAPHICS",
         "/assets/rgc_motorsports.png,/assets/autism_awareness.png,/assets/keep_it_real.webp",
@@ -126,6 +132,10 @@ BROADCAST_FIELD_LABELS = {
     "OVERLAY_SERIES_NAME": "Series Name",
     "OVERLAY_LEADERBOARD_STYLE": "Leaderboard Style",
     "OVERLAY_HOST": "Producer Assist Access",
+    "REMOTE_PRODUCER_ENABLED": "Remote Producer Relay",
+    "REMOTE_PRODUCER_RELAY_URL": "Relay Server URL",
+    "REMOTE_PRODUCER_SESSION_CODE": "Remote Session Code",
+    "REMOTE_PRODUCER_PIN": "Remote Session PIN",
     "OVERLAY_BRAND_GRAPHICS": "Overlay Brand Graphics",
     "USE_SPONSOR_READS": "Use Sponsor Reads",
     "SPONSOR_READ_NAME": "Spoken Sponsor 1",
@@ -151,6 +161,7 @@ BROADCAST_FIELD_SECTIONS = {
     "USE_OPENAI": "AI Commentary",
     "USE_ELEVENLABS": "Broadcaster Voices",
     "OVERLAY_EVENT_TITLE": "Overlay Branding",
+    "REMOTE_PRODUCER_ENABLED": "Remote Producer Relay",
     "USE_SPONSOR_READS": "Sponsor Reads",
     "USE_NATIONAL_ANTHEM": "Practice / Qualifying / Caution Media",
     "POST_RACE_INTERVIEWS_ENABLED": "Race Flow",
@@ -413,6 +424,35 @@ def build_health_status(values, root=ROOT, broadcast_running=False):
 
     rows.append(("Overlay", "Ready", DEFAULT_OVERLAY_URL, "ok"))
     rows.append(("Producer Assist", "Ready", DEFAULT_PRODUCER_URL, "ok"))
+    if setting_enabled(values, "REMOTE_PRODUCER_ENABLED", "false"):
+        remote_link = remote_producer_link(values)
+        if remote_link:
+            rows.append(
+                (
+                    "Remote Producer",
+                    "Configured",
+                    "Hosted relay link is ready to copy once the relay service is deployed.",
+                    "ok",
+                )
+            )
+        else:
+            rows.append(
+                (
+                    "Remote Producer",
+                    "Needs setup",
+                    "Add a relay URL and session code, or turn Remote Producer Relay off.",
+                    "warn",
+                )
+            )
+    else:
+        rows.append(
+            (
+                "Remote Producer",
+                "Local only",
+                "Remote browser helpers are off. Local/Tailscale Producer Assist can still be used.",
+                "off",
+            )
+        )
 
     if setting_enabled(values, "USE_LEAGUE_DRIVER_NOTES", "false"):
         drivers_path = resolve_project_path(values.get("LEAGUE_DRIVERS_CSV"), root)
@@ -706,6 +746,25 @@ def producer_link_for_host(host):
     host = str(host or "127.0.0.1").strip()
     display_host = best_remote_helper_ip() if host in ("0.0.0.0", "::") else host
     return f"http://{display_host}:8765/producer"
+
+
+def generate_remote_session_code():
+    alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+    return "".join(secrets.choice(alphabet) for _ in range(8))
+
+
+def remote_producer_link(values):
+    if not setting_enabled(values, "REMOTE_PRODUCER_ENABLED", "false"):
+        return ""
+    relay_url = str(values.get("REMOTE_PRODUCER_RELAY_URL", "") or "").strip().rstrip("/")
+    session_code = str(values.get("REMOTE_PRODUCER_SESSION_CODE", "") or "").strip()
+    if not relay_url or not session_code:
+        return ""
+    pin = str(values.get("REMOTE_PRODUCER_PIN", "") or "").strip()
+    link = f"{relay_url}/producer/{quote(session_code)}"
+    if pin:
+        link = f"{link}?pin={quote(pin)}"
+    return link
 
 
 def copy_to_clipboard(root, text):
@@ -1226,6 +1285,14 @@ def run_gui():
                 state="readonly",
             )
             entry_widget.set(existing.get(key, "127.0.0.1") or "127.0.0.1")
+        elif key == "REMOTE_PRODUCER_ENABLED":
+            entry_widget = ttk.Combobox(
+                settings_frame,
+                values=("false", "true"),
+                width=69,
+                state="readonly",
+            )
+            entry_widget.set(existing.get(key, "false") or "false")
         else:
             entry_widget = entry(settings_frame, width=72)
             entry_widget.insert(0, existing.get(key, ""))
@@ -1244,6 +1311,12 @@ def run_gui():
         if key == "OVERLAY_HOST":
             add_settings_hint(
                 "Use 127.0.0.1 for this PC only. Use 0.0.0.0 when a helper on your local network/VPN needs the Producer Assist link."
+            )
+
+        if key == "REMOTE_PRODUCER_PIN":
+            add_settings_hint(
+                "Release-track feature: when an RGC Remote Producer relay is deployed, this creates a normal browser link for distant admins. "
+                "Helpers will not need Python, Tailscale, or router changes. Until the relay server exists, keep using local/Tailscale Producer Assist for testing."
             )
 
         if key == "OVERLAY_BRAND_GRAPHICS":
@@ -1313,6 +1386,22 @@ def run_gui():
                 color="#334b64",
             ).grid(row=settings_grid_row, column=2, padx=(8, 0), sticky="w")
             settings_grid_row += 1
+
+    def generate_remote_code_for_form():
+        field = entries.get("REMOTE_PRODUCER_SESSION_CODE")
+        if field is None:
+            return
+        field.delete(0, "end")
+        field.insert(0, generate_remote_session_code())
+        status.set("Generated a Remote Producer session code. Save settings before starting.")
+
+    def copy_remote_link_from_form():
+        link = remote_producer_link(collect_values())
+        if not link:
+            status.set("Remote Producer link is not ready. Turn it on, add relay URL, and generate a session code.")
+            return
+        copy_to_clipboard(root, link)
+        status.set("Copied Remote Producer browser link for distant helper admins.")
 
     def choose_graphics_for_field(field_name, title, status_label):
         paths = filedialog.askopenfilenames(
@@ -1397,6 +1486,18 @@ def run_gui():
         command=choose_brand_graphics,
         color="#334b64",
     ).grid(row=settings_rows_by_key["OVERLAY_BRAND_GRAPHICS"], column=2, padx=(8, 0), sticky="w")
+    button(
+        settings_frame,
+        text="Copy Remote Link",
+        command=copy_remote_link_from_form,
+        color="#334b64",
+    ).grid(row=settings_rows_by_key["REMOTE_PRODUCER_RELAY_URL"], column=2, padx=(8, 0), sticky="w")
+    button(
+        settings_frame,
+        text="Generate Code",
+        command=generate_remote_code_for_form,
+        color="#334b64",
+    ).grid(row=settings_rows_by_key["REMOTE_PRODUCER_SESSION_CODE"], column=2, padx=(8, 0), sticky="w")
     button(
         settings_frame,
         text="Choose Anthem Audio",

@@ -169,6 +169,10 @@ OVERLAY_EVENT_TITLE=RGC 80 at Nashville
 OVERLAY_RACE_SPONSOR=Lee Family Racing
 OVERLAY_SERIES_NAME=RGC Cup Series
 OVERLAY_HOST=127.0.0.1
+REMOTE_PRODUCER_ENABLED=false
+REMOTE_PRODUCER_RELAY_URL=
+REMOTE_PRODUCER_SESSION_CODE=
+REMOTE_PRODUCER_PIN=
 OVERLAY_BRAND_GRAPHICS=/assets/rgc_motorsports.png,/assets/autism_awareness.png,/assets/keep_it_real.webp
 CRANK_IT_UP_SPONSOR_GRAPHIC=/assets/rgc_motorsports.png
 CRANK_IT_UP_ICON_GRAPHIC=/assets/crank_it_up.png
@@ -177,6 +181,8 @@ CRANK_IT_UP_ICON_GRAPHIC=/assets/crank_it_up.png
 `OVERLAY_HOST=127.0.0.1` keeps the overlay and Producer Assist on the broadcast PC only. Use `OVERLAY_HOST=0.0.0.0` when a helper on the same local network or VPN needs to open the Producer Assist link. Camera movement uses a take/release control button so only one producer moves cameras at a time.
 
 For remote league admins in different locations, use a private tunnel/VPN such as [Tailscale](https://tailscale.com/download/windows). Install and sign in on the broadcast PC and on the helper admin's PC, make sure both machines are in the same Tailscale network, then set `Producer Assist Access` to `0.0.0.0` in the Studio. The Producer Assist link will prefer the broadcast PC's Tailscale address when available, usually a `100.x.x.x` address. Send that link to the helper. Avoid normal router port forwarding unless you have a separate security plan.
+
+The release-track goal is a no-dependency Remote Producer link where helpers only need a browser. The Studio now has Remote Producer Relay settings for that path, and the implementation plan is documented in [docs/REMOTE_PRODUCER_RELAY.md](docs/REMOTE_PRODUCER_RELAY.md). Once the hosted relay service is deployed, the broadcaster will create a session code/PIN and send a normal HTTPS helper link.
 
 Optional sponsor reads can use the same sponsor or a specific read:
 

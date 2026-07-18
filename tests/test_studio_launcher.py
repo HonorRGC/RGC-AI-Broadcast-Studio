@@ -15,6 +15,7 @@ from studio_launcher import (
     broadcast_command,
     clear_broadcast_pid,
     format_playlist_paths,
+    generate_remote_session_code,
     has_running_broadcast,
     install_overlay_brand_graphics,
     is_newer_version,
@@ -27,6 +28,7 @@ from studio_launcher import (
     load_env_file,
     profile_path,
     read_broadcast_pid,
+    remote_producer_link,
     running_broadcast_pids,
     save_env_file,
     ensure_empty_driver_profile_csv,
@@ -140,6 +142,31 @@ def test_launcher_defaults_include_split_league_stats_csvs():
     assert defaults["SIMRACERHUB_LEAGUE_ID"] == ""
     assert defaults["SIMRACERHUB_SERIES_ID"] == ""
     assert defaults["SIMRACERHUB_SEASON_ID"] == ""
+
+
+def test_remote_producer_link_requires_enabled_relay_and_session():
+    assert remote_producer_link(launcher_defaults({})) == ""
+    assert (
+        remote_producer_link(
+            launcher_defaults(
+                {
+                    "REMOTE_PRODUCER_ENABLED": "true",
+                    "REMOTE_PRODUCER_RELAY_URL": "https://producer.rgc-ai.com/",
+                    "REMOTE_PRODUCER_SESSION_CODE": "WFO12345",
+                    "REMOTE_PRODUCER_PIN": "2468",
+                }
+            )
+        )
+        == "https://producer.rgc-ai.com/producer/WFO12345?pin=2468"
+    )
+
+
+def test_generate_remote_session_code_is_admin_friendly():
+    code = generate_remote_session_code()
+
+    assert len(code) == 8
+    assert code.isalnum()
+    assert code == code.upper()
 
 
 def test_launcher_health_reports_missing_ai_keys():
