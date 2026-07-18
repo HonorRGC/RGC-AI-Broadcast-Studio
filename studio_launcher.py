@@ -1341,7 +1341,7 @@ def run_gui():
         elif key == "RACE_ADMIN_SEND_MODE":
             entry_widget = ttk.Combobox(
                 settings_frame,
-                values=("clipboard", "ui_paste"),
+                values=("clipboard", "open_chat", "ui_paste"),
                 width=69,
                 state="readonly",
             )
@@ -1382,6 +1382,7 @@ def run_gui():
         if key == "RACE_ADMIN_SEND_MODE":
             add_settings_hint(
                 "clipboard is broadcast-safe and only copies the iRacing command for manual send. "
+                "open_chat copies it and opens iRacing text chat for quick Ctrl+V/Enter. "
                 "ui_paste is testing-only and may show iRacing chat/window on the stream."
             )
 
@@ -2670,7 +2671,7 @@ def build_help_tab(
         Stop Broadcast stops a broadcast launched by the studio.
 
         Race Admin Send Mode controls how admin commands are handled. clipboard is broadcast-safe and copies the command for manual send.
-        ui_paste is testing-only and may show iRacing chat/window on the broadcast.
+        open_chat copies the command and opens iRacing text chat for quick Ctrl+V/Enter. ui_paste is testing-only and may show iRacing chat/window on the broadcast.
         """,
     )
     section(

@@ -159,6 +159,13 @@ def test_launcher_defaults_include_split_league_stats_csvs():
     assert defaults["SIMRACERHUB_SEASON_ID"] == ""
 
 
+def test_race_admin_send_mode_includes_open_chat_option():
+    source = Path("studio_launcher.py").read_text(encoding="utf-8")
+
+    assert '("clipboard", "open_chat", "ui_paste")' in source
+    assert "opens iRacing text chat for quick Ctrl+V/Enter" in source
+
+
 def test_remote_producer_link_requires_enabled_relay_and_session():
     assert remote_producer_link(launcher_defaults({})) == ""
     assert (

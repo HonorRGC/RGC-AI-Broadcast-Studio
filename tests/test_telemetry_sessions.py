@@ -146,6 +146,42 @@ def test_live_telemetry_detects_replay_delay_and_returns_to_live_edge():
     assert telemetry.ir.replay_commands[-1] == ("speed", 1)
 
 
+def test_live_telemetry_open_chat_mode_copies_command_and_opens_chat(monkeypatch):
+    class FakeIR(dict):
+        def __init__(self):
+            super().__init__()
+            self.chat_commands = []
+
+        def chat_command(self, command):
+            self.chat_commands.append(command)
+            return 1
+
+    class SenderSpy:
+        def __init__(self):
+            self.copied = []
+
+        def copy_only(self, command):
+            self.copied.append(command)
+            return True
+
+    import config
+    import production.admin_chat_sender as admin_chat_sender
+
+    sender = SenderSpy()
+    monkeypatch.setattr(config, "RACE_ADMIN_SEND_MODE", "open_chat")
+    monkeypatch.setattr(
+        admin_chat_sender,
+        "WindowsAdminChatSender",
+        lambda: sender,
+    )
+    telemetry = IRacingTelemetry.__new__(IRacingTelemetry)
+    telemetry.ir = FakeIR()
+
+    assert telemetry.send_admin_chat_command("!yellow") == "chat_opened"
+    assert sender.copied == ["!yellow"]
+    assert telemetry.ir.chat_commands
+
+
 def test_live_results_include_the_player_incident_total():
     telemetry = IRacingTelemetry.__new__(IRacingTelemetry)
     telemetry.ir = {

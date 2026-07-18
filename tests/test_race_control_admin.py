@@ -78,6 +78,18 @@ def test_race_control_service_reports_broadcast_safe_clipboard_mode():
     assert "broadcast-safe" in result.message
 
 
+def test_race_control_service_reports_open_chat_mode():
+    source = SourceSpy(result="chat_opened")
+    service = RaceControlService(enabled=True)
+
+    result = service.execute("throw_yellow", {}, source)
+
+    assert result.ok is True
+    assert result.command == "!yellow"
+    assert "prepared in iRacing chat" in result.message
+    assert "Ctrl+V" in result.message
+
+
 def test_producer_race_control_command_logs_to_feed():
     source = SourceSpy()
     overlay = OverlaySpy()

@@ -154,15 +154,26 @@ class IRacingTelemetry:
         """Prepare or send a hosted-session admin command.
 
         Default clipboard mode is broadcast-safe: it will not open the iRacing
-        chat box on stream. ui_paste mode is useful for testing, but may show
-        the sim/chat window in the broadcast capture.
+        chat box on stream. open_chat copies the command and opens the iRacing
+        text chat box for a quick manual send. ui_paste is useful for testing,
+        but may show the sim/chat window in the broadcast capture.
         """
         from config import RACE_ADMIN_SEND_MODE
         from production.admin_chat_sender import WindowsAdminChatSender
 
         sender = WindowsAdminChatSender()
-        if RACE_ADMIN_SEND_MODE != "ui_paste":
+        if RACE_ADMIN_SEND_MODE == "clipboard":
             return "copied" if sender.copy_only(command) else False
+
+        if RACE_ADMIN_SEND_MODE == "open_chat":
+            copied = bool(sender.copy_only(command))
+            if not copied:
+                return False
+            try:
+                opened = bool(self.ir.chat_command(irsdk.ChatCommandMode.begin_chat))
+            except Exception:
+                opened = False
+            return "chat_opened" if opened else "copied"
 
         try:
             opened = bool(self.ir.chat_command(irsdk.ChatCommandMode.begin_chat))

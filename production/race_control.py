@@ -183,6 +183,17 @@ class RaceControlService:
                     "Paste/send it in iRacing chat, or use RACE_ADMIN_SEND_MODE=ui_paste for off-stream testing."
                 ),
             )
+        if send_result == "chat_opened":
+            return RaceControlResult(
+                ok=True,
+                action=command.action,
+                command=command.command,
+                dangerous=command.dangerous,
+                message=(
+                    f"{command.label} prepared in iRacing chat: {command.command}. "
+                    "Press Ctrl+V then Enter in the sim to send it."
+                ),
+            )
 
         sent = bool(send_result)
         return RaceControlResult(
