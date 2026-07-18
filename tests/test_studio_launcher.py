@@ -690,3 +690,12 @@ def test_inno_setup_searches_version_7_and_6_paths():
 
     assert any("Inno Setup 7" in path for path in paths)
     assert any("Inno Setup 6" in path for path in paths)
+
+
+def test_launcher_sets_branded_window_icon():
+    source = Path("studio_launcher.py").read_text(encoding="utf-8")
+
+    assert "WINDOWS_APP_USER_MODEL_ID" in source
+    assert "set_windows_app_user_model_id()" in source
+    assert "set_window_icon(root)" in source
+    assert "rgc_ai_broadcast_studio.ico" in source

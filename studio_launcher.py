@@ -34,6 +34,9 @@ RGC_WEBSITE_URL = "https://www.realisticgamingcrew.com"
 TAILSCALE_WINDOWS_DOWNLOAD_URL = "https://tailscale.com/download/windows"
 DEFAULT_OVERLAY_URL = "http://127.0.0.1:8765/overlay"
 DEFAULT_PRODUCER_URL = "http://127.0.0.1:8765/producer"
+WINDOWS_APP_USER_MODEL_ID = "RGC.AIBroadcastStudio.Studio"
+WINDOW_ICON_PATH = ROOT / "assets" / "rgc_ai_broadcast_studio.ico"
+WINDOW_ICON_IMAGE_PATH = ROOT / "assets" / "rgc_ai_broadcast_studio_icon.png"
 GITHUB_RELEASES_URL = "https://github.com/HonorRGC/RGC-AI-Broadcast-Studio/releases"
 GITHUB_LATEST_RELEASE_API = (
     "https://api.github.com/repos/HonorRGC/RGC-AI-Broadcast-Studio/releases/latest"
@@ -1010,17 +1013,58 @@ def has_running_broadcast():
     )
 
 
+def set_windows_app_user_model_id(app_id=WINDOWS_APP_USER_MODEL_ID):
+    """Give the Studio a stable Windows taskbar identity when launched by Python."""
+
+    if sys.platform != "win32":
+        return False
+    try:
+        import ctypes
+
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(app_id)
+        return True
+    except Exception:
+        return False
+
+
+def set_window_icon(root):
+    """Use the branded RGC icon for the Studio window and taskbar when possible."""
+
+    icon_set = False
+    if WINDOW_ICON_PATH.exists():
+        try:
+            root.iconbitmap(default=str(WINDOW_ICON_PATH))
+            icon_set = True
+        except Exception:
+            pass
+
+    if WINDOW_ICON_IMAGE_PATH.exists():
+        try:
+            import tkinter as tk
+
+            icon_image = tk.PhotoImage(file=str(WINDOW_ICON_IMAGE_PATH))
+            root.iconphoto(True, icon_image)
+            root._rgc_icon_image = icon_image
+            icon_set = True
+        except Exception:
+            pass
+
+    return icon_set
+
+
 def run_gui():
     import tkinter as tk
     from tkinter import filedialog
     from tkinter import ttk
 
     existing = launcher_defaults(load_env_file())
+    set_windows_app_user_model_id()
     root = tk.Tk()
     root.title("RGC AI Broadcast Studio")
     root.geometry("1040x720")
     root.minsize(920, 640)
     root.configure(bg=DARK_BG)
+    set_window_icon(root)
 
     style = ttk.Style(root)
     style.theme_use("clam")
