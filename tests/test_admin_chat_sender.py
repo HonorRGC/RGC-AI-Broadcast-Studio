@@ -82,6 +82,27 @@ def test_admin_chat_sender_can_copy_without_focusing_iracing_window():
     assert user32.keys == []
 
 
+def test_admin_chat_sender_uses_powershell_clipboard_fallback():
+    class FallbackSender(SenderSpy):
+        def __init__(self, user32):
+            super().__init__(user32)
+            self.fallback_text = ""
+
+        def set_clipboard_text(self, text):
+            return False
+
+        def set_clipboard_text_with_powershell(self, text):
+            self.fallback_text = text
+            return True
+
+    user32 = FakeUser32()
+    sender = FallbackSender(user32)
+
+    assert sender.copy_only("!yellow") is True
+    assert sender.fallback_text == "!yellow"
+    assert user32.foreground == 101
+
+
 def test_admin_chat_sender_refuses_to_paste_when_iracing_window_is_missing():
     user32 = FakeUser32()
     user32.windows = {101: "RGC Producer Assist - Browser"}

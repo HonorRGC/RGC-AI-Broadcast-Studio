@@ -163,12 +163,12 @@ class IRacingTelemetry:
 
         sender = WindowsAdminChatSender()
         if RACE_ADMIN_SEND_MODE == "clipboard":
-            return "copied" if sender.copy_only(command) else False
+            return "copied" if sender.copy_only(command) else "copy_failed"
 
         if RACE_ADMIN_SEND_MODE == "open_chat":
             copied = bool(sender.copy_only(command))
             if not copied:
-                return False
+                return "copy_failed"
             try:
                 opened = bool(self.ir.chat_command(irsdk.ChatCommandMode.begin_chat))
             except Exception:

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ctypes
+import subprocess
 import time
 
 
@@ -33,7 +34,7 @@ class WindowsAdminChatSender:
             return False
         if not self.focus_iracing_window():
             return False
-        if not self.set_clipboard_text(text):
+        if not self.copy_only(text):
             return False
         time.sleep(self.delay_seconds)
         self.press_ctrl_v()
@@ -45,7 +46,7 @@ class WindowsAdminChatSender:
         text = str(text or "").strip()
         if not text:
             return False
-        return self.set_clipboard_text(text)
+        return self.set_clipboard_text(text) or self.set_clipboard_text_with_powershell(text)
 
     def focus_iracing_window(self):
         hwnd = self.find_iracing_window()
@@ -112,7 +113,10 @@ class WindowsAdminChatSender:
 
     def set_clipboard_text(self, text):
         data = (text + "\0").encode("utf-16-le")
-        if not self.user32.OpenClipboard(None):
+        try:
+            if not self.user32.OpenClipboard(None):
+                return False
+        except Exception:
             return False
         handle = None
         try:
@@ -131,8 +135,28 @@ class WindowsAdminChatSender:
                 return False
             handle = None
             return True
+        except Exception:
+            return False
         finally:
             self.user32.CloseClipboard()
+
+    def set_clipboard_text_with_powershell(self, text):
+        try:
+            result = subprocess.run(
+                [
+                    "powershell",
+                    "-NoProfile",
+                    "-Command",
+                    "Set-Clipboard -Value ([Console]::In.ReadToEnd())",
+                ],
+                input=str(text),
+                text=True,
+                capture_output=True,
+                timeout=3,
+            )
+            return result.returncode == 0
+        except Exception:
+            return False
 
     def press_ctrl_v(self):
         self.key_down(VK_CONTROL)

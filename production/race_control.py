@@ -194,6 +194,17 @@ class RaceControlService:
                     "Press Ctrl+V then Enter in the sim to send it."
                 ),
             )
+        if send_result == "copy_failed":
+            return RaceControlResult(
+                ok=False,
+                action=command.action,
+                command=command.command,
+                dangerous=command.dangerous,
+                message=(
+                    f"Could not copy race-control command: {command.command}. "
+                    "Try clicking the command text in Producer Feed and manually paste it into iRacing chat."
+                ),
+            )
 
         sent = bool(send_result)
         return RaceControlResult(

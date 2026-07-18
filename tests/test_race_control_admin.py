@@ -90,6 +90,17 @@ def test_race_control_service_reports_open_chat_mode():
     assert "Ctrl+V" in result.message
 
 
+def test_race_control_service_reports_copy_failure():
+    source = SourceSpy(result="copy_failed")
+    service = RaceControlService(enabled=True)
+
+    result = service.execute("throw_yellow", {}, source)
+
+    assert result.ok is False
+    assert result.command == "!yellow"
+    assert "Could not copy" in result.message
+
+
 def test_producer_race_control_command_logs_to_feed():
     source = SourceSpy()
     overlay = OverlaySpy()
