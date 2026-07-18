@@ -52,6 +52,32 @@ IRACECONTROL_INSPIRED_KEYS = [
     "PitsOpen",
 ]
 
+SCALAR_WATCH_KEYS = [
+    "PitSvFlags",
+    "PitSvFuel",
+    "PitSvLFP",
+    "PitSvLRP",
+    "PitSvRFP",
+    "PitSvRRP",
+    "PitRepairLeft",
+    "PitOptRepairLeft",
+    "PitstopActive",
+    "PitsOpen",
+    "PlayerCarMyIncidentCount",
+    "PlayerCarDriverIncidentCount",
+    "PlayerCarTeamIncidentCount",
+    "PlayerIncidents",
+]
+
+ARRAY_WATCH_KEYS = [
+    "CarIdxSessionFlags",
+    "CarIdxPaceFlags",
+    "CarIdxTrackSurface",
+    "CarIdxTrackSurfaceMaterial",
+    "CarIdxOnPitRoad",
+    "CarIdxFastRepairsUsed",
+]
+
 WEEKEND_INFO_KEYS = [
     "Official",
     "LeagueID",
@@ -136,6 +162,77 @@ def safe_int(value, default=0):
         return int(value)
     except Exception:
         return default
+
+
+def compact_value(value):
+    if isinstance(value, float):
+        return round(value, 3)
+    return value
+
+
+def scalar_watch_snapshot(telemetry):
+    return {key: compact_value(safe_read(telemetry, key)) for key in SCALAR_WATCH_KEYS}
+
+
+def array_watch_snapshot(telemetry):
+    snapshot = {}
+    for key in ARRAY_WATCH_KEYS:
+        value = safe_read(telemetry, key)
+        if isinstance(value, (list, tuple)):
+            snapshot[key] = tuple(compact_value(item) for item in value)
+        elif value is None:
+            snapshot[key] = None
+        else:
+            try:
+                snapshot[key] = tuple(compact_value(item) for item in list(value))
+            except Exception:
+                snapshot[key] = value
+    return snapshot
+
+
+def changed_array_indices(previous, current, limit=16):
+    if previous is None or current is None:
+        return []
+    try:
+        max_len = min(len(previous), len(current))
+    except Exception:
+        return []
+    changes = []
+    for index in range(max_len):
+        if previous[index] != current[index]:
+            changes.append((index, previous[index], current[index]))
+            if len(changes) >= limit:
+                break
+    return changes
+
+
+def print_watch_changes(previous_scalars, current_scalars, previous_arrays, current_arrays):
+    scalar_changes = [
+        (key, previous_scalars.get(key), value)
+        for key, value in current_scalars.items()
+        if previous_scalars.get(key) != value
+    ]
+    array_changes = []
+    for key, value in current_arrays.items():
+        changes = changed_array_indices(previous_arrays.get(key), value)
+        if changes:
+            array_changes.append((key, changes))
+
+    if not scalar_changes and not array_changes:
+        return False
+
+    print()
+    print("Race Control Data Changes")
+    print("-" * 80)
+    for key, old, new in scalar_changes:
+        print(f"  {key}: {old} -> {new}")
+    for key, changes in array_changes:
+        formatted = ", ".join(
+            f"CarIdx {index}: {old}->{new}" for index, old, new in changes
+        )
+        print(f"  {key}: {formatted}")
+    print("-" * 80)
+    return True
 
 
 def print_weekend_probe(telemetry):
@@ -256,6 +353,8 @@ def main():
     last_state = None
     last_lap = None
     last_session_time = None
+    last_scalar_watch = scalar_watch_snapshot(telemetry)
+    last_array_watch = array_watch_snapshot(telemetry)
 
     try:
         while telemetry.is_connected():
@@ -299,6 +398,17 @@ def main():
                 last_state = state
                 last_lap = lap
                 last_session_time = session_time
+
+            current_scalar_watch = scalar_watch_snapshot(telemetry)
+            current_array_watch = array_watch_snapshot(telemetry)
+            if print_watch_changes(
+                last_scalar_watch,
+                current_scalar_watch,
+                last_array_watch,
+                current_array_watch,
+            ):
+                last_scalar_watch = current_scalar_watch
+                last_array_watch = current_array_watch
 
             time.sleep(0.2)
 
