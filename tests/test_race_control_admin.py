@@ -5,12 +5,13 @@ from production.race_control import RaceControlCommandBuilder, RaceControlServic
 
 
 class SourceSpy:
-    def __init__(self):
+    def __init__(self, result=True):
         self.commands = []
+        self.result = result
 
     def send_admin_chat_command(self, command):
         self.commands.append(command)
-        return True
+        return self.result
 
 
 class OverlaySpy:
@@ -63,6 +64,18 @@ def test_race_control_service_sends_when_enabled():
     assert result.ok is True
     assert source.commands == ["!black #34 D"]
     assert "sent" in result.message
+
+
+def test_race_control_service_reports_broadcast_safe_clipboard_mode():
+    source = SourceSpy(result="copied")
+    service = RaceControlService(enabled=True)
+
+    result = service.execute("throw_yellow", {}, source)
+
+    assert result.ok is True
+    assert result.command == "!yellow"
+    assert "copied" in result.message
+    assert "broadcast-safe" in result.message
 
 
 def test_producer_race_control_command_logs_to_feed():

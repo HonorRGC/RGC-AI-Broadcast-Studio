@@ -171,7 +171,20 @@ class RaceControlService:
                 message="This telemetry source cannot send iRacing admin chat commands.",
             )
 
-        sent = bool(sender(command.command))
+        send_result = sender(command.command)
+        if send_result == "copied":
+            return RaceControlResult(
+                ok=True,
+                action=command.action,
+                command=command.command,
+                dangerous=command.dangerous,
+                message=(
+                    f"{command.label} copied for broadcast-safe manual send: {command.command}. "
+                    "Paste/send it in iRacing chat, or use RACE_ADMIN_SEND_MODE=ui_paste for off-stream testing."
+                ),
+            )
+
+        sent = bool(send_result)
         return RaceControlResult(
             ok=sent,
             action=command.action,

@@ -48,6 +48,7 @@ LEAGUE_SEASON_STATS_CSV = os.getenv("LEAGUE_SEASON_STATS_CSV", "league/season.cs
 LEAGUE_CAREER_STATS_CSV = os.getenv("LEAGUE_CAREER_STATS_CSV", "league/career.csv")
 STAGE_END_LAPS = env_int_list("STAGE_END_LAPS", "")
 RACE_ADMIN_MODE = os.getenv("RACE_ADMIN_MODE", "false").lower() == "true"
+RACE_ADMIN_SEND_MODE = os.getenv("RACE_ADMIN_SEND_MODE", "clipboard").strip().lower()
 
 
 # Future Discord interview/control-room integration.

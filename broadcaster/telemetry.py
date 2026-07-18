@@ -151,7 +151,19 @@ class IRacingTelemetry:
             return False
 
     def send_admin_chat_command(self, command):
-        """Send a hosted-session admin command through the iRacing chat box."""
+        """Prepare or send a hosted-session admin command.
+
+        Default clipboard mode is broadcast-safe: it will not open the iRacing
+        chat box on stream. ui_paste mode is useful for testing, but may show
+        the sim/chat window in the broadcast capture.
+        """
+        from config import RACE_ADMIN_SEND_MODE
+        from production.admin_chat_sender import WindowsAdminChatSender
+
+        sender = WindowsAdminChatSender()
+        if RACE_ADMIN_SEND_MODE != "ui_paste":
+            return "copied" if sender.copy_only(command) else False
+
         try:
             opened = bool(self.ir.chat_command(irsdk.ChatCommandMode.begin_chat))
         except Exception:
@@ -159,10 +171,8 @@ class IRacingTelemetry:
         if not opened:
             return False
         try:
-            from production.admin_chat_sender import WindowsAdminChatSender
-
             time.sleep(0.08)
-            return bool(WindowsAdminChatSender().send(command))
+            return bool(sender.send(command))
         except Exception:
             return False
 

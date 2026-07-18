@@ -2615,9 +2615,9 @@ PRODUCER_HTML = r"""<!doctype html>
       }
     }
 
-    function raceControlPayload(action, driver) {
+    function raceControlPayload(action, driver, driverRequired = false) {
       const payload = { action };
-      if (driver) {
+      if (driverRequired && driver) {
         payload.car_idx = driver.car_idx;
         payload.car_number = driver.car_number || "";
         payload.driver_name = driver.driver_name || "";
@@ -2632,7 +2632,7 @@ PRODUCER_HTML = r"""<!doctype html>
 
     function confirmRaceControl(button, action, driver) {
       if (button.dataset.dangerous !== "true") return true;
-      const driverText = driver ? ` for #${driver.car_number || "--"} ${driver.driver_name || ""}` : "";
+      const driverText = button.dataset.driverRequired === "true" && driver ? ` for #${driver.car_number || "--"} ${driver.driver_name || ""}` : "";
       return confirm(`Send race-control command "${button.textContent}"${driverText}?`);
     }
 
@@ -2739,7 +2739,7 @@ PRODUCER_HTML = r"""<!doctype html>
           return;
         }
         if (!confirmRaceControl(button, action, driver)) return;
-        const payload = raceControlPayload(action, driver);
+        const payload = raceControlPayload(action, driver, button.dataset.driverRequired === "true");
         if (!payload) return;
         sendProducerCommand("race_control", payload);
       });

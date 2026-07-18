@@ -70,6 +70,18 @@ def test_admin_chat_sender_focuses_iracing_window_before_paste():
     assert user32.keys
 
 
+def test_admin_chat_sender_can_copy_without_focusing_iracing_window():
+    user32 = FakeUser32()
+    sender = SenderSpy(user32)
+
+    assert sender.copy_only("!yellow") is True
+
+    assert user32.foreground == 101
+    assert user32.set_foreground_calls == []
+    assert sender.clipboard_text == "!yellow"
+    assert user32.keys == []
+
+
 def test_admin_chat_sender_refuses_to_paste_when_iracing_window_is_missing():
     user32 = FakeUser32()
     user32.windows = {101: "RGC Producer Assist - Browser"}

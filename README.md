@@ -184,7 +184,7 @@ For remote league admins in different locations, the recommended helper workflow
 
 The no-dependency Remote Producer relay is a future/advanced path, not the current recommended setup. The Studio keeps placeholder settings for that path, and the implementation plan is documented in [docs/REMOTE_PRODUCER_RELAY.md](docs/REMOTE_PRODUCER_RELAY.md).
 
-Producer Assist also includes an optional Race Control panel for hosted-race admins. Keep `RACE_ADMIN_MODE=false` unless the broadcaster PC is an iRacing admin in the hosted session. When enabled, trusted producers can use the page to send common iRacing admin commands such as throwing/extending a caution, clearing penalties, EOL, drive-through penalties, wave-bys, DQs, and removals. Dangerous actions use confirmation prompts and every command is logged to Producer Feed.
+Producer Assist also includes an optional Race Control panel for hosted-race admins. Keep `RACE_ADMIN_MODE=false` unless the broadcaster PC is an iRacing admin in the hosted session. In broadcast-safe mode, Race Control copies the iRacing admin command, such as `!yellow` or `!eol #34`, so the admin can send it without the program popping the iRacing chat box on stream. `RACE_ADMIN_SEND_MODE=ui_paste` is testing-only and may show iRacing chat/window on the broadcast. Dangerous actions use confirmation prompts and every command is logged to Producer Feed.
 
 Optional sponsor reads can use the same sponsor or a specific read:
 

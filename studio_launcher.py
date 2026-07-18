@@ -98,6 +98,7 @@ LAUNCHER_FIELDS = [
     ("CAUTION_PRESENTATION_GRAPHICS", ""),
     ("POST_RACE_INTERVIEWS_ENABLED", "false"),
     ("RACE_ADMIN_MODE", "false"),
+    ("RACE_ADMIN_SEND_MODE", "clipboard"),
     ("DISCORD_BOT_ENABLED", "false"),
     ("DISCORD_BOT_TOKEN", ""),
     ("DISCORD_GUILD_ID", ""),
@@ -159,6 +160,7 @@ BROADCAST_FIELD_LABELS = {
     "CAUTION_PRESENTATION_GRAPHICS": "Caution Sponsor Graphics",
     "POST_RACE_INTERVIEWS_ENABLED": "Post-Race Interviews",
     "RACE_ADMIN_MODE": "Race Admin Mode",
+    "RACE_ADMIN_SEND_MODE": "Race Admin Send Mode",
     "DISCORD_BOT_ENABLED": "Discord Bot Integration",
     "DISCORD_BOT_TOKEN": "Discord Bot Token",
     "DISCORD_GUILD_ID": "Discord Server ID",
@@ -1336,6 +1338,14 @@ def run_gui():
                 state="readonly",
             )
             entry_widget.set(existing.get(key, "false") or "false")
+        elif key == "RACE_ADMIN_SEND_MODE":
+            entry_widget = ttk.Combobox(
+                settings_frame,
+                values=("clipboard", "ui_paste"),
+                width=69,
+                state="readonly",
+            )
+            entry_widget.set(existing.get(key, "clipboard") or "clipboard")
         else:
             entry_widget = entry(settings_frame, width=72)
             entry_widget.insert(0, existing.get(key, ""))
@@ -1367,6 +1377,12 @@ def run_gui():
             add_settings_hint(
                 "Hosted-race admin controls for cautions, penalties, wave-bys, EOLs, DQs, and removals. "
                 "Keep this off unless the broadcaster PC is an iRacing admin in the hosted session."
+            )
+
+        if key == "RACE_ADMIN_SEND_MODE":
+            add_settings_hint(
+                "clipboard is broadcast-safe and only copies the iRacing command for manual send. "
+                "ui_paste is testing-only and may show iRacing chat/window on the stream."
             )
 
         if key == "DISCORD_INTERVIEW_CHANNEL_ID":
@@ -2652,6 +2668,9 @@ def build_help_tab(
         Start Broadcast runs the broadcast engine, overlay, Producer Assist control room, cameras, replay controls, and race control.
         Open Producer Assist to turn OpenAI, ElevenLabs, and auto cameras on or off during the same running broadcast.
         Stop Broadcast stops a broadcast launched by the studio.
+
+        Race Admin Send Mode controls how admin commands are handled. clipboard is broadcast-safe and copies the command for manual send.
+        ui_paste is testing-only and may show iRacing chat/window on the broadcast.
         """,
     )
     section(

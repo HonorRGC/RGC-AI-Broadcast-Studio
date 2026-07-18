@@ -41,6 +41,12 @@ class WindowsAdminChatSender:
         self.press_key(VK_RETURN)
         return True
 
+    def copy_only(self, text):
+        text = str(text or "").strip()
+        if not text:
+            return False
+        return self.set_clipboard_text(text)
+
     def focus_iracing_window(self):
         hwnd = self.find_iracing_window()
         if not hwnd:

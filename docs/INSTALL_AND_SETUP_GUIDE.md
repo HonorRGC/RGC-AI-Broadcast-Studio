@@ -285,6 +285,8 @@ Start Broadcast
 
 Then open Producer Assist if you want to switch between AI broadcast and human-broadcaster control during the same running session.
 
+Race Control note: `Race Admin Send Mode = clipboard` is the broadcast-safe default. It copies commands like `!yellow` or `!eol #34` so the admin can send them without the program opening iRacing chat on stream. `ui_paste` is testing-only and may show the iRacing window/chat box in the broadcast capture.
+
 ## 12. Remote Producer Assist with Tailscale
 
 Use Tailscale when a trusted admin in another location needs to help with Producer Assist, cameras, notes, incident review, or race control.
@@ -399,6 +401,15 @@ Check:
 - you are connected to a session
 - camera mode is enabled in the launcher
 - iRacing replay/camera controls are not blocked by another tool
+
+### Race Control button does not instantly throw a caution
+
+Check `Race Admin Send Mode`.
+
+- `clipboard` is broadcast-safe. It copies the command, but does not visibly open/send chat.
+- `ui_paste` tries to paste/send the command through iRacing chat and may show the chat box/window on stream.
+
+Until a true hidden iRacing admin-command method is confirmed, use clipboard mode for live broadcasts.
 
 ## 16. Safety notes
 
