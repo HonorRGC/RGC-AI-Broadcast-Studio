@@ -8,6 +8,7 @@ from config import (
     OVERLAY_BRAND_GRAPHICS,
     OVERLAY_HOST,
     OVERLAY_RACE_SPONSOR,
+    RACE_ADMIN_MODE,
     SPONSOR_READ_CAUSE,
     SPONSOR_READ_NAME,
     SPONSOR_READ_NAME_2,
@@ -29,6 +30,7 @@ from production.live_broadcast_validator import LiveBroadcastValidator
 from production.overlay import OverlayServer
 from production.car_paint_preview import ensure_preview_file
 from production.replay_director import ReplayDirector
+from production.race_control import RaceControlService
 
 DEFAULT_CRANK_IT_UP_SECONDS = 50.0
 
@@ -142,6 +144,7 @@ def run_source(
     overlay_server,
     caution_audio_bed,
     tick_seconds,
+    race_control_service=None,
 ):
     while source.is_connected():
         if overlay_server:
@@ -153,6 +156,7 @@ def run_source(
                 booth,
                 camera_director,
                 replay_director,
+                race_control_service,
             )
         report_practice_presentation(
             practice_presentation_director.update(
@@ -311,7 +315,13 @@ def publish_producer_event(overlay_server, kind="info", title="", message="", sp
         publisher(kind=kind, title=title, message=message, speaker=speaker)
 
 
-def sync_producer_control_state(overlay_server, engine, booth, camera_director):
+def sync_producer_control_state(
+    overlay_server,
+    engine,
+    booth,
+    camera_director,
+    race_control_service=None,
+):
     if not overlay_server:
         return
     current_leaderboard_style = getattr(
@@ -324,6 +334,7 @@ def sync_producer_control_state(overlay_server, engine, booth, camera_director):
         openai=engine.openai_director.is_enabled(),
         elevenlabs=booth.voice_status()[0],
         leaderboard_style=current_leaderboard_style(),
+        race_admin=bool(getattr(race_control_service, "enabled", False)),
     )
 
 
@@ -334,10 +345,17 @@ def process_producer_commands(
     booth,
     camera_director,
     replay_director=None,
+    race_control_service=None,
 ):
     commands = overlay_server.drain_commands()
     if not commands:
-        sync_producer_control_state(overlay_server, engine, booth, camera_director)
+        sync_producer_control_state(
+            overlay_server,
+            engine,
+            booth,
+            camera_director,
+            race_control_service,
+        )
         return
 
     for item in commands:
@@ -352,9 +370,16 @@ def process_producer_commands(
             booth,
             camera_director,
             replay_director,
+            race_control_service,
         )
 
-    sync_producer_control_state(overlay_server, engine, booth, camera_director)
+    sync_producer_control_state(
+        overlay_server,
+        engine,
+        booth,
+        camera_director,
+        race_control_service,
+    )
 
 
 def handle_producer_command(
@@ -366,6 +391,7 @@ def handle_producer_command(
     booth,
     camera_director,
     replay_director=None,
+    race_control_service=None,
 ):
     if command == "camera_claim":
         claimer = getattr(overlay_server, "claim_camera_control", None)
@@ -394,6 +420,46 @@ def handle_producer_command(
             "info" if ok else "warning",
             "Camera Control",
             message,
+        )
+        return
+
+    if command == "race_admin_on":
+        if race_control_service:
+            race_control_service.set_enabled(True)
+        publish_producer_event(
+            overlay_server,
+            "warning",
+            "Race Control",
+            "Race Admin Mode enabled. Producer buttons can now send hosted-session admin commands.",
+        )
+        return
+
+    if command == "race_admin_off":
+        if race_control_service:
+            race_control_service.set_enabled(False)
+        publish_producer_event(
+            overlay_server,
+            "info",
+            "Race Control",
+            "Race Admin Mode disabled.",
+        )
+        return
+
+    if command == "race_control":
+        if not race_control_service:
+            publish_producer_event(
+                overlay_server,
+                "warning",
+                "Race Control",
+                "Race Control is not available in this broadcast session.",
+            )
+            return
+        result = race_control_service.execute(payload.get("action"), payload, source)
+        publish_producer_event(
+            overlay_server,
+            "warning" if (result.dangerous or not result.ok) else "info",
+            "Race Control",
+            result.message,
         )
         return
 
@@ -1278,6 +1344,7 @@ def main():
     caution_presentation_director = CautionPresentationDirector()
     qualifying_camera_director = QualifyingCameraDirector()
     live_broadcast_validator = LiveBroadcastValidator()
+    race_control_service = RaceControlService(enabled=RACE_ADMIN_MODE)
     overlay_server = OverlayServer(
         host=args.overlay_host,
         port=args.overlay_port,
@@ -1291,7 +1358,13 @@ def main():
         )
     if overlay_server:
         overlay_url = overlay_server.start()
-        sync_producer_control_state(overlay_server, engine, booth, camera_director)
+        sync_producer_control_state(
+            overlay_server,
+            engine,
+            booth,
+            camera_director,
+            race_control_service,
+        )
         print(f"Overlay: ON ({overlay_url})")
         print(f"Producer Assist: {overlay_server.producer_url}")
         if overlay_server.producer_share_url != overlay_server.producer_url:
@@ -1328,6 +1401,7 @@ def main():
         f"Sarah={'SET' if voice_ids['sarah'] else 'MISSING'}"
     )
     print(f"Incident replay: {args.incident_replay.upper()}")
+    print(f"Race Admin Mode: {'ON' if race_control_service.enabled else 'OFF'}")
     if args.incident_debug:
         print("Incident debug: ON")
     print(
@@ -1377,6 +1451,7 @@ def main():
             overlay_server,
             caution_audio_bed,
             args.tick_seconds,
+            race_control_service,
         )
         return
 
@@ -1417,6 +1492,7 @@ def main():
             overlay_server,
             caution_audio_bed,
             args.tick_seconds,
+            race_control_service,
         )
         cleanup_live_broadcast_session(
             source,

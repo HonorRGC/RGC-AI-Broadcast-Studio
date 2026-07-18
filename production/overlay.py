@@ -1563,6 +1563,23 @@ PRODUCER_HTML = r"""<!doctype html>
       background: #344052;
     }
 
+    .race-admin-status {
+      margin-bottom: 9px;
+      padding: 8px 10px;
+      border-radius: 10px;
+      background: rgba(143, 46, 55, 0.22);
+      color: #ffd3d8;
+      font-size: 12px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .race-admin-status.on {
+      background: rgba(31, 117, 80, 0.22);
+      color: #bdf8d8;
+    }
+
     .panel {
       padding: 12px;
       background: rgba(255, 255, 255, 0.045);
@@ -1742,11 +1759,33 @@ PRODUCER_HTML = r"""<!doctype html>
             <button class="control-button" id="openai-button">OpenAI</button>
             <button class="control-button" id="elevenlabs-button">ElevenLabs</button>
             <button class="control-button" id="leaderboard-style-button">Leaderboard: Side</button>
+            <button class="control-button danger" id="race-admin-button">Race Admin: OFF</button>
             <button class="control-button" id="return-live-button">Return Live</button>
             <button class="control-button warn" id="pause-replay-button">Pause Replay</button>
             <button class="control-button warn" id="play-replay-button">Play Replay</button>
             <button class="control-button warn" id="rewind-button">Rewind 10 sec</button>
             <button class="control-button warn" id="fast-forward-button">Forward 10 sec</button>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h3>Race Control</h3>
+          <div class="race-admin-status" id="race-admin-status">Race Admin Mode is OFF</div>
+          <div class="small">Commands use the selected driver when needed. Broadcaster PC must be an iRacing hosted-session admin.</div>
+          <div class="button-row" style="margin-top: 10px;">
+            <button class="control-button danger race-control-button" data-race-action="throw_yellow" data-dangerous="true">Throw Caution</button>
+            <button class="control-button warn race-control-button" data-race-action="extend_caution">Extend Caution +1</button>
+            <button class="control-button warn race-control-button" data-race-action="one_to_green">Set One-To-Green</button>
+            <button class="control-button danger race-control-button" data-race-action="clear_all" data-dangerous="true">Clear All</button>
+          </div>
+          <div class="button-row" style="margin-top: 8px;">
+            <button class="control-button race-control-button" data-race-action="clear_penalty" data-driver-required="true">Clear Penalty</button>
+            <button class="control-button race-control-button" data-race-action="eol" data-driver-required="true">EOL</button>
+            <button class="control-button warn race-control-button" data-race-action="drive_through" data-driver-required="true">Drive Through</button>
+            <button class="control-button warn race-control-button" data-race-action="timed_black" data-driver-required="true">Timed Black</button>
+            <button class="control-button race-control-button" data-race-action="waveby" data-driver-required="true">Wave Around</button>
+            <button class="control-button danger race-control-button" data-race-action="dq" data-driver-required="true" data-dangerous="true">DQ</button>
+            <button class="control-button danger race-control-button" data-race-action="remove" data-driver-required="true" data-dangerous="true">Remove</button>
           </div>
         </div>
 
@@ -2093,18 +2132,56 @@ PRODUCER_HTML = r"""<!doctype html>
       const openAiButton = document.getElementById("openai-button");
       const elevenButton = document.getElementById("elevenlabs-button");
       const leaderboardButton = document.getElementById("leaderboard-style-button");
+      const raceAdminButton = document.getElementById("race-admin-button");
       const autoOn = controlEnabled(state, "auto_camera");
       const openAiOn = controlEnabled(state, "openai");
       const elevenOn = controlEnabled(state, "elevenlabs");
+      const raceAdminOn = controlEnabled(state, "race_admin");
       const leaderboardStyle = currentLeaderboardStyle(state);
       autoButton.textContent = autoOn ? "Auto Camera: ON" : "Auto Camera: OFF";
       openAiButton.textContent = openAiOn ? "OpenAI: ON" : "OpenAI: OFF";
       elevenButton.textContent = elevenOn ? "ElevenLabs: ON" : "ElevenLabs: OFF";
+      raceAdminButton.textContent = raceAdminOn ? "Race Admin: ON" : "Race Admin: OFF";
       leaderboardButton.textContent = leaderboardStyle === "ticker" ? "Leaderboard: Ticker" : "Leaderboard: Side";
       autoButton.className = `control-button ${autoOn ? "good" : "danger"}`;
       openAiButton.className = `control-button ${openAiOn ? "good" : "danger"}`;
       elevenButton.className = `control-button ${elevenOn ? "good" : "danger"}`;
+      raceAdminButton.className = `control-button ${raceAdminOn ? "good" : "danger"}`;
       leaderboardButton.className = `control-button ${leaderboardStyle === "ticker" ? "good" : ""}`;
+      renderRaceControl(state);
+    }
+
+    function renderRaceControl(state) {
+      const enabled = controlEnabled(state, "race_admin");
+      const status = document.getElementById("race-admin-status");
+      status.textContent = enabled ? "Race Admin Mode is ON" : "Race Admin Mode is OFF";
+      status.className = `race-admin-status ${enabled ? "on" : ""}`;
+      const driver = selectedDriver(state || {});
+      for (const button of document.querySelectorAll(".race-control-button")) {
+        const driverRequired = button.dataset.driverRequired === "true";
+        button.disabled = !enabled || (driverRequired && !driver);
+      }
+    }
+
+    function raceControlPayload(action, driver) {
+      const payload = { action };
+      if (driver) {
+        payload.car_idx = driver.car_idx;
+        payload.car_number = driver.car_number || "";
+        payload.driver_name = driver.driver_name || "";
+      }
+      if (action === "timed_black") {
+        const rawSeconds = prompt("Black flag penalty seconds:", "15");
+        if (rawSeconds === null) return null;
+        payload.seconds = Number(rawSeconds) || 15;
+      }
+      return payload;
+    }
+
+    function confirmRaceControl(button, action, driver) {
+      if (button.dataset.dangerous !== "true") return true;
+      const driverText = driver ? ` for #${driver.car_number || "--"} ${driver.driver_name || ""}` : "";
+      return confirm(`Send race-control command "${button.textContent}"${driverText}?`);
     }
 
     async function sendProducerCommand(command, payload = {}) {
@@ -2192,10 +2269,28 @@ PRODUCER_HTML = r"""<!doctype html>
       const on = controlEnabled(lastState || {}, "elevenlabs");
       sendProducerCommand(on ? "elevenlabs_off" : "elevenlabs_on");
     });
+    document.getElementById("race-admin-button").addEventListener("click", () => {
+      const on = controlEnabled(lastState || {}, "race_admin");
+      sendProducerCommand(on ? "race_admin_off" : "race_admin_on");
+    });
     document.getElementById("leaderboard-style-button").addEventListener("click", () => {
       const style = currentLeaderboardStyle(lastState || {});
       sendProducerCommand(style === "ticker" ? "leaderboard_side" : "leaderboard_ticker");
     });
+    for (const button of document.querySelectorAll(".race-control-button")) {
+      button.addEventListener("click", () => {
+        const action = button.dataset.raceAction;
+        const driver = selectedDriver(lastState || {});
+        if (button.dataset.driverRequired === "true" && !driver) {
+          alert("Select a driver from the leaderboard first.");
+          return;
+        }
+        if (!confirmRaceControl(button, action, driver)) return;
+        const payload = raceControlPayload(action, driver);
+        if (!payload) return;
+        sendProducerCommand("race_control", payload);
+      });
+    }
     document.getElementById("return-live-button").addEventListener("click", () => {
       sendProducerCommand("replay_return_live");
     });

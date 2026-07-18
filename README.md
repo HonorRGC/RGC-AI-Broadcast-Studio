@@ -184,6 +184,8 @@ For remote league admins in different locations, use a private tunnel/VPN such a
 
 The release-track goal is a no-dependency Remote Producer link where helpers only need a browser. The Studio now has Remote Producer Relay settings for that path, and the implementation plan is documented in [docs/REMOTE_PRODUCER_RELAY.md](docs/REMOTE_PRODUCER_RELAY.md). Once the hosted relay service is deployed, the broadcaster will create a session code/PIN and send a normal HTTPS helper link.
 
+Producer Assist also includes an optional Race Control panel for hosted-race admins. Keep `RACE_ADMIN_MODE=false` unless the broadcaster PC is an iRacing admin in the hosted session. When enabled, trusted producers can use the page to send common iRacing admin commands such as throwing/extending a caution, clearing penalties, EOL, drive-through penalties, wave-bys, DQs, and removals. Dangerous actions use confirmation prompts and every command is logged to Producer Feed.
+
 Optional sponsor reads can use the same sponsor or a specific read:
 
 ```text

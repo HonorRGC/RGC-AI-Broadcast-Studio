@@ -96,6 +96,7 @@ LAUNCHER_FIELDS = [
     ("CAUTION_REPLAY_AUDIO", ""),
     ("CAUTION_PRESENTATION_GRAPHICS", ""),
     ("POST_RACE_INTERVIEWS_ENABLED", "false"),
+    ("RACE_ADMIN_MODE", "false"),
     ("USE_LEAGUE_DRIVER_NOTES", "false"),
     ("LEAGUE_DRIVERS_CSV", "league/drivers.csv"),
     ("LEAGUE_SEASON_STATS_CSV", "league/season.csv"),
@@ -150,6 +151,7 @@ BROADCAST_FIELD_LABELS = {
     "CAUTION_REPLAY_AUDIO": "Caution Replay Music",
     "CAUTION_PRESENTATION_GRAPHICS": "Caution Sponsor Graphics",
     "POST_RACE_INTERVIEWS_ENABLED": "Post-Race Interviews",
+    "RACE_ADMIN_MODE": "Race Admin Mode",
     "USE_LEAGUE_DRIVER_NOTES": "Use League Driver Notes",
     "LEAGUE_DRIVERS_CSV": "Driver Notes CSV",
     "LEAGUE_SEASON_STATS_CSV": "Season Stats CSV",
@@ -165,6 +167,7 @@ BROADCAST_FIELD_SECTIONS = {
     "USE_SPONSOR_READS": "Sponsor Reads",
     "USE_NATIONAL_ANTHEM": "Practice / Qualifying / Caution Media",
     "POST_RACE_INTERVIEWS_ENABLED": "Race Flow",
+    "RACE_ADMIN_MODE": "Race Control",
     "USE_LEAGUE_DRIVER_NOTES": "League Data",
 }
 
@@ -1293,6 +1296,14 @@ def run_gui():
                 state="readonly",
             )
             entry_widget.set(existing.get(key, "false") or "false")
+        elif key == "RACE_ADMIN_MODE":
+            entry_widget = ttk.Combobox(
+                settings_frame,
+                values=("false", "true"),
+                width=69,
+                state="readonly",
+            )
+            entry_widget.set(existing.get(key, "false") or "false")
         else:
             entry_widget = entry(settings_frame, width=72)
             entry_widget.insert(0, existing.get(key, ""))
@@ -1317,6 +1328,12 @@ def run_gui():
             add_settings_hint(
                 "Release-track feature: when an RGC Remote Producer relay is deployed, this creates a normal browser link for distant admins. "
                 "Helpers will not need Python, Tailscale, or router changes. Until the relay server exists, keep using local/Tailscale Producer Assist for testing."
+            )
+
+        if key == "RACE_ADMIN_MODE":
+            add_settings_hint(
+                "Hosted-race admin controls for cautions, penalties, wave-bys, EOLs, DQs, and removals. "
+                "Keep this off unless the broadcaster PC is an iRacing admin in the hosted session."
             )
 
         if key == "OVERLAY_BRAND_GRAPHICS":

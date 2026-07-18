@@ -1,4 +1,5 @@
 import re
+import time
 
 import irsdk
 
@@ -146,6 +147,22 @@ class IRacingTelemetry:
     def play_replay(self):
         try:
             return bool(self.ir.replay_set_play_speed(1))
+        except Exception:
+            return False
+
+    def send_admin_chat_command(self, command):
+        """Send a hosted-session admin command through the iRacing chat box."""
+        try:
+            opened = bool(self.ir.chat_command(irsdk.ChatCommandMode.begin_chat))
+        except Exception:
+            opened = False
+        if not opened:
+            return False
+        try:
+            from production.admin_chat_sender import WindowsAdminChatSender
+
+            time.sleep(0.08)
+            return bool(WindowsAdminChatSender().send(command))
         except Exception:
             return False
 

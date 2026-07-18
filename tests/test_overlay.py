@@ -73,6 +73,13 @@ def test_producer_html_includes_camera_control_handoff():
     assert "producer-share-link" in PRODUCER_HTML
 
 
+def test_producer_html_includes_race_control_panel():
+    assert "Race Control" in PRODUCER_HTML
+    assert "race-admin-button" in PRODUCER_HTML
+    assert 'data-race-action="throw_yellow"' in PRODUCER_HTML
+    assert 'data-race-action="clear_penalty"' in PRODUCER_HTML
+
+
 def test_overlay_server_camera_control_claim_release_state():
     server = OverlayServer()
 
