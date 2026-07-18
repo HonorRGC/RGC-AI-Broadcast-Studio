@@ -572,6 +572,11 @@ def handle_producer_command(
             )
             return
         result = race_control_service.execute(payload.get("action"), payload, source)
+        if result.ok and result.action == "throw_yellow":
+            race_director = getattr(engine, "race_director", None)
+            marker = getattr(race_director, "mark_admin_caution_pending", None)
+            if marker:
+                marker()
         if hasattr(overlay_server, "add_race_control_audit"):
             overlay_server.add_race_control_audit(
                 result.message,

@@ -78,6 +78,8 @@ def test_producer_html_includes_race_control_panel():
     assert "race-admin-button" in PRODUCER_HTML
     assert 'data-race-action="throw_yellow"' in PRODUCER_HTML
     assert 'data-race-action="clear_penalty"' in PRODUCER_HTML
+    assert "state.producer_leaderboard || state.leaderboard || []" in PRODUCER_HTML
+    assert "max-height: calc(100vh - 280px)" not in PRODUCER_HTML
 
 
 def test_overlay_server_camera_control_claim_release_state():
@@ -336,28 +338,38 @@ def test_overlay_shows_explicit_laps_down_before_time_gap():
 
 
 def test_overlay_leaderboard_keeps_top_15_and_cycles_final_5():
-    results = [
-        {"CarIdx": car_idx, "Position": car_idx + 1, "LapsComplete": 10}
-        for car_idx in range(25)
-    ]
-    drivers = {
-        car_idx: {"name": f"Driver {car_idx + 1}", "number": str(car_idx + 1)}
-        for car_idx in range(25)
-    }
+    class FullFieldTelemetry(OverlayTelemetry):
+        def get_results(self):
+            return [
+                {"CarIdx": car_idx, "Position": car_idx + 1, "LapsComplete": 10}
+                for car_idx in range(25)
+            ]
 
-    first_window = OverlayStateBuilder(clock=lambda: 0).build_leaderboard(
-        results, drivers
-    )
-    second_window = OverlayStateBuilder(clock=lambda: 8).build_leaderboard(
-        results, drivers
-    )
+        def get_driver_lookup(self):
+            return {
+                car_idx: {"name": f"Driver {car_idx + 1}", "number": str(car_idx + 1)}
+                for car_idx in range(25)
+            }
 
-    assert [entry.position for entry in first_window[:15]] == list(range(1, 16))
-    assert [entry.position for entry in second_window[:15]] == list(range(1, 16))
-    assert [entry.position for entry in first_window[15:]] == [16, 17, 18, 19, 20]
-    assert [entry.position for entry in second_window[15:]] == [21, 22, 23, 24, 25]
+    first_state = OverlayStateBuilder(clock=lambda: 0).build_from_telemetry(
+        FullFieldTelemetry()
+    ).to_dict()
+    second_state = OverlayStateBuilder(clock=lambda: 8).build_from_telemetry(
+        FullFieldTelemetry()
+    ).to_dict()
+    first_window = first_state["leaderboard"]
+    second_window = second_state["leaderboard"]
+
+    assert [entry["position"] for entry in first_window[:15]] == list(range(1, 16))
+    assert [entry["position"] for entry in second_window[:15]] == list(range(1, 16))
+    assert [entry["position"] for entry in first_window[15:]] == [16, 17, 18, 19, 20]
+    assert [entry["position"] for entry in second_window[15:]] == [21, 22, 23, 24, 25]
     assert len(first_window) == 20
     assert len(second_window) == 20
+    assert len(first_state["producer_leaderboard"]) == 25
+    assert [entry["position"] for entry in first_state["producer_leaderboard"]] == list(
+        range(1, 26)
+    )
 
 
 def test_overlay_state_includes_practice_session_countdown():

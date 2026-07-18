@@ -193,6 +193,20 @@ def test_caution_uses_immediate_trouble_language():
     assert queue.items[0].camera_incident_group == "Far Chase"
 
 
+def test_admin_caution_is_called_as_race_control_caution():
+    director = RaceDirector()
+    director.mark_admin_caution_pending()
+    queue = BroadcastQueue()
+
+    director.handle_caution(queue, {"track_name": "Homestead"})
+
+    assert queue.items[0].message.startswith("Race control has put out the caution")
+    assert "Trouble on the speedway" not in queue.items[0].message
+    assert queue.items[0].dedupe_key == "race_control:admin_caution"
+    assert queue.items[0].camera_focus_incident is False
+    assert director.admin_caution_pending is False
+
+
 def test_extended_yellow_is_not_called_new_trouble():
     director = RaceDirector()
     director.race_started = True

@@ -68,6 +68,10 @@ class RaceDirector:
         )
         self.last_results = []
         self.last_driver_lookup = {}
+        self.admin_caution_pending = False
+
+    def mark_admin_caution_pending(self):
+        self.admin_caution_pending = True
 
     def update(self, telemetry, results, driver_lookup, scheduler):
         self.phase_changed = False
@@ -239,6 +243,13 @@ class RaceDirector:
             )
             dedupe_key = "race_control:caution_extended"
             camera_focus_incident = False
+        elif self.admin_caution_pending:
+            message = (
+                f"Race control has put out the caution here at {track_name}. "
+                "The field will slow and get gathered back up."
+            )
+            dedupe_key = "race_control:admin_caution"
+            camera_focus_incident = False
         else:
             message = f"Trouble on the speedway - caution is out here at {track_name}."
             dedupe_key = "race_control:caution"
@@ -258,6 +269,7 @@ class RaceDirector:
 
         self.yellow_announced = True
         self.one_to_green_announced = False
+        self.admin_caution_pending = False
 
     def handle_one_to_green(self, results, driver_lookup, scheduler, track_info):
         if self.one_to_green_announced:

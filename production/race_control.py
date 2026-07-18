@@ -180,7 +180,7 @@ class RaceControlService:
                 dangerous=command.dangerous,
                 message=(
                     f"{command.label} copied for broadcast-safe manual send: {command.command}. "
-                    "Paste/send it in iRacing chat, or use RACE_ADMIN_SEND_MODE=ui_paste for off-stream testing."
+                    "Press . to open iRacing chat if needed, then Ctrl+V and Enter."
                 ),
             )
         if send_result == "chat_opened":
@@ -191,7 +191,8 @@ class RaceControlService:
                 dangerous=command.dangerous,
                 message=(
                     f"{command.label} prepared in iRacing chat: {command.command}. "
-                    "Press Ctrl+V then Enter in the sim to send it."
+                    "Press Ctrl+V then Enter in the sim to send it. "
+                    "If chat did not open, press . first."
                 ),
             )
         if send_result == "copy_failed":

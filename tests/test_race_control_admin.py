@@ -105,21 +105,24 @@ def test_producer_race_control_command_logs_to_feed():
     source = SourceSpy()
     overlay = OverlaySpy()
     service = RaceControlService(enabled=True)
+    race_director = SimpleNamespace(marked=False)
+    race_director.mark_admin_caution_pending = lambda: setattr(race_director, "marked", True)
 
     handle_producer_command(
         "race_control",
-        {"action": "clear_penalty", "car_number": "34"},
+        {"action": "throw_yellow"},
         overlay,
         source=source,
-        engine=None,
+        engine=SimpleNamespace(race_director=race_director),
         booth=None,
         camera_director=SimpleNamespace(),
         race_control_service=service,
     )
 
-    assert source.commands == ["!clear #34"]
+    assert source.commands == ["!yellow"]
+    assert race_director.marked is True
     assert overlay.events[0]["title"] == "Race Control"
-    assert "!clear #34" in overlay.events[0]["message"]
+    assert "!yellow" in overlay.events[0]["message"]
 
 
 def test_producer_can_toggle_race_admin_mode():

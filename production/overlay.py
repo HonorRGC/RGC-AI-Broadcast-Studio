@@ -227,6 +227,7 @@ class OverlayState:
     special_presentation: SpecialPresentation | None = None
     stat_panel: StatPanel | None = None
     leaderboard: list[LeaderboardEntry] = field(default_factory=list)
+    producer_leaderboard: list[LeaderboardEntry] = field(default_factory=list)
     lap_history: list[dict[str, Any]] = field(default_factory=list)
 
     def to_dict(self):
@@ -255,6 +256,9 @@ class OverlayState:
             ),
             "stat_panel": self.stat_panel.to_dict() if self.stat_panel else None,
             "leaderboard": [entry.to_dict() for entry in self.leaderboard],
+            "producer_leaderboard": [
+                entry.to_dict() for entry in self.producer_leaderboard
+            ],
             "lap_history": list(self.lap_history),
         }
 
@@ -295,11 +299,13 @@ class OverlayStateBuilder:
             green=green,
         )
 
-        leaderboard = self.build_leaderboard(results, driver_lookup, session_type)
-        if leaderboard:
-            self.last_leaderboard = leaderboard
+        full_leaderboard = self.build_leaderboard(results, driver_lookup, session_type)
+        if full_leaderboard:
+            self.last_leaderboard = full_leaderboard
         elif self.is_race_session(session_type) and self.last_leaderboard:
-            leaderboard = self.last_leaderboard
+            full_leaderboard = self.last_leaderboard
+
+        leaderboard = self.visible_leaderboard_window(full_leaderboard)
 
         self.update_lap_history(session_type, lap, caution, green)
 
@@ -313,6 +319,7 @@ class OverlayStateBuilder:
             caution=caution,
             green=green,
             leaderboard=leaderboard,
+            producer_leaderboard=full_leaderboard,
             lap_history=self.build_lap_history(self.safe_int(telemetry.get_total_laps())),
         )
 
@@ -405,7 +412,7 @@ class OverlayStateBuilder:
                     ),
                 )
             )
-        return self.visible_leaderboard_window(leaderboard)
+        return leaderboard
 
     def update_starting_position_memory(
         self,
@@ -1598,8 +1605,7 @@ PRODUCER_HTML = r"""<!doctype html>
     }
 
     .rows {
-      max-height: calc(100vh - 280px);
-      overflow: auto;
+      overflow: visible;
     }
 
     .driver-row {
@@ -1946,7 +1952,7 @@ PRODUCER_HTML = r"""<!doctype html>
       .driver-detail { grid-template-columns: 1fr; }
       .detail-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .button-row.control-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .rows { max-height: none; }
+      .rows { overflow: visible; }
     }
   </style>
 </head>
@@ -2276,7 +2282,7 @@ PRODUCER_HTML = r"""<!doctype html>
 
     function renderLeaderboard(state) {
       const rows = document.getElementById("leaderboard-rows");
-      const leaderboard = state.leaderboard || [];
+      const leaderboard = state.producer_leaderboard || state.leaderboard || [];
       if (!leaderboard.length) {
         rows.innerHTML = '<div class="driver-row"><div class="small">No leaderboard data yet.</div></div>';
         return;
@@ -2306,7 +2312,7 @@ PRODUCER_HTML = r"""<!doctype html>
     }
 
     function selectedDriver(state) {
-      const leaderboard = state.leaderboard || [];
+      const leaderboard = state.producer_leaderboard || state.leaderboard || [];
       return leaderboard.find(driver => driverKey(driver) === selectedCarIdx) || leaderboard[0] || null;
     }
 
