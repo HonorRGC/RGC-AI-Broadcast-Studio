@@ -1,6 +1,7 @@
 import json
 import mimetypes
 import socket
+import subprocess
 import threading
 import time
 from dataclasses import dataclass, field
@@ -815,8 +816,32 @@ class OverlayServer:
     @property
     def share_host(self):
         if str(self.host or "").strip() in ("", "0.0.0.0", "::"):
-            return self.local_lan_ip()
+            return self.best_remote_helper_ip()
         return self.host
+
+    @staticmethod
+    def best_remote_helper_ip():
+        return OverlayServer.tailscale_ip() or OverlayServer.local_lan_ip()
+
+    @staticmethod
+    def tailscale_ip():
+        try:
+            result = subprocess.run(
+                ["tailscale", "ip", "-4"],
+                capture_output=True,
+                text=True,
+                timeout=1.0,
+                check=False,
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            return ""
+        if result.returncode != 0:
+            return ""
+        for line in result.stdout.splitlines():
+            ip = line.strip()
+            if ip.startswith("100."):
+                return ip
+        return ""
 
     @staticmethod
     def local_lan_ip():

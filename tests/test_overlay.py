@@ -88,6 +88,16 @@ def test_overlay_server_camera_control_claim_release_state():
     assert server.camera_control_allows("producer-b") is True
 
 
+def test_overlay_share_url_prefers_tailscale_ip_for_remote_helper(monkeypatch):
+    monkeypatch.setattr(OverlayServer, "tailscale_ip", staticmethod(lambda: "100.90.80.70"))
+    monkeypatch.setattr(OverlayServer, "local_lan_ip", staticmethod(lambda: "192.168.1.44"))
+
+    server = OverlayServer(host="0.0.0.0", port=8765)
+
+    assert server.producer_url == "http://127.0.0.1:8765/producer"
+    assert server.producer_share_url == "http://100.90.80.70:8765/producer"
+
+
 def test_overlay_leaderboard_sorts_and_formats_zero_based_positions():
     state = OverlayStateBuilder().build_from_telemetry(OverlayTelemetry()).to_dict()
 

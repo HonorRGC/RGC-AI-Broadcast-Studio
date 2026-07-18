@@ -678,9 +678,33 @@ def local_lan_ip():
             return "127.0.0.1"
 
 
+def tailscale_ip():
+    try:
+        result = subprocess.run(
+            ["tailscale", "ip", "-4"],
+            capture_output=True,
+            text=True,
+            timeout=1.0,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return ""
+    if result.returncode != 0:
+        return ""
+    for line in result.stdout.splitlines():
+        ip = line.strip()
+        if ip.startswith("100."):
+            return ip
+    return ""
+
+
+def best_remote_helper_ip():
+    return tailscale_ip() or local_lan_ip()
+
+
 def producer_link_for_host(host):
     host = str(host or "127.0.0.1").strip()
-    display_host = local_lan_ip() if host in ("0.0.0.0", "::") else host
+    display_host = best_remote_helper_ip() if host in ("0.0.0.0", "::") else host
     return f"http://{display_host}:8765/producer"
 
 

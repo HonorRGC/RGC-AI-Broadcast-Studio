@@ -176,6 +176,8 @@ CRANK_IT_UP_ICON_GRAPHIC=/assets/crank_it_up.png
 
 `OVERLAY_HOST=127.0.0.1` keeps the overlay and Producer Assist on the broadcast PC only. Use `OVERLAY_HOST=0.0.0.0` when a helper on the same local network or VPN needs to open the Producer Assist link. Camera movement uses a take/release control button so only one producer moves cameras at a time.
 
+For remote league admins in different locations, use a private tunnel/VPN such as [Tailscale](https://tailscale.com/download/windows). Install and sign in on the broadcast PC and on the helper admin's PC, make sure both machines are in the same Tailscale network, then set `Producer Assist Access` to `0.0.0.0` in the Studio. The Producer Assist link will prefer the broadcast PC's Tailscale address when available, usually a `100.x.x.x` address. Send that link to the helper. Avoid normal router port forwarding unless you have a separate security plan.
+
 Optional sponsor reads can use the same sponsor or a specific read:
 
 ```text
