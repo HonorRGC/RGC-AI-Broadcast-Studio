@@ -1,6 +1,7 @@
 from types import SimpleNamespace
 
 from app import handle_producer_command
+from broadcast.broadcast_queue import BroadcastQueue
 from production.race_control import RaceControlCommandBuilder, RaceControlService
 
 
@@ -123,6 +124,66 @@ def test_producer_race_control_command_logs_to_feed():
     assert race_director.marked is True
     assert overlay.events[0]["title"] == "Race Control"
     assert "!yellow" in overlay.events[0]["message"]
+
+
+def test_producer_race_control_drive_through_is_broadcast():
+    source = SourceSpy()
+    overlay = OverlaySpy()
+    service = RaceControlService(enabled=True)
+    queue = BroadcastQueue()
+
+    handle_producer_command(
+        "race_control",
+        {
+            "action": "drive_through",
+            "car_number": "34",
+            "driver_name": "T.J. Lee",
+        },
+        overlay,
+        source=source,
+        engine=SimpleNamespace(broadcast_queue=queue),
+        booth=None,
+        camera_director=SimpleNamespace(),
+        race_control_service=service,
+    )
+
+    assert source.commands == ["!black #34 D"]
+    assert queue.items[0].message == (
+        "Race control has issued a drive-through penalty to the 34 of T.J. Lee."
+    )
+    assert queue.items[0].category == "race_control"
+
+
+def test_producer_race_control_caution_management_is_broadcast():
+    source = SourceSpy()
+    overlay = OverlaySpy()
+    service = RaceControlService(enabled=True)
+    queue = BroadcastQueue()
+
+    handle_producer_command(
+        "race_control",
+        {"action": "extend_caution"},
+        overlay,
+        source=source,
+        engine=SimpleNamespace(broadcast_queue=queue),
+        booth=None,
+        camera_director=SimpleNamespace(),
+        race_control_service=service,
+    )
+    handle_producer_command(
+        "race_control",
+        {"action": "one_to_green"},
+        overlay,
+        source=source,
+        engine=SimpleNamespace(broadcast_queue=queue),
+        booth=None,
+        camera_director=SimpleNamespace(),
+        race_control_service=service,
+    )
+
+    messages = [item.message for item in queue.items]
+    assert "Race control is extending this caution one more lap" in messages[0]
+    assert "Race control has shortened this caution" in messages[1]
 
 
 def test_producer_can_toggle_race_admin_mode():

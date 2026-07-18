@@ -318,6 +318,73 @@ def publish_producer_event(overlay_server, kind="info", title="", message="", sp
         publisher(kind=kind, title=title, message=message, speaker=speaker)
 
 
+def queue_race_control_admin_announcement(engine, result, payload=None):
+    if not engine or not getattr(result, "ok", False):
+        return False
+
+    message = race_control_admin_announcement(result, payload or {})
+    if not message:
+        return False
+
+    queue = getattr(engine, "broadcast_queue", None)
+    adder = getattr(queue, "add", None)
+    if not adder:
+        return False
+
+    adder(
+        message,
+        priority=13,
+        category="race_control",
+        protected=True,
+        speaker="lead",
+        expires_after=30,
+        dedupe_key=f"race_control:admin_action:{getattr(result, 'action', '')}:{getattr(result, 'command', '')}",
+    )
+    return True
+
+
+def race_control_admin_announcement(result, payload):
+    action = str(getattr(result, "action", "") or "").strip().lower()
+    driver = race_control_driver_label(payload)
+    seconds = safe_int((payload or {}).get("seconds"), 15)
+
+    if action == "extend_caution":
+        return "Race control is extending this caution one more lap to get the field lined up."
+    if action == "one_to_green":
+        return "Race control has shortened this caution. It will be one lap to green this time."
+    if action == "drive_through" and driver:
+        return f"Race control has issued a drive-through penalty to {driver}."
+    if action == "timed_black" and driver:
+        return f"Race control has issued a {seconds}-second penalty to {driver}."
+    if action == "eol" and driver:
+        return f"Race control is sending {driver} to the end of the longest line."
+    if action == "clear_penalty" and driver:
+        return f"Race control has cleared the penalty for {driver}."
+    if action == "waveby" and driver:
+        return f"Race control is giving {driver} the wave around."
+    if action == "dq" and driver:
+        return f"Race control has disqualified {driver} from tonight's race."
+    if action == "remove" and driver:
+        return f"Race control has removed {driver} from the session."
+    if action == "clear_all":
+        return "Race control has cleared all outstanding penalties."
+    return ""
+
+
+def race_control_driver_label(payload):
+    payload = payload or {}
+    name = str(payload.get("driver_name", "") or "").strip()
+    number = str(payload.get("car_number", "") or "").strip()
+    if number and name:
+        return f"the {number} of {name}"
+    if name:
+        return name
+    if number:
+        return f"the {number}"
+    token = str(payload.get("driver_token", "") or "").strip()
+    return token
+
+
 def build_director_suggestions(state):
     leaderboard = list((state or {}).get("leaderboard") or [])
     pit_road = list((state or {}).get("pit_road") or [])
@@ -577,6 +644,8 @@ def handle_producer_command(
             marker = getattr(race_director, "mark_admin_caution_pending", None)
             if marker:
                 marker()
+        elif result.ok:
+            queue_race_control_admin_announcement(engine, result, payload)
         if hasattr(overlay_server, "add_race_control_audit"):
             overlay_server.add_race_control_audit(
                 result.message,
