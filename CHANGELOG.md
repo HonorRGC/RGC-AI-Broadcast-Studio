@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+## Version 0.19.0 - v1.0 Release Prep
+
+### Added
+- v1.0 readiness checklist for final release smoke testing and packaging
+- Release documentation now points testers toward the Windows Setup.exe path first
+- Cleaner race-control debug probe output with short duplicate-event cooldowns
+
+### Changed
+- Refreshed project-state notes to match the current Studio, overlay, camera, replay, music, Producer Assist, race-control, and league-profile features
+- Clarified the role of the tester ZIP versus the Windows installer for outside admins
+
 ## Version 0.18.2 - Producer Assist Release Candidate
 
 ### Added

@@ -22,6 +22,11 @@ DIST_DIR = ROOT / "dist"
 INSTALLER_SOURCE_DIR = DIST_DIR / "windows_installer_source"
 INNO_SCRIPT = ROOT / "installer" / "RGC_AI_Broadcast_Studio.iss"
 
+INSTALLER_DEV_PARTS = {
+    ".github",
+    "tests",
+}
+
 
 DEFAULT_INNO_PATHS = [
     Path("C:/Program Files (x86)/Inno Setup 7/ISCC.exe"),
@@ -51,13 +56,24 @@ def prepare_installer_source(
 ) -> Path:
     clean_directory(source_dir)
     for relative in tracked_files(root):
-        if not should_include(relative):
+        if not should_include_for_installer(relative):
             continue
         source = root / relative
         target = source_dir / relative
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source, target)
     return source_dir
+
+
+def should_include_for_installer(path: str) -> bool:
+    """Return whether a tracked file belongs in the Windows installer payload."""
+
+    if not should_include(path):
+        return False
+    parts = Path(path).parts
+    if any(part in INSTALLER_DEV_PARTS for part in parts):
+        return False
+    return True
 
 
 def find_inno_compiler(explicit_path: str | None = None) -> Path | None:

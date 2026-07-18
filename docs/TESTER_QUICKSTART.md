@@ -1,6 +1,7 @@
 # RGC AI Broadcast Studio tester quickstart
 
-This is the simple Windows tester path before the project has a full installer.
+This is the fallback ZIP tester path. The preferred outside-tester path is the Windows `Setup.exe` described in
+[WINDOWS_INSTALLER_BUILD.md](WINDOWS_INSTALLER_BUILD.md).
 
 If you are preparing a ZIP for another league admin, see
 [ADMIN_TESTER_HANDOFF.md](ADMIN_TESTER_HANDOFF.md). That path builds a clean
@@ -17,7 +18,17 @@ For the full step-by-step install, OpenAI, ElevenLabs, overlay, and profile setu
   - During Python install, check **Add python.exe to PATH**
 - Their own OpenAI and ElevenLabs keys if testing full AI voices
 
-## Download from GitHub
+## Preferred tester install
+
+If the broadcaster sends you a file named like this, use it first:
+
+```text
+RGC-AI-Broadcast-Studio-Setup-0.19.0.exe
+```
+
+Run the setup file, then open `RGC AI Broadcast Studio` from the desktop shortcut.
+
+## Fallback: download from GitHub
 
 1. Open the GitHub repository.
 2. Click the green **Code** button.
@@ -107,11 +118,13 @@ Recommended browser-source size:
 
 ## Updating to a newer test build
 
-For ZIP testers, the easiest early method is:
+For installer testers, run the newer Setup.exe when the broadcaster sends it.
+
+For ZIP testers, the fallback method is:
 
 1. Download the latest ZIP from GitHub.
 2. Extract it to a new folder.
 3. Run `setup_windows.bat` again.
 4. Copy any private `.env` or `league\` files from the old test folder if needed.
 
-Later releases should use a real installer so testers do not need to repeat these steps.
+Installer releases should not require repeating the ZIP extraction steps.

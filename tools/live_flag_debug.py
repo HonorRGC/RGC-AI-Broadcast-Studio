@@ -223,12 +223,44 @@ def track_surface_name(value):
     return names.get(safe_int(value, value), str(value))
 
 
-def print_meaningful_array_events(key, changes, driver_lookup):
+def should_print_event(
+    recent_events,
+    event_key,
+    current_time=None,
+    cooldown_seconds=4.0,
+):
+    if recent_events is None:
+        return True
+
+    try:
+        event_time = float(current_time)
+    except Exception:
+        event_time = time.monotonic()
+
+    last_time = recent_events.get(event_key)
+    if last_time is not None and event_time - last_time < cooldown_seconds:
+        return False
+
+    recent_events[event_key] = event_time
+    return True
+
+
+def print_meaningful_array_events(
+    key,
+    changes,
+    driver_lookup,
+    recent_events=None,
+    current_time=None,
+):
     if not changes:
         return False
 
     printed = False
     for car_idx, old, new in changes:
+        event_key = (key, car_idx, old, new)
+        if not should_print_event(recent_events, event_key, current_time):
+            continue
+
         driver = driver_label(driver_lookup, car_idx)
         if key == "CarIdxOnPitRoad":
             action = "entered pit road" if bool(new) else "left pit road"
@@ -259,6 +291,8 @@ def print_watch_changes(
     previous_arrays,
     current_arrays,
     driver_lookup=None,
+    recent_events=None,
+    current_time=None,
 ):
     scalar_changes = [
         (key, previous_scalars.get(key), value)
@@ -291,7 +325,13 @@ def print_watch_changes(
     printed_array_event = False
     for key, changes in array_changes:
         printed_array_event = (
-            print_meaningful_array_events(key, changes, driver_lookup)
+            print_meaningful_array_events(
+                key,
+                changes,
+                driver_lookup,
+                recent_events=recent_events,
+                current_time=current_time,
+            )
             or printed_array_event
         )
     if not meaningful_scalar_changes and not printed_array_event:
@@ -420,6 +460,7 @@ def main():
     last_session_time = None
     last_scalar_watch = scalar_watch_snapshot(telemetry)
     last_array_watch = array_watch_snapshot(telemetry)
+    recent_events = {}
 
     try:
         while telemetry.is_connected():
@@ -473,6 +514,8 @@ def main():
                 last_array_watch,
                 current_array_watch,
                 driver_lookup,
+                recent_events=recent_events,
+                current_time=session_time,
             ):
                 last_scalar_watch = current_scalar_watch
                 last_array_watch = current_array_watch

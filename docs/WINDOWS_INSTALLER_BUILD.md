@@ -9,7 +9,7 @@ The installer path is separate from broadcast development. Building the installe
 The goal is a normal Windows setup file:
 
 ```text
-RGC-AI-Broadcast-Studio-Setup-0.18.0.exe
+RGC-AI-Broadcast-Studio-Setup-0.19.0.exe
 ```
 
 The setup file installs the studio into the user profile:
@@ -60,7 +60,7 @@ The script does two things:
 2. If Inno Setup is installed, builds:
 
    ```text
-   dist\RGC-AI-Broadcast-Studio-Setup-0.18.0.exe
+   dist\RGC-AI-Broadcast-Studio-Setup-0.19.0.exe
    ```
 
 If Inno Setup is not installed, the script still prepares the clean installer source and tells you what to install next.
@@ -103,6 +103,12 @@ Do this smoke test:
 9. Uninstall from Windows Settings if testing uninstall.
 
 Run a full race test only when broadcast logic changes.
+
+Before sending a build to an outside admin, also run the v1.0 release checklist:
+
+```text
+docs\V1_RELEASE_CHECKLIST.md
+```
 
 ## Future professional steps
 

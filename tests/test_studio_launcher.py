@@ -43,7 +43,12 @@ from studio_launcher import (
     write_broadcast_pid,
 )
 from tools.build_tester_zip import should_include
-from tools.build_windows_setup import DEFAULT_INNO_PATHS, build_inno_command, project_version
+from tools.build_windows_setup import (
+    DEFAULT_INNO_PATHS,
+    build_inno_command,
+    project_version,
+    should_include_for_installer,
+)
 
 
 def test_launcher_loads_simple_env_file(tmp_path):
@@ -664,6 +669,16 @@ def test_windows_installer_helpers_build_expected_command(tmp_path):
     assert f"/DOutputDir={tmp_path / 'dist'}" in command
     assert "/DAppVersion=1.2.3" in command
     assert str(tmp_path / "installer.iss") == command[-1]
+
+
+def test_windows_installer_excludes_development_files():
+    assert should_include_for_installer("README.md")
+    assert should_include_for_installer("production/overlay.py")
+    assert should_include_for_installer("tools/sim_racer_hub_import.py")
+
+    assert not should_include_for_installer("tests/test_overlay.py")
+    assert not should_include_for_installer(".github/workflows/tests.yml")
+    assert not should_include_for_installer("league/drivers.csv")
 
 
 def test_project_version_reads_pyproject():

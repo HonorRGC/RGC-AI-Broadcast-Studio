@@ -3,6 +3,7 @@ from tools.live_flag_debug import (
     changed_array_indices,
     compact_value,
     print_watch_changes,
+    should_print_event,
     track_surface_name,
 )
 
@@ -39,3 +40,12 @@ def test_print_watch_changes_formats_pit_road_event(capsys):
     assert printed is True
     assert "#34 T.J. Lee" in output
     assert "entered pit road" in output
+
+
+def test_should_print_event_suppresses_short_repeated_events():
+    recent_events = {}
+    event_key = ("CarIdxOnPitRoad", 34, False, True)
+
+    assert should_print_event(recent_events, event_key, current_time=10.0) is True
+    assert should_print_event(recent_events, event_key, current_time=11.0) is False
+    assert should_print_event(recent_events, event_key, current_time=15.0) is True

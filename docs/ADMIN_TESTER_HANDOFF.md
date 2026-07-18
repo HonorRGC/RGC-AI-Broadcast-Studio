@@ -10,7 +10,15 @@ docs\INSTALL_AND_SETUP_GUIDE.md
 
 ## What to send
 
-Send the clean tester ZIP built from this repo. Do not send your working folder directly, because it can contain private keys, saved profiles, league files, local music paths, and recordings.
+Preferred: send the Windows Setup.exe from the `dist` folder after building the installer:
+
+```text
+dist\RGC-AI-Broadcast-Studio-Setup-0.19.0.exe
+```
+
+Fallback: send the clean tester ZIP built from this repo.
+
+Do not send your working folder directly, because it can contain private keys, saved profiles, league files, local music paths, and recordings.
 
 Build the ZIP with:
 
@@ -29,17 +37,17 @@ dist\
 
 - Windows 10 or 11
 - iRacing installed
-- Python 3.11 or newer
+- Python 3.11 or newer for this early installer generation
 - Their own OpenAI API key if testing full AI mode
 - Their own ElevenLabs API key and voice IDs if testing spoken broadcast audio
 - Streamlabs, OBS, or another program that supports browser sources
 
 ## First setup
 
-1. Extract the ZIP somewhere simple, like `Documents\RGC-AI-Broadcast-Studio`.
-2. Double-click `install_studio.bat`.
-3. Wait for setup to finish.
-4. The installer creates a desktop shortcut named `RGC AI Broadcast Studio`.
+1. Run the Setup.exe.
+2. Wait for setup to finish.
+3. The installer creates a desktop shortcut named `RGC AI Broadcast Studio`.
+4. If using the fallback ZIP, extract it somewhere simple, like `Documents\RGC-AI-Broadcast-Studio`, then double-click `install_studio.bat`.
 5. Fill in the launcher settings.
 6. Click `Save Settings`.
 7. Create a profile for their league or test session.
@@ -85,6 +93,12 @@ Before race night, have the admin verify:
 - Camera control works in a short test session.
 - They can start and stop the broadcast from the launcher.
 - A profile is saved for the league race.
+
+Before sending a public-style build, also walk through:
+
+```text
+docs\V1_RELEASE_CHECKLIST.md
+```
 
 ## Private files intentionally not included
 

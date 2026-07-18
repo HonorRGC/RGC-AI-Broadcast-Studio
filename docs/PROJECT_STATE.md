@@ -1,6 +1,6 @@
 # Project State
 
-Current version: **v0.18.2 - Producer Assist Release Candidate**
+Current version: **v0.19.0 - v1.0 Release Prep**
 
 ## Working foundation
 
@@ -8,28 +8,34 @@ Current version: **v0.18.2 - Producer Assist Release Candidate**
 - JSONL replay telemetry adapter
 - One live/replay `BroadcastEngine`
 - Race phase and milestone calls
-- Pass, battle, story, pit-entry, and experimental incident detection
+- Pass, battle, story, pit-entry, pit-strategy, green-run, stage, and conservative incident detection
 - Editorial prioritization, delay, cooldown, and speaker assignment
 - OpenAI commentary with rule-based fallback
 - Lead, Jeff, and Sarah ElevenLabs voice routing
 - Priority, expiration, and deduplication in the broadcast scheduler
 - Progressive pre-race welcome, weather, track report, and full-field rundown
-- Silent Practice/Qualifying detection with race-state reset when the Race session begins
+- Practice, Qualifying, Warmup, and Race session detection with race-state reset when the Race session begins
+- Practice music playlist, qualifying RGC Anthem ceremony, caution replay music bed, and global Studio volume
+- Browser-source overlay with title, sponsor logos, caution/green state, vertical or ticker leaderboard, driver card, sponsor graphics, and Crank It Up graphics
+- Automatic camera direction for leader/home shots, stories, driver rundowns, Crank It Up, and caution replay review
+- Producer Assist control room with driver list, selected-driver details, race focus, director suggestions, race event log, pit road strategy, camera controls, and optional race-control commands
+- League profiles, Sim Racer Hub imports, separate season/career stats CSVs, driver notes, sponsor reads, stage laps, and post-race interview handoff
+- Windows installer build path, desktop shortcut, update checker, first-time setup checklist, and admin handoff docs
 - Voice configuration diagnostics and a standalone ElevenLabs test command
 - Automated tests for the critical orchestration rules
 
 ## Known limitations
 
-- Incident detection needs validation against representative recordings.
-- ElevenLabs playback is launched by Windows and does not yet report completion back to the scheduler.
-- Battle gap interpretation needs comparison with recorded iRacing fields.
-- Driver history is represented by several internal intelligence models.
-- Camera, replay, graphics, championship, and interview direction are not implemented.
+- iRacing does not expose a clean all-driver incident-points feed through the SDK, so non-caution incident calls remain conservative.
+- Hosted-race admin commands still rely on iRacing chat-command workflows; hidden/direct admin command support has not been confirmed.
+- Caution replays depend on iRacing replay controls and previous-incident behavior, so they need real-session testing on each major update.
+- The early Windows installer still requires Python 3.11-or-newer on the user's PC.
+- Trading Paints/car-image support is planned as a league-admin/manual asset workflow first, not automatic public scraping.
 
 ## Current goal
 
-Collect representative race recordings and use them to validate incident detection, battle gaps, editorial timing, and audio pacing before adding camera automation.
+Stabilize the current feature set into a v1.0 release candidate that outside league admins can install, configure, test, and use without editing code.
 
 ## Planned weekend-session intelligence
 
-The broadcast now recognizes Practice, Qualifying, Warmup, and Race, but intentionally remains silent before the Race session. The next layer will collect practice and qualifying observations into a separate weekend memory while preserving the current rule that on-air commentary begins only when the Race session opens.
+The broadcast recognizes Practice, Qualifying, Warmup, and Race. Practice and Qualifying can show overlay/session information and play configured presentation audio, while race commentary begins when the Race session opens. The next layer is richer weekend memory: practice pace notes, qualifying stories, league championship context, and track-history stats that can be used naturally during the race.
