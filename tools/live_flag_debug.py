@@ -31,6 +31,27 @@ KNOWN_INCIDENT_KEYS = [
     "CarIdxDriverIncidentCount",
 ]
 
+IRACECONTROL_INSPIRED_KEYS = [
+    "CarIdxSessionFlags",
+    "CarIdxPaceFlags",
+    "CarIdxTrackSurface",
+    "CarIdxTrackSurfaceMaterial",
+    "CarIdxLapDistPct",
+    "CarIdxEstTime",
+    "CarIdxOnPitRoad",
+    "CarIdxFastRepairsUsed",
+    "PitSvFlags",
+    "PitSvFuel",
+    "PitSvLFP",
+    "PitSvLRP",
+    "PitSvRFP",
+    "PitSvRRP",
+    "PitRepairLeft",
+    "PitOptRepairLeft",
+    "PitstopActive",
+    "PitsOpen",
+]
+
 WEEKEND_INFO_KEYS = [
     "Official",
     "LeagueID",
@@ -164,6 +185,15 @@ def print_incident_sdk_probe(telemetry):
     print("-" * 80)
 
 
+def print_race_control_data_probe(telemetry):
+    print("Race Control Data Probe")
+    print("-" * 80)
+    print("iRaceControl-inspired SDK variables this project may be able to use:")
+    for key in IRACECONTROL_INSPIRED_KEYS:
+        print(f"  {key}: {short_value(safe_read(telemetry, key))}")
+    print("-" * 80)
+
+
 def decode_flags(flags):
     try:
         flags = int(flags or 0)
@@ -219,6 +249,8 @@ def main():
     print_weekend_probe(telemetry)
     print()
     print_incident_sdk_probe(telemetry)
+    print()
+    print_race_control_data_probe(telemetry)
 
     last_flags = None
     last_state = None

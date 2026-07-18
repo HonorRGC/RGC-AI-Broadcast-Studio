@@ -816,6 +816,7 @@ class OverlayServer:
         self.interview_queue = []
         self.director_suggestions = []
         self.race_control_audit = []
+        self.race_event_log = []
         self._next_control_room_item_id = 1
         self.pending_commands = []
         self.control_state = {
@@ -1168,7 +1169,7 @@ class OverlayServer:
     def add_race_control_audit(self, message, payload=None):
         payload = payload or {}
         with self.lock:
-            return self.add_control_room_item(
+            audit_item = self.add_control_room_item(
                 "race_control_audit",
                 "race_control",
                 "Race Control",
@@ -1179,6 +1180,35 @@ class OverlayServer:
                 driver_name=payload.get("driver_name", ""),
                 created_by=payload.get("producer_name", ""),
                 limit=50,
+            )
+            self.add_control_room_item(
+                "race_event_log",
+                "race_control",
+                "Race Control",
+                message,
+                status=audit_item.status,
+                car_idx=payload.get("car_idx", 0),
+                car_number=payload.get("car_number", ""),
+                driver_name=payload.get("driver_name", ""),
+                created_by=payload.get("producer_name", ""),
+                limit=100,
+            )
+            return audit_item
+
+    def add_race_event_log(self, title, message, payload=None, kind="race_event", status="logged"):
+        payload = payload or {}
+        with self.lock:
+            return self.add_control_room_item(
+                "race_event_log",
+                kind,
+                title,
+                message,
+                status=status,
+                car_idx=payload.get("car_idx", 0),
+                car_number=payload.get("car_number", ""),
+                driver_name=payload.get("driver_name", ""),
+                created_by=payload.get("producer_name", "") or payload.get("created_by", ""),
+                limit=100,
             )
 
     def update_control_room_item_status(self, collection_name, item_id, status):
@@ -1291,6 +1321,7 @@ class OverlayServer:
             data["race_control_audit"] = [
                 item.to_dict() for item in self.race_control_audit
             ]
+            data["race_event_log"] = [item.to_dict() for item in self.race_event_log]
             return data
 
     def make_handler(self):
@@ -2124,9 +2155,17 @@ PRODUCER_HTML = r"""<!doctype html>
         </div>
 
         <div class="panel">
+          <h3>Race Event Log</h3>
+          <div class="small">Race-control actions are logged here now. Telemetry pit and incident events will use this same log next.</div>
+          <div class="control-room-list" id="race-event-log-list" style="margin-top: 10px;">
+            <div class="small">Race events will appear here.</div>
+          </div>
+        </div>
+
+        <div class="panel">
           <h3>Race Control Audit</h3>
           <div class="control-room-list" id="race-control-audit-list">
-            <div class="small">Admin commands sent from Producer Assist will appear here.</div>
+            <div class="small">Admin command details sent from Producer Assist will appear here.</div>
           </div>
         </div>
 
@@ -2530,9 +2569,14 @@ PRODUCER_HTML = r"""<!doctype html>
         ]
       );
       renderControlRoomList(
+        "race-event-log-list",
+        state.race_event_log || [],
+        "Race events will appear here."
+      );
+      renderControlRoomList(
         "race-control-audit-list",
         state.race_control_audit || [],
-        "Admin commands sent from Producer Assist will appear here."
+        "Admin command details sent from Producer Assist will appear here."
       );
     }
 

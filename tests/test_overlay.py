@@ -603,6 +603,7 @@ def test_producer_assist_html_reads_overlay_state():
     assert 'id="producer-note-input"' in PRODUCER_HTML
     assert 'id="incident-review-list"' in PRODUCER_HTML
     assert 'id="interview-queue-list"' in PRODUCER_HTML
+    assert 'id="race-event-log-list"' in PRODUCER_HTML
     assert 'id="race-control-audit-list"' in PRODUCER_HTML
     assert "Discord Setup" in PRODUCER_HTML
 
@@ -614,11 +615,13 @@ def test_producer_assist_prioritizes_live_control_room_panels():
     pit_road_index = PRODUCER_HTML.index("<h3>Pit Road / Strategy</h3>")
     incident_index = PRODUCER_HTML.index("<h3>Incident Review Queue</h3>")
     interview_index = PRODUCER_HTML.index("<h3>Interview Queue</h3>")
+    event_log_index = PRODUCER_HTML.index("<h3>Race Event Log</h3>")
     audit_index = PRODUCER_HTML.index("<h3>Race Control Audit</h3>")
     discord_index = PRODUCER_HTML.index("<h3>Discord Setup</h3>")
 
     assert focus_index < suggestions_index < race_control_index < pit_road_index
-    assert pit_road_index < incident_index < interview_index < audit_index < discord_index
+    assert pit_road_index < incident_index < interview_index < event_log_index
+    assert event_log_index < audit_index < discord_index
     assert "button-row control-grid" in PRODUCER_HTML
     assert "panel priority" in PRODUCER_HTML
 
@@ -659,6 +662,12 @@ def test_overlay_server_exposes_control_room_state():
         "Admin command sent.",
         {"ok": True, "producer_name": "Race Control"},
     )
+    server.add_race_event_log(
+        "Pit Road",
+        "The 34 has entered pit road.",
+        {"car_idx": 34, "car_number": "34", "driver_name": "T.J. Lee"},
+        kind="pit_road",
+    )
     server.set_director_suggestions(
         [
             {
@@ -675,6 +684,8 @@ def test_overlay_server_exposes_control_room_state():
     assert state["incident_reviews"][0]["status"] == "needs review"
     assert state["interview_queue"][0]["driver_name"] == "Race Winner"
     assert state["race_control_audit"][0]["status"] == "sent"
+    assert state["race_event_log"][0]["title"] == "Pit Road"
+    assert state["race_event_log"][1]["title"] == "Race Control"
     assert state["director_suggestions"][0]["title"] == "Closest Battle"
 
 
