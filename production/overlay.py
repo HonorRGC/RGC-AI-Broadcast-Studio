@@ -1568,8 +1568,8 @@ PRODUCER_HTML = r"""<!doctype html>
 
     .main {
       display: grid;
-      grid-template-columns: 1.1fr 0.9fr;
-      gap: 14px;
+      grid-template-columns: minmax(520px, 0.92fr) minmax(760px, 1.45fr);
+      gap: 12px;
       align-items: start;
     }
 
@@ -1598,7 +1598,7 @@ PRODUCER_HTML = r"""<!doctype html>
     }
 
     .rows {
-      max-height: calc(100vh - 295px);
+      max-height: calc(100vh - 280px);
       overflow: auto;
     }
 
@@ -1646,9 +1646,10 @@ PRODUCER_HTML = r"""<!doctype html>
     }
 
     .driver-detail {
-      padding: 16px;
+      padding: 12px;
       display: grid;
-      gap: 14px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
     }
 
     .driver-title {
@@ -1656,6 +1657,7 @@ PRODUCER_HTML = r"""<!doctype html>
       grid-template-columns: 90px 1fr;
       gap: 12px;
       align-items: center;
+      grid-column: 1 / -1;
     }
 
     .big-number {
@@ -1676,15 +1678,20 @@ PRODUCER_HTML = r"""<!doctype html>
 
     .detail-grid {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 10px;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 8px;
+      grid-column: 1 / -1;
     }
 
     .detail-item {
-      padding: 10px;
+      padding: 8px;
       background: rgba(255, 255, 255, 0.05);
       border: 1px solid rgba(255, 255, 255, 0.08);
       border-radius: 12px;
+    }
+
+    .detail-item .value {
+      font-size: 20px;
     }
 
     .story-box {
@@ -1694,6 +1701,7 @@ PRODUCER_HTML = r"""<!doctype html>
       background: rgba(83, 167, 255, 0.09);
       color: #dcecff;
       line-height: 1.35;
+      grid-column: 1 / -1;
     }
 
     .button-row {
@@ -1702,10 +1710,15 @@ PRODUCER_HTML = r"""<!doctype html>
       gap: 10px;
     }
 
+    .button-row.control-grid {
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 8px;
+    }
+
     button {
       border: 0;
       border-radius: 12px;
-      padding: 11px 12px;
+      padding: 9px 10px;
       color: white;
       background: #27496d;
       font-weight: 800;
@@ -1746,10 +1759,19 @@ PRODUCER_HTML = r"""<!doctype html>
     }
 
     .panel {
-      padding: 12px;
+      padding: 10px;
       background: rgba(255, 255, 255, 0.045);
       border: 1px solid rgba(255, 255, 255, 0.08);
       border-radius: 14px;
+    }
+
+    .panel.full,
+    .button-row.primary-actions {
+      grid-column: 1 / -1;
+    }
+
+    .panel.priority {
+      min-height: 142px;
     }
 
     .panel h3 {
@@ -1763,7 +1785,7 @@ PRODUCER_HTML = r"""<!doctype html>
     .feed {
       display: grid;
       gap: 8px;
-      max-height: 300px;
+      max-height: 230px;
       overflow: auto;
     }
 
@@ -1796,7 +1818,7 @@ PRODUCER_HTML = r"""<!doctype html>
     .pit-road-list {
       display: grid;
       gap: 8px;
-      max-height: 255px;
+      max-height: 210px;
       overflow: auto;
     }
 
@@ -1837,7 +1859,7 @@ PRODUCER_HTML = r"""<!doctype html>
 
     .producer-textarea {
       width: 100%;
-      min-height: 74px;
+      min-height: 58px;
       resize: vertical;
       border: 1px solid #2e3b4d;
       border-radius: 12px;
@@ -1852,8 +1874,12 @@ PRODUCER_HTML = r"""<!doctype html>
     .control-room-list {
       display: grid;
       gap: 8px;
-      max-height: 245px;
+      max-height: 190px;
       overflow: auto;
+    }
+
+    .panel.priority .control-room-list {
+      max-height: 132px;
     }
 
     .control-room-item {
@@ -1917,6 +1943,9 @@ PRODUCER_HTML = r"""<!doctype html>
     @media (max-width: 1050px) {
       .grid { grid-template-columns: repeat(2, minmax(150px, 1fr)); }
       .main { grid-template-columns: 1fr; }
+      .driver-detail { grid-template-columns: 1fr; }
+      .detail-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .button-row.control-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .rows { max-height: none; }
     }
   </style>
@@ -1986,14 +2015,26 @@ PRODUCER_HTML = r"""<!doctype html>
           Producer note: pick a driver from the leaderboard. This panel is built to become the broadcaster control room.
         </div>
 
-        <div class="button-row">
+        <div class="button-row primary-actions">
           <button class="control-button" id="follow-driver-button">Move Camera to Driver</button>
           <button class="control-button" id="leader-camera-button">Back to Leader</button>
         </div>
 
-        <div class="panel">
+        <div class="panel priority" id="featured-panel">
+          <h3>Current Broadcast Focus</h3>
+          <div class="small">No featured driver on the overlay right now.</div>
+        </div>
+
+        <div class="panel priority">
+          <h3>Director Suggestions</h3>
+          <div class="control-room-list" id="director-suggestions-list">
+            <div class="small">Suggested camera/story targets will appear here.</div>
+          </div>
+        </div>
+
+        <div class="panel full">
           <h3>Control Room Toggles</h3>
-          <div class="button-row">
+          <div class="button-row control-grid">
             <button class="control-button" id="auto-camera-button">Auto Camera</button>
             <button class="control-button" id="openai-button">OpenAI</button>
             <button class="control-button" id="elevenlabs-button">ElevenLabs</button>
@@ -2007,17 +2048,17 @@ PRODUCER_HTML = r"""<!doctype html>
           </div>
         </div>
 
-        <div class="panel">
+        <div class="panel full">
           <h3>Race Control</h3>
           <div class="race-admin-status" id="race-admin-status">Race Admin Mode is OFF</div>
           <div class="small">Commands use the selected driver when needed. Broadcaster PC must be an iRacing hosted-session admin.</div>
-          <div class="button-row" style="margin-top: 10px;">
+          <div class="button-row control-grid" style="margin-top: 10px;">
             <button class="control-button danger race-control-button" data-race-action="throw_yellow" data-dangerous="true">Throw Caution</button>
             <button class="control-button warn race-control-button" data-race-action="extend_caution">Extend Caution +1</button>
             <button class="control-button warn race-control-button" data-race-action="one_to_green">Set One-To-Green</button>
             <button class="control-button danger race-control-button" data-race-action="clear_all" data-dangerous="true">Clear All</button>
           </div>
-          <div class="button-row" style="margin-top: 8px;">
+          <div class="button-row control-grid" style="margin-top: 8px;">
             <button class="control-button race-control-button" data-race-action="clear_penalty" data-driver-required="true">Clear Penalty</button>
             <button class="control-button race-control-button" data-race-action="eol" data-driver-required="true">EOL</button>
             <button class="control-button warn race-control-button" data-race-action="drive_through" data-driver-required="true">Drive Through</button>
@@ -2028,14 +2069,19 @@ PRODUCER_HTML = r"""<!doctype html>
           </div>
         </div>
 
-        <div class="panel">
-          <h3>Director Suggestions</h3>
-          <div class="control-room-list" id="director-suggestions-list">
-            <div class="small">Suggested camera/story targets will appear here.</div>
-          </div>
+        <div class="panel" id="stat-panel">
+          <h3>Active Graphic / Stat Panel</h3>
+          <div class="small">No stat panel is active.</div>
         </div>
 
         <div class="panel">
+          <h3>Pit Road / Strategy</h3>
+          <div class="pit-road-list" id="pit-road-list">
+            <div class="small">Pit stop data will appear after cars visit pit road.</div>
+          </div>
+        </div>
+
+        <div class="panel full">
           <h3>Producer Notes</h3>
           <textarea class="producer-textarea" id="producer-note-input" placeholder="Type a booth note, race-control reminder, or driver story..."></textarea>
           <div class="button-row">
@@ -2084,24 +2130,7 @@ PRODUCER_HTML = r"""<!doctype html>
           <div class="small" id="discord-status" style="margin-top: 6px;">Discord bot is not connected yet.</div>
         </div>
 
-        <div class="panel" id="featured-panel">
-          <h3>Current Broadcast Focus</h3>
-          <div class="small">No featured driver on the overlay right now.</div>
-        </div>
-
-        <div class="panel" id="stat-panel">
-          <h3>Active Graphic / Stat Panel</h3>
-          <div class="small">No stat panel is active.</div>
-        </div>
-
-        <div class="panel">
-          <h3>Pit Road / Strategy</h3>
-          <div class="pit-road-list" id="pit-road-list">
-            <div class="small">Pit stop data will appear after cars visit pit road.</div>
-          </div>
-        </div>
-
-        <div class="panel">
+        <div class="panel full">
           <h3>Producer Feed</h3>
           <div class="feed" id="producer-feed">
             <div class="small">Broadcast notes will appear here once the session starts.</div>

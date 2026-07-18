@@ -595,6 +595,22 @@ def test_producer_assist_html_reads_overlay_state():
     assert "Discord Setup" in PRODUCER_HTML
 
 
+def test_producer_assist_prioritizes_live_control_room_panels():
+    focus_index = PRODUCER_HTML.index("<h3>Current Broadcast Focus</h3>")
+    suggestions_index = PRODUCER_HTML.index("<h3>Director Suggestions</h3>")
+    race_control_index = PRODUCER_HTML.index("<h3>Race Control</h3>")
+    pit_road_index = PRODUCER_HTML.index("<h3>Pit Road / Strategy</h3>")
+    incident_index = PRODUCER_HTML.index("<h3>Incident Review Queue</h3>")
+    interview_index = PRODUCER_HTML.index("<h3>Interview Queue</h3>")
+    audit_index = PRODUCER_HTML.index("<h3>Race Control Audit</h3>")
+    discord_index = PRODUCER_HTML.index("<h3>Discord Setup</h3>")
+
+    assert focus_index < suggestions_index < race_control_index < pit_road_index
+    assert pit_road_index < incident_index < interview_index < audit_index < discord_index
+    assert "button-row control-grid" in PRODUCER_HTML
+    assert "panel priority" in PRODUCER_HTML
+
+
 def test_overlay_server_exposes_producer_feed_in_state():
     from production.overlay import OverlayServer
 
