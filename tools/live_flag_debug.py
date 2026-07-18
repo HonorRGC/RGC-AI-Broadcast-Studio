@@ -73,7 +73,6 @@ ARRAY_WATCH_KEYS = [
     "CarIdxSessionFlags",
     "CarIdxPaceFlags",
     "CarIdxTrackSurface",
-    "CarIdxTrackSurfaceMaterial",
     "CarIdxOnPitRoad",
     "CarIdxFastRepairsUsed",
 ]
@@ -206,7 +205,61 @@ def changed_array_indices(previous, current, limit=16):
     return changes
 
 
-def print_watch_changes(previous_scalars, current_scalars, previous_arrays, current_arrays):
+def driver_label(driver_lookup, car_idx):
+    driver = (driver_lookup or {}).get(car_idx, {})
+    number = driver.get("number") or "--"
+    name = driver.get("name") or f"CarIdx {car_idx}"
+    return f"#{number} {name} (CarIdx {car_idx})"
+
+
+def track_surface_name(value):
+    names = {
+        -1: "not in world",
+        0: "off track",
+        1: "pit stall",
+        2: "pit road",
+        3: "racing surface",
+    }
+    return names.get(safe_int(value, value), str(value))
+
+
+def print_meaningful_array_events(key, changes, driver_lookup):
+    if not changes:
+        return False
+
+    printed = False
+    for car_idx, old, new in changes:
+        driver = driver_label(driver_lookup, car_idx)
+        if key == "CarIdxOnPitRoad":
+            action = "entered pit road" if bool(new) else "left pit road"
+            print(f"  Pit Road: {driver} {action}.")
+            printed = True
+        elif key == "CarIdxFastRepairsUsed":
+            print(f"  Fast Repair: {driver} changed from {old} to {new}.")
+            printed = True
+        elif key == "CarIdxTrackSurface":
+            old_name = track_surface_name(old)
+            new_name = track_surface_name(new)
+            if old_name == new_name:
+                continue
+            print(f"  Surface: {driver} moved {old_name} -> {new_name}.")
+            printed = True
+        elif key == "CarIdxSessionFlags":
+            print(f"  Session Flags: {driver} changed {old} -> {new}.")
+            printed = True
+        elif key == "CarIdxPaceFlags":
+            print(f"  Pace Flags: {driver} changed {old} -> {new}.")
+            printed = True
+    return printed
+
+
+def print_watch_changes(
+    previous_scalars,
+    current_scalars,
+    previous_arrays,
+    current_arrays,
+    driver_lookup=None,
+):
     scalar_changes = [
         (key, previous_scalars.get(key), value)
         for key, value in current_scalars.items()
@@ -218,19 +271,31 @@ def print_watch_changes(previous_scalars, current_scalars, previous_arrays, curr
         if changes:
             array_changes.append((key, changes))
 
-    if not scalar_changes and not array_changes:
+    meaningful_scalar_changes = [
+        (key, old, new)
+        for key, old, new in scalar_changes
+        if key not in ("PitSvLFP", "PitSvLRP", "PitSvRFP", "PitSvRRP")
+    ]
+
+    if not meaningful_scalar_changes and not array_changes:
         return False
 
     print()
-    print("Race Control Data Changes")
+    print("Race Control Event Probe")
     print("-" * 80)
-    for key, old, new in scalar_changes:
-        print(f"  {key}: {old} -> {new}")
+    for key, old, new in meaningful_scalar_changes:
+        if key == "PitsOpen":
+            print(f"  Pit Road: {'OPEN' if new else 'CLOSED'}")
+        else:
+            print(f"  {key}: {old} -> {new}")
+    printed_array_event = False
     for key, changes in array_changes:
-        formatted = ", ".join(
-            f"CarIdx {index}: {old}->{new}" for index, old, new in changes
+        printed_array_event = (
+            print_meaningful_array_events(key, changes, driver_lookup)
+            or printed_array_event
         )
-        print(f"  {key}: {formatted}")
+    if not meaningful_scalar_changes and not printed_array_event:
+        print("  Only noisy/unusable watched values changed; baseline updated.")
     print("-" * 80)
     return True
 
@@ -401,11 +466,13 @@ def main():
 
             current_scalar_watch = scalar_watch_snapshot(telemetry)
             current_array_watch = array_watch_snapshot(telemetry)
+            driver_lookup = telemetry.get_driver_lookup()
             if print_watch_changes(
                 last_scalar_watch,
                 current_scalar_watch,
                 last_array_watch,
                 current_array_watch,
+                driver_lookup,
             ):
                 last_scalar_watch = current_scalar_watch
                 last_array_watch = current_array_watch
