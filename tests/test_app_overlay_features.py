@@ -30,6 +30,8 @@ class ProducerOverlaySpy:
     def __init__(self):
         self.styles = []
         self.events = []
+        self.holder_id = ""
+        self.holder_name = ""
 
     def set_leaderboard_style(self, style):
         self.styles.append(style)
@@ -37,6 +39,26 @@ class ProducerOverlaySpy:
 
     def add_producer_event(self, **kwargs):
         self.events.append(kwargs)
+
+    def claim_camera_control(self, client_id, producer_name="Producer"):
+        if self.holder_id and self.holder_id != client_id:
+            return False, f"Camera control is held by {self.holder_name}."
+        self.holder_id = client_id
+        self.holder_name = producer_name
+        return True, f"{producer_name} has camera control."
+
+    def release_camera_control(self, client_id):
+        if self.holder_id and self.holder_id != client_id:
+            return False, f"Camera control is held by {self.holder_name}."
+        self.holder_id = ""
+        self.holder_name = ""
+        return True, "Camera control released."
+
+    def camera_control_allows(self, client_id):
+        return not self.holder_id or self.holder_id == client_id
+
+    def camera_control_holder_name(self):
+        return self.holder_name or "another producer"
 
 
 class CameraSpy:
@@ -252,6 +274,25 @@ def test_manual_camera_follow_disables_auto_camera():
     assert camera.mode == "off"
     assert camera.focused == [(7, "TV1")]
     assert any("Auto camera disabled" in event["message"] for event in overlay.events)
+
+
+def test_manual_camera_follow_is_blocked_when_another_producer_has_control():
+    overlay = ProducerOverlaySpy()
+    camera = CameraSpy()
+    overlay.claim_camera_control("producer-a", "Lee")
+
+    handle_producer_command(
+        "camera_follow_driver",
+        {"client_id": "producer-b", "producer_name": "Helper", "car_idx": 7, "group_name": "TV1"},
+        overlay,
+        source=SimpleNamespace(),
+        engine=None,
+        booth=None,
+        camera_director=camera,
+    )
+
+    assert camera.focused == []
+    assert any("held by Lee" in event["message"] for event in overlay.events)
 
 
 def test_sponsor_mention_detection_is_message_based():

@@ -6,6 +6,7 @@ from config import (
     CRANK_IT_UP_ICON_GRAPHIC,
     CRANK_IT_UP_SPONSOR_GRAPHIC,
     OVERLAY_BRAND_GRAPHICS,
+    OVERLAY_HOST,
     OVERLAY_RACE_SPONSOR,
     SPONSOR_READ_CAUSE,
     SPONSOR_READ_NAME,
@@ -115,7 +116,7 @@ def parse_args():
     )
     parser.add_argument(
         "--overlay-host",
-        default="127.0.0.1",
+        default=OVERLAY_HOST,
         help="Host for the browser-source overlay server",
     )
     parser.add_argument(
@@ -366,6 +367,36 @@ def handle_producer_command(
     camera_director,
     replay_director=None,
 ):
+    if command == "camera_claim":
+        claimer = getattr(overlay_server, "claim_camera_control", None)
+        ok, message = (
+            claimer(payload.get("client_id"), payload.get("producer_name", "Producer"))
+            if claimer
+            else (True, "Camera control claimed.")
+        )
+        publish_producer_event(
+            overlay_server,
+            "info" if ok else "warning",
+            "Camera Control",
+            message,
+        )
+        return
+
+    if command == "camera_release":
+        releaser = getattr(overlay_server, "release_camera_control", None)
+        ok, message = (
+            releaser(payload.get("client_id"))
+            if releaser
+            else (True, "Camera control released.")
+        )
+        publish_producer_event(
+            overlay_server,
+            "info" if ok else "warning",
+            "Camera Control",
+            message,
+        )
+        return
+
     if command in ("leaderboard_side", "leaderboard_ticker"):
         style = "ticker" if command == "leaderboard_ticker" else "side"
         setter = getattr(overlay_server, "set_leaderboard_style", None)
@@ -431,6 +462,8 @@ def handle_producer_command(
         return
 
     if command == "camera_follow_driver":
+        if not ensure_camera_control(overlay_server, payload):
+            return
         car_idx = safe_int(payload.get("car_idx"), default=None)
         if car_idx is None:
             publish_producer_event(overlay_server, "warning", "Camera", "No driver was selected.")
@@ -453,6 +486,8 @@ def handle_producer_command(
         return
 
     if command == "camera_follow_leader":
+        if not ensure_camera_control(overlay_server, payload):
+            return
         auto_was_on = getattr(camera_director, "mode", "") == "auto"
         camera_director.mode = "off"
         if auto_was_on:
@@ -521,6 +556,34 @@ def handle_producer_command(
         "Producer Control",
         f"Unknown command: {command}",
     )
+
+
+def ensure_camera_control(overlay_server, payload):
+    payload = payload or {}
+    client_id = str(payload.get("client_id", "") or "")
+    checker = getattr(overlay_server, "camera_control_allows", None)
+    if checker and not checker(client_id):
+        holder = getattr(overlay_server, "camera_control_holder_name", lambda: "another producer")()
+        publish_producer_event(
+            overlay_server,
+            "warning",
+            "Camera Control",
+            f"Camera control is held by {holder}. Ask them to release it first.",
+        )
+        return False
+
+    claimer = getattr(overlay_server, "claim_camera_control", None)
+    if claimer:
+        ok, message = claimer(client_id, payload.get("producer_name", "Producer"))
+        if not ok:
+            publish_producer_event(
+                overlay_server,
+                "warning",
+                "Camera Control",
+                message,
+            )
+            return False
+    return True
 
 
 def report_anthem_decision(decision, overlay_server=None):
@@ -1230,10 +1293,16 @@ def main():
         overlay_url = overlay_server.start()
         sync_producer_control_state(overlay_server, engine, booth, camera_director)
         print(f"Overlay: ON ({overlay_url})")
+        print(f"Producer Assist: {overlay_server.producer_url}")
+        if overlay_server.producer_share_url != overlay_server.producer_url:
+            print(f"Producer helper link: {overlay_server.producer_share_url}")
         overlay_server.add_producer_event(
             kind="info",
             title="Overlay",
-            message=f"Overlay: ON ({overlay_url}) | Producer: {overlay_server.producer_url}",
+            message=(
+                f"Overlay: ON ({overlay_url}) | Producer: {overlay_server.producer_url} "
+                f"| Helper: {overlay_server.producer_share_url}"
+            ),
         )
     else:
         print("Overlay: OFF")

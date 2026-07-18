@@ -168,10 +168,13 @@ Set the race title and sponsor in `.env`:
 OVERLAY_EVENT_TITLE=RGC 80 at Nashville
 OVERLAY_RACE_SPONSOR=Lee Family Racing
 OVERLAY_SERIES_NAME=RGC Cup Series
+OVERLAY_HOST=127.0.0.1
 OVERLAY_BRAND_GRAPHICS=/assets/rgc_motorsports.png,/assets/autism_awareness.png,/assets/keep_it_real.webp
 CRANK_IT_UP_SPONSOR_GRAPHIC=/assets/rgc_motorsports.png
 CRANK_IT_UP_ICON_GRAPHIC=/assets/crank_it_up.png
 ```
+
+`OVERLAY_HOST=127.0.0.1` keeps the overlay and Producer Assist on the broadcast PC only. Use `OVERLAY_HOST=0.0.0.0` when a helper on the same local network or VPN needs to open the Producer Assist link. Camera movement uses a take/release control button so only one producer moves cameras at a time.
 
 Optional sponsor reads can use the same sponsor or a specific read:
 

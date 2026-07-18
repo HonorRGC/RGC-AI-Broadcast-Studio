@@ -1,5 +1,6 @@
 import json
 import mimetypes
+import socket
 import threading
 import time
 from dataclasses import dataclass, field
@@ -783,6 +784,11 @@ class OverlayServer:
                 self.state_builder.event_config.leaderboard_style
             ),
         }
+        self.camera_control = {
+            "holder_id": "",
+            "holder_name": "",
+            "claimed_at": 0.0,
+        }
         self.httpd = None
         self.thread = None
         self.static_dir = Path(__file__).resolve().parent / "static"
@@ -790,11 +796,39 @@ class OverlayServer:
 
     @property
     def url(self):
-        return f"http://{self.host}:{self.port}/overlay"
+        return f"http://{self.display_host}:{self.port}/overlay"
 
     @property
     def producer_url(self):
-        return f"http://{self.host}:{self.port}/producer"
+        return f"http://{self.display_host}:{self.port}/producer"
+
+    @property
+    def producer_share_url(self):
+        return f"http://{self.share_host}:{self.port}/producer"
+
+    @property
+    def display_host(self):
+        if str(self.host or "").strip() in ("", "0.0.0.0", "::"):
+            return "127.0.0.1"
+        return self.host
+
+    @property
+    def share_host(self):
+        if str(self.host or "").strip() in ("", "0.0.0.0", "::"):
+            return self.local_lan_ip()
+        return self.host
+
+    @staticmethod
+    def local_lan_ip():
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+                sock.connect(("8.8.8.8", 80))
+                return sock.getsockname()[0]
+        except OSError:
+            try:
+                return socket.gethostbyname(socket.gethostname())
+            except OSError:
+                return "127.0.0.1"
 
     def start(self):
         handler = self.make_handler()
@@ -990,6 +1024,50 @@ class OverlayServer:
         with self.lock:
             self.control_state.update(updates)
 
+    def claim_camera_control(self, client_id, producer_name="Producer"):
+        client_id = str(client_id or "").strip()
+        if not client_id:
+            return False, "Camera control needs a producer name first."
+        producer_name = str(producer_name or "Producer").strip()[:40] or "Producer"
+        now = time.time()
+        with self.lock:
+            holder_id = self.camera_control.get("holder_id", "")
+            holder_name = self.camera_control.get("holder_name", "Producer")
+            if holder_id and holder_id != client_id:
+                return False, f"Camera control is held by {holder_name}."
+            self.camera_control = {
+                "holder_id": client_id,
+                "holder_name": producer_name,
+                "claimed_at": now,
+            }
+        return True, f"{producer_name} has camera control."
+
+    def release_camera_control(self, client_id):
+        client_id = str(client_id or "").strip()
+        with self.lock:
+            holder_id = self.camera_control.get("holder_id", "")
+            holder_name = self.camera_control.get("holder_name", "Producer")
+            if not holder_id:
+                return True, "Camera control is already open."
+            if holder_id != client_id:
+                return False, f"Camera control is held by {holder_name}."
+            self.camera_control = {
+                "holder_id": "",
+                "holder_name": "",
+                "claimed_at": 0.0,
+            }
+        return True, "Camera control released."
+
+    def camera_control_allows(self, client_id):
+        client_id = str(client_id or "").strip()
+        with self.lock:
+            holder_id = self.camera_control.get("holder_id", "")
+        return not holder_id or holder_id == client_id
+
+    def camera_control_holder_name(self):
+        with self.lock:
+            return self.camera_control.get("holder_name", "") or "another producer"
+
     def enqueue_command(self, command, payload=None):
         command_item = {
             "command": str(command or ""),
@@ -1012,6 +1090,9 @@ class OverlayServer:
             data = self.state.to_dict()
             data["producer_feed"] = [item.to_dict() for item in self.producer_feed]
             data["control_state"] = dict(self.control_state)
+            data["camera_control"] = dict(self.camera_control)
+            data["producer_url"] = self.producer_url
+            data["producer_share_url"] = self.producer_share_url
             data["pit_road"] = [row.to_dict() for row in self.pit_road_rows]
             return data
 
@@ -1191,7 +1272,7 @@ PRODUCER_HTML = r"""<!doctype html>
     .topbar {
       padding: 14px 16px;
       display: grid;
-      grid-template-columns: 1.4fr 1fr;
+      grid-template-columns: 1.2fr 1.5fr auto;
       gap: 12px;
       align-items: center;
     }
@@ -1230,6 +1311,45 @@ PRODUCER_HTML = r"""<!doctype html>
     .flag.unknown {
       color: var(--text);
       background: #313c4f;
+    }
+
+    .producer-share {
+      display: grid;
+      gap: 7px;
+      justify-self: stretch;
+    }
+
+    .producer-share-row,
+    .camera-lock-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .share-link {
+      color: #dbe9ff;
+      font-weight: 800;
+      font-size: 13px;
+      word-break: break-all;
+    }
+
+    .producer-name-input {
+      min-width: 160px;
+      border: 1px solid #2e3b4d;
+      border-radius: 10px;
+      background: #0b111b;
+      color: var(--text);
+      padding: 8px 10px;
+      font-weight: 700;
+    }
+
+    .camera-status {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
     }
 
     .grid {
@@ -1412,6 +1532,11 @@ PRODUCER_HTML = r"""<!doctype html>
     .control-button.danger { background: #8f2e37; }
     .control-button.good { background: #1f7550; }
     .control-button.warn { background: #8b6a1c; }
+    .control-button:disabled {
+      cursor: not-allowed;
+      opacity: 0.45;
+      background: #344052;
+    }
 
     .panel {
       padding: 12px;
@@ -1522,6 +1647,18 @@ PRODUCER_HTML = r"""<!doctype html>
         <h1>RGC Producer Assist</h1>
         <p class="subtitle" id="event-line">Waiting for broadcast state...</p>
       </div>
+      <div class="producer-share">
+        <div>
+          <div class="label">Helper Link</div>
+          <div class="share-link" id="producer-share-link">Start the broadcast to get the link.</div>
+        </div>
+        <div class="producer-share-row">
+          <input class="producer-name-input" id="producer-name-input" placeholder="Producer name" />
+          <button class="control-button" id="take-camera-control-button">Take Camera Control</button>
+          <button class="control-button warn" id="release-camera-control-button">Release</button>
+        </div>
+        <div class="camera-status" id="camera-control-status">Camera control is open.</div>
+      </div>
       <div class="flag unknown" id="flag-pill">Waiting</div>
     </header>
 
@@ -1618,6 +1755,37 @@ PRODUCER_HTML = r"""<!doctype html>
   <script>
     let selectedCarIdx = null;
     let lastState = null;
+    const PRODUCER_CLIENT_KEY = "rgcProducerClientId";
+    const PRODUCER_NAME_KEY = "rgcProducerName";
+
+    function producerClientId() {
+      let clientId = localStorage.getItem(PRODUCER_CLIENT_KEY);
+      if (!clientId) {
+        clientId = (window.crypto && window.crypto.randomUUID)
+          ? window.crypto.randomUUID()
+          : `producer-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+        localStorage.setItem(PRODUCER_CLIENT_KEY, clientId);
+      }
+      return clientId;
+    }
+
+    function currentProducerName() {
+      const input = document.getElementById("producer-name-input");
+      const name = (input && input.value ? input.value : localStorage.getItem(PRODUCER_NAME_KEY) || "Producer").trim();
+      return name || "Producer";
+    }
+
+    function initProducerIdentity() {
+      producerClientId();
+      const input = document.getElementById("producer-name-input");
+      input.value = localStorage.getItem(PRODUCER_NAME_KEY) || "Producer";
+      input.addEventListener("change", () => {
+        localStorage.setItem(PRODUCER_NAME_KEY, currentProducerName());
+      });
+      input.addEventListener("blur", () => {
+        localStorage.setItem(PRODUCER_NAME_KEY, currentProducerName());
+      });
+    }
 
     function text(id, value) {
       document.getElementById(id).textContent = value;
@@ -1857,6 +2025,44 @@ PRODUCER_HTML = r"""<!doctype html>
       return ["ticker", "scroll", "top"].includes(style) ? "ticker" : "side";
     }
 
+    function renderProducerShare(state) {
+      const link = state.producer_share_url || state.producer_url || window.location.href;
+      text("producer-share-link", link);
+    }
+
+    function cameraControlHeldByOther(state) {
+      const holder = (state || {}).camera_control || {};
+      return Boolean(holder.holder_id && holder.holder_id !== producerClientId());
+    }
+
+    function renderCameraControl(state) {
+      const holder = (state || {}).camera_control || {};
+      const mine = Boolean(holder.holder_id && holder.holder_id === producerClientId());
+      const heldByOther = cameraControlHeldByOther(state);
+      const takeButton = document.getElementById("take-camera-control-button");
+      const releaseButton = document.getElementById("release-camera-control-button");
+      const followButton = document.getElementById("follow-driver-button");
+      const leaderButton = document.getElementById("leader-camera-button");
+      const status = document.getElementById("camera-control-status");
+      if (mine) {
+        status.textContent = `You have camera control as ${holder.holder_name || currentProducerName()}.`;
+        takeButton.textContent = "Camera Control: Mine";
+        takeButton.className = "control-button good";
+      } else if (heldByOther) {
+        status.textContent = `${holder.holder_name || "Another producer"} has camera control.`;
+        takeButton.textContent = "Camera Control Taken";
+        takeButton.className = "control-button danger";
+      } else {
+        status.textContent = "Camera control is open.";
+        takeButton.textContent = "Take Camera Control";
+        takeButton.className = "control-button";
+      }
+      takeButton.disabled = heldByOther || mine;
+      releaseButton.disabled = !mine;
+      followButton.disabled = heldByOther;
+      leaderButton.disabled = heldByOther;
+    }
+
     function renderControlButtons(state) {
       const autoButton = document.getElementById("auto-camera-button");
       const openAiButton = document.getElementById("openai-button");
@@ -1878,10 +2084,15 @@ PRODUCER_HTML = r"""<!doctype html>
 
     async function sendProducerCommand(command, payload = {}) {
       try {
+        const finalPayload = {
+          ...payload,
+          client_id: producerClientId(),
+          producer_name: currentProducerName()
+        };
         await fetch("/producer/command", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ command, payload })
+          body: JSON.stringify({ command, payload: finalPayload })
         });
       } catch (error) {
         console.warn("Producer command failed", command, error);
@@ -1922,9 +2133,17 @@ PRODUCER_HTML = r"""<!doctype html>
       renderStatPanel(state);
       renderPitRoad(state);
       renderProducerFeed(state);
+      renderProducerShare(state);
+      renderCameraControl(state);
       renderControlButtons(state);
     }
 
+    document.getElementById("take-camera-control-button").addEventListener("click", () => {
+      sendProducerCommand("camera_claim");
+    });
+    document.getElementById("release-camera-control-button").addEventListener("click", () => {
+      sendProducerCommand("camera_release");
+    });
     document.getElementById("follow-driver-button").addEventListener("click", () => {
       const driver = selectedDriver(lastState || {});
       if (!driver) return;
@@ -1980,6 +2199,7 @@ PRODUCER_HTML = r"""<!doctype html>
       }
     }
 
+    initProducerIdentity();
     refreshProducerAssist();
     setInterval(refreshProducerAssist, 1000);
   </script>

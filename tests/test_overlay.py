@@ -1,4 +1,10 @@
-from production.overlay import PRODUCER_HTML, OVERLAY_HTML, OverlayEventConfig, OverlayStateBuilder
+from production.overlay import (
+    PRODUCER_HTML,
+    OVERLAY_HTML,
+    OverlayEventConfig,
+    OverlayServer,
+    OverlayStateBuilder,
+)
 
 
 class OverlayTelemetry:
@@ -59,6 +65,27 @@ def test_overlay_state_includes_title_sponsor_track_and_lap():
 def test_brand_graphic_can_show_in_any_session():
     assert "const src = pickRotatingGraphic(graphics || [], 4.5);" in OVERLAY_HTML
     assert "const isRace =" not in OVERLAY_HTML
+
+
+def test_producer_html_includes_camera_control_handoff():
+    assert "take-camera-control-button" in PRODUCER_HTML
+    assert "release-camera-control-button" in PRODUCER_HTML
+    assert "producer-share-link" in PRODUCER_HTML
+
+
+def test_overlay_server_camera_control_claim_release_state():
+    server = OverlayServer()
+
+    ok, message = server.claim_camera_control("producer-a", "Lee")
+    assert ok is True
+    assert "Lee" in message
+    assert server.camera_control_allows("producer-a") is True
+    assert server.camera_control_allows("producer-b") is False
+
+    ok, message = server.release_camera_control("producer-a")
+    assert ok is True
+    assert "released" in message
+    assert server.camera_control_allows("producer-b") is True
 
 
 def test_overlay_leaderboard_sorts_and_formats_zero_based_positions():

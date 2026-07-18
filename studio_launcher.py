@@ -4,6 +4,7 @@ import json
 import os
 import re
 import shutil
+import socket
 import subprocess
 import sys
 import csv
@@ -70,6 +71,7 @@ LAUNCHER_FIELDS = [
     ("OVERLAY_RACE_SPONSOR", ""),
     ("OVERLAY_SERIES_NAME", ""),
     ("OVERLAY_LEADERBOARD_STYLE", "side"),
+    ("OVERLAY_HOST", "127.0.0.1"),
     (
         "OVERLAY_BRAND_GRAPHICS",
         "/assets/rgc_motorsports.png,/assets/autism_awareness.png,/assets/keep_it_real.webp",
@@ -123,6 +125,7 @@ BROADCAST_FIELD_LABELS = {
     "OVERLAY_RACE_SPONSOR": "Race Sponsor",
     "OVERLAY_SERIES_NAME": "Series Name",
     "OVERLAY_LEADERBOARD_STYLE": "Leaderboard Style",
+    "OVERLAY_HOST": "Producer Assist Access",
     "OVERLAY_BRAND_GRAPHICS": "Overlay Brand Graphics",
     "USE_SPONSOR_READS": "Use Sponsor Reads",
     "SPONSOR_READ_NAME": "Spoken Sponsor 1",
@@ -663,6 +666,24 @@ def open_external_link(url):
     webbrowser.open(url)
 
 
+def local_lan_ip():
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+            sock.connect(("8.8.8.8", 80))
+            return sock.getsockname()[0]
+    except OSError:
+        try:
+            return socket.gethostbyname(socket.gethostname())
+        except OSError:
+            return "127.0.0.1"
+
+
+def producer_link_for_host(host):
+    host = str(host or "127.0.0.1").strip()
+    display_host = local_lan_ip() if host in ("0.0.0.0", "::") else host
+    return f"http://{display_host}:8765/producer"
+
+
 def copy_to_clipboard(root, text):
     root.clipboard_clear()
     root.clipboard_append(text)
@@ -1173,6 +1194,14 @@ def run_gui():
                 state="readonly",
             )
             entry_widget.set(existing.get(key, "side") or "side")
+        elif key == "OVERLAY_HOST":
+            entry_widget = ttk.Combobox(
+                settings_frame,
+                values=("127.0.0.1", "0.0.0.0"),
+                width=69,
+                state="readonly",
+            )
+            entry_widget.set(existing.get(key, "127.0.0.1") or "127.0.0.1")
         else:
             entry_widget = entry(settings_frame, width=72)
             entry_widget.insert(0, existing.get(key, ""))
@@ -1186,6 +1215,11 @@ def run_gui():
                 "The app reads Sponsor 1 first, then Sponsor 2, then Sponsor 3 during later sponsor breaks. "
                 "The cause/awareness read is paired with the active sponsor. If this script is blank, "
                 "RGC AI Broadcast Studio writes a natural read from the sponsor name and cause."
+            )
+
+        if key == "OVERLAY_HOST":
+            add_settings_hint(
+                "Use 127.0.0.1 for this PC only. Use 0.0.0.0 when a helper on your local network/VPN needs the Producer Assist link."
             )
 
         if key == "OVERLAY_BRAND_GRAPHICS":
@@ -1234,11 +1268,22 @@ def run_gui():
                 readonlybackground=FIELD_BG,
             )
             producer_url_entry.grid(row=settings_grid_row, column=1, sticky="ew", pady=3)
+
+            def refresh_producer_link(*_):
+                host_widget = entries.get("OVERLAY_HOST")
+                host_value = host_widget.get() if host_widget else "127.0.0.1"
+                producer_url_var.set(producer_link_for_host(host_value))
+
+            if "OVERLAY_HOST" in entries:
+                entries["OVERLAY_HOST"].bind("<<ComboboxSelected>>", refresh_producer_link)
+                entries["OVERLAY_HOST"].bind("<KeyRelease>", refresh_producer_link)
+                refresh_producer_link()
+
             button(
                 settings_frame,
                 text="Copy Producer Link",
                 command=lambda: (
-                    copy_to_clipboard(root, DEFAULT_PRODUCER_URL),
+                    copy_to_clipboard(root, producer_url_var.get()),
                     status.set("Copied Producer Assist control-room link."),
                 ),
                 color="#334b64",
