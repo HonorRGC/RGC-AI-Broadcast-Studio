@@ -186,6 +186,34 @@ class ProducerPitRoadRow:
 
 
 @dataclass
+class ProducerControlRoomItem:
+    id: int = 0
+    kind: str = ""
+    title: str = ""
+    message: str = ""
+    status: str = "open"
+    car_idx: int = 0
+    car_number: str = ""
+    driver_name: str = ""
+    created_by: str = ""
+    created_at: float = 0.0
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "kind": self.kind,
+            "title": self.title,
+            "message": self.message,
+            "status": self.status,
+            "car_idx": self.car_idx,
+            "car_number": self.car_number,
+            "driver_name": self.driver_name,
+            "created_by": self.created_by,
+            "created_at": self.created_at,
+        }
+
+
+@dataclass
 class OverlayState:
     event: OverlayEventConfig = field(default_factory=OverlayEventConfig)
     session_type: str = "Unknown"
@@ -776,6 +804,12 @@ class OverlayServer:
         self.producer_feed = []
         self.max_producer_feed_items = 60
         self.pit_road_rows = []
+        self.producer_notes = []
+        self.incident_reviews = []
+        self.interview_queue = []
+        self.director_suggestions = []
+        self.race_control_audit = []
+        self._next_control_room_item_id = 1
         self.pending_commands = []
         self.control_state = {
             "auto_camera": True,
@@ -1045,6 +1079,128 @@ class OverlayServer:
                 for row in (rows or [])
             ][:12]
 
+    def add_control_room_item(
+        self,
+        collection_name,
+        kind,
+        title="",
+        message="",
+        status="open",
+        car_idx=0,
+        car_number="",
+        driver_name="",
+        created_by="",
+        limit=30,
+    ):
+        item = ProducerControlRoomItem(
+            id=self._next_control_room_item_id,
+            kind=str(kind or ""),
+            title=str(title or ""),
+            message=str(message or ""),
+            status=str(status or "open"),
+            car_idx=self.state_builder.safe_int(car_idx),
+            car_number=str(car_number or ""),
+            driver_name=str(driver_name or ""),
+            created_by=str(created_by or ""),
+            created_at=time.time(),
+        )
+        self._next_control_room_item_id += 1
+        collection = getattr(self, collection_name)
+        collection.insert(0, item)
+        setattr(self, collection_name, collection[:limit])
+        return item
+
+    def add_producer_note(self, message, payload=None):
+        payload = payload or {}
+        with self.lock:
+            return self.add_control_room_item(
+                "producer_notes",
+                "note",
+                "Producer Note",
+                message,
+                status="open",
+                car_idx=payload.get("car_idx", 0),
+                car_number=payload.get("car_number", ""),
+                driver_name=payload.get("driver_name", ""),
+                created_by=payload.get("producer_name", ""),
+                limit=40,
+            )
+
+    def add_incident_review(self, message, payload=None):
+        payload = payload or {}
+        with self.lock:
+            return self.add_control_room_item(
+                "incident_reviews",
+                "incident_review",
+                "Incident Review",
+                message,
+                status="needs review",
+                car_idx=payload.get("car_idx", 0),
+                car_number=payload.get("car_number", ""),
+                driver_name=payload.get("driver_name", ""),
+                created_by=payload.get("producer_name", ""),
+                limit=30,
+            )
+
+    def add_interview_queue_item(self, payload=None):
+        payload = payload or {}
+        with self.lock:
+            return self.add_control_room_item(
+                "interview_queue",
+                "interview",
+                "Interview Queue",
+                payload.get("message", "") or "Queued for interview.",
+                status="queued",
+                car_idx=payload.get("car_idx", 0),
+                car_number=payload.get("car_number", ""),
+                driver_name=payload.get("driver_name", ""),
+                created_by=payload.get("producer_name", ""),
+                limit=20,
+            )
+
+    def add_race_control_audit(self, message, payload=None):
+        payload = payload or {}
+        with self.lock:
+            return self.add_control_room_item(
+                "race_control_audit",
+                "race_control",
+                "Race Control",
+                message,
+                status="sent" if payload.get("ok", True) else "failed",
+                car_idx=payload.get("car_idx", 0),
+                car_number=payload.get("car_number", ""),
+                driver_name=payload.get("driver_name", ""),
+                created_by=payload.get("producer_name", ""),
+                limit=50,
+            )
+
+    def update_control_room_item_status(self, collection_name, item_id, status):
+        item_id = self.state_builder.safe_int(item_id)
+        with self.lock:
+            for item in getattr(self, collection_name):
+                if item.id == item_id:
+                    item.status = str(status or item.status)
+                    return item
+        return None
+
+    def set_director_suggestions(self, rows):
+        with self.lock:
+            self.director_suggestions = [
+                ProducerControlRoomItem(
+                    id=index + 1,
+                    kind=str((row or {}).get("kind", "suggestion")),
+                    title=str((row or {}).get("title", "")),
+                    message=str((row or {}).get("message", "")),
+                    status=str((row or {}).get("status", "suggested")),
+                    car_idx=self.state_builder.safe_int((row or {}).get("car_idx")),
+                    car_number=str((row or {}).get("car_number", "")),
+                    driver_name=str((row or {}).get("driver_name", "")),
+                    created_by="RGC Director",
+                    created_at=time.time(),
+                )
+                for index, row in enumerate((rows or [])[:8])
+            ]
+
     def set_control_state(self, **updates):
         with self.lock:
             self.control_state.update(updates)
@@ -1119,6 +1275,15 @@ class OverlayServer:
             data["producer_url"] = self.producer_url
             data["producer_share_url"] = self.producer_share_url
             data["pit_road"] = [row.to_dict() for row in self.pit_road_rows]
+            data["producer_notes"] = [item.to_dict() for item in self.producer_notes]
+            data["incident_reviews"] = [item.to_dict() for item in self.incident_reviews]
+            data["interview_queue"] = [item.to_dict() for item in self.interview_queue]
+            data["director_suggestions"] = [
+                item.to_dict() for item in self.director_suggestions
+            ]
+            data["race_control_audit"] = [
+                item.to_dict() for item in self.race_control_audit
+            ]
             return data
 
     def make_handler(self):
@@ -1670,6 +1835,80 @@ PRODUCER_HTML = r"""<!doctype html>
       color: #dbe5f4;
     }
 
+    .producer-textarea {
+      width: 100%;
+      min-height: 74px;
+      resize: vertical;
+      border: 1px solid #2e3b4d;
+      border-radius: 12px;
+      background: #0b111b;
+      color: var(--text);
+      padding: 10px 12px;
+      font: inherit;
+      line-height: 1.35;
+      margin-bottom: 10px;
+    }
+
+    .control-room-list {
+      display: grid;
+      gap: 8px;
+      max-height: 245px;
+      overflow: auto;
+    }
+
+    .control-room-item {
+      padding: 9px 10px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.045);
+      border-left: 4px solid var(--blue);
+    }
+
+    .control-room-item.note { border-left-color: var(--green); }
+    .control-room-item.incident_review { border-left-color: var(--yellow); }
+    .control-room-item.interview { border-left-color: #c78cff; }
+    .control-room-item.race_control { border-left-color: var(--red); }
+
+    .control-room-title {
+      color: #fff;
+      font-size: 12px;
+      font-weight: 950;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .control-room-message {
+      margin-top: 3px;
+      color: #dbe5f4;
+      line-height: 1.3;
+    }
+
+    .control-room-meta {
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .mini-button-row {
+      display: flex;
+      gap: 7px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+
+    .mini-button {
+      padding: 7px 9px;
+      border-radius: 9px;
+      font-size: 11px;
+      cursor: pointer;
+      opacity: 1;
+      background: #294b73;
+    }
+
+    .mini-button.warn { background: #8b6a1c; }
+    .mini-button.good { background: #1f7550; }
+
     @keyframes pulse {
       from { filter: brightness(1); }
       to { filter: brightness(1.28); }
@@ -1787,6 +2026,62 @@ PRODUCER_HTML = r"""<!doctype html>
             <button class="control-button danger race-control-button" data-race-action="dq" data-driver-required="true" data-dangerous="true">DQ</button>
             <button class="control-button danger race-control-button" data-race-action="remove" data-driver-required="true" data-dangerous="true">Remove</button>
           </div>
+        </div>
+
+        <div class="panel">
+          <h3>Director Suggestions</h3>
+          <div class="control-room-list" id="director-suggestions-list">
+            <div class="small">Suggested camera/story targets will appear here.</div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h3>Producer Notes</h3>
+          <textarea class="producer-textarea" id="producer-note-input" placeholder="Type a booth note, race-control reminder, or driver story..."></textarea>
+          <div class="button-row">
+            <button class="control-button" id="add-producer-note-button">Add Note</button>
+            <button class="control-button" id="add-driver-note-button">Note Selected Driver</button>
+          </div>
+          <div class="control-room-list" id="producer-notes-list" style="margin-top: 10px;">
+            <div class="small">Manual notes will appear here.</div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h3>Incident Review Queue</h3>
+          <div class="small">Mark wrecks, disputed moments, or no-caution incidents for the booth/admin team.</div>
+          <div class="button-row" style="margin-top: 10px;">
+            <button class="control-button warn" id="add-incident-review-button">Review Selected Driver</button>
+            <button class="control-button warn" id="add-general-incident-button">Add General Review</button>
+          </div>
+          <div class="control-room-list" id="incident-review-list" style="margin-top: 10px;">
+            <div class="small">Incident reviews will appear here.</div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h3>Interview Queue</h3>
+          <div class="small">Manual for now. Discord bot hookup can use this same queue later.</div>
+          <div class="button-row" style="margin-top: 10px;">
+            <button class="control-button" id="queue-interview-button">Queue Selected Driver</button>
+            <button class="control-button" id="queue-top-three-button">Queue Top 3</button>
+          </div>
+          <div class="control-room-list" id="interview-queue-list" style="margin-top: 10px;">
+            <div class="small">Interview queue will appear here.</div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h3>Race Control Audit</h3>
+          <div class="control-room-list" id="race-control-audit-list">
+            <div class="small">Admin commands sent from Producer Assist will appear here.</div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h3>Discord Setup</h3>
+          <div class="small">Prepared for later: bot token, server ID, booth channel, waiting room, and interview channel will live in Studio settings.</div>
+          <div class="small" id="discord-status" style="margin-top: 6px;">Discord bot is not connected yet.</div>
         </div>
 
         <div class="panel" id="featured-panel">
@@ -2078,6 +2373,134 @@ PRODUCER_HTML = r"""<!doctype html>
       }
     }
 
+    function formatClock(timestamp) {
+      const value = Number(timestamp || 0);
+      if (!Number.isFinite(value) || value <= 0) return "";
+      try {
+        return new Date(value * 1000).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", second: "2-digit" });
+      } catch (error) {
+        return "";
+      }
+    }
+
+    function driverLine(item) {
+      if (!item) return "";
+      const number = item.car_number ? `#${item.car_number}` : "";
+      const name = item.driver_name || "";
+      return [number, name].filter(Boolean).join(" ");
+    }
+
+    function renderControlRoomList(listId, items, emptyText, actions = []) {
+      const list = document.getElementById(listId);
+      if (!list) return;
+      list.innerHTML = "";
+      const rows = items || [];
+      if (!rows.length) {
+        list.innerHTML = `<div class="small">${emptyText}</div>`;
+        return;
+      }
+      for (const item of rows) {
+        const node = document.createElement("div");
+        node.className = `control-room-item ${item.kind || "note"}`;
+        const title = document.createElement("div");
+        title.className = "control-room-title";
+        title.textContent = item.title || item.kind || "Control Room";
+        const message = document.createElement("div");
+        message.className = "control-room-message";
+        message.textContent = item.message || "";
+        const meta = document.createElement("div");
+        meta.className = "control-room-meta";
+        const metaPieces = [
+          driverLine(item),
+          item.status ? `Status: ${item.status}` : "",
+          item.created_by ? `By ${item.created_by}` : "",
+          formatClock(item.created_at)
+        ].filter(Boolean);
+        meta.textContent = metaPieces.join(" • ");
+        node.appendChild(title);
+        node.appendChild(message);
+        node.appendChild(meta);
+        const visibleActions = actions.filter(action => action.show ? action.show(item) : true);
+        if (visibleActions.length) {
+          const actionRow = document.createElement("div");
+          actionRow.className = "mini-button-row";
+          for (const action of visibleActions) {
+            const button = document.createElement("button");
+            button.className = `mini-button ${action.className || ""}`;
+            button.textContent = action.label;
+            button.addEventListener("click", () => action.handler(item));
+            actionRow.appendChild(button);
+          }
+          node.appendChild(actionRow);
+        }
+        list.appendChild(node);
+      }
+    }
+
+    function renderControlRoomPanels(state) {
+      renderControlRoomList(
+        "director-suggestions-list",
+        state.director_suggestions || [],
+        "Suggested camera/story targets will appear here."
+      );
+      renderControlRoomList(
+        "producer-notes-list",
+        state.producer_notes || [],
+        "Manual notes will appear here.",
+        [
+          {
+            label: "Done",
+            className: "good",
+            show: item => item.status !== "done",
+            handler: item => sendProducerCommand("producer_note_mark", { item_id: item.id, status: "done" })
+          }
+        ]
+      );
+      renderControlRoomList(
+        "incident-review-list",
+        state.incident_reviews || [],
+        "Incident reviews will appear here.",
+        [
+          {
+            label: "Reviewed",
+            className: "good",
+            show: item => item.status !== "reviewed",
+            handler: item => sendProducerCommand("incident_review_mark", { item_id: item.id, status: "reviewed" })
+          },
+          {
+            label: "No Action",
+            className: "warn",
+            show: item => item.status !== "no action",
+            handler: item => sendProducerCommand("incident_review_mark", { item_id: item.id, status: "no action" })
+          }
+        ]
+      );
+      renderControlRoomList(
+        "interview-queue-list",
+        state.interview_queue || [],
+        "Interview queue will appear here.",
+        [
+          {
+            label: "Interviewed",
+            className: "good",
+            show: item => item.status !== "interviewed",
+            handler: item => sendProducerCommand("interview_mark", { item_id: item.id, status: "interviewed" })
+          },
+          {
+            label: "Skip",
+            className: "warn",
+            show: item => item.status !== "skipped",
+            handler: item => sendProducerCommand("interview_mark", { item_id: item.id, status: "skipped" })
+          }
+        ]
+      );
+      renderControlRoomList(
+        "race-control-audit-list",
+        state.race_control_audit || [],
+        "Admin commands sent from Producer Assist will appear here."
+      );
+    }
+
     function controlEnabled(state, key) {
       return Boolean((state.control_state || {})[key]);
     }
@@ -2234,6 +2657,7 @@ PRODUCER_HTML = r"""<!doctype html>
       renderFeatured(state);
       renderStatPanel(state);
       renderPitRoad(state);
+      renderControlRoomPanels(state);
       renderProducerFeed(state);
       renderProducerShare(state);
       renderCameraControl(state);
@@ -2291,6 +2715,73 @@ PRODUCER_HTML = r"""<!doctype html>
         sendProducerCommand("race_control", payload);
       });
     }
+    document.getElementById("add-producer-note-button").addEventListener("click", () => {
+      const input = document.getElementById("producer-note-input");
+      const message = (input.value || "").trim();
+      if (!message) return;
+      sendProducerCommand("producer_note_add", { message });
+      input.value = "";
+    });
+    document.getElementById("add-driver-note-button").addEventListener("click", () => {
+      const driver = selectedDriver(lastState || {});
+      const input = document.getElementById("producer-note-input");
+      const message = (input.value || "").trim();
+      if (!driver || !message) {
+        alert("Select a driver and type a note first.");
+        return;
+      }
+      sendProducerCommand("producer_note_add", {
+        message,
+        car_idx: driver.car_idx,
+        car_number: driver.car_number || "",
+        driver_name: driver.driver_name || ""
+      });
+      input.value = "";
+    });
+    document.getElementById("add-incident-review-button").addEventListener("click", () => {
+      const driver = selectedDriver(lastState || {});
+      if (!driver) {
+        alert("Select a driver from the leaderboard first.");
+        return;
+      }
+      const message = prompt("Incident review note:", `Review possible incident involving #${driver.car_number || "--"} ${driver.driver_name || ""}.`);
+      if (message === null || !message.trim()) return;
+      sendProducerCommand("incident_review_add", {
+        message: message.trim(),
+        car_idx: driver.car_idx,
+        car_number: driver.car_number || "",
+        driver_name: driver.driver_name || ""
+      });
+    });
+    document.getElementById("add-general-incident-button").addEventListener("click", () => {
+      const message = prompt("General incident review note:", "Review possible incident.");
+      if (message === null || !message.trim()) return;
+      sendProducerCommand("incident_review_add", { message: message.trim() });
+    });
+    document.getElementById("queue-interview-button").addEventListener("click", () => {
+      const driver = selectedDriver(lastState || {});
+      if (!driver) {
+        alert("Select a driver from the leaderboard first.");
+        return;
+      }
+      sendProducerCommand("interview_queue_add", {
+        message: `Queued for post-race interview from ${ordinal(driver.position)}.`,
+        car_idx: driver.car_idx,
+        car_number: driver.car_number || "",
+        driver_name: driver.driver_name || ""
+      });
+    });
+    document.getElementById("queue-top-three-button").addEventListener("click", () => {
+      const leaderboard = (lastState || {}).leaderboard || [];
+      for (const driver of leaderboard.slice(0, 3)) {
+        sendProducerCommand("interview_queue_add", {
+          message: `Top-three interview queue from ${ordinal(driver.position)}.`,
+          car_idx: driver.car_idx,
+          car_number: driver.car_number || "",
+          driver_name: driver.driver_name || ""
+        });
+      }
+    });
     document.getElementById("return-live-button").addEventListener("click", () => {
       sendProducerCommand("replay_return_live");
     });

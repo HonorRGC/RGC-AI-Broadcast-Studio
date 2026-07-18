@@ -1,6 +1,7 @@
 from types import SimpleNamespace
 
 from app import (
+    build_director_suggestions,
     build_featured_driver_image,
     build_producer_pit_road_rows,
     find_brand_graphic_for_name,
@@ -32,6 +33,10 @@ class ProducerOverlaySpy:
         self.events = []
         self.holder_id = ""
         self.holder_name = ""
+        self.producer_notes = []
+        self.incident_reviews = []
+        self.interviews = []
+        self.race_control_audit = []
 
     def set_leaderboard_style(self, style):
         self.styles.append(style)
@@ -59,6 +64,38 @@ class ProducerOverlaySpy:
 
     def camera_control_holder_name(self):
         return self.holder_name or "another producer"
+
+    def add_producer_note(self, message, payload=None):
+        clean_payload = dict(payload or {})
+        clean_payload.pop("message", None)
+        item = SimpleNamespace(message=message, **clean_payload)
+        self.producer_notes.append(item)
+        return item
+
+    def add_incident_review(self, message, payload=None):
+        clean_payload = dict(payload or {})
+        clean_payload.pop("message", None)
+        item = SimpleNamespace(message=message, **clean_payload)
+        self.incident_reviews.append(item)
+        return item
+
+    def add_interview_queue_item(self, payload=None):
+        item = SimpleNamespace(
+            message=(payload or {}).get("message", ""),
+            driver_name=(payload or {}).get("driver_name", ""),
+        )
+        self.interviews.append(item)
+        return item
+
+    def add_race_control_audit(self, message, payload=None):
+        clean_payload = dict(payload or {})
+        clean_payload.pop("message", None)
+        item = SimpleNamespace(message=message, **clean_payload)
+        self.race_control_audit.append(item)
+        return item
+
+    def update_control_room_item_status(self, collection_name, item_id, status):
+        return SimpleNamespace(id=item_id, status=status)
 
 
 class CameraSpy:
@@ -198,6 +235,56 @@ def test_producer_pit_road_rows_include_service_guess_and_tire_age():
     assert rows[0]["position_summary"] == "in P8 / out P5 / +3 on pit road"
 
 
+def test_director_suggestions_prioritize_leader_battle_mover_and_pits():
+    state = {
+        "leaderboard": [
+            {
+                "position": 1,
+                "car_idx": 1,
+                "car_number": "10",
+                "driver_name": "Leader",
+                "interval": "Leader",
+                "position_delta": 0,
+            },
+            {
+                "position": 2,
+                "car_idx": 2,
+                "car_number": "2",
+                "driver_name": "Close Battle",
+                "interval": "+0.42",
+                "position_delta": 1,
+            },
+            {
+                "position": 5,
+                "car_idx": 5,
+                "car_number": "55",
+                "driver_name": "Big Mover",
+                "interval": "+4.2",
+                "position_delta": 7,
+            },
+        ],
+        "pit_road": [
+            {
+                "status": "On pit road",
+                "car_idx": 9,
+                "car_number": "99",
+                "driver_name": "Pit Stop",
+            }
+        ],
+    }
+
+    suggestions = build_director_suggestions(state)
+
+    assert [item["title"] for item in suggestions] == [
+        "Leader Story",
+        "Closest Battle",
+        "Big Mover",
+        "Pit Road",
+    ]
+    assert suggestions[1]["car_idx"] == 2
+    assert suggestions[2]["car_idx"] == 5
+
+
 def test_biggest_movers_graphic_does_not_show_for_routine_position_gain():
     engine = engine_with_movers(mover(24, 3))
 
@@ -293,6 +380,51 @@ def test_manual_camera_follow_is_blocked_when_another_producer_has_control():
 
     assert camera.focused == []
     assert any("held by Lee" in event["message"] for event in overlay.events)
+
+
+def test_producer_control_room_commands_update_overlay_lists():
+    overlay = ProducerOverlaySpy()
+
+    handle_producer_command(
+        "producer_note_add",
+        {
+            "message": "Remind booth to mention stage points.",
+            "car_idx": 34,
+            "driver_name": "T.J. Lee",
+        },
+        overlay,
+        source=SimpleNamespace(),
+        engine=None,
+        booth=None,
+        camera_director=SimpleNamespace(),
+    )
+    handle_producer_command(
+        "incident_review_add",
+        {"message": "Review turn-four contact.", "car_number": "34"},
+        overlay,
+        source=SimpleNamespace(),
+        engine=None,
+        booth=None,
+        camera_director=SimpleNamespace(),
+    )
+    handle_producer_command(
+        "interview_queue_add",
+        {"driver_name": "Race Winner"},
+        overlay,
+        source=SimpleNamespace(),
+        engine=None,
+        booth=None,
+        camera_director=SimpleNamespace(),
+    )
+
+    assert overlay.producer_notes[0].message == "Remind booth to mention stage points."
+    assert overlay.incident_reviews[0].message == "Review turn-four contact."
+    assert overlay.interviews[0].driver_name == "Race Winner"
+    assert [event["title"] for event in overlay.events] == [
+        "Producer Note",
+        "Incident Review",
+        "Interview Queue",
+    ]
 
 
 def test_sponsor_mention_detection_is_message_based():

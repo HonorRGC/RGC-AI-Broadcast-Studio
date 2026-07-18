@@ -97,6 +97,12 @@ LAUNCHER_FIELDS = [
     ("CAUTION_PRESENTATION_GRAPHICS", ""),
     ("POST_RACE_INTERVIEWS_ENABLED", "false"),
     ("RACE_ADMIN_MODE", "false"),
+    ("DISCORD_BOT_ENABLED", "false"),
+    ("DISCORD_BOT_TOKEN", ""),
+    ("DISCORD_GUILD_ID", ""),
+    ("DISCORD_BOOTH_CHANNEL_ID", ""),
+    ("DISCORD_WAITING_CHANNEL_ID", ""),
+    ("DISCORD_INTERVIEW_CHANNEL_ID", ""),
     ("USE_LEAGUE_DRIVER_NOTES", "false"),
     ("LEAGUE_DRIVERS_CSV", "league/drivers.csv"),
     ("LEAGUE_SEASON_STATS_CSV", "league/season.csv"),
@@ -152,6 +158,12 @@ BROADCAST_FIELD_LABELS = {
     "CAUTION_PRESENTATION_GRAPHICS": "Caution Sponsor Graphics",
     "POST_RACE_INTERVIEWS_ENABLED": "Post-Race Interviews",
     "RACE_ADMIN_MODE": "Race Admin Mode",
+    "DISCORD_BOT_ENABLED": "Discord Bot Integration",
+    "DISCORD_BOT_TOKEN": "Discord Bot Token",
+    "DISCORD_GUILD_ID": "Discord Server ID",
+    "DISCORD_BOOTH_CHANNEL_ID": "Booth Voice Channel ID",
+    "DISCORD_WAITING_CHANNEL_ID": "Driver Waiting Channel ID",
+    "DISCORD_INTERVIEW_CHANNEL_ID": "Interview Voice Channel ID",
     "USE_LEAGUE_DRIVER_NOTES": "Use League Driver Notes",
     "LEAGUE_DRIVERS_CSV": "Driver Notes CSV",
     "LEAGUE_SEASON_STATS_CSV": "Season Stats CSV",
@@ -168,6 +180,7 @@ BROADCAST_FIELD_SECTIONS = {
     "USE_NATIONAL_ANTHEM": "Practice / Qualifying / Caution Media",
     "POST_RACE_INTERVIEWS_ENABLED": "Race Flow",
     "RACE_ADMIN_MODE": "Race Control",
+    "DISCORD_BOT_ENABLED": "Discord Interviews - Prepared for Later",
     "USE_LEAGUE_DRIVER_NOTES": "League Data",
 }
 
@@ -1288,7 +1301,7 @@ def run_gui():
                 state="readonly",
             )
             entry_widget.set(existing.get(key, "127.0.0.1") or "127.0.0.1")
-        elif key == "REMOTE_PRODUCER_ENABLED":
+        elif key in ("REMOTE_PRODUCER_ENABLED", "DISCORD_BOT_ENABLED"):
             entry_widget = ttk.Combobox(
                 settings_frame,
                 values=("false", "true"),
@@ -1334,6 +1347,12 @@ def run_gui():
             add_settings_hint(
                 "Hosted-race admin controls for cautions, penalties, wave-bys, EOLs, DQs, and removals. "
                 "Keep this off unless the broadcaster PC is an iRacing admin in the hosted session."
+            )
+
+        if key == "DISCORD_INTERVIEW_CHANNEL_ID":
+            add_settings_hint(
+                "Prepared for a future Discord interview bot. Leave these blank for now. "
+                "Later, each league can add its own bot token, server ID, booth channel, waiting room, and interview channel."
             )
 
         if key == "OVERLAY_BRAND_GRAPHICS":

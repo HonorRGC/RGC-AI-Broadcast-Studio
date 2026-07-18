@@ -80,10 +80,12 @@ def test_broadcast_settings_have_friendly_labels_and_sections():
     assert BROADCAST_FIELD_LABELS["SPONSOR_READ_NAME_3"] == "Spoken Sponsor 3"
     assert BROADCAST_FIELD_LABELS["SPONSOR_READ_MESSAGE"] == "Sponsor Read Script"
     assert BROADCAST_FIELD_LABELS["RACE_ADMIN_MODE"] == "Race Admin Mode"
+    assert BROADCAST_FIELD_LABELS["DISCORD_BOT_ENABLED"] == "Discord Bot Integration"
     assert "STUDIO_VOLUME" not in BROADCAST_FIELD_LABELS
     assert BROADCAST_FIELD_SECTIONS["USE_OPENAI"] == "AI Commentary"
     assert BROADCAST_FIELD_SECTIONS["OVERLAY_EVENT_TITLE"] == "Overlay Branding"
     assert BROADCAST_FIELD_SECTIONS["RACE_ADMIN_MODE"] == "Race Control"
+    assert BROADCAST_FIELD_SECTIONS["DISCORD_BOT_ENABLED"] == "Discord Interviews - Prepared for Later"
 
 
 def test_launcher_version_comparison_helpers():
@@ -141,6 +143,12 @@ def test_launcher_defaults_include_split_league_stats_csvs():
     assert defaults["CAUTION_PRESENTATION_GRAPHICS"] == ""
     assert defaults["POST_RACE_INTERVIEWS_ENABLED"] == "false"
     assert defaults["RACE_ADMIN_MODE"] == "false"
+    assert defaults["DISCORD_BOT_ENABLED"] == "false"
+    assert defaults["DISCORD_BOT_TOKEN"] == ""
+    assert defaults["DISCORD_GUILD_ID"] == ""
+    assert defaults["DISCORD_BOOTH_CHANNEL_ID"] == ""
+    assert defaults["DISCORD_WAITING_CHANNEL_ID"] == ""
+    assert defaults["DISCORD_INTERVIEW_CHANNEL_ID"] == ""
     assert defaults["SIMRACERHUB_SOURCE"] == "https://simracerhub.com"
     assert defaults["SIMRACERHUB_LEAGUE_ID"] == ""
     assert defaults["SIMRACERHUB_SERIES_ID"] == ""

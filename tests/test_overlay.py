@@ -587,6 +587,12 @@ def test_producer_assist_html_reads_overlay_state():
     assert 'id="leaderboard-style-button"' in PRODUCER_HTML
     assert 'sendProducerCommand(style === "ticker" ? "leaderboard_side" : "leaderboard_ticker")' in PRODUCER_HTML
     assert "Move Camera to Driver" in PRODUCER_HTML
+    assert 'id="director-suggestions-list"' in PRODUCER_HTML
+    assert 'id="producer-note-input"' in PRODUCER_HTML
+    assert 'id="incident-review-list"' in PRODUCER_HTML
+    assert 'id="interview-queue-list"' in PRODUCER_HTML
+    assert 'id="race-control-audit-list"' in PRODUCER_HTML
+    assert "Discord Setup" in PRODUCER_HTML
 
 
 def test_overlay_server_exposes_producer_feed_in_state():
@@ -604,6 +610,44 @@ def test_overlay_server_exposes_producer_feed_in_state():
     assert state["producer_feed"][0]["kind"] == "camera"
     assert state["producer_feed"][0]["title"] == "Camera"
     assert state["producer_feed"][0]["message"] == "following car #24 on TV1"
+
+
+def test_overlay_server_exposes_control_room_state():
+    from production.overlay import OverlayServer
+
+    server = OverlayServer()
+    server.add_producer_note(
+        "Watch the restart line.",
+        {"car_idx": 4, "car_number": "24", "driver_name": "Dean Marsh"},
+    )
+    server.add_incident_review(
+        "Review contact in turn two.",
+        {"car_idx": 7, "car_number": "7", "driver_name": "Justin Clark"},
+    )
+    server.add_interview_queue_item(
+        {"car_idx": 1, "car_number": "1", "driver_name": "Race Winner"}
+    )
+    server.add_race_control_audit(
+        "Admin command sent.",
+        {"ok": True, "producer_name": "Race Control"},
+    )
+    server.set_director_suggestions(
+        [
+            {
+                "title": "Closest Battle",
+                "message": "Cars are within half a second.",
+                "car_idx": 7,
+            }
+        ]
+    )
+
+    state = server.current_state_dict()
+
+    assert state["producer_notes"][0]["message"] == "Watch the restart line."
+    assert state["incident_reviews"][0]["status"] == "needs review"
+    assert state["interview_queue"][0]["driver_name"] == "Race Winner"
+    assert state["race_control_audit"][0]["status"] == "sent"
+    assert state["director_suggestions"][0]["title"] == "Closest Battle"
 
 
 def test_overlay_server_queues_producer_commands():

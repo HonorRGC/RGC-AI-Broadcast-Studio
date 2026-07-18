@@ -149,6 +149,9 @@ def run_source(
     while source.is_connected():
         if overlay_server:
             overlay_server.update_from_telemetry(source)
+            overlay_server.set_director_suggestions(
+                build_director_suggestions(overlay_server.current_state_dict())
+            )
             process_producer_commands(
                 overlay_server,
                 source,
@@ -315,6 +318,120 @@ def publish_producer_event(overlay_server, kind="info", title="", message="", sp
         publisher(kind=kind, title=title, message=message, speaker=speaker)
 
 
+def build_director_suggestions(state):
+    leaderboard = list((state or {}).get("leaderboard") or [])
+    pit_road = list((state or {}).get("pit_road") or [])
+    suggestions = []
+
+    if leaderboard:
+        leader = leaderboard[0]
+        suggestions.append(
+            {
+                "kind": "suggestion",
+                "title": "Leader Story",
+                "message": (
+                    f"Check the leader, #{leader.get('car_number', '--')} "
+                    f"{leader.get('driver_name', 'Unknown Driver')}. "
+                    f"Gap shown: {leader.get('interval') or 'leader of the race'}."
+                ),
+                "car_idx": leader.get("car_idx", 0),
+                "car_number": leader.get("car_number", ""),
+                "driver_name": leader.get("driver_name", ""),
+            }
+        )
+
+    closest = closest_battle_suggestion(leaderboard)
+    if closest:
+        suggestions.append(closest)
+
+    movers = sorted(
+        [
+            driver
+            for driver in leaderboard
+            if abs(safe_int(driver.get("position_delta"))) >= 4
+        ],
+        key=lambda driver: abs(safe_int(driver.get("position_delta"))),
+        reverse=True,
+    )
+    if movers:
+        driver = movers[0]
+        delta = safe_int(driver.get("position_delta"))
+        direction = "up" if delta > 0 else "down"
+        suggestions.append(
+            {
+                "kind": "suggestion",
+                "title": "Big Mover",
+                "message": (
+                    f"#{driver.get('car_number', '--')} {driver.get('driver_name', 'Unknown Driver')} "
+                    f"is {direction} {abs(delta)} spots from the start."
+                ),
+                "car_idx": driver.get("car_idx", 0),
+                "car_number": driver.get("car_number", ""),
+                "driver_name": driver.get("driver_name", ""),
+            }
+        )
+
+    pitting = [
+        row
+        for row in pit_road
+        if str(row.get("status", "")).lower() == "on pit road"
+    ]
+    if pitting:
+        row = pitting[0]
+        suggestions.append(
+            {
+                "kind": "suggestion",
+                "title": "Pit Road",
+                "message": (
+                    f"Sarah may want pit-road attention: #{row.get('car_number', '--')} "
+                    f"{row.get('driver_name', 'Unknown Driver')} is on pit road."
+                ),
+                "car_idx": row.get("car_idx", 0),
+                "car_number": row.get("car_number", ""),
+                "driver_name": row.get("driver_name", ""),
+            }
+        )
+
+    return suggestions[:5]
+
+
+def closest_battle_suggestion(leaderboard):
+    candidates = []
+    for driver in leaderboard[1:]:
+        interval = parse_interval_seconds(driver.get("interval"))
+        if interval is None or interval <= 0 or interval > 1.0:
+            continue
+        candidates.append((interval, driver))
+    if not candidates:
+        return None
+    interval, driver = min(candidates, key=lambda item: item[0])
+    return {
+        "kind": "suggestion",
+        "title": "Closest Battle",
+        "message": (
+            f"Closest visible battle is around {ordinal(driver.get('position'))}: "
+            f"#{driver.get('car_number', '--')} {driver.get('driver_name', 'Unknown Driver')} "
+            f"is about {interval:.2f} seconds from the car ahead."
+        ),
+        "car_idx": driver.get("car_idx", 0),
+        "car_number": driver.get("car_number", ""),
+        "driver_name": driver.get("driver_name", ""),
+    }
+
+
+def parse_interval_seconds(value):
+    text = str(value or "").strip().lower()
+    if not text or text in ("leader", "--"):
+        return None
+    if "lap" in text:
+        return None
+    text = text.replace("+", "").replace("s", "").strip()
+    try:
+        return float(text)
+    except ValueError:
+        return None
+
+
 def sync_producer_control_state(
     overlay_server,
     engine,
@@ -455,12 +572,71 @@ def handle_producer_command(
             )
             return
         result = race_control_service.execute(payload.get("action"), payload, source)
+        if hasattr(overlay_server, "add_race_control_audit"):
+            overlay_server.add_race_control_audit(
+                result.message,
+                {**dict(payload or {}), "ok": result.ok},
+            )
         publish_producer_event(
             overlay_server,
             "warning" if (result.dangerous or not result.ok) else "info",
             "Race Control",
             result.message,
         )
+        return
+
+    if command == "producer_note_add":
+        message = str(payload.get("message", "") or "").strip()
+        if message and hasattr(overlay_server, "add_producer_note"):
+            overlay_server.add_producer_note(message, payload)
+            publish_producer_event(overlay_server, "info", "Producer Note", message)
+        return
+
+    if command == "producer_note_mark":
+        marker = getattr(overlay_server, "update_control_room_item_status", None)
+        if marker:
+            marker("producer_notes", payload.get("item_id"), payload.get("status", "done"))
+        return
+
+    if command == "incident_review_add":
+        message = str(payload.get("message", "") or "").strip()
+        if not message:
+            driver_name = str(payload.get("driver_name", "") or "selected driver")
+            message = f"Review possible incident involving {driver_name}."
+        if hasattr(overlay_server, "add_incident_review"):
+            overlay_server.add_incident_review(message, payload)
+            publish_producer_event(overlay_server, "warning", "Incident Review", message)
+        return
+
+    if command == "incident_review_mark":
+        marker = getattr(overlay_server, "update_control_room_item_status", None)
+        if marker:
+            marker(
+                "incident_reviews",
+                payload.get("item_id"),
+                payload.get("status", "reviewed"),
+            )
+        return
+
+    if command == "interview_queue_add":
+        if hasattr(overlay_server, "add_interview_queue_item"):
+            item = overlay_server.add_interview_queue_item(payload)
+            publish_producer_event(
+                overlay_server,
+                "info",
+                "Interview Queue",
+                f"Queued {item.driver_name or 'driver'} for interview.",
+            )
+        return
+
+    if command == "interview_mark":
+        marker = getattr(overlay_server, "update_control_room_item_status", None)
+        if marker:
+            marker(
+                "interview_queue",
+                payload.get("item_id"),
+                payload.get("status", "interviewed"),
+            )
         return
 
     if command in ("leaderboard_side", "leaderboard_ticker"):

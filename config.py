@@ -50,6 +50,15 @@ STAGE_END_LAPS = env_int_list("STAGE_END_LAPS", "")
 RACE_ADMIN_MODE = os.getenv("RACE_ADMIN_MODE", "false").lower() == "true"
 
 
+# Future Discord interview/control-room integration.
+DISCORD_BOT_ENABLED = os.getenv("DISCORD_BOT_ENABLED", "false").lower() == "true"
+DISCORD_BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN", "").strip()
+DISCORD_GUILD_ID = os.getenv("DISCORD_GUILD_ID", "").strip()
+DISCORD_BOOTH_CHANNEL_ID = os.getenv("DISCORD_BOOTH_CHANNEL_ID", "").strip()
+DISCORD_WAITING_CHANNEL_ID = os.getenv("DISCORD_WAITING_CHANNEL_ID", "").strip()
+DISCORD_INTERVIEW_CHANNEL_ID = os.getenv("DISCORD_INTERVIEW_CHANNEL_ID", "").strip()
+
+
 # Overlay graphics
 OVERLAY_EVENT_TITLE = os.getenv("OVERLAY_EVENT_TITLE", "RGC AI Broadcast")
 OVERLAY_RACE_SPONSOR = os.getenv("OVERLAY_RACE_SPONSOR", "")
