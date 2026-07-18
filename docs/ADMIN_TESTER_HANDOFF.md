@@ -56,6 +56,18 @@ http://127.0.0.1:8765/overlay
 
 Add it as a browser source at `1920 x 1080`.
 
+## Remote helper setup
+
+If another trusted admin will help run Producer Assist from a different location, have both PCs install Tailscale:
+
+```text
+https://tailscale.com/download/windows
+```
+
+Both PCs must be signed into the same Tailscale network. In the Studio, set `Producer Assist Access` to `0.0.0.0`, save settings, start the broadcast, then copy/send the Producer Assist Link.
+
+The OBS/Streamlabs overlay should still use `http://127.0.0.1:8765/overlay` on the broadcast PC.
+
 ## Recommended first test
 
 For the first run, use `Start Broadcast`. The overlay, Producer Assist control room, cameras, and replay controls launch together.

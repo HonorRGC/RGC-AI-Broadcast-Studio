@@ -1,8 +1,14 @@
 # Remote Producer Relay
 
-The finished release goal is for a broadcaster to start RGC AI Broadcast Studio, create a Remote Producer link, and send that link to another admin anywhere on the internet. The helper should only need a modern browser.
+This is a future/advanced architecture note. The current recommended remote-helper workflow is Tailscale with Producer Assist Access set to `0.0.0.0`.
 
-## Product goal
+Tailscale Windows download:
+
+<https://tailscale.com/download/windows>
+
+The future relay goal is for a broadcaster to start RGC AI Broadcast Studio, create a Remote Producer link, and send that link to another admin anywhere on the internet. The helper would only need a modern browser.
+
+## Future product goal
 
 - No Python, PowerShell, Tailscale, OBS, or iRacing install required for the helper.
 - No router port forwarding on the broadcast PC.

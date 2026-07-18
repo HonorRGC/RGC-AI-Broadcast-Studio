@@ -31,6 +31,7 @@ PROFILE_DIR = ROOT / "profiles"
 BROADCAST_PROCESS = None
 RGC_DISCORD_URL = "https://discord.gg/Axwwa8CUqt"
 RGC_WEBSITE_URL = "https://www.realisticgamingcrew.com"
+TAILSCALE_WINDOWS_DOWNLOAD_URL = "https://tailscale.com/download/windows"
 DEFAULT_OVERLAY_URL = "http://127.0.0.1:8765/overlay"
 DEFAULT_PRODUCER_URL = "http://127.0.0.1:8765/producer"
 GITHUB_RELEASES_URL = "https://github.com/HonorRGC/RGC-AI-Broadcast-Studio/releases"
@@ -139,8 +140,8 @@ BROADCAST_FIELD_LABELS = {
     "OVERLAY_SERIES_NAME": "Series Name",
     "OVERLAY_LEADERBOARD_STYLE": "Leaderboard Style",
     "OVERLAY_HOST": "Producer Assist Access",
-    "REMOTE_PRODUCER_ENABLED": "Remote Producer Relay",
-    "REMOTE_PRODUCER_RELAY_URL": "Relay Server URL",
+    "REMOTE_PRODUCER_ENABLED": "Future Remote Relay",
+    "REMOTE_PRODUCER_RELAY_URL": "Future Relay Server URL",
     "REMOTE_PRODUCER_SESSION_CODE": "Remote Session Code",
     "REMOTE_PRODUCER_PIN": "Remote Session PIN",
     "OVERLAY_BRAND_GRAPHICS": "Overlay Brand Graphics",
@@ -175,7 +176,7 @@ BROADCAST_FIELD_SECTIONS = {
     "USE_OPENAI": "AI Commentary",
     "USE_ELEVENLABS": "Broadcaster Voices",
     "OVERLAY_EVENT_TITLE": "Overlay Branding",
-    "REMOTE_PRODUCER_ENABLED": "Remote Producer Relay",
+    "REMOTE_PRODUCER_ENABLED": "Future Remote Relay",
     "USE_SPONSOR_READS": "Sponsor Reads",
     "USE_NATIONAL_ANTHEM": "Practice / Qualifying / Caution Media",
     "POST_RACE_INTERVIEWS_ENABLED": "Race Flow",
@@ -440,6 +441,24 @@ def build_health_status(values, root=ROOT, broadcast_running=False):
 
     rows.append(("Overlay", "Ready", DEFAULT_OVERLAY_URL, "ok"))
     rows.append(("Producer Assist", "Ready", DEFAULT_PRODUCER_URL, "ok"))
+    if str(values.get("OVERLAY_HOST", "127.0.0.1") or "").strip() == "0.0.0.0":
+        rows.append(
+            (
+                "Tailscale helper",
+                "Shared",
+                f"Send trusted helpers the Producer Assist link: {producer_link_for_host('0.0.0.0')}",
+                "ok",
+            )
+        )
+    else:
+        rows.append(
+            (
+                "Tailscale helper",
+                "Local only",
+                "Use Producer Assist Access 0.0.0.0 when a trusted helper will connect through Tailscale.",
+                "off",
+            )
+        )
     if setting_enabled(values, "REMOTE_PRODUCER_ENABLED", "false"):
         remote_link = remote_producer_link(values)
         if remote_link:
@@ -557,7 +576,7 @@ def build_first_time_setup_checklist(
         )
 
     health = {name: (state, detail, level) for name, state, detail, level in build_health_status(values, root, broadcast_running)}
-    for name in ("OpenAI", "ElevenLabs", "League Notes", "Practice Music"):
+    for name in ("OpenAI", "ElevenLabs", "League Notes", "Practice Music", "Tailscale helper"):
         state, detail, level = health.get(name, ("Unknown", "Refresh Broadcast Health.", "warn"))
         rows.append((name, state, detail, level))
 
@@ -1334,13 +1353,14 @@ def run_gui():
 
         if key == "OVERLAY_HOST":
             add_settings_hint(
-                "Use 127.0.0.1 for this PC only. Use 0.0.0.0 when a helper on your local network/VPN needs the Producer Assist link."
+                "Use 127.0.0.1 for this PC only. Use 0.0.0.0 when a trusted helper will open Producer Assist through Tailscale. "
+                f"Tailscale download: {TAILSCALE_WINDOWS_DOWNLOAD_URL}"
             )
 
         if key == "REMOTE_PRODUCER_PIN":
             add_settings_hint(
-                "Release-track feature: when an RGC Remote Producer relay is deployed, this creates a normal browser link for distant admins. "
-                "Helpers will not need Python, Tailscale, or router changes. Until the relay server exists, keep using local/Tailscale Producer Assist for testing."
+                "Future/advanced feature: a hosted relay could later create a normal browser link for distant admins. "
+                "For now, use Tailscale with Producer Assist Access set to 0.0.0.0."
             )
 
         if key == "RACE_ADMIN_MODE":
@@ -2446,6 +2466,12 @@ def build_help_tab(
     ).pack(side="left", padx=(0, 8))
     button(
         link_row,
+        text="Open Tailscale Download",
+        command=lambda: open_external_link(TAILSCALE_WINDOWS_DOWNLOAD_URL),
+        color="#334b64",
+    ).pack(side="left", padx=(0, 8))
+    button(
+        link_row,
         text="Open GitHub Releases",
         command=lambda: open_external_link(GITHUB_RELEASES_URL),
         color="#334b64",
@@ -2629,14 +2655,31 @@ def build_help_tab(
         """,
     )
     section(
-        "9. Updates",
+        "9. Remote helper setup with Tailscale",
+        f"""
+        Recommended for trusted league admins in different locations: use Tailscale.
+        Download Tailscale for Windows here: {TAILSCALE_WINDOWS_DOWNLOAD_URL}
+
+        1. Install Tailscale on the broadcast PC.
+        2. Install Tailscale on the helper admin's PC.
+        3. Sign both PCs into the same Tailscale network.
+        4. In Broadcast Settings, set Producer Assist Access to 0.0.0.0 and save settings.
+        5. Start Broadcast.
+        6. Copy the Producer Assist Link and send it only to trusted helpers on your Tailscale network.
+
+        The stream overlay link should still use http://127.0.0.1:8765/overlay inside OBS/Streamlabs on the broadcast PC.
+        Tailscale is only for the private Producer Assist control-room page.
+        """,
+    )
+    section(
+        "10. Updates",
         """
         Use Check for Updates to compare this installed version against the latest GitHub Release.
         Early versions open the release/download page instead of auto-installing. This is safer while the app is still moving quickly.
         """,
     )
     section(
-        "10. Race-night checklist",
+        "11. Race-night checklist",
         """
         Open iRacing, open Streamlabs/OBS, confirm the browser overlay is visible, load your profile,
         refresh Broadcast Health, then start during practice. Run a short smoke test before league night:

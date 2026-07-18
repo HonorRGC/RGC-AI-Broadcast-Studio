@@ -9,6 +9,7 @@ from studio_launcher import (
     DEFAULT_PRODUCER_URL,
     RGC_DISCORD_URL,
     RGC_WEBSITE_URL,
+    TAILSCALE_WINDOWS_DOWNLOAD_URL,
     apply_audio_file_selection,
     build_first_time_setup_checklist,
     build_health_status,
@@ -67,6 +68,7 @@ def test_launcher_loads_simple_env_file(tmp_path):
 def test_launcher_includes_rgc_links():
     assert RGC_DISCORD_URL == "https://discord.gg/Axwwa8CUqt"
     assert RGC_WEBSITE_URL == "https://www.realisticgamingcrew.com"
+    assert TAILSCALE_WINDOWS_DOWNLOAD_URL == "https://tailscale.com/download/windows"
     assert DEFAULT_OVERLAY_URL == "http://127.0.0.1:8765/overlay"
     assert DEFAULT_PRODUCER_URL == "http://127.0.0.1:8765/producer"
 
@@ -188,7 +190,21 @@ def test_launcher_health_reports_missing_ai_keys():
 
     assert row_map["OpenAI"][0] == "Needs key"
     assert row_map["ElevenLabs"][0] == "Needs setup"
+    assert row_map["Tailscale helper"][0] == "Local only"
     assert row_map["Broadcast"][0] == "Stopped"
+
+
+def test_launcher_health_reports_tailscale_helper_access(monkeypatch):
+    import studio_launcher
+
+    monkeypatch.setattr(studio_launcher, "best_remote_helper_ip", lambda: "100.90.80.70")
+    values = launcher_defaults({"OVERLAY_HOST": "0.0.0.0"})
+
+    rows = build_health_status(values, root=Path("C:/RGC"), broadcast_running=False)
+    row_map = {name: (state, detail, level) for name, state, detail, level in rows}
+
+    assert row_map["Tailscale helper"][0] == "Shared"
+    assert "http://100.90.80.70:8765/producer" in row_map["Tailscale helper"][1]
 
 
 def test_first_time_setup_checklist_flags_missing_profile_and_keys(tmp_path):

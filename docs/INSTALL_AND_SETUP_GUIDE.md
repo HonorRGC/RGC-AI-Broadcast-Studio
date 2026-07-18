@@ -285,7 +285,38 @@ Start Broadcast
 
 Then open Producer Assist if you want to switch between AI broadcast and human-broadcaster control during the same running session.
 
-## 12. Recommended race-night flow
+## 12. Remote Producer Assist with Tailscale
+
+Use Tailscale when a trusted admin in another location needs to help with Producer Assist, cameras, notes, incident review, or race control.
+
+Official Tailscale Windows download:
+
+<https://tailscale.com/download/windows>
+
+Setup:
+
+1. Install Tailscale on the broadcast PC.
+2. Install Tailscale on the helper admin's PC.
+3. Sign both PCs into the same Tailscale account/network.
+4. In RGC AI Broadcast Studio, set:
+
+   ```text
+   Producer Assist Access = 0.0.0.0
+   ```
+
+5. Click **Save Settings**.
+6. Start the broadcast.
+7. Copy the **Producer Assist Link** from the launcher or Producer Assist page.
+8. Send that link only to trusted helpers on your Tailscale network.
+
+Important:
+
+- Keep the Streamlabs / OBS overlay link as `http://127.0.0.1:8765/overlay` on the broadcast PC.
+- Tailscale is only for the private Producer Assist control-room link.
+- Do not use normal router port forwarding unless you have a separate security plan.
+- Camera control still uses the take/release button so only one producer moves cameras at a time.
+
+## 13. Recommended race-night flow
 
 1. Open iRacing.
 2. Join the session as a spectator, admin, or driver depending on your workflow.
@@ -298,7 +329,7 @@ Then open Producer Assist if you want to switch between AI broadcast and human-b
 9. Let the studio detect practice, qualifying, and race.
 10. Stop the broadcast after the race or after post-race coverage.
 
-## 13. Updating to a newer build
+## 14. Updating to a newer build
 
 For now, updates are handled by receiving a newer ZIP.
 
@@ -316,7 +347,7 @@ Recommended update method:
 
 Later versions may add a true installer/updater.
 
-## 14. Troubleshooting
+## 15. Troubleshooting
 
 ### The program will not install
 
@@ -350,6 +381,16 @@ Check:
 - browser source size is `1920 x 1080`
 - overlay source is above the iRacing capture
 
+### Helper cannot open Producer Assist
+
+Check:
+
+- Tailscale is installed on both PCs.
+- Both PCs are signed into the same Tailscale network.
+- Broadcast Settings has `Producer Assist Access = 0.0.0.0`.
+- The broadcast is started.
+- The helper is using the Producer Assist link, not the OBS overlay link.
+
 ### Cameras do not move
 
 Check:
@@ -359,7 +400,7 @@ Check:
 - camera mode is enabled in the launcher
 - iRacing replay/camera controls are not blocked by another tool
 
-## 15. Safety notes
+## 16. Safety notes
 
 - Never share API keys publicly.
 - Do not stream your launcher while keys are visible.
