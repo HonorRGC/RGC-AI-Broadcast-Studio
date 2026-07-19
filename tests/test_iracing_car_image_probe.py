@@ -13,6 +13,7 @@ from tools.iracing_car_image_probe import (
     match_driver_label,
     match_render_request_label,
     possible_ids_from_context,
+    read_bytes_shared,
     recent_files,
     scan_text_file_for_patterns,
     scan_recent_render_requests,
@@ -55,6 +56,13 @@ def test_recent_files_filters_by_age(tmp_path):
     files = recent_files(tmp_path, minutes=30, now=now)
 
     assert [item.path for item in files] == [fresh]
+
+
+def test_read_bytes_shared_reads_normal_file(tmp_path):
+    path = tmp_path / "data_1"
+    path.write_bytes(b"abcdef")
+
+    assert read_bytes_shared(path, max_bytes=3) == b"abc"
 
 
 def test_image_like_files_only_keeps_browser_image_extensions(tmp_path):

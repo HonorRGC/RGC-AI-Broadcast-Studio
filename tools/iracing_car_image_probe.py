@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import ctypes
 import hashlib
 import json
 import os
@@ -37,6 +38,7 @@ JPEG_START = b"\xff\xd8\xff"
 JPEG_END = b"\xff\xd9"
 WEBP_START = b"RIFF"
 WEBP_MARKER = b"WEBP"
+WINDOWS_ERROR_HANDLE = -1
 
 
 @dataclass(frozen=True)
@@ -189,10 +191,67 @@ def text_like_files(files, *, max_size=5_000_000):
     ]
 
 
+def read_bytes_shared(path: Path, *, max_bytes: int | None = None):
+    """Read a file even when Chromium/iRacing has it open on Windows."""
+    path = Path(path)
+    try:
+        data = path.read_bytes()
+        return data[:max_bytes] if max_bytes else data
+    except PermissionError:
+        if os.name != "nt":
+            raise
+        return read_bytes_windows_shared(path, max_bytes=max_bytes)
+
+
+def read_bytes_windows_shared(path: Path, *, max_bytes: int | None = None):
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    generic_read = 0x80000000
+    file_share_read = 0x00000001
+    file_share_write = 0x00000002
+    file_share_delete = 0x00000004
+    open_existing = 3
+    file_attribute_normal = 0x00000080
+    file_flag_sequential_scan = 0x08000000
+
+    handle = kernel32.CreateFileW(
+        str(path),
+        generic_read,
+        file_share_read | file_share_write | file_share_delete,
+        None,
+        open_existing,
+        file_attribute_normal | file_flag_sequential_scan,
+        None,
+    )
+    if handle == WINDOWS_ERROR_HANDLE:
+        raise PermissionError(ctypes.get_last_error(), f"Could not open locked file: {path}")
+
+    chunks = []
+    total = 0
+    chunk_size = 1024 * 1024
+    try:
+        while max_bytes is None or total < max_bytes:
+            remaining = chunk_size if max_bytes is None else min(chunk_size, max_bytes - total)
+            if remaining <= 0:
+                break
+            buffer = ctypes.create_string_buffer(remaining)
+            bytes_read = ctypes.c_ulong(0)
+            ok = kernel32.ReadFile(handle, buffer, remaining, ctypes.byref(bytes_read), None)
+            if not ok:
+                raise OSError(ctypes.get_last_error(), f"Could not read locked file: {path}")
+            if bytes_read.value == 0:
+                break
+            chunks.append(buffer.raw[: bytes_read.value])
+            total += bytes_read.value
+    finally:
+        kernel32.CloseHandle(handle)
+
+    return b"".join(chunks)
+
+
 def scan_text_file_for_patterns(path: Path, patterns=None, *, max_bytes=1_000_000):
     patterns = patterns or DEFAULT_PATTERNS
     try:
-        raw = path.read_bytes()[:max_bytes]
+        raw = read_bytes_shared(path, max_bytes=max_bytes)
     except OSError:
         return []
 
@@ -283,7 +342,7 @@ def scan_render_requests(path: Path, *, max_bytes=80_000_000):
         stat = path.stat()
         if stat.st_size > max_bytes:
             return []
-        raw = path.read_bytes()
+        raw = read_bytes_shared(path, max_bytes=max_bytes)
     except OSError:
         return []
     text = raw.decode("utf-8", errors="ignore")
@@ -451,7 +510,7 @@ def extract_images_from_file(path: Path, *, max_bytes=60_000_000):
         stat = path.stat()
         if stat.st_size > max_bytes:
             return []
-        raw = path.read_bytes()
+        raw = read_bytes_shared(path, max_bytes=max_bytes)
     except OSError:
         return []
 
