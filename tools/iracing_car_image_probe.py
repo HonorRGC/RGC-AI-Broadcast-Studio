@@ -312,6 +312,40 @@ def scan_recent_render_requests(recent_by_root):
     return unique_render_requests(requests)
 
 
+def cache_metadata_files(root: Path):
+    candidates = []
+    for directory in (root, root / "Cache", root / "Cache" / "Cache_Data"):
+        if not directory.exists() or not directory.is_dir():
+            continue
+        try:
+            candidates.extend(sorted(directory.glob("data_*")))
+        except OSError:
+            continue
+    unique = []
+    seen = set()
+    for path in candidates:
+        try:
+            if not path.is_file():
+                continue
+        except OSError:
+            continue
+        key = str(path).lower()
+        if key not in seen:
+            unique.append(path)
+            seen.add(key)
+    return unique
+
+
+def scan_render_requests_from_cache_metadata(roots):
+    requests = []
+    for root in roots:
+        if "electron" not in root.label.lower():
+            continue
+        for path in cache_metadata_files(root.path):
+            requests.extend(scan_render_requests(path))
+    return unique_render_requests(requests)
+
+
 def match_render_request_label(request: RenderRequest, live_drivers):
     if request.cust_id:
         label = match_driver_label((request.cust_id,), live_drivers)
@@ -771,7 +805,10 @@ def main():
         else:
             print("  none")
 
-    render_requests = scan_recent_render_requests(recent_by_root)
+    render_requests = unique_render_requests(
+        scan_recent_render_requests(recent_by_root)
+        + scan_render_requests_from_cache_metadata(roots)
+    )
     if render_requests:
         output_dir = Path(args.output_dir)
         render_json, render_csv = write_render_request_manifest(

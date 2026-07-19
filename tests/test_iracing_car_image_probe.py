@@ -3,6 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 
 from tools.iracing_car_image_probe import (
+    ProbeRoot,
+    cache_metadata_files,
     candidate_roots,
     detect_image_type,
     extract_images_from_bytes,
@@ -14,6 +16,7 @@ from tools.iracing_car_image_probe import (
     recent_files,
     scan_text_file_for_patterns,
     scan_recent_render_requests,
+    scan_render_requests_from_cache_metadata,
     write_extracted_images,
     write_manifest,
     write_render_request_manifest,
@@ -212,3 +215,33 @@ def test_write_render_request_manifest_includes_matches(tmp_path):
 
     assert "#34 T.J. Lee" in manifest_json.read_text(encoding="utf-8")
     assert "#34 T.J. Lee" in manifest_csv.read_text(encoding="utf-8")
+
+
+def test_cache_metadata_files_include_chromium_data_files(tmp_path):
+    app_root = tmp_path / "iracing-electron"
+    cache_data = app_root / "Cache" / "Cache_Data"
+    cache_data.mkdir(parents=True)
+    data = cache_data / "data_1"
+    data.write_text("metadata", encoding="utf-8")
+    non_data = cache_data / "f_000001"
+    non_data.write_text("blob", encoding="utf-8")
+
+    assert cache_metadata_files(app_root) == [data]
+
+
+def test_scan_render_requests_from_cache_metadata_ignores_file_age(tmp_path):
+    app_root = tmp_path / "iracing-electron"
+    cache_data = app_root / "Cache" / "Cache_Data"
+    cache_data.mkdir(parents=True)
+    data = cache_data / "data_1"
+    data.write_text(
+        "http://127.0.0.1:32034/pk_car.png?size=2&carPath=stockcars2%5Cmustang2019&number=34",
+        encoding="utf-8",
+    )
+
+    requests = scan_render_requests_from_cache_metadata(
+        [ProbeRoot("iRacing Electron app data", app_root)]
+    )
+
+    assert len(requests) == 1
+    assert requests[0].kind == "car"
