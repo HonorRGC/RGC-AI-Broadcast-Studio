@@ -588,6 +588,7 @@ def test_producer_assist_html_reads_overlay_state():
     assert 'id="detail-start"' in PRODUCER_HTML
     assert 'id="detail-delta"' in PRODUCER_HTML
     assert 'id="detail-led"' in PRODUCER_HTML
+    assert "Possible Incidents" in PRODUCER_HTML
     assert 'id="detail-last-pit"' in PRODUCER_HTML
     assert "formatDelta(driver.position_delta)" in PRODUCER_HTML
     assert "formatPositionDelta(driver.position_delta)" in PRODUCER_HTML

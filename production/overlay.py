@@ -593,7 +593,7 @@ class OverlayStateBuilder:
                 details += f" and {last_pit_lane_seconds:.1f} seconds on pit lane"
             return details + "."
         if incidents >= 4:
-            return f"{name} is carrying {incidents} incident points; keep an eye on the penalty limit."
+            return f"{name} has {incidents} possible incident markers; treat that as a watch item until race control confirms it."
         if fastest_lap:
             return f"Best lap for {name}: {fastest_lap}."
         return f"{name} is running {self.ordinal(display_position)}; check for nearby battles before making the call."
@@ -2067,7 +2067,7 @@ PRODUCER_HTML = r"""<!doctype html>
           <div class="detail-item"><div class="label">Interval</div><div class="value" id="detail-interval">--</div></div>
           <div class="detail-item"><div class="label">Laps Complete</div><div class="value" id="detail-laps">--</div></div>
           <div class="detail-item"><div class="label">Laps Led</div><div class="value" id="detail-led">--</div></div>
-          <div class="detail-item"><div class="label">Incidents</div><div class="value" id="detail-incidents">--</div></div>
+          <div class="detail-item"><div class="label">Possible Incidents</div><div class="value" id="detail-incidents">--</div></div>
           <div class="detail-item"><div class="label">Fastest Lap</div><div class="value" id="detail-fastest">--</div></div>
           <div class="detail-item"><div class="label">Last Pit</div><div class="value" id="detail-last-pit">--</div></div>
           <div class="detail-item"><div class="label">Pit Time</div><div class="value" id="detail-pit-time">--</div></div>
