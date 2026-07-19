@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import argparse
+import csv
 import hashlib
+import json
 import os
 import re
 import time
@@ -54,6 +56,24 @@ class PatternHit:
     path: Path
     pattern: str
     snippet: str
+
+
+@dataclass(frozen=True)
+class ExtractedImage:
+    extension: str
+    data: bytes
+    offset: int
+    context: str = ""
+
+
+@dataclass(frozen=True)
+class WrittenImage:
+    path: Path
+    source_path: Path
+    extension: str
+    offset: int
+    size: int
+    possible_ids: tuple[str, ...] = ()
 
 
 def candidate_roots(home: Path | None = None, env: dict[str, str] | None = None):
@@ -190,6 +210,28 @@ def detect_image_type(raw: bytes):
     return ""
 
 
+def context_near_offset(raw: bytes, offset: int, *, radius=1600):
+    start = max(0, offset - radius)
+    end = min(len(raw), offset + radius)
+    text = raw[start:end].decode("utf-8", errors="ignore")
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def possible_ids_from_context(context: str):
+    if not context:
+        return ()
+    ids = set()
+    for pattern in (
+        r"(?:cust(?:omer)?[_-]?id|user[_-]?id|driver[_-]?id)[\"'=:\s]+(\d{4,10})",
+        r"(?:car[_-]?id|carId)[\"'=:\s]+(\d{1,8})",
+        r"car(?:_num)?_(\d{4,10})",
+        r"helmet_(\d{4,10})",
+        r"suit_(\d{4,10})",
+    ):
+        ids.update(re.findall(pattern, context, flags=re.IGNORECASE))
+    return tuple(sorted(ids))
+
+
 def extract_images_from_bytes(raw: bytes):
     """Return (extension, image bytes) carved from a Chromium cache-like blob."""
     images = []
@@ -203,7 +245,14 @@ def extract_images_from_bytes(raw: bytes):
         if end < 0:
             break
         end += len(PNG_END)
-        images.append(("png", raw[start:end]))
+        images.append(
+            ExtractedImage(
+                extension="png",
+                data=raw[start:end],
+                offset=start,
+                context=context_near_offset(raw, start),
+            )
+        )
         offset = end
 
     offset = 0
@@ -215,7 +264,14 @@ def extract_images_from_bytes(raw: bytes):
         if end < 0:
             break
         end += len(JPEG_END)
-        images.append(("jpg", raw[start:end]))
+        images.append(
+            ExtractedImage(
+                extension="jpg",
+                data=raw[start:end],
+                offset=start,
+                context=context_near_offset(raw, start),
+            )
+        )
         offset = end
 
     offset = 0
@@ -230,7 +286,14 @@ def extract_images_from_bytes(raw: bytes):
         end = start + size
         if end > len(raw):
             break
-        images.append(("webp", raw[start:end]))
+        images.append(
+            ExtractedImage(
+                extension="webp",
+                data=raw[start:end],
+                offset=start,
+                context=context_near_offset(raw, start),
+            )
+        )
         offset = end
 
     return images
@@ -247,7 +310,14 @@ def extract_images_from_file(path: Path, *, max_bytes=60_000_000):
 
     image_type = detect_image_type(raw)
     if image_type:
-        return [(image_type, raw)]
+        return [
+            ExtractedImage(
+                extension=image_type,
+                data=raw,
+                offset=0,
+                context=context_near_offset(raw, 0),
+            )
+        ]
     return extract_images_from_bytes(raw)
 
 
@@ -257,18 +327,127 @@ def write_extracted_images(recent_items, output_dir: Path, *, max_images=100):
     seen_hashes = set()
 
     for item in recent_items:
-        for extension, raw in extract_images_from_file(item.path):
-            digest = hashlib.sha1(raw).hexdigest()[:12]
+        for extracted in extract_images_from_file(item.path):
+            digest = hashlib.sha1(extracted.data).hexdigest()[:12]
             if digest in seen_hashes:
                 continue
             seen_hashes.add(digest)
             safe_stem = re.sub(r"[^A-Za-z0-9_.-]+", "_", item.path.stem)[:40] or "cache"
-            output = output_dir / f"{safe_stem}_{digest}.{extension}"
-            output.write_bytes(raw)
-            written.append(output)
+            output = output_dir / f"{safe_stem}_{digest}.{extracted.extension}"
+            output.write_bytes(extracted.data)
+            written.append(
+                WrittenImage(
+                    path=output,
+                    source_path=item.path,
+                    extension=extracted.extension,
+                    offset=extracted.offset,
+                    size=len(extracted.data),
+                    possible_ids=possible_ids_from_context(extracted.context),
+                )
+            )
             if len(written) >= max_images:
                 return written
     return written
+
+
+def write_manifest(written_images, output_dir: Path, live_drivers=None):
+    live_drivers = live_drivers or {}
+    json_path = output_dir / "manifest.json"
+    csv_path = output_dir / "manifest.csv"
+    rows = []
+    for image in written_images:
+        rows.append(
+            {
+                "image": str(image.path),
+                "source_cache": str(image.source_path),
+                "offset": image.offset,
+                "extension": image.extension,
+                "size": image.size,
+                "possible_ids": ";".join(image.possible_ids),
+                "matched_driver": match_driver_label(image.possible_ids, live_drivers),
+            }
+        )
+
+    json_path.write_text(
+        json.dumps(
+            {
+                "images": rows,
+                "live_drivers": live_driver_rows(live_drivers),
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+    with csv_path.open("w", newline="", encoding="utf-8") as handle:
+        fieldnames = [
+            "image",
+            "source_cache",
+            "offset",
+            "extension",
+            "size",
+            "possible_ids",
+            "matched_driver",
+        ]
+        writer = csv.DictWriter(handle, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(rows)
+    return json_path, csv_path
+
+
+def live_driver_rows(live_drivers):
+    rows = []
+    for car_idx, driver in sorted((live_drivers or {}).items(), key=lambda item: str(item[1].get("number", ""))):
+        rows.append(
+            {
+                "car_idx": car_idx,
+                "number": driver.get("number", ""),
+                "name": driver.get("name", ""),
+                "cust_id": driver.get("cust_id", ""),
+                "car_id": driver.get("car_id", ""),
+                "car_path": driver.get("car_path", ""),
+            }
+        )
+    return rows
+
+
+def match_driver_label(possible_ids, live_drivers):
+    possible = {str(value) for value in possible_ids or () if str(value)}
+    if not possible:
+        return ""
+    for driver in (live_drivers or {}).values():
+        if str(driver.get("cust_id") or "") in possible or str(driver.get("user_id") or "") in possible:
+            return f"#{driver.get('number', '?')} {driver.get('name', 'Unknown')}"
+    return ""
+
+
+def read_live_drivers():
+    try:
+        from broadcaster.telemetry import IRacingTelemetry
+    except Exception as exc:
+        return {}, f"Could not import iRacing telemetry: {exc}"
+
+    telemetry = IRacingTelemetry()
+    if not telemetry.startup():
+        return {}, "Could not connect to iRacing telemetry."
+    return telemetry.get_driver_lookup(), ""
+
+
+def print_live_drivers(live_drivers, error=""):
+    print("\nLive session drivers:")
+    if error:
+        print(f"  {error}")
+        return
+    if not live_drivers:
+        print("  Connected, but no driver list is available yet.")
+        return
+    for driver in live_driver_rows(live_drivers)[:80]:
+        print(
+            "  "
+            f"#{driver['number']} {driver['name']} | "
+            f"cust_id={driver['cust_id']} | "
+            f"car_id={driver['car_id']} | "
+            f"car_path={driver['car_path']}"
+        )
 
 
 def format_size(size):
@@ -340,6 +519,14 @@ def main():
         help="Extract embedded PNG/JPG/WebP files from recent iRacing UI cache files.",
     )
     parser.add_argument(
+        "--session",
+        action="store_true",
+        help=(
+            "Also read the live iRacing driver list so extracted cache images can be "
+            "compared against current driver customer IDs."
+        ),
+    )
+    parser.add_argument(
         "--output-dir",
         default="outputs/iracing_car_image_probe",
         help="Folder for --extract-images output. Default: outputs/iracing_car_image_probe.",
@@ -348,6 +535,10 @@ def main():
 
     now = time.time()
     roots = candidate_roots()
+    live_drivers = {}
+    live_driver_error = ""
+    if args.session:
+        live_drivers, live_driver_error = read_live_drivers()
 
     print("=" * 80)
     print("RGC AI Broadcast Studio - iRacing 3D Car Image Probe")
@@ -363,6 +554,9 @@ def main():
     for root in roots:
         status = "FOUND" if root.path.exists() else "missing"
         print(f"  {root.path} [{status}]")
+
+    if args.session:
+        print_live_drivers(live_drivers, live_driver_error)
 
     for root in roots:
         if not root.path.exists():
@@ -383,10 +577,16 @@ def main():
         extracted = write_extracted_images(all_recent, output_dir)
         print("\nExtracted cache images:")
         if extracted:
-            for path in extracted[:50]:
-                print(f"  {path}")
+            manifest_json, manifest_csv = write_manifest(extracted, output_dir, live_drivers)
+            for image in extracted[:50]:
+                label = match_driver_label(image.possible_ids, live_drivers)
+                suffix = f" | possible match: {label}" if label else ""
+                ids = f" | nearby ids: {', '.join(image.possible_ids)}" if image.possible_ids else ""
+                print(f"  {image.path}{ids}{suffix}")
             if len(extracted) > 50:
                 print(f"  ... {len(extracted) - 50} more extracted image(s)")
+            print(f"  manifest: {manifest_json}")
+            print(f"  manifest CSV: {manifest_csv}")
         else:
             print("  none")
 
