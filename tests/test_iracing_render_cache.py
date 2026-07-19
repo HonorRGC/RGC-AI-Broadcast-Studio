@@ -6,8 +6,10 @@ from production.iracing_render_cache import (
     build_iracing_render_image_url,
     cache_metadata_files,
     find_render_requests_in_text,
+    render_car_path,
     render_request_matches_driver,
     scan_iracing_render_requests,
+    synthesize_render_request_url,
 )
 
 
@@ -98,3 +100,74 @@ def test_build_iracing_render_image_url_uses_matching_render_request(monkeypatch
     assert build_iracing_render_image_url(
         {"number": "34", "car_path": "stockcars2 mustang2019"}
     ).startswith("http://127.0.0.1:32034/pk_car.png")
+
+
+def test_synthesize_render_request_url_uses_local_paint_and_renderer_port(monkeypatch, tmp_path):
+    from production import iracing_render_cache
+    from production.car_paint_locator import CarPaintMatch
+
+    paint = tmp_path / "paint" / "stockcars2 mustang2019" / "car_251830.tga"
+    paint.parent.mkdir(parents=True)
+    paint.write_text("paint", encoding="utf-8")
+    request = find_render_requests_in_text(
+        "http://127.0.0.1:32034/pk_car.png?size=2&carPath=stockcars2%5Cmustang2019&number=2",
+        Path("data_1"),
+    )[0]
+    monkeypatch.setattr(
+        iracing_render_cache,
+        "find_car_paint",
+        lambda driver: CarPaintMatch(path=paint, source="car_path"),
+    )
+
+    url = synthesize_render_request_url(
+        {"number": "34", "cust_id": "251830", "car_path": "stockcars2 mustang2019"},
+        {"number": "34", "cust_id": "251830", "car_path": "stockcars2 mustang2019"},
+        [request],
+    )
+
+    assert url.startswith("http://127.0.0.1:32034/pk_car.png?")
+    assert "size=2" in url
+    assert "carPath=stockcars2%5Cmustang2019" in url
+    assert "carCustPaint=" in url
+    assert "number=34" in url
+
+
+def test_build_iracing_render_image_url_can_synthesize_when_exact_driver_was_not_cached(monkeypatch, tmp_path):
+    from production import iracing_render_cache
+    from production.car_paint_locator import CarPaintMatch
+
+    paint = tmp_path / "paint" / "stockcars2 mustang2019" / "car_251830.tga"
+    paint.parent.mkdir(parents=True)
+    paint.write_text("paint", encoding="utf-8")
+    renderer_request = find_render_requests_in_text(
+        "http://127.0.0.1:32034/pk_car.png?size=2&carPath=stockcars2%5Cmustang2019&number=2",
+        Path("data_1"),
+    )[0]
+    monkeypatch.setattr(
+        iracing_render_cache,
+        "cached_render_requests",
+        lambda now=None: [renderer_request],
+    )
+    monkeypatch.setattr(
+        iracing_render_cache,
+        "find_car_paint",
+        lambda driver: CarPaintMatch(path=paint, source="car_path"),
+    )
+
+    url = build_iracing_render_image_url(
+        {"number": "34", "cust_id": "251830", "car_path": "stockcars2 mustang2019"}
+    )
+
+    assert url.startswith("http://127.0.0.1:32034/pk_car.png?")
+    assert "carCustPaint=" in url
+    assert "number=34" in url
+
+
+def test_render_car_path_preserves_explicit_slash_path():
+    assert (
+        render_car_path(
+            {"car_path": "stockcars2\\mustang2019"},
+            {"car_path": "stockcars2 mustang2019"},
+        )
+        == "stockcars2\\mustang2019"
+    )

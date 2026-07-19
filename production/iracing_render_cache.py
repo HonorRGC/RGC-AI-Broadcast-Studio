@@ -6,7 +6,9 @@ import re
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from urllib.parse import parse_qs, unquote, urlparse
+from urllib.parse import parse_qs, quote_plus, unquote, urlparse
+
+from production.car_paint_locator import find_car_paint
 
 
 WINDOWS_ERROR_HANDLE = -1
@@ -51,7 +53,7 @@ def build_iracing_render_image_url(driver_info, *, now=None):
         if request.kind == "car" and render_request_matches_driver(request, driver)
     ]
     if not matches:
-        return ""
+        return synthesize_render_request_url(driver_info, driver, cached_render_requests(now=now))
 
     return best_render_request(matches, driver).url
 
@@ -195,6 +197,63 @@ def best_render_request(matches, driver):
         return value
 
     return max(matches, key=score)
+
+
+def synthesize_render_request_url(driver_info, driver, requests):
+    """Build a fresh local iRacing car-render URL from live driver data.
+
+    iRacing's Electron UI starts a local renderer and calls /pk_car.png with
+    the car folder, local custom-paint path, and car number. If we have seen
+    any recent pk_car request, we can reuse that local host/port and ask it to
+    render the current driver's paint directly instead of waiting for the UI to
+    request that exact driver first.
+    """
+    base_url = render_server_base_url(requests)
+    if not base_url or not driver["car_path"]:
+        return ""
+
+    paint = find_car_paint(driver_info)
+    if not paint:
+        return ""
+
+    query = {
+        "size": "2",
+        "carPath": render_car_path(driver_info, driver),
+        "carCustPaint": str(paint.path),
+    }
+    if driver["number"]:
+        query["number"] = driver["number"]
+    return f"{base_url}/pk_car.png?{encode_render_query(query)}"
+
+
+def render_server_base_url(requests):
+    for request in requests or []:
+        if request.kind != "car":
+            continue
+        parsed = urlparse(request.url)
+        if parsed.scheme and parsed.netloc:
+            return f"{parsed.scheme}://{parsed.netloc}"
+    return ""
+
+
+def render_car_path(driver_info, driver):
+    raw = str(driver_info.get("car_path") or driver_info.get("CarPath") or "").strip().strip("\\/")
+    if "\\" in raw or "/" in raw:
+        return raw.replace("/", "\\")
+
+    cleaned = driver["car_path"]
+    if " " in cleaned:
+        first, rest = cleaned.split(" ", 1)
+        return f"{first}\\{rest}"
+    return cleaned
+
+
+def encode_render_query(query):
+    return "&".join(
+        f"{quote_plus(str(key))}={quote_plus(str(value))}"
+        for key, value in query.items()
+        if value not in (None, "")
+    )
 
 
 def normalize_driver_info(driver_info):
