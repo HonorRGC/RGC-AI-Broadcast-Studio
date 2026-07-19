@@ -1752,6 +1752,22 @@ PRODUCER_HTML = r"""<!doctype html>
       gap: 8px;
     }
 
+    .camera-shot-row {
+      display: grid;
+      grid-template-columns: minmax(150px, 0.8fr) repeat(4, minmax(0, 1fr));
+      gap: 8px;
+      grid-column: 1 / -1;
+    }
+
+    .camera-shot-select {
+      border: 1px solid #2e3b4d;
+      border-radius: 12px;
+      background: #0b111b;
+      color: var(--text);
+      padding: 9px 10px;
+      font-weight: 900;
+    }
+
     button {
       border: 0;
       border-radius: 12px;
@@ -1983,6 +1999,7 @@ PRODUCER_HTML = r"""<!doctype html>
       .driver-detail { grid-template-columns: 1fr; }
       .detail-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .button-row.control-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .camera-shot-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .rows { overflow: visible; }
     }
   </style>
@@ -2055,6 +2072,19 @@ PRODUCER_HTML = r"""<!doctype html>
         <div class="button-row primary-actions">
           <button class="control-button" id="follow-driver-button">Move Camera to Driver</button>
           <button class="control-button" id="leader-camera-button">Back to Leader</button>
+        </div>
+
+        <div class="camera-shot-row">
+          <select class="camera-shot-select" id="manual-camera-group-select" title="Manual camera shot">
+            <option value="TV1">TV1</option>
+            <option value="Far Chase">Far Chase</option>
+            <option value="Rear Chase">Rear Chase</option>
+            <option value="Cockpit">Cockpit</option>
+          </select>
+          <button class="control-button camera-shot-button" data-camera-group="TV1">TV1</button>
+          <button class="control-button camera-shot-button" data-camera-group="Far Chase">Far Chase</button>
+          <button class="control-button camera-shot-button" data-camera-group="Rear Chase">Rear Chase</button>
+          <button class="control-button camera-shot-button" data-camera-group="Cockpit">Cockpit</button>
         </div>
 
         <div class="panel priority" id="featured-panel">
@@ -2601,6 +2631,23 @@ PRODUCER_HTML = r"""<!doctype html>
       return Boolean(holder.holder_id && holder.holder_id !== producerClientId());
     }
 
+    function selectedManualCameraGroup() {
+      const select = document.getElementById("manual-camera-group-select");
+      return select ? select.value || "TV1" : "TV1";
+    }
+
+    function sendManualDriverCamera(groupName = null) {
+      const driver = selectedDriver(lastState || {});
+      if (!driver) return;
+      const group = groupName || selectedManualCameraGroup();
+      const select = document.getElementById("manual-camera-group-select");
+      if (select) select.value = group;
+      sendProducerCommand("camera_follow_driver", {
+        car_idx: driver.car_idx,
+        group_name: group
+      });
+    }
+
     function renderCameraControl(state) {
       const holder = (state || {}).camera_control || {};
       const mine = Boolean(holder.holder_id && holder.holder_id === producerClientId());
@@ -2609,6 +2656,7 @@ PRODUCER_HTML = r"""<!doctype html>
       const releaseButton = document.getElementById("release-camera-control-button");
       const followButton = document.getElementById("follow-driver-button");
       const leaderButton = document.getElementById("leader-camera-button");
+      const cameraShotSelect = document.getElementById("manual-camera-group-select");
       const status = document.getElementById("camera-control-status");
       if (mine) {
         status.textContent = `You have camera control as ${holder.holder_name || currentProducerName()}.`;
@@ -2627,6 +2675,10 @@ PRODUCER_HTML = r"""<!doctype html>
       releaseButton.disabled = !mine;
       followButton.disabled = heldByOther;
       leaderButton.disabled = heldByOther;
+      if (cameraShotSelect) cameraShotSelect.disabled = heldByOther;
+      for (const button of document.querySelectorAll(".camera-shot-button")) {
+        button.disabled = heldByOther;
+      }
     }
 
     function renderControlButtons(state) {
@@ -2750,13 +2802,13 @@ PRODUCER_HTML = r"""<!doctype html>
       sendProducerCommand("camera_release");
     });
     document.getElementById("follow-driver-button").addEventListener("click", () => {
-      const driver = selectedDriver(lastState || {});
-      if (!driver) return;
-      sendProducerCommand("camera_follow_driver", {
-        car_idx: driver.car_idx,
-        group_name: "TV1"
-      });
+      sendManualDriverCamera();
     });
+    for (const button of document.querySelectorAll(".camera-shot-button")) {
+      button.addEventListener("click", () => {
+        sendManualDriverCamera(button.dataset.cameraGroup || "TV1");
+      });
+    }
     document.getElementById("leader-camera-button").addEventListener("click", () => {
       sendProducerCommand("camera_follow_leader");
     });
