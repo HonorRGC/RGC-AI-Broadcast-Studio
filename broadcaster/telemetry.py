@@ -3,10 +3,17 @@ import time
 
 import irsdk
 
+from production.car_speed_tracker import (
+    CarSpeedTracker,
+    parse_track_length_miles,
+    speed_value_to_mph,
+)
+
 
 class IRacingTelemetry:
     def __init__(self):
         self.ir = irsdk.IRSDK()
+        self.car_speed_tracker = CarSpeedTracker()
 
     def startup(self):
         return self.ir.startup()
@@ -417,6 +424,25 @@ class IRacingTelemetry:
 
     def get_car_idx_lap_dist_pct(self):
         return self.safe_array_read("CarIdxLapDistPct")
+
+    def get_car_speed_mph_lookup(self):
+        for key in ("CarIdxSpeed", "CarIdxSpeedMPS", "CarIdxTrackSpeed"):
+            speeds = self.safe_array_read(key)
+            if speeds:
+                return {
+                    car_idx: mph
+                    for car_idx, value in enumerate(speeds)
+                    if (mph := speed_value_to_mph(value)) > 0
+                }
+
+        return self.car_speed_tracker.update(
+            session_time=self.get_session_time(),
+            lap_dist_pct_by_car_idx=self.get_car_idx_lap_dist_pct(),
+            results=self.get_results(),
+            track_length_miles=parse_track_length_miles(
+                self.get_track_info().get("track_length")
+            ),
+        )
 
     def get_car_idx_est_time(self):
         return self.safe_array_read("CarIdxEstTime")

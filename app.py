@@ -1608,6 +1608,7 @@ def update_overlay_focused_driver(
     position_info = featured_driver_position_info(
         car_idx,
         source.get_results(),
+        source_speed_lookup(source),
     )
     overlay_server.show_featured_driver(
         car_number=car_number,
@@ -1623,7 +1624,17 @@ def update_overlay_focused_driver(
     )
 
 
-def featured_driver_position_info(car_idx, results):
+def source_speed_lookup(source):
+    getter = getattr(source, "get_car_speed_mph_lookup", None)
+    if not callable(getter):
+        return {}
+    try:
+        return getter() or {}
+    except Exception:
+        return {}
+
+
+def featured_driver_position_info(car_idx, results, speed_lookup=None):
     ordered_results = sorted_results_by_position(results)
     for car in ordered_results:
         if car.get("CarIdx") != car_idx:
@@ -1644,7 +1655,7 @@ def featured_driver_position_info(car_idx, results):
                 else 0
             ),
             "interval": featured_driver_interval(car, ordered_results, results),
-            "speed": featured_driver_speed(car),
+            "speed": featured_driver_speed(car, speed_lookup, car_idx),
         }
     return {
         "position": 0,
@@ -1691,7 +1702,12 @@ def featured_driver_interval(car, ordered_results, all_results):
     return ""
 
 
-def featured_driver_speed(car):
+def featured_driver_speed(car, speed_lookup=None, car_idx=None):
+    if speed_lookup and car_idx in speed_lookup:
+        mph = safe_float(speed_lookup.get(car_idx), 0.0)
+        if mph > 0:
+            return f"{mph:.0f} mph"
+
     for key in ("Speed", "speed", "TrackSpeed", "track_speed", "MPH", "mph"):
         if key not in car or car.get(key) in (None, ""):
             continue

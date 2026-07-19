@@ -634,3 +634,16 @@ def test_featured_driver_position_info_includes_gap_to_next_and_speed():
     assert info["position_delta"] == 5
     assert info["interval"] == "+0.45 to next"
     assert info["speed"] == "175 mph"
+
+
+def test_featured_driver_position_info_prefers_live_speed_lookup():
+    info = featured_driver_position_info(
+        34,
+        [
+            {"CarIdx": 7, "Position": 1, "Time": 0.0},
+            {"CarIdx": 34, "Position": 2, "Time": 0.5, "Speed": 72.0},
+        ],
+        {34: 183.4},
+    )
+
+    assert info["speed"] == "183 mph"
