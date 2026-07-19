@@ -231,7 +231,8 @@ def synthesize_render_request_url(driver_info, driver, requests):
     render the current driver's paint directly instead of waiting for the UI to
     request that exact driver first.
     """
-    base_url = render_server_base_url(requests)
+    template = best_render_template(requests, driver)
+    base_url = render_server_base_url([template] if template else requests)
     if not base_url or not driver["car_path"]:
         return ""
 
@@ -239,14 +240,58 @@ def synthesize_render_request_url(driver_info, driver, requests):
     if not paint:
         return ""
 
-    query = {
-        "size": "2",
-        "carPath": render_car_path(driver_info, driver),
-        "carCustPaint": str(paint.path),
-    }
+    query = render_template_query(template)
+    query.update(
+        {
+            "size": "2",
+            "carPath": render_car_path(driver_info, driver),
+            "carCustPaint": str(paint.path),
+            "noDecal": query.get("noDecal", "false"),
+            "noNum": query.get("noNum", "false"),
+        }
+    )
+    if "carCfg" not in query:
+        query["carCfg"] = "-1"
+    if "carCfgSubDir" not in query:
+        query["carCfgSubDir"] = ""
+    if not query.get("carCfgCustomPaintExt"):
+        query["carCfgCustomPaintExt"] = Path(paint.path).suffix.lstrip(".")
     if driver["number"]:
         query["number"] = driver["number"]
     return f"{base_url}/pk_car.png?{encode_render_query(query)}"
+
+
+def best_render_template(requests, driver):
+    car_requests = [request for request in requests or [] if request.kind == "car"]
+    if not car_requests:
+        return None
+    driver_car_path = normalize_car_path(driver["car_path"])
+
+    def score(request):
+        value = 0
+        request_car_path = normalize_car_path(request.car_path)
+        if driver_car_path and request_car_path:
+            if request_car_path == driver_car_path:
+                value += 20
+            elif request_car_path in driver_car_path or driver_car_path in request_car_path:
+                value += 12
+        if request.size == "2":
+            value += 3
+        elif request.size == "0":
+            value += 1
+        return value
+
+    return max(car_requests, key=score)
+
+
+def render_template_query(template):
+    if not template:
+        return {}
+    parsed = urlparse(template.url)
+    return {
+        key: str(values[0]) if values else ""
+        for key, values in parse_qs(parsed.query, keep_blank_values=True).items()
+    }
 
 
 def render_server_base_url(requests):
@@ -275,7 +320,7 @@ def encode_render_query(query):
     return "&".join(
         f"{quote_plus(str(key))}={quote_plus(str(value))}"
         for key, value in query.items()
-        if value not in (None, "")
+        if value is not None
     )
 
 

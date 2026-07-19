@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from production.iracing_render_cache import (
+    best_render_template,
     build_iracing_render_image_url,
     cache_metadata_files,
     find_render_requests_in_text,
@@ -129,7 +130,15 @@ def test_synthesize_render_request_url_uses_local_paint_and_renderer_port(monkey
     paint.parent.mkdir(parents=True)
     paint.write_text("paint", encoding="utf-8")
     request = find_render_requests_in_text(
-        "http://127.0.0.1:32034/pk_car.png?size=2&carPath=stockcars2%5Cmustang2019&number=2",
+        (
+            "http://127.0.0.1:32034/pk_car.png?"
+            "size=0&carPath=stockcars2%5Cmustang2019&noDecal=false&"
+            "carCustPaint=%5Bobject+Object%5D&carPat=19&"
+            "carCol=16002d%2C00a1ff%2Cf70077&licCol=&sponsors=0%2C0&"
+            "noNum=false&number=2&numSlnt=3&numPat=48&"
+            "numCol=ffffff%2Cf70077%2C16002d&carRimType=3&"
+            "carRimCol=16002d&carCfg=-1&carCfgSubDir=&carCfgCustomPaintExt="
+        ),
         Path("data_1"),
     )[0]
     monkeypatch.setattr(
@@ -148,6 +157,10 @@ def test_synthesize_render_request_url_uses_local_paint_and_renderer_port(monkey
     assert "size=2" in url
     assert "carPath=stockcars2%5Cmustang2019" in url
     assert "carCustPaint=" in url
+    assert "carPat=19" in url
+    assert "numPat=48" in url
+    assert "carRimType=3" in url
+    assert "carCfgCustomPaintExt=tga" in url
     assert "number=34" in url
 
 
@@ -180,6 +193,23 @@ def test_build_iracing_render_image_url_can_synthesize_when_exact_driver_was_not
     assert url.startswith("http://127.0.0.1:32034/pk_car.png?")
     assert "carCustPaint=" in url
     assert "number=34" in url
+
+
+def test_best_render_template_prefers_same_car_path_over_first_available(tmp_path):
+    requests = find_render_requests_in_text(
+        (
+            "http://127.0.0.1:32034/pk_car.png?size=2&carPath=rt2000&number=64 "
+            "http://127.0.0.1:32034/pk_car.png?size=0&carPath=stockcars2%5Cmustang2019&number="
+        ),
+        tmp_path / "data_1",
+    )
+
+    template = best_render_template(
+        requests,
+        {"number": "34", "cust_id": "251830", "car_path": "stockcars2 mustang2019"},
+    )
+
+    assert template.car_path == "stockcars2 mustang2019"
 
 
 def test_render_car_path_preserves_explicit_slash_path():
