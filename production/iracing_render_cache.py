@@ -275,6 +275,7 @@ def best_render_template(requests, driver):
                 value += 20
             elif request_car_path in driver_car_path or driver_car_path in request_car_path:
                 value += 12
+            value += car_path_family_score(request.car_path, driver["car_path"])
         if request.size == "2":
             value += 3
         elif request.size == "0":
@@ -282,6 +283,39 @@ def best_render_template(requests, driver):
         return value
 
     return max(car_requests, key=score)
+
+
+def car_path_family_score(request_car_path, driver_car_path):
+    request_tokens = car_path_tokens(request_car_path)
+    driver_tokens = car_path_tokens(driver_car_path)
+    if not request_tokens or not driver_tokens:
+        return 0
+
+    value = 0
+    if request_tokens[0] == driver_tokens[0]:
+        value += 7
+    if len(request_tokens) > 1 and len(driver_tokens) > 1:
+        if manufacturer_token(request_tokens[1]) == manufacturer_token(driver_tokens[1]):
+            value += 5
+    return value
+
+
+def car_path_tokens(value):
+    return re.findall(r"[a-z0-9]+", str(value or "").lower())
+
+
+def manufacturer_token(value):
+    text = str(value or "").lower()
+    for token in ("chevy", "ford", "toyota", "camaro", "mustang", "camry"):
+        if token in text:
+            if token == "camaro":
+                return "chevy"
+            if token == "camry":
+                return "toyota"
+            if token == "mustang":
+                return "ford"
+            return token
+    return text[:6]
 
 
 def render_template_query(template):

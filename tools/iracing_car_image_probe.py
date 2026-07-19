@@ -740,6 +740,41 @@ def print_render_requests(render_requests, live_drivers):
         print(f"  ... {len(render_requests) - 80} more render request(s)")
 
 
+def print_live_driver_render_diagnostics(live_drivers, render_requests):
+    if not live_drivers:
+        return
+    try:
+        from production.car_paint_locator import find_car_paint
+        from production.iracing_render_cache import normalize_driver_info, synthesize_render_request_url
+    except Exception as exc:
+        print(f"\nLive driver render diagnostics unavailable: {exc}")
+        return
+
+    print("\nLive driver render diagnostics:")
+    printed = 0
+    for driver in live_drivers.values():
+        if str(driver.get("cust_id", "")).startswith("-"):
+            continue
+        normalized = normalize_driver_info(driver)
+        paint = find_car_paint(driver)
+        render_url = synthesize_render_request_url(driver, normalized, render_requests)
+        paint_text = str(paint.path) if paint else "MISSING local paint"
+        status = "READY" if render_url else "NO RENDER URL"
+        print(
+            "  "
+            f"#{driver.get('number', '?')} {driver.get('name', 'Unknown')} | "
+            f"{driver.get('car_path', '?')} | paint={paint_text} | {status}"
+        )
+        if render_url:
+            print(f"    {render_url}")
+        printed += 1
+        if printed >= 40:
+            remaining = max(len(live_drivers) - printed, 0)
+            if remaining:
+                print(f"  ... {remaining} more live driver(s)")
+            break
+
+
 def format_size(size):
     units = ["B", "KB", "MB", "GB"]
     value = float(size)
@@ -894,6 +929,8 @@ def main():
         print_render_requests(render_requests, live_drivers)
         print(f"  render request manifest: {render_json}")
         print(f"  render request CSV: {render_csv}")
+    if args.session:
+        print_live_driver_render_diagnostics(live_drivers, render_requests)
 
     print("\n" + "-" * 80)
     print(f"Recent image files found: {total_images}")
