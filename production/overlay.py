@@ -3015,9 +3015,9 @@ OVERLAY_HTML = r"""<!doctype html>
       min-width: 0;
       max-width: none;
       height: 84px;
-      display: flex;
+      display: grid;
+      grid-template-columns: minmax(190px, 300px) minmax(360px, 1fr) minmax(320px, 430px);
       align-items: center;
-      justify-content: space-between;
       gap: 26px;
       padding: 0 26px;
       background:
@@ -3071,8 +3071,26 @@ OVERLAY_HTML = r"""<!doctype html>
     .title-side {
       display: flex;
       align-items: center;
-      gap: 18px;
       min-width: 0;
+    }
+
+    .title-center {
+      min-width: 0;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+    }
+
+    .title-right {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      justify-content: center;
+      gap: 7px;
     }
 
     .brand-graphic {
@@ -3097,6 +3115,26 @@ OVERLAY_HTML = r"""<!doctype html>
     .sponsor {
       color: #fff;
       font-weight: 700;
+      font-size: 13px;
+      padding-right: 4px;
+      opacity: 0.88;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .track-pill {
+      color: #ffffff;
+      font-weight: 950;
+      font-size: 17px;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      padding: 7px 14px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
     }
 
     .leaderboard {
@@ -3813,14 +3851,14 @@ OVERLAY_HTML = r"""<!doctype html>
   <section id="top-banner" class="top-banner">
     <div class="title-side">
       <img id="brand-graphic" class="brand-graphic hidden" alt="" />
-      <div>
-        <div id="event-title" class="event-title">RGC AI Broadcast</div>
-        <div id="series" class="event-meta"></div>
-      </div>
     </div>
-    <div class="event-meta">
-      <span id="track">Waiting for iRacing</span>
+    <div class="title-center">
+      <div id="event-title" class="event-title">RGC AI Broadcast</div>
+      <div id="series" class="event-meta"></div>
+    </div>
+    <div class="event-meta title-right">
       <span id="sponsor" class="sponsor"></span>
+      <span id="track" class="track-pill">Waiting for iRacing</span>
     </div>
     <div id="session-center" class="session-center hidden"></div>
   </section>

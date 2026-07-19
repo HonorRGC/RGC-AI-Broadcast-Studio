@@ -521,6 +521,10 @@ def test_overlay_title_branding_is_larger_and_more_polished():
     assert "max-width: 235px" in OVERLAY_HTML
     assert "max-height: 72px" in OVERLAY_HTML
     assert "height: 84px" in OVERLAY_HTML
+    assert "grid-template-columns: minmax(190px, 300px) minmax(360px, 1fr) minmax(320px, 430px)" in OVERLAY_HTML
+    assert 'class="title-center"' in OVERLAY_HTML
+    assert 'class="event-meta title-right"' in OVERLAY_HTML
+    assert 'class="track-pill"' in OVERLAY_HTML
     assert ".leaderboard-series" in OVERLAY_HTML
 
 
