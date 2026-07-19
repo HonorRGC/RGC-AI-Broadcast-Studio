@@ -13,6 +13,7 @@ from production.car_paint_locator import find_car_paint
 
 WINDOWS_ERROR_HANDLE = -1
 CACHE_TTL_SECONDS = 20
+MAX_CACHE_BLOB_FILES = 250
 
 
 @dataclass(frozen=True)
@@ -102,6 +103,7 @@ def cache_metadata_files(root: Path):
             continue
         try:
             candidates.extend(sorted(directory.glob("data_*")))
+            candidates.extend(recent_cache_blobs(directory))
         except OSError:
             continue
 
@@ -118,6 +120,27 @@ def cache_metadata_files(root: Path):
             unique.append(path)
             seen.add(key)
     return unique
+
+
+def recent_cache_blobs(directory: Path, *, limit=MAX_CACHE_BLOB_FILES):
+    """Return recent Chromium cache blobs that may contain loading-screen render URLs.
+
+    iRacing's loading UI can place useful /pk_car.png references in Chromium
+    cache blobs rather than only the data_* metadata files. Keep this bounded
+    so runtime scans do not walk every old cache object.
+    """
+    try:
+        files = [path for path in directory.glob("f_*") if path.is_file()]
+    except OSError:
+        return []
+    return sorted(files, key=lambda path: safe_mtime(path), reverse=True)[:limit]
+
+
+def safe_mtime(path: Path):
+    try:
+        return path.stat().st_mtime
+    except OSError:
+        return 0.0
 
 
 def scan_render_requests(path: Path, *, max_bytes=80_000_000):

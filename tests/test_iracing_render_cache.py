@@ -6,6 +6,7 @@ from production.iracing_render_cache import (
     build_iracing_render_image_url,
     cache_metadata_files,
     find_render_requests_in_text,
+    recent_cache_blobs,
     render_car_path,
     render_request_matches_driver,
     scan_iracing_render_requests,
@@ -68,7 +69,25 @@ def test_cache_metadata_files_finds_chromium_data_files(tmp_path):
     data.write_text("cache", encoding="utf-8")
     (cache_data / "f_000001").write_text("blob", encoding="utf-8")
 
-    assert cache_metadata_files(tmp_path / "iracing-electron") == [data]
+    assert cache_metadata_files(tmp_path / "iracing-electron") == [
+        data,
+        cache_data / "f_000001",
+    ]
+
+
+def test_recent_cache_blobs_are_bounded_and_newest_first(tmp_path):
+    old_blob = tmp_path / "f_old"
+    new_blob = tmp_path / "f_new"
+    old_blob.write_text("old", encoding="utf-8")
+    new_blob.write_text("new", encoding="utf-8")
+    old_time = 1000
+    new_time = 2000
+    import os
+
+    os.utime(old_blob, (old_time, old_time))
+    os.utime(new_blob, (new_time, new_time))
+
+    assert recent_cache_blobs(tmp_path, limit=1) == [new_blob]
 
 
 def test_scan_iracing_render_requests_reads_metadata_files(tmp_path):

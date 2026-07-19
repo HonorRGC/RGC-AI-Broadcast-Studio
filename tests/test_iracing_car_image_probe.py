@@ -231,10 +231,10 @@ def test_cache_metadata_files_include_chromium_data_files(tmp_path):
     cache_data.mkdir(parents=True)
     data = cache_data / "data_1"
     data.write_text("metadata", encoding="utf-8")
-    non_data = cache_data / "f_000001"
-    non_data.write_text("blob", encoding="utf-8")
+    blob = cache_data / "f_000001"
+    blob.write_text("blob", encoding="utf-8")
 
-    assert cache_metadata_files(app_root) == [data]
+    assert cache_metadata_files(app_root) == [data, blob]
 
 
 def test_scan_render_requests_from_cache_metadata_ignores_file_age(tmp_path):

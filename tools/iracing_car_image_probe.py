@@ -378,6 +378,7 @@ def cache_metadata_files(root: Path):
             continue
         try:
             candidates.extend(sorted(directory.glob("data_*")))
+            candidates.extend(recent_cache_blobs(directory))
         except OSError:
             continue
     unique = []
@@ -393,6 +394,21 @@ def cache_metadata_files(root: Path):
             unique.append(path)
             seen.add(key)
     return unique
+
+
+def recent_cache_blobs(directory: Path, *, limit=250):
+    try:
+        files = [path for path in directory.glob("f_*") if path.is_file()]
+    except OSError:
+        return []
+    return sorted(files, key=lambda path: safe_stat_mtime(path), reverse=True)[:limit]
+
+
+def safe_stat_mtime(path: Path):
+    try:
+        return path.stat().st_mtime
+    except OSError:
+        return 0.0
 
 
 def scan_render_requests_from_cache_metadata(roots):
