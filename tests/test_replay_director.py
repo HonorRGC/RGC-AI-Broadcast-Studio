@@ -299,6 +299,21 @@ def test_green_flag_interrupts_replay_and_returns_live_immediately():
     assert camera.replay_active is False
 
 
+def test_manual_replay_control_suspends_automated_replay():
+    telemetry = ReplayTelemetry()
+    camera = ReplayCamera()
+    director = ReplayDirector(mode="auto")
+    director.begin_manual_control()
+
+    decision = director.update(telemetry, camera)
+    item_decision = director.handle_item(incident_item(), telemetry, camera)
+
+    assert decision.status == "held"
+    assert item_decision.status == "held"
+    assert telemetry.live_returns == 0
+    assert camera.focuses == []
+
+
 def test_observe_mode_never_seeks_or_changes_live_replay_state():
     telemetry = ReplayTelemetry()
     camera = ReplayCamera()

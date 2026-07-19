@@ -150,9 +150,14 @@ class IRacingTelemetry:
         except Exception:
             return False
 
-    def set_replay_speed(self, speed=1):
+    def set_replay_speed(self, speed=1, slow_motion=False):
         try:
-            return bool(self.ir.replay_set_play_speed(speed))
+            return bool(self.ir.replay_set_play_speed(speed, bool(slow_motion)))
+        except TypeError:
+            try:
+                return bool(self.ir.replay_set_play_speed(speed))
+            except Exception:
+                return False
         except Exception:
             return False
 

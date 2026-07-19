@@ -43,6 +43,7 @@ class ReplayDirector:
 
     def reset(self):
         self.active = False
+        self.manual_control_active = False
         self.car_idx = None
         self.session_num = 0
         self.replay_session_time = 0.0
@@ -57,12 +58,26 @@ class ReplayDirector:
         self.audio_played_for_story_ids = set()
         self.played_story_ids = set()
 
+    def begin_manual_control(self):
+        """Suspend automated replay decisions while Producer Assist has control."""
+        self.active = False
+        self.manual_control_active = True
+        self.angle_started_at = None
+        self.camera_engaged = False
+        self.stop_replay_audio()
+
+    def end_manual_control(self):
+        self.manual_control_active = False
+
     def handle_item(self, item, telemetry, camera_director):
         if self.is_live_interrupt(item):
             self.stop_replay_audio()
             if self.active:
                 return self.finish(telemetry, camera_director, interrupted=True)
             return ReplayDecision("ignored", "No replay is active.")
+
+        if self.manual_control_active:
+            return ReplayDecision("held", "Manual producer replay control is active.")
 
         if self.mode == "off" or getattr(item, "category", "") != "incident":
             return ReplayDecision("ignored", "This item does not request a replay.")
@@ -150,6 +165,9 @@ class ReplayDirector:
         )
 
     def update(self, telemetry, camera_director):
+        if self.manual_control_active:
+            return ReplayDecision("held", "Manual producer replay control is active.")
+
         if not self.active:
             return ReplayDecision("ignored", "No replay is active.")
 

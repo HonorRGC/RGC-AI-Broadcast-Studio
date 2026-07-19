@@ -125,6 +125,22 @@ class CameraSpy:
         )
 
 
+class ReplaySpy:
+    def __init__(self):
+        self.manual_started = 0
+        self.manual_ended = 0
+        self.reset_count = 0
+
+    def begin_manual_control(self):
+        self.manual_started += 1
+
+    def end_manual_control(self):
+        self.manual_ended += 1
+
+    def reset(self):
+        self.reset_count += 1
+
+
 class RaceIntelligenceStub:
     def __init__(self, movers):
         self.movers = movers
@@ -347,6 +363,7 @@ def test_producer_command_can_switch_leaderboard_style():
 def test_manual_camera_follow_disables_auto_camera():
     overlay = ProducerOverlaySpy()
     camera = CameraSpy()
+    replay = ReplaySpy()
 
     handle_producer_command(
         "camera_follow_driver",
@@ -356,10 +373,12 @@ def test_manual_camera_follow_disables_auto_camera():
         engine=None,
         booth=None,
         camera_director=camera,
+        replay_director=replay,
     )
 
     assert camera.mode == "off"
     assert camera.focused == [(7, "TV1")]
+    assert replay.manual_started == 1
     assert any("Auto camera disabled" in event["message"] for event in overlay.events)
 
 
@@ -385,7 +404,16 @@ def test_manual_camera_follow_is_blocked_when_another_producer_has_control():
 def test_producer_replay_speed_controls_source():
     overlay = ProducerOverlaySpy()
     speeds = []
-    source = SimpleNamespace(set_replay_speed=lambda speed: speeds.append(speed) or True)
+    slow_flags = []
+
+    def set_replay_speed(speed, slow_motion=False):
+        speeds.append(speed)
+        slow_flags.append(slow_motion)
+        return True
+
+    source = SimpleNamespace(set_replay_speed=set_replay_speed)
+    camera = CameraSpy()
+    replay = ReplaySpy()
 
     handle_producer_command(
         "replay_reverse",
@@ -394,7 +422,8 @@ def test_producer_replay_speed_controls_source():
         source=source,
         engine=None,
         booth=None,
-        camera_director=SimpleNamespace(),
+        camera_director=camera,
+        replay_director=replay,
     )
     handle_producer_command(
         "replay_slow_motion",
@@ -403,7 +432,8 @@ def test_producer_replay_speed_controls_source():
         source=source,
         engine=None,
         booth=None,
-        camera_director=SimpleNamespace(),
+        camera_director=camera,
+        replay_director=replay,
     )
     handle_producer_command(
         "replay_fast_play",
@@ -412,11 +442,40 @@ def test_producer_replay_speed_controls_source():
         source=source,
         engine=None,
         booth=None,
-        camera_director=SimpleNamespace(),
+        camera_director=camera,
+        replay_director=replay,
     )
 
-    assert speeds == [-1, 0.5, 2]
+    assert speeds == [-1, 1, 2]
+    assert slow_flags == [False, True, False]
+    assert replay.manual_started == 3
     assert all(event["kind"] == "replay" for event in overlay.events)
+
+
+def test_replay_return_live_restores_auto_camera_and_leader():
+    overlay = ProducerOverlaySpy()
+    camera = CameraSpy()
+    camera.mode = "off"
+    camera.replay_active = True
+    replay = ReplaySpy()
+    source = SimpleNamespace(return_to_live=lambda: True)
+
+    handle_producer_command(
+        "replay_return_live",
+        {},
+        overlay,
+        source=source,
+        engine=None,
+        booth=None,
+        camera_director=camera,
+        replay_director=replay,
+    )
+
+    assert camera.mode == "auto"
+    assert camera.replay_active is False
+    assert camera.focused == [("leader", "home")]
+    assert replay.reset_count == 1
+    assert replay.manual_ended == 1
 
 
 def test_producer_control_room_commands_update_overlay_lists():

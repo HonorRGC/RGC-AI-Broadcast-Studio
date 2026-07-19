@@ -2097,9 +2097,11 @@ PRODUCER_HTML = r"""<!doctype html>
 
         <div class="replay-deck-row">
           <button class="control-button warn" id="rewind-button">Reverse</button>
+          <button class="control-button warn" id="jump-back-button">Jump Back 10s</button>
           <button class="control-button warn" id="slow-motion-button">Slow Motion</button>
           <button class="control-button warn" id="pause-replay-button">Pause</button>
           <button class="control-button warn" id="play-replay-button">Play</button>
+          <button class="control-button warn" id="jump-forward-button">Jump Forward 10s</button>
           <button class="control-button warn" id="fast-forward-button">Fast Forward</button>
           <button class="control-button" id="return-live-button">Return Live</button>
         </div>
@@ -2937,11 +2939,17 @@ PRODUCER_HTML = r"""<!doctype html>
     document.getElementById("rewind-button").addEventListener("click", () => {
       sendProducerCommand("replay_reverse");
     });
+    document.getElementById("jump-back-button").addEventListener("click", () => {
+      sendProducerCommand("replay_rewind", { seconds: 10 });
+    });
     document.getElementById("slow-motion-button").addEventListener("click", () => {
       sendProducerCommand("replay_slow_motion");
     });
     document.getElementById("fast-forward-button").addEventListener("click", () => {
       sendProducerCommand("replay_fast_play");
+    });
+    document.getElementById("jump-forward-button").addEventListener("click", () => {
+      sendProducerCommand("replay_fast_forward", { seconds: 10 });
     });
 
     async function refreshProducerAssist() {

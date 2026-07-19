@@ -617,6 +617,16 @@ def handle_producer_command(
             if claimer
             else (True, "Camera control claimed.")
         )
+        auto_was_on = getattr(camera_director, "mode", "") == "auto"
+        if ok:
+            begin_producer_camera_takeover(camera_director, replay_director)
+            if auto_was_on:
+                publish_producer_event(
+                    overlay_server,
+                    "warning",
+                    "Producer Control",
+                    "Auto camera disabled for manual producer control.",
+                )
         publish_producer_event(
             overlay_server,
             "info" if ok else "warning",
@@ -759,6 +769,8 @@ def handle_producer_command(
         return
 
     if command == "auto_camera_on":
+        if replay_director:
+            replay_director.end_manual_control()
         camera_director.mode = "auto"
         publish_producer_event(overlay_server, "info", "Producer Control", "Auto camera enabled.")
         return
@@ -813,12 +825,8 @@ def handle_producer_command(
     if command == "camera_follow_driver":
         if not ensure_camera_control(overlay_server, payload):
             return
-        car_idx = safe_int(payload.get("car_idx"), default=None)
-        if car_idx is None:
-            publish_producer_event(overlay_server, "warning", "Camera", "No driver was selected.")
-            return
         auto_was_on = getattr(camera_director, "mode", "") == "auto"
-        camera_director.mode = "off"
+        begin_producer_camera_takeover(camera_director, replay_director)
         if auto_was_on:
             publish_producer_event(
                 overlay_server,
@@ -826,6 +834,10 @@ def handle_producer_command(
                 "Producer Control",
                 "Auto camera disabled for manual driver focus.",
             )
+        car_idx = safe_int(payload.get("car_idx"), default=None)
+        if car_idx is None:
+            publish_producer_event(overlay_server, "warning", "Camera", "No driver was selected.")
+            return
         decision = camera_director.manual_focus_car(
             car_idx,
             str(payload.get("group_name", "") or camera_director.preferred_group),
@@ -838,7 +850,7 @@ def handle_producer_command(
         if not ensure_camera_control(overlay_server, payload):
             return
         auto_was_on = getattr(camera_director, "mode", "") == "auto"
-        camera_director.mode = "off"
+        begin_producer_camera_takeover(camera_director, replay_director)
         if auto_was_on:
             publish_producer_event(
                 overlay_server,
@@ -854,7 +866,11 @@ def handle_producer_command(
         returned = bool(getattr(source, "return_to_live", lambda: False)())
         if replay_director:
             replay_director.reset()
+            replay_director.end_manual_control()
         camera_director.replay_active = False
+        camera_director.mode = "auto"
+        camera_decision = camera_director.manual_focus_home(source)
+        report_camera_decision(camera_decision, overlay_server)
         message = "Returned to live racing." if returned else "Return-to-live command was not accepted."
         publish_producer_event(
             overlay_server,
@@ -865,6 +881,9 @@ def handle_producer_command(
         return
 
     if command in ("replay_pause", "replay_play"):
+        if not ensure_camera_control(overlay_server, payload):
+            return
+        begin_producer_camera_takeover(camera_director, replay_director)
         method_name = "pause_replay" if command == "replay_pause" else "play_replay"
         accepted = bool(getattr(source, method_name, lambda: False)())
         label = "Pause replay" if command == "replay_pause" else "Play replay"
@@ -882,22 +901,30 @@ def handle_producer_command(
         "replay_normal_speed",
         "replay_fast_play",
     ):
-        speed_by_command = {
-            "replay_reverse": -1,
-            "replay_slow_motion": 0.5,
-            "replay_normal_speed": 1,
-            "replay_fast_play": 2,
-        }
+        if not ensure_camera_control(overlay_server, payload):
+            return
+        begin_producer_camera_takeover(camera_director, replay_director)
         label_by_command = {
             "replay_reverse": "Reverse replay",
             "replay_slow_motion": "Slow motion",
             "replay_normal_speed": "Normal replay speed",
             "replay_fast_play": "Fast-forward playback",
         }
-        speed = speed_by_command[command]
+        if command == "replay_reverse":
+            speed = next_replay_speed(source, direction="reverse")
+        elif command == "replay_fast_play":
+            speed = next_replay_speed(source, direction="fast")
+        else:
+            speed = 1
+        slow_motion = command == "replay_slow_motion"
+        if command == "replay_normal_speed":
+            set_producer_replay_speed(source, 1)
         setter = getattr(source, "set_replay_speed", None)
         if setter:
-            accepted = bool(setter(speed))
+            try:
+                accepted = bool(setter(speed, slow_motion))
+            except TypeError:
+                accepted = bool(setter(0.5 if slow_motion else speed))
         else:
             fallback = "play_replay" if speed == 1 else ""
             accepted = bool(getattr(source, fallback, lambda: False)())
@@ -913,6 +940,9 @@ def handle_producer_command(
         return
 
     if command in ("replay_rewind", "replay_fast_forward"):
+        if not ensure_camera_control(overlay_server, payload):
+            return
+        begin_producer_camera_takeover(camera_director, replay_director)
         seconds = max(1, min(60, safe_int(payload.get("seconds"), default=10) or 10))
         frames = seconds * 60
         method_name = (
@@ -969,6 +999,35 @@ def ensure_camera_control(overlay_server, payload):
             )
             return False
     return True
+
+
+def begin_producer_camera_takeover(camera_director, replay_director=None):
+    """Give Producer Assist manual authority until Return Live/Auto Camera is used."""
+    if camera_director:
+        camera_director.mode = "off"
+        camera_director.replay_active = False
+        camera_director.return_home_at = None
+        if hasattr(camera_director, "clear_sequence"):
+            camera_director.clear_sequence()
+    if replay_director and hasattr(replay_director, "begin_manual_control"):
+        replay_director.begin_manual_control()
+
+
+def set_producer_replay_speed(source, speed):
+    try:
+        setattr(source, "_producer_replay_speed", int(speed))
+    except Exception:
+        return
+
+
+def next_replay_speed(source, direction):
+    current = safe_int(getattr(source, "_producer_replay_speed", 1), default=1)
+    if direction == "reverse":
+        speed = -1 if current >= 0 else max(current * 2, -8)
+    else:
+        speed = 2 if current <= 1 else min(current * 2, 8)
+    set_producer_replay_speed(source, speed)
+    return speed
 
 
 def report_anthem_decision(decision, overlay_server=None):
