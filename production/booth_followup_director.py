@@ -31,6 +31,10 @@ class BoothFollowupDirector:
         if str(getattr(item, "speaker", "") or "") != "lead":
             return None
 
+        laps_remaining = self.safe_int(getattr(race_state, "laps_remaining", 0))
+        if 0 < laps_remaining <= 10:
+            return None
+
         story_type = str(getattr(item, "story_type", "") or "")
         if story_type not in self.FOLLOW_UP_TYPES:
             return None

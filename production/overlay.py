@@ -3469,7 +3469,7 @@ OVERLAY_HTML = r"""<!doctype html>
     body.leaderboard-ticker-mode .special-presentation.race_sponsors {
       left: auto;
       right: 48px;
-      top: 174px;
+      top: 232px;
       width: 264px;
       height: 264px;
     }
@@ -3482,6 +3482,10 @@ OVERLAY_HTML = r"""<!doctype html>
       height: 104px;
       justify-content: flex-end;
       animation: sponsorBugPop 0.22s ease-out;
+    }
+
+    body.leaderboard-ticker-mode .special-presentation.sponsor_bug {
+      top: 224px;
     }
 
     .special-presentation.hidden {

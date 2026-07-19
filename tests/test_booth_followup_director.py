@@ -37,3 +37,24 @@ def test_followup_does_not_follow_jeff_with_jeff():
     )
 
     assert director.follow_up_for(item) is None
+
+
+def test_followup_stays_quiet_in_closing_laps():
+    director = BoothFollowupDirector()
+    item = EditorialItem(
+        story_type="battle_for_lead",
+        headline="Lead battle",
+        summary="The leader has pressure late.",
+        priority=10,
+        speaker="lead",
+        driver_name="T.J. Lee",
+        car_number="34",
+    )
+
+    assert (
+        director.follow_up_for(
+            item,
+            race_state=SimpleNamespace(laps_remaining=5),
+        )
+        is None
+    )
