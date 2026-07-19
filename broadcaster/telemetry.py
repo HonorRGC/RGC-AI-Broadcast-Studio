@@ -150,6 +150,12 @@ class IRacingTelemetry:
         except Exception:
             return False
 
+    def set_replay_speed(self, speed=1):
+        try:
+            return bool(self.ir.replay_set_play_speed(speed))
+        except Exception:
+            return False
+
     def send_admin_chat_command(self, command):
         """Prepare or send a hosted-session admin command.
 

@@ -382,6 +382,43 @@ def test_manual_camera_follow_is_blocked_when_another_producer_has_control():
     assert any("held by Lee" in event["message"] for event in overlay.events)
 
 
+def test_producer_replay_speed_controls_source():
+    overlay = ProducerOverlaySpy()
+    speeds = []
+    source = SimpleNamespace(set_replay_speed=lambda speed: speeds.append(speed) or True)
+
+    handle_producer_command(
+        "replay_reverse",
+        {},
+        overlay,
+        source=source,
+        engine=None,
+        booth=None,
+        camera_director=SimpleNamespace(),
+    )
+    handle_producer_command(
+        "replay_slow_motion",
+        {},
+        overlay,
+        source=source,
+        engine=None,
+        booth=None,
+        camera_director=SimpleNamespace(),
+    )
+    handle_producer_command(
+        "replay_fast_play",
+        {},
+        overlay,
+        source=source,
+        engine=None,
+        booth=None,
+        camera_director=SimpleNamespace(),
+    )
+
+    assert speeds == [-1, 0.5, 2]
+    assert all(event["kind"] == "replay" for event in overlay.events)
+
+
 def test_producer_control_room_commands_update_overlay_lists():
     overlay = ProducerOverlaySpy()
 

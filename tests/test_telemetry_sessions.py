@@ -144,6 +144,10 @@ def test_live_telemetry_detects_replay_delay_and_returns_to_live_edge():
     assert telemetry.ir.replay_commands[-2][0] == "position"
     assert telemetry.ir.replay_commands[-2][2] == -300
     assert telemetry.ir.replay_commands[-1] == ("speed", 1)
+    assert telemetry.set_replay_speed(-1) is True
+    assert telemetry.ir.replay_commands[-1] == ("speed", -1)
+    assert telemetry.set_replay_speed(0.5) is True
+    assert telemetry.ir.replay_commands[-1] == ("speed", 0.5)
 
 
 def test_live_telemetry_open_chat_mode_copies_command_and_opens_chat(monkeypatch):

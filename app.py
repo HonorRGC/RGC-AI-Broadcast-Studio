@@ -843,6 +843,42 @@ def handle_producer_command(
         )
         return
 
+    if command in (
+        "replay_reverse",
+        "replay_slow_motion",
+        "replay_normal_speed",
+        "replay_fast_play",
+    ):
+        speed_by_command = {
+            "replay_reverse": -1,
+            "replay_slow_motion": 0.5,
+            "replay_normal_speed": 1,
+            "replay_fast_play": 2,
+        }
+        label_by_command = {
+            "replay_reverse": "Reverse replay",
+            "replay_slow_motion": "Slow motion",
+            "replay_normal_speed": "Normal replay speed",
+            "replay_fast_play": "Fast-forward playback",
+        }
+        speed = speed_by_command[command]
+        setter = getattr(source, "set_replay_speed", None)
+        if setter:
+            accepted = bool(setter(speed))
+        else:
+            fallback = "play_replay" if speed == 1 else ""
+            accepted = bool(getattr(source, fallback, lambda: False)())
+        label = label_by_command[command]
+        publish_producer_event(
+            overlay_server,
+            "replay" if accepted else "warning",
+            "Replay Control",
+            f"{label} command sent."
+            if accepted
+            else f"{label} command was not accepted by iRacing.",
+        )
+        return
+
     if command in ("replay_rewind", "replay_fast_forward"):
         seconds = max(1, min(60, safe_int(payload.get("seconds"), default=10) or 10))
         frames = seconds * 60

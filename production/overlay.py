@@ -1768,6 +1768,13 @@ PRODUCER_HTML = r"""<!doctype html>
       font-weight: 900;
     }
 
+    .replay-deck-row {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 8px;
+      grid-column: 1 / -1;
+    }
+
     button {
       border: 0;
       border-radius: 12px;
@@ -2000,6 +2007,7 @@ PRODUCER_HTML = r"""<!doctype html>
       .detail-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .button-row.control-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .camera-shot-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .replay-deck-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .rows { overflow: visible; }
     }
   </style>
@@ -2087,6 +2095,15 @@ PRODUCER_HTML = r"""<!doctype html>
           <button class="control-button camera-shot-button" data-camera-group="Cockpit">Cockpit</button>
         </div>
 
+        <div class="replay-deck-row">
+          <button class="control-button warn" id="rewind-button">Reverse</button>
+          <button class="control-button warn" id="slow-motion-button">Slow Motion</button>
+          <button class="control-button warn" id="pause-replay-button">Pause</button>
+          <button class="control-button warn" id="play-replay-button">Play</button>
+          <button class="control-button warn" id="fast-forward-button">Fast Forward</button>
+          <button class="control-button" id="return-live-button">Return Live</button>
+        </div>
+
         <div class="panel priority" id="featured-panel">
           <h3>Current Broadcast Focus</h3>
           <div class="small">No featured driver on the overlay right now.</div>
@@ -2107,11 +2124,6 @@ PRODUCER_HTML = r"""<!doctype html>
             <button class="control-button" id="elevenlabs-button">ElevenLabs</button>
             <button class="control-button" id="leaderboard-style-button">Leaderboard: Side</button>
             <button class="control-button danger" id="race-admin-button">Race Admin: OFF</button>
-            <button class="control-button" id="return-live-button">Return Live</button>
-            <button class="control-button warn" id="pause-replay-button">Pause Replay</button>
-            <button class="control-button warn" id="play-replay-button">Play Replay</button>
-            <button class="control-button warn" id="rewind-button">Rewind 10 sec</button>
-            <button class="control-button warn" id="fast-forward-button">Forward 10 sec</button>
           </div>
         </div>
 
@@ -2920,13 +2932,16 @@ PRODUCER_HTML = r"""<!doctype html>
       sendProducerCommand("replay_pause");
     });
     document.getElementById("play-replay-button").addEventListener("click", () => {
-      sendProducerCommand("replay_play");
+      sendProducerCommand("replay_normal_speed");
     });
     document.getElementById("rewind-button").addEventListener("click", () => {
-      sendProducerCommand("replay_rewind", { seconds: 10 });
+      sendProducerCommand("replay_reverse");
+    });
+    document.getElementById("slow-motion-button").addEventListener("click", () => {
+      sendProducerCommand("replay_slow_motion");
     });
     document.getElementById("fast-forward-button").addEventListener("click", () => {
-      sendProducerCommand("replay_fast_forward", { seconds: 10 });
+      sendProducerCommand("replay_fast_play");
     });
 
     async function refreshProducerAssist() {
