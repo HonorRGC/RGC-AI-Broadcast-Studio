@@ -4,9 +4,12 @@ from pathlib import Path
 
 from tools.iracing_car_image_probe import (
     candidate_roots,
+    detect_image_type,
+    extract_images_from_bytes,
     image_like_files,
     recent_files,
     scan_text_file_for_patterns,
+    write_extracted_images,
 )
 
 
@@ -67,3 +70,33 @@ def test_scan_text_file_for_patterns_returns_snippet(tmp_path):
     assert len(hits) == 1
     assert hits[0].pattern == "thumbnail"
     assert "purple-car-thumbnail.webp" in hits[0].snippet
+
+
+def test_detect_image_type_identifies_common_image_headers():
+    assert detect_image_type(b"\x89PNG\r\n\x1a\nrest") == "png"
+    assert detect_image_type(b"\xff\xd8\xffrest") == "jpg"
+    assert detect_image_type(b"RIFF\x04\x00\x00\x00WEBPrest") == "webp"
+    assert detect_image_type(b"not image") == ""
+
+
+def test_extract_images_from_bytes_carves_png_from_cache_blob():
+    png = b"\x89PNG\r\n\x1a\nfake image dataIEND\xaeB`\x82"
+    images = extract_images_from_bytes(b"prefix" + png + b"suffix")
+
+    assert images == [("png", png)]
+
+
+def test_write_extracted_images_writes_deduped_images(tmp_path):
+    cache = tmp_path / "Cache_Data"
+    cache.mkdir()
+    blob = cache / "f_000001"
+    png = b"\x89PNG\r\n\x1a\nfake image dataIEND\xaeB`\x82"
+    blob.write_bytes(b"prefix" + png + png + b"suffix")
+
+    files = recent_files(cache, minutes=30)
+    output_dir = tmp_path / "out"
+    written = write_extracted_images(files, output_dir)
+
+    assert len(written) == 1
+    assert written[0].suffix == ".png"
+    assert written[0].read_bytes() == png

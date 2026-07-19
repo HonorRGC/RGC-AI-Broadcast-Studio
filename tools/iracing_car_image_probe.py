@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import os
 import re
 import time
@@ -27,6 +28,12 @@ DEFAULT_PATTERNS = [
     ".jpeg",
     ".webp",
 ]
+PNG_START = b"\x89PNG\r\n\x1a\n"
+PNG_END = b"IEND\xaeB`\x82"
+JPEG_START = b"\xff\xd8\xff"
+JPEG_END = b"\xff\xd9"
+WEBP_START = b"RIFF"
+WEBP_MARKER = b"WEBP"
 
 
 @dataclass(frozen=True)
@@ -173,6 +180,97 @@ def scan_text_file_for_patterns(path: Path, patterns=None, *, max_bytes=1_000_00
     return hits
 
 
+def detect_image_type(raw: bytes):
+    if raw.startswith(PNG_START):
+        return "png"
+    if raw.startswith(JPEG_START):
+        return "jpg"
+    if raw.startswith(WEBP_START) and len(raw) >= 12 and raw[8:12] == WEBP_MARKER:
+        return "webp"
+    return ""
+
+
+def extract_images_from_bytes(raw: bytes):
+    """Return (extension, image bytes) carved from a Chromium cache-like blob."""
+    images = []
+
+    offset = 0
+    while True:
+        start = raw.find(PNG_START, offset)
+        if start < 0:
+            break
+        end = raw.find(PNG_END, start)
+        if end < 0:
+            break
+        end += len(PNG_END)
+        images.append(("png", raw[start:end]))
+        offset = end
+
+    offset = 0
+    while True:
+        start = raw.find(JPEG_START, offset)
+        if start < 0:
+            break
+        end = raw.find(JPEG_END, start + len(JPEG_START))
+        if end < 0:
+            break
+        end += len(JPEG_END)
+        images.append(("jpg", raw[start:end]))
+        offset = end
+
+    offset = 0
+    while True:
+        start = raw.find(WEBP_START, offset)
+        if start < 0:
+            break
+        if len(raw) < start + 12 or raw[start + 8 : start + 12] != WEBP_MARKER:
+            offset = start + 4
+            continue
+        size = int.from_bytes(raw[start + 4 : start + 8], "little") + 8
+        end = start + size
+        if end > len(raw):
+            break
+        images.append(("webp", raw[start:end]))
+        offset = end
+
+    return images
+
+
+def extract_images_from_file(path: Path, *, max_bytes=60_000_000):
+    try:
+        stat = path.stat()
+        if stat.st_size > max_bytes:
+            return []
+        raw = path.read_bytes()
+    except OSError:
+        return []
+
+    image_type = detect_image_type(raw)
+    if image_type:
+        return [(image_type, raw)]
+    return extract_images_from_bytes(raw)
+
+
+def write_extracted_images(recent_items, output_dir: Path, *, max_images=100):
+    output_dir.mkdir(parents=True, exist_ok=True)
+    written = []
+    seen_hashes = set()
+
+    for item in recent_items:
+        for extension, raw in extract_images_from_file(item.path):
+            digest = hashlib.sha1(raw).hexdigest()[:12]
+            if digest in seen_hashes:
+                continue
+            seen_hashes.add(digest)
+            safe_stem = re.sub(r"[^A-Za-z0-9_.-]+", "_", item.path.stem)[:40] or "cache"
+            output = output_dir / f"{safe_stem}_{digest}.{extension}"
+            output.write_bytes(raw)
+            written.append(output)
+            if len(written) >= max_images:
+                return written
+    return written
+
+
 def format_size(size):
     units = ["B", "KB", "MB", "GB"]
     value = float(size)
@@ -236,6 +334,16 @@ def main():
         default=60,
         help="Only show files modified in the last N minutes. Default: 60.",
     )
+    parser.add_argument(
+        "--extract-images",
+        action="store_true",
+        help="Extract embedded PNG/JPG/WebP files from recent iRacing UI cache files.",
+    )
+    parser.add_argument(
+        "--output-dir",
+        default="outputs/iracing_car_image_probe",
+        help="Folder for --extract-images output. Default: outputs/iracing_car_image_probe.",
+    )
     args = parser.parse_args()
 
     now = time.time()
@@ -251,6 +359,7 @@ def main():
 
     total_images = 0
     total_hits = 0
+    recent_by_root = []
     for root in roots:
         status = "FOUND" if root.path.exists() else "missing"
         print(f"  {root.path} [{status}]")
@@ -261,8 +370,25 @@ def main():
         files = recent_files(root.path, minutes=args.minutes, now=now)
         if not files:
             continue
+        recent_by_root.append((root, files))
         total_images += print_recent_images(root, files, now)
         total_hits += print_pattern_hits(root, files)
+
+    if args.extract_images:
+        all_recent = []
+        for root, files in recent_by_root:
+            if "electron" in root.label.lower():
+                all_recent.extend(files)
+        output_dir = Path(args.output_dir)
+        extracted = write_extracted_images(all_recent, output_dir)
+        print("\nExtracted cache images:")
+        if extracted:
+            for path in extracted[:50]:
+                print(f"  {path}")
+            if len(extracted) > 50:
+                print(f"  ... {len(extracted) - 50} more extracted image(s)")
+        else:
+            print("  none")
 
     print("\n" + "-" * 80)
     print(f"Recent image files found: {total_images}")
