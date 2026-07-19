@@ -138,7 +138,7 @@ class BroadcastQueue:
 
     def estimate_gap_seconds(self, category=""):
         if category.startswith("opening_field_rundown"):
-            return 0.75
+            return 0.18
         if category.startswith(
             ("quarter_field_rundown", "three_quarter_field_rundown", "long_green_field_rundown")
         ):
@@ -151,6 +151,13 @@ class BroadcastQueue:
         if item.category == "booth_conversation":
             return 0.2
         return self.estimate_gap_seconds(item.category)
+
+    def estimate_tail_padding_seconds(self, item):
+        if getattr(item, "silent", False):
+            return 0.0
+        if item.category.startswith("opening_field_rundown"):
+            return 0.15
+        return self.voice_tail_padding_seconds
 
     def has_pending_booth_follow_up(self, now):
         return any(
@@ -201,7 +208,7 @@ class BroadcastQueue:
             gap_time = 0.15
         else:
             gap_time = self.estimate_item_gap_seconds(selected)
-        tail_padding = 0.0 if selected.silent else self.voice_tail_padding_seconds
+        tail_padding = self.estimate_tail_padding_seconds(selected)
         self.busy_until = now + speech_time + gap_time + tail_padding
 
         return selected
@@ -216,7 +223,7 @@ class BroadcastQueue:
             return
         now = time.time() if now is None else now
         gap_time = self.estimate_item_gap_seconds(item)
-        tail_padding = self.voice_tail_padding_seconds
+        tail_padding = self.estimate_tail_padding_seconds(item)
         self.busy_until = now + playback_seconds + gap_time + tail_padding
 
     def clear_for_race_control(self, preserve_categories=(), reset_busy=True):
