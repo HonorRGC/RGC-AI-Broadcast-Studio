@@ -2998,15 +2998,17 @@ OVERLAY_HTML = r"""<!doctype html>
       top: 24px;
       min-width: 0;
       max-width: none;
-      height: 76px;
+      height: 84px;
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 26px;
       padding: 0 26px;
-      background: linear-gradient(90deg, rgba(7, 9, 13, 0.96), rgba(24, 30, 42, 0.92));
+      background:
+        linear-gradient(90deg, rgba(215, 25, 32, 0.18), transparent 28%, rgba(255, 255, 255, 0.06) 52%, transparent 75%),
+        linear-gradient(90deg, rgba(7, 9, 13, 0.97), rgba(24, 30, 42, 0.93));
       border-bottom: 4px solid var(--rgc-red);
-      box-shadow: 0 14px 34px rgba(0, 0, 0, 0.42);
+      box-shadow: 0 14px 34px rgba(0, 0, 0, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.10);
       letter-spacing: 0.02em;
     }
 
@@ -3042,10 +3044,12 @@ OVERLAY_HTML = r"""<!doctype html>
     }
 
     .event-title {
-      font-size: 28px;
-      font-weight: 800;
+      font-size: 27px;
+      font-weight: 950;
       text-transform: uppercase;
       white-space: nowrap;
+      letter-spacing: 0.045em;
+      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.66);
     }
 
     .title-side {
@@ -3056,11 +3060,11 @@ OVERLAY_HTML = r"""<!doctype html>
     }
 
     .brand-graphic {
-      max-width: 170px;
-      max-height: 56px;
+      max-width: 235px;
+      max-height: 72px;
       object-fit: contain;
-      filter: drop-shadow(0 7px 12px rgba(0, 0, 0, 0.55));
-      opacity: 0.94;
+      filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.62));
+      opacity: 0.98;
     }
 
     .event-meta {
@@ -3082,11 +3086,14 @@ OVERLAY_HTML = r"""<!doctype html>
     .leaderboard {
       position: absolute;
       left: 24px;
-      top: 124px;
+      top: 134px;
       width: 264px;
-      background: var(--rgc-panel);
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.07), transparent 18%),
+        var(--rgc-panel);
       box-shadow: 0 14px 34px rgba(0, 0, 0, 0.40);
       border-left: 5px solid var(--rgc-red);
+      border-top: 1px solid rgba(255, 255, 255, 0.12);
     }
 
     body.leaderboard-ticker-mode .leaderboard {
@@ -3098,10 +3105,13 @@ OVERLAY_HTML = r"""<!doctype html>
       grid-template-columns: 1fr auto;
       gap: 8px;
       padding: 8px 10px;
-      background: var(--rgc-dark);
+      background:
+        linear-gradient(90deg, rgba(215, 25, 32, 0.22), transparent 72%),
+        var(--rgc-dark);
       border-bottom: 4px solid var(--rgc-line);
       text-transform: uppercase;
       font-weight: 800;
+      letter-spacing: 0.055em;
     }
 
     .leaderboard.green .leaderboard-header {
@@ -3168,18 +3178,34 @@ OVERLAY_HTML = r"""<!doctype html>
       background: rgba(255, 255, 255, 0.18);
     }
 
+    .leaderboard-series {
+      padding: 7px 10px 8px;
+      background: linear-gradient(90deg, rgba(215, 25, 32, 0.22), rgba(255, 255, 255, 0.04));
+      border-top: 1px solid rgba(255, 255, 255, 0.12);
+      color: #ffffff;
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
     .ticker-leaderboard {
       position: absolute;
       left: 24px;
       right: 24px;
-      top: 112px;
+      top: 118px;
       height: 46px;
       display: grid;
       grid-template-columns: auto minmax(0, 1fr) auto;
       align-items: center;
       gap: 14px;
       padding: 0 16px;
-      background: linear-gradient(90deg, rgba(7, 9, 13, 0.96), rgba(24, 30, 42, 0.92));
+      background:
+        linear-gradient(90deg, rgba(215, 25, 32, 0.16), transparent 36%, rgba(255, 255, 255, 0.05) 62%, transparent),
+        linear-gradient(90deg, rgba(7, 9, 13, 0.97), rgba(24, 30, 42, 0.93));
       border-left: 5px solid var(--rgc-red);
       border-bottom: 3px solid var(--rgc-line);
       box-shadow: 0 12px 30px rgba(0, 0, 0, 0.38);
@@ -3208,6 +3234,10 @@ OVERLAY_HTML = r"""<!doctype html>
       letter-spacing: 0.08em;
       color: #fff;
       white-space: nowrap;
+      padding: 7px 11px;
+      border-radius: 999px;
+      background: rgba(215, 25, 32, 0.72);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 0 14px rgba(215, 25, 32, 0.20);
     }
 
     .ticker-window {
@@ -3724,10 +3754,11 @@ OVERLAY_HTML = r"""<!doctype html>
     </div>
     <div id="lap-history" class="lap-history hidden"></div>
     <div id="leaderboard-rows"></div>
+    <div id="leaderboard-series" class="leaderboard-series hidden"></div>
   </section>
 
   <section id="ticker-leaderboard" class="ticker-leaderboard hidden">
-    <div class="ticker-label">Leaderboard</div>
+    <div id="ticker-label" class="ticker-label">Leaderboard</div>
     <div class="ticker-window">
       <div id="ticker-track" class="ticker-track"></div>
     </div>
@@ -3784,6 +3815,7 @@ OVERLAY_HTML = r"""<!doctype html>
       setText("lap", buildLapLine(state));
       setText("ticker-lap", buildLapLine(state));
       setText("session-center", buildSessionCenterLine(state));
+      setLeaderboardSeries(event.series || "");
       const leaderboardStyle = normalizeLeaderboardStyle(event.leaderboard_style);
       document.body.classList.toggle("leaderboard-ticker-mode", leaderboardStyle === "ticker");
       document.getElementById("top-banner").classList.toggle("caution", !!state.caution);
@@ -3793,7 +3825,7 @@ OVERLAY_HTML = r"""<!doctype html>
       document.getElementById("ticker-leaderboard").classList.toggle("caution", !!state.caution);
       renderBrandGraphic(event.graphics || [], state.session_type);
       renderLapHistory(state.lap_history || []);
-      renderTickerLeaderboard(state.leaderboard || [], leaderboardStyle);
+      renderTickerLeaderboard(state.leaderboard || [], leaderboardStyle, event.series || "");
       renderDriverCard(state.featured_driver);
       renderSpecialPresentation(state.special_presentation);
       renderStatPanel(state.stat_panel);
@@ -3819,10 +3851,19 @@ OVERLAY_HTML = r"""<!doctype html>
       return ["ticker", "scroll", "top"].includes(style) ? "ticker" : "side";
     }
 
-    function renderTickerLeaderboard(leaderboard, leaderboardStyle) {
+    function setLeaderboardSeries(series) {
+      const element = document.getElementById("leaderboard-series");
+      const label = String(series || "").trim();
+      element.classList.toggle("hidden", !label);
+      element.textContent = label;
+      setText("ticker-label", label ? `${label} - Leaderboard` : "Leaderboard");
+    }
+
+    function renderTickerLeaderboard(leaderboard, leaderboardStyle, series) {
       const layer = document.getElementById("ticker-leaderboard");
       const track = document.getElementById("ticker-track");
       const active = leaderboardStyle === "ticker" && leaderboard.length;
+      setText("ticker-label", series ? `${series} - Leaderboard` : "Leaderboard");
       layer.classList.toggle("hidden", !active);
       if (!active) {
         track.innerHTML = "";

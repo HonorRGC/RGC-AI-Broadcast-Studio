@@ -502,8 +502,12 @@ def test_overlay_has_center_session_clock():
 
 def test_overlay_has_optional_ticker_leaderboard_and_compact_lap_bar():
     assert 'id="ticker-leaderboard"' in OVERLAY_HTML
+    assert 'id="ticker-label"' in OVERLAY_HTML
+    assert 'id="leaderboard-series"' in OVERLAY_HTML
     assert "normalizeLeaderboardStyle" in OVERLAY_HTML
     assert "renderTickerLeaderboard" in OVERLAY_HTML
+    assert "setLeaderboardSeries" in OVERLAY_HTML
+    assert '${series} - Leaderboard' in OVERLAY_HTML
     assert "leaderboard-ticker-mode" in OVERLAY_HTML
     assert "const maxSegments = 54" in OVERLAY_HTML
     assert "min-width: 0;" in OVERLAY_HTML
@@ -511,6 +515,13 @@ def test_overlay_has_optional_ticker_leaderboard_and_compact_lap_bar():
     assert "top: 232px" in OVERLAY_HTML
     assert "body.leaderboard-ticker-mode .special-presentation.sponsor_bug" in OVERLAY_HTML
     assert "top: 224px" in OVERLAY_HTML
+
+
+def test_overlay_title_branding_is_larger_and_more_polished():
+    assert "max-width: 235px" in OVERLAY_HTML
+    assert "max-height: 72px" in OVERLAY_HTML
+    assert "height: 84px" in OVERLAY_HTML
+    assert ".leaderboard-series" in OVERLAY_HTML
 
 
 def test_race_sponsor_presentation_is_right_side_square():
