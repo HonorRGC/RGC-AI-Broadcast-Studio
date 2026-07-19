@@ -568,13 +568,16 @@ def test_featured_driver_image_uses_manual_league_image_only():
     assert build_featured_driver_image({"car_image": "/assets/custom_driver.png"}) == "/assets/custom_driver.png"
 
 
-def test_featured_driver_image_does_not_auto_use_trading_paints_fields():
-    assert (
-        build_featured_driver_image(
-            {
-                "cust_id": "251830",
-                "car_path": "stockcars2 camaro2019",
-            }
-        )
-        == ""
+def test_featured_driver_image_can_use_iracing_render_cache_fallback(monkeypatch):
+    import app
+
+    monkeypatch.setattr(app, "USE_IRACING_RENDERED_CAR_IMAGES", True)
+    monkeypatch.setattr(
+        app,
+        "build_iracing_render_image_url",
+        lambda driver: "http://127.0.0.1:32034/pk_car.png?number=34",
+    )
+
+    assert build_featured_driver_image({"number": "34"}) == (
+        "http://127.0.0.1:32034/pk_car.png?number=34"
     )

@@ -14,6 +14,7 @@ from config import (
     SPONSOR_READ_NAME_2,
     SPONSOR_READ_NAME_3,
     STUDIO_VOLUME,
+    USE_IRACING_RENDERED_CAR_IMAGES,
 )
 from broadcast.booth import BroadcastBooth
 from broadcast.engine import BroadcastEngine
@@ -30,6 +31,7 @@ from production.non_race_presentation import (
 from production.live_broadcast_validator import LiveBroadcastValidator
 from production.overlay import OverlayServer
 from production.car_paint_preview import ensure_preview_file
+from production.iracing_render_cache import build_iracing_render_image_url
 from production.replay_director import ReplayDirector
 from production.race_control import RaceControlService
 
@@ -1662,6 +1664,10 @@ def build_featured_driver_image(driver):
         preview_path = ensure_preview_file(image_path, driver)
         if preview_path:
             return f"/paint-previews/{preview_path.name}"
+    if USE_IRACING_RENDERED_CAR_IMAGES:
+        render_url = build_iracing_render_image_url(driver)
+        if render_url:
+            return render_url
     return ""
 
 
