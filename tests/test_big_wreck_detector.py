@@ -44,7 +44,7 @@ def test_pack_wreck_breaks_through_soft_incident_suppression():
     assert events[0].importance == 10
 
 
-def test_single_car_trouble_is_not_called_a_pack_wreck():
+def test_single_car_position_loss_is_not_called_trouble():
     detector = IncidentDetector()
     drivers = {0: {"name": "Solo Driver", "number": "7"}}
 
@@ -67,11 +67,10 @@ def test_single_car_trouble_is_not_called_a_pack_wreck():
         suppress_soft_events=True,
     )
 
-    assert len(events) == 1
-    assert events[0].trouble_type == "possible trouble"
+    assert events == []
 
 
-def test_serious_single_car_trouble_breaks_through_soft_suppression():
+def test_serious_single_car_moment_breaks_through_soft_suppression():
     detector = IncidentDetector()
     drivers = {0: {"name": "Solo Driver", "number": "7"}}
 
@@ -91,14 +90,14 @@ def test_serious_single_car_trouble_breaks_through_soft_suppression():
         current_lap=18,
         lap_dist_pct_status=[0.67],
         est_time_status=[24.0],
-        track_surface_status=[3],
+        track_surface_status=[0],
         pit_road_status=[False],
         suppress_soft_events=True,
     )
 
     assert len(events) == 1
     assert events[0].trouble_type == "possible trouble"
-    assert "Possible trouble" in events[0].message
+    assert "may have had a moment" in events[0].message
     assert events[0].car_idx == 0
 
 

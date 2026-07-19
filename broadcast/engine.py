@@ -1783,11 +1783,6 @@ class BroadcastEngine:
                 )
             return
 
-        if self.race_director.phase not in (
-            RacePhase.CAUTION,
-            RacePhase.ONE_TO_GREEN,
-        ):
-            self.broadcast_queue.clear_for_race_control()
         session_num_reader = getattr(telemetry, "get_current_session_num", None)
         session_time_reader = getattr(telemetry, "get_session_time", None)
         session_num = session_num_reader() if session_num_reader else 0
@@ -1833,6 +1828,10 @@ class BroadcastEngine:
                 caution_just_started
                 and replay_eligible
             )
+            soft_green_incident = (
+                event.trouble_type == "possible trouble"
+                and not caution_just_started
+            )
             replay_message = self.incident_broadcast_message(
                 event,
                 current_lap=current_lap,
@@ -1842,11 +1841,12 @@ class BroadcastEngine:
             )
             self.broadcast_queue.add(
                 self.commentary_cleaner.clean(replay_message),
-                priority=event.importance,
+                priority=event.importance if not soft_green_incident else 4,
                 category="incident",
-                protected=True,
+                protected=not soft_green_incident,
                 speaker="lead",
-                expires_after=25,
+                delay_seconds=2.0 if soft_green_incident else 0.0,
+                expires_after=18 if soft_green_incident else 25,
                 dedupe_key=(
                     f"incident:{event.car_idx}:{event.trouble_type}:"
                     f"{event.lap}:{event.total_incidents}"

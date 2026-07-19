@@ -564,35 +564,34 @@ class IncidentDetector:
     ):
         abnormal_surface = self.is_abnormal_surface(track_surface)
         reasons = []
-        if position_loss >= 3:
-            reasons.append("lost several positions")
-        if lap_distance_loss >= 0.018:
-            reasons.append("lost track position quickly")
-        if est_time_loss >= 2.5:
-            reasons.append("lost a lot of time")
-        if abnormal_surface and (position_loss >= 2 or est_time_loss >= 1.5):
-            reasons.append("left the racing surface")
+        if abnormal_surface and est_time_loss >= 1.5:
+            reasons.append("left the racing surface and lost time")
+        if abnormal_surface and lap_distance_loss >= 0.012:
+            reasons.append("left the racing surface and lost ground")
+        if lap_distance_loss >= 0.025 and est_time_loss >= 3.0:
+            reasons.append("lost control-level track position and time")
 
-        if len(reasons) < 2:
+        if not reasons:
             return None
 
         score = (
-            max(0, position_loss)
             + lap_distance_loss * 100.0
             + max(0.0, est_time_loss)
-            + (2.0 if abnormal_surface else 0.0)
+            + (3.0 if abnormal_surface else 0.0)
         )
-        if score < 7.0:
+        if score < 7.5:
             return None
 
         return self.build_event(
             state,
             "possible trouble",
             (
-                f"Possible trouble for {state.driver_name}. The number "
-                f"{state.car_number} has suddenly lost time and track position."
+                f"{state.driver_name} in the number {state.car_number} may have "
+                "had a moment a bit ago. They lost time after getting away from "
+                "the ideal racing line, and now the question is whether that hurt "
+                "the car or just overheated the tires."
             ),
-            8,
+            5,
             current_lap,
             0,
             incident_count,
