@@ -6,13 +6,17 @@ from tools.iracing_car_image_probe import (
     candidate_roots,
     detect_image_type,
     extract_images_from_bytes,
+    find_render_requests_in_text,
     image_like_files,
     match_driver_label,
+    match_render_request_label,
     possible_ids_from_context,
     recent_files,
     scan_text_file_for_patterns,
+    scan_recent_render_requests,
     write_extracted_images,
     write_manifest,
+    write_render_request_manifest,
 )
 
 
@@ -133,6 +137,77 @@ def test_write_manifest_includes_matched_driver(tmp_path):
         written,
         output_dir,
         {24: {"number": "34", "name": "T.J. Lee", "cust_id": "251830"}},
+    )
+
+    assert "#34 T.J. Lee" in manifest_json.read_text(encoding="utf-8")
+    assert "#34 T.J. Lee" in manifest_csv.read_text(encoding="utf-8")
+
+
+def test_find_render_requests_extracts_iracing_local_car_renderer_url(tmp_path):
+    text = (
+        "1/0/http://127.0.0.1:32034/pk_car.png?"
+        "size=2&carPath=stockcars2%5Cmustang2019&"
+        "carCustPaint=C%3A%5CUsers%5Cleeal%5CDocuments%5CiRacing%5Cpaint%5C"
+        "stockcars2+mustang2019%5Ccar_251830.tga&number=34"
+        "\x00HTTP/1.1 200 OK\x00Content-Length: 72649"
+    )
+
+    requests = find_render_requests_in_text(text, tmp_path / "data_1")
+
+    assert len(requests) == 1
+    assert requests[0].kind == "car"
+    assert requests[0].number == "34"
+    assert requests[0].cust_id == "251830"
+    assert requests[0].car_path == "stockcars2 mustang2019"
+
+
+def test_match_render_request_label_uses_number_and_car_path_when_no_customer_id(tmp_path):
+    request = find_render_requests_in_text(
+        (
+            "http://127.0.0.1:32034/pk_car.png?"
+            "size=2&carPath=stockcars2%5Ccamaro2019&carCustPaint=%5Bobject+Object%5D&number=2"
+        ),
+        tmp_path / "data_1",
+    )[0]
+
+    assert (
+        match_render_request_label(
+            request,
+            {
+                1: {"number": "2", "name": "Nate Amiot", "car_path": "stockcars2 camaro2019"},
+                2: {"number": "3", "name": "Other Driver", "car_path": "stockcars2 camaro2019"},
+            },
+        )
+        == "#2 Nate Amiot"
+    )
+
+
+def test_scan_recent_render_requests_reads_cache_metadata(tmp_path):
+    cache = tmp_path / "Cache_Data"
+    cache.mkdir()
+    data = cache / "data_1"
+    data.write_text(
+        "http://127.0.0.1:32034/pk_helmet.png?size=2&hlmtCustPaint=null",
+        encoding="utf-8",
+    )
+    files = recent_files(cache, minutes=30)
+
+    requests = scan_recent_render_requests([(type("Root", (), {"label": "iRacing Electron"})(), files)])
+
+    assert len(requests) == 1
+    assert requests[0].kind == "helmet"
+
+
+def test_write_render_request_manifest_includes_matches(tmp_path):
+    request = find_render_requests_in_text(
+        "http://127.0.0.1:32034/pk_car.png?size=2&carPath=stockcars2%5Cmustang2019&number=34",
+        tmp_path / "data_1",
+    )[0]
+
+    manifest_json, manifest_csv = write_render_request_manifest(
+        [request],
+        tmp_path,
+        {24: {"number": "34", "name": "T.J. Lee", "car_path": "stockcars2 mustang2019"}},
     )
 
     assert "#34 T.J. Lee" in manifest_json.read_text(encoding="utf-8")

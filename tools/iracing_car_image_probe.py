@@ -9,6 +9,7 @@ import re
 import time
 from dataclasses import dataclass
 from pathlib import Path
+from urllib.parse import parse_qs, unquote, urlparse
 
 
 IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp", ".avif"}
@@ -74,6 +75,18 @@ class WrittenImage:
     offset: int
     size: int
     possible_ids: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class RenderRequest:
+    url: str
+    kind: str
+    source_path: Path
+    car_path: str = ""
+    number: str = ""
+    cust_id: str = ""
+    size: str = ""
+    content_length: str = ""
 
 
 def candidate_roots(home: Path | None = None, env: dict[str, str] | None = None):
@@ -230,6 +243,106 @@ def possible_ids_from_context(context: str):
     ):
         ids.update(re.findall(pattern, context, flags=re.IGNORECASE))
     return tuple(sorted(ids))
+
+
+def find_render_requests_in_text(text: str, source_path: Path):
+    requests = []
+    for match in re.finditer(r"http://127\.0\.0\.1:\d+/(?:pk_car|pk_helmet)\.png\?[^\\\x00\s\"'}<>]+", text):
+        url = match.group(0)
+        requests.append(render_request_from_url(url, source_path, text[max(0, match.start() - 500) : match.end() + 500]))
+    return requests
+
+
+def render_request_from_url(url: str, source_path: Path, context: str = ""):
+    parsed = urlparse(url)
+    query = parse_qs(parsed.query)
+    kind = "car" if parsed.path.endswith("/pk_car.png") else "helmet"
+    car_path = unquote(first_query_value(query, "carPath")).replace("\\", " ").replace("/", " ")
+    custom_paint = unquote(first_query_value(query, "carCustPaint") or first_query_value(query, "hlmtCustPaint"))
+    ids = possible_ids_from_context(custom_paint)
+    length_match = re.search(r"Content-Length:\s*(\d+)", context, flags=re.IGNORECASE)
+    return RenderRequest(
+        url=url,
+        kind=kind,
+        source_path=source_path,
+        car_path=car_path,
+        number=first_query_value(query, "number"),
+        cust_id=ids[0] if ids else "",
+        size=first_query_value(query, "size"),
+        content_length=length_match.group(1) if length_match else "",
+    )
+
+
+def first_query_value(query, key):
+    values = query.get(key) or []
+    return str(values[0]) if values else ""
+
+
+def scan_render_requests(path: Path, *, max_bytes=80_000_000):
+    try:
+        stat = path.stat()
+        if stat.st_size > max_bytes:
+            return []
+        raw = path.read_bytes()
+    except OSError:
+        return []
+    text = raw.decode("utf-8", errors="ignore")
+    return find_render_requests_in_text(text, path)
+
+
+def unique_render_requests(requests):
+    unique = []
+    seen = set()
+    for request in requests:
+        key = request.url
+        if key in seen:
+            continue
+        unique.append(request)
+        seen.add(key)
+    return unique
+
+
+def scan_recent_render_requests(recent_by_root):
+    requests = []
+    for root, files in recent_by_root:
+        if "electron" not in root.label.lower():
+            continue
+        for item in files:
+            requests.extend(scan_render_requests(item.path))
+    return unique_render_requests(requests)
+
+
+def match_render_request_label(request: RenderRequest, live_drivers):
+    if request.cust_id:
+        label = match_driver_label((request.cust_id,), live_drivers)
+        if label:
+            return label
+
+    request_number = normalize_number(request.number)
+    request_car_path = normalize_car_path(request.car_path)
+    candidates = []
+    for driver in (live_drivers or {}).values():
+        if request_number and normalize_number(driver.get("number")) != request_number:
+            continue
+        driver_car_path = normalize_car_path(driver.get("car_path"))
+        if request_car_path and driver_car_path and request_car_path not in driver_car_path and driver_car_path not in request_car_path:
+            continue
+        candidates.append(driver)
+
+    if len(candidates) == 1:
+        driver = candidates[0]
+        return f"#{driver.get('number', '?')} {driver.get('name', 'Unknown')}"
+    if len(candidates) > 1:
+        return "multiple possible live drivers"
+    return ""
+
+
+def normalize_number(value):
+    return str(value or "").strip().lstrip("0")
+
+
+def normalize_car_path(value):
+    return re.sub(r"[^a-z0-9]+", "", str(value or "").lower())
 
 
 def extract_images_from_bytes(raw: bytes):
@@ -394,6 +507,54 @@ def write_manifest(written_images, output_dir: Path, live_drivers=None):
     return json_path, csv_path
 
 
+def write_render_request_manifest(render_requests, output_dir: Path, live_drivers=None):
+    output_dir.mkdir(parents=True, exist_ok=True)
+    json_path = output_dir / "render_requests.json"
+    csv_path = output_dir / "render_requests.csv"
+    rows = []
+    for request in render_requests:
+        rows.append(
+            {
+                "kind": request.kind,
+                "matched_driver": match_render_request_label(request, live_drivers),
+                "number": request.number,
+                "cust_id": request.cust_id,
+                "car_path": request.car_path,
+                "size": request.size,
+                "content_length": request.content_length,
+                "source_cache": str(request.source_path),
+                "url": request.url,
+            }
+        )
+
+    json_path.write_text(
+        json.dumps(
+            {
+                "render_requests": rows,
+                "live_drivers": live_driver_rows(live_drivers or {}),
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+    with csv_path.open("w", newline="", encoding="utf-8") as handle:
+        fieldnames = [
+            "kind",
+            "matched_driver",
+            "number",
+            "cust_id",
+            "car_path",
+            "size",
+            "content_length",
+            "source_cache",
+            "url",
+        ]
+        writer = csv.DictWriter(handle, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(rows)
+    return json_path, csv_path
+
+
 def live_driver_rows(live_drivers):
     rows = []
     for car_idx, driver in sorted((live_drivers or {}).items(), key=lambda item: str(item[1].get("number", ""))):
@@ -448,6 +609,26 @@ def print_live_drivers(live_drivers, error=""):
             f"car_id={driver['car_id']} | "
             f"car_path={driver['car_path']}"
         )
+
+
+def print_render_requests(render_requests, live_drivers):
+    print("\niRacing local render requests:")
+    if not render_requests:
+        print("  none found")
+        return
+    for request in render_requests[:80]:
+        label = match_render_request_label(request, live_drivers)
+        match_text = f" | match={label}" if label else ""
+        id_text = f" | cust_id={request.cust_id}" if request.cust_id else ""
+        print(
+            "  "
+            f"{request.kind.upper()} size={request.size or '?'} "
+            f"#{request.number or '?'} {request.car_path or '?'}"
+            f"{id_text}{match_text}"
+        )
+        print(f"    {request.url}")
+    if len(render_requests) > 80:
+        print(f"  ... {len(render_requests) - 80} more render request(s)")
 
 
 def format_size(size):
@@ -589,6 +770,18 @@ def main():
             print(f"  manifest CSV: {manifest_csv}")
         else:
             print("  none")
+
+    render_requests = scan_recent_render_requests(recent_by_root)
+    if render_requests:
+        output_dir = Path(args.output_dir)
+        render_json, render_csv = write_render_request_manifest(
+            render_requests,
+            output_dir,
+            live_drivers,
+        )
+        print_render_requests(render_requests, live_drivers)
+        print(f"  render request manifest: {render_json}")
+        print(f"  render request CSV: {render_csv}")
 
     print("\n" + "-" * 80)
     print(f"Recent image files found: {total_images}")
