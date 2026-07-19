@@ -1526,6 +1526,13 @@ def safe_int(value, default=0):
         return default
 
 
+def safe_float(value, default=0.0):
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
 def should_switch_camera_after_voice_starts(item):
     category = str(getattr(item, "category", "") or "")
     return (
@@ -1611,16 +1618,17 @@ def update_overlay_focused_driver(
         position=position_info["position"],
         starting_position=position_info["starting_position"],
         position_delta=position_info["position_delta"],
+        interval=position_info["interval"],
+        speed=position_info["speed"],
     )
 
 
 def featured_driver_position_info(car_idx, results):
-    zero_based = any(safe_int(car.get("Position"), 999) == 0 for car in results or [])
-    for car in results or []:
+    ordered_results = sorted_results_by_position(results)
+    for car in ordered_results:
         if car.get("CarIdx") != car_idx:
             continue
-        raw_position = safe_int(car.get("Position"), 0)
-        position = raw_position + 1 if zero_based and raw_position >= 0 else raw_position
+        position = normalized_result_position(car, results)
         starting_position = safe_int(
             car.get("StartingPosition")
             or car.get("StartPosition")
@@ -1635,13 +1643,82 @@ def featured_driver_position_info(car_idx, results):
                 if starting_position > 0 and position > 0
                 else 0
             ),
+            "interval": featured_driver_interval(car, ordered_results, results),
+            "speed": featured_driver_speed(car),
         }
-    return {"position": 0, "starting_position": 0, "position_delta": 0}
+    return {
+        "position": 0,
+        "starting_position": 0,
+        "position_delta": 0,
+        "interval": "",
+        "speed": "",
+    }
+
+
+def sorted_results_by_position(results):
+    return sorted(
+        list(results or []),
+        key=lambda car: normalized_result_position(car, results) or 999,
+    )
+
+
+def normalized_result_position(car, results):
+    zero_based = any(safe_int(row.get("Position"), 999) == 0 for row in results or [])
+    raw_position = safe_int(car.get("Position"), 0)
+    return raw_position + 1 if zero_based and raw_position >= 0 else raw_position
+
+
+def featured_driver_interval(car, ordered_results, all_results):
+    position = normalized_result_position(car, all_results)
+    if position <= 1:
+        return "Leader"
+
+    car_gap = safe_float(car.get("Time", car.get("Gap", 0.0)), 0.0)
+    car_ahead = None
+    for candidate in ordered_results:
+        if normalized_result_position(candidate, all_results) == position - 1:
+            car_ahead = candidate
+            break
+    if car_ahead:
+        ahead_gap = safe_float(car_ahead.get("Time", car_ahead.get("Gap", 0.0)), 0.0)
+        if car_gap > 0 and car_gap >= ahead_gap:
+            return f"+{car_gap - ahead_gap:.2f} to next"
+
+    for key in ("Interval", "interval"):
+        value = str(car.get(key, "") or "").strip()
+        if value:
+            return f"{value} to next" if value.startswith("+") else value
+    return ""
+
+
+def featured_driver_speed(car):
+    for key in ("Speed", "speed", "TrackSpeed", "track_speed", "MPH", "mph"):
+        if key not in car or car.get(key) in (None, ""):
+            continue
+        value = safe_float(car.get(key), 0.0)
+        if value <= 0:
+            continue
+        mph = value * 2.236936 if value < 120 else value
+        return f"{mph:.0f} mph"
+    return ""
 
 
 def build_featured_driver_story(driver):
+    league_keys = (
+        "team_name",
+        "driving_style",
+        "hometown",
+        "home_town",
+        "league_notes",
+        "notes",
+        "league_profile",
+    )
+    has_league_details = any(driver.get(key) for key in league_keys)
+    if not has_league_details:
+        return str(driver.get("country", "") or "").strip() or "Featured driver"
+
     details = []
-    for key in ("team_name", "club", "country", "sponsor"):
+    for key in ("team_name", "country", "sponsor"):
         value = str(driver.get(key, "") or "").strip()
         if value and value not in details:
             details.append(value)

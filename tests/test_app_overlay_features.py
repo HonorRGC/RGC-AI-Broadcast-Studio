@@ -2,7 +2,9 @@ from types import SimpleNamespace
 
 from app import (
     build_director_suggestions,
+    build_featured_driver_story,
     build_featured_driver_image,
+    featured_driver_position_info,
     build_producer_pit_road_rows,
     find_brand_graphic_for_name,
     handle_producer_command,
@@ -581,3 +583,54 @@ def test_featured_driver_image_can_use_iracing_render_cache_fallback(monkeypatch
     assert build_featured_driver_image({"number": "34"}) == (
         "http://127.0.0.1:32034/pk_car.png?number=34"
     )
+
+
+def test_featured_driver_story_for_official_races_uses_country_only():
+    assert (
+        build_featured_driver_story(
+            {
+                "name": "T.J. Lee",
+                "club": "Ohio",
+                "country": "United States",
+                "sponsor": "RGC Motorsports",
+            }
+        )
+        == "United States"
+    )
+
+
+def test_featured_driver_story_for_league_races_can_use_extra_profile_details():
+    assert (
+        build_featured_driver_story(
+            {
+                "name": "T.J. Lee",
+                "country": "United States",
+                "team_name": "RGC Motorsports",
+                "sponsor": "Autism Awareness",
+            }
+        )
+        == "RGC Motorsports | United States | Autism Awareness"
+    )
+
+
+def test_featured_driver_position_info_includes_gap_to_next_and_speed():
+    info = featured_driver_position_info(
+        34,
+        [
+            {"CarIdx": 7, "Position": 1, "Time": 0.0},
+            {"CarIdx": 12, "Position": 2, "Time": 0.8},
+            {
+                "CarIdx": 34,
+                "Position": 3,
+                "Time": 1.25,
+                "StartingPosition": 8,
+                "Speed": 78.2,
+            },
+        ],
+    )
+
+    assert info["position"] == 3
+    assert info["starting_position"] == 8
+    assert info["position_delta"] == 5
+    assert info["interval"] == "+0.45 to next"
+    assert info["speed"] == "175 mph"

@@ -77,6 +77,8 @@ class FeaturedDriver:
     position: int = 0
     starting_position: int = 0
     position_delta: int = 0
+    interval: str = ""
+    speed: str = ""
     expires_at: float = 0.0
 
     def to_dict(self):
@@ -88,6 +90,8 @@ class FeaturedDriver:
             "position": self.position,
             "starting_position": self.starting_position,
             "position_delta": self.position_delta,
+            "interval": self.interval,
+            "speed": self.speed,
         }
 
 
@@ -973,6 +977,8 @@ class OverlayServer:
         position=0,
         starting_position=0,
         position_delta=0,
+        interval="",
+        speed="",
     ):
         with self.lock:
             self.featured_driver = FeaturedDriver(
@@ -983,6 +989,8 @@ class OverlayServer:
                 position=self.state_builder.safe_int(position),
                 starting_position=self.state_builder.safe_int(starting_position),
                 position_delta=self.state_builder.safe_int(position_delta),
+                interval=str(interval or ""),
+                speed=str(speed or ""),
                 expires_at=time.monotonic() + float(duration),
             )
             self.state.featured_driver = self.featured_driver
@@ -4085,15 +4093,16 @@ OVERLAY_HTML = r"""<!doctype html>
 
     function buildDriverCardPositionLine(driver) {
       const pieces = [];
-      const position = Number(driver.position || 0);
       const start = Number(driver.starting_position || 0);
       const delta = Number(driver.position_delta || 0);
-      if (position > 0) pieces.push(`P${position}`);
       if (start > 0) pieces.push(`Started ${ordinal(start)}`);
       if (start > 0 && delta !== 0) {
         const sign = delta > 0 ? "+" : "";
-        pieces.push(`${sign}${delta} spots`);
+        const word = Math.abs(delta) === 1 ? "spot" : "spots";
+        pieces.push(`${sign}${delta} ${word}`);
       }
+      if (driver.interval) pieces.push(driver.interval);
+      if (driver.speed) pieces.push(driver.speed);
       return pieces.join(" • ");
     }
 

@@ -548,6 +548,8 @@ def test_featured_driver_card_includes_position_line():
         position=4,
         starting_position=12,
         position_delta=8,
+        interval="+0.45 to next",
+        speed="175 mph",
     )
 
     featured = server.current_state_dict()["featured_driver"]
@@ -555,6 +557,8 @@ def test_featured_driver_card_includes_position_line():
     assert featured["position"] == 4
     assert featured["starting_position"] == 12
     assert featured["position_delta"] == 8
+    assert featured["interval"] == "+0.45 to next"
+    assert featured["speed"] == "175 mph"
     assert "buildDriverCardPositionLine" in OVERLAY_HTML
     assert "buildDriverCardRankLine" in OVERLAY_HTML
     assert 'id="driver-card-position"' in OVERLAY_HTML
