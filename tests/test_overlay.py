@@ -556,7 +556,12 @@ def test_featured_driver_card_includes_position_line():
     assert featured["starting_position"] == 12
     assert featured["position_delta"] == 8
     assert "buildDriverCardPositionLine" in OVERLAY_HTML
+    assert "buildDriverCardRankLine" in OVERLAY_HTML
     assert 'id="driver-card-position"' in OVERLAY_HTML
+    assert 'id="driver-card-position-rank"' in OVERLAY_HTML
+    assert 'id="driver-card-car-img"' in OVERLAY_HTML
+    assert "image.onerror" in OVERLAY_HTML
+    assert ".driver-card-image.image-failed" in OVERLAY_HTML
 
 
 def test_crank_it_up_overlay_uses_logo_and_racing_speaker_style():

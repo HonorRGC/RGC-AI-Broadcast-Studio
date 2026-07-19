@@ -3343,33 +3343,95 @@ OVERLAY_HTML = r"""<!doctype html>
       min-width: 430px;
       max-width: 760px;
       display: grid;
-      grid-template-columns: 86px minmax(0, 160px) 1fr;
+      grid-template-columns: 104px minmax(0, 178px) 1fr;
       background: linear-gradient(90deg, rgba(7, 9, 13, 0.96), rgba(24, 30, 42, 0.92));
       border-left: 6px solid var(--rgc-red);
       box-shadow: 0 14px 34px rgba(0, 0, 0, 0.42);
       text-transform: uppercase;
+      overflow: hidden;
     }
 
-    .driver-card.no-image {
-      grid-template-columns: 86px 1fr;
-    }
-
-    .driver-card-number {
+    .driver-card-position-rank {
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
-      background: #fff;
-      color: #111;
+      background: linear-gradient(180deg, #f4f7fb, #b9c1ce);
+      color: #10131a;
+      border-right: 1px solid rgba(0, 0, 0, 0.45);
+    }
+
+    .driver-card-position-rank .rank {
       font-weight: 950;
-      font-size: 36px;
+      font-size: 40px;
+      line-height: 0.95;
+      letter-spacing: -0.05em;
+    }
+
+    .driver-card-position-rank .label {
+      margin-top: 6px;
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: 0.14em;
+      color: rgba(16, 19, 26, 0.72);
     }
 
     .driver-card-image {
+      position: relative;
       min-height: 74px;
-      background-size: cover;
-      background-position: center;
+      background: radial-gradient(circle at 50% 36%, rgba(255, 255, 255, 0.10), rgba(0, 0, 0, 0.34) 65%),
+        linear-gradient(135deg, rgba(15, 20, 30, 0.95), rgba(5, 7, 12, 0.96));
       border-left: 1px solid rgba(0, 0, 0, 0.32);
       border-right: 1px solid rgba(255, 255, 255, 0.12);
+      overflow: hidden;
+    }
+
+    .driver-card-image img {
+      width: 100%;
+      height: 100%;
+      min-height: 74px;
+      object-fit: contain;
+      object-position: center;
+      display: block;
+      filter: drop-shadow(0 8px 10px rgba(0, 0, 0, 0.42));
+    }
+
+    .driver-card-image.image-failed img,
+    .driver-card-image.no-source img {
+      display: none;
+    }
+
+    .driver-card-number {
+      position: absolute;
+      left: 8px;
+      bottom: 7px;
+      min-width: 44px;
+      padding: 3px 9px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.94);
+      color: #111;
+      font-weight: 950;
+      font-size: 22px;
+      line-height: 1;
+      text-align: center;
+      box-shadow: 0 7px 14px rgba(0, 0, 0, 0.36);
+    }
+
+    .driver-card-image.image-failed .driver-card-number,
+    .driver-card-image.no-source .driver-card-number {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 0;
+      padding: 0;
+      min-width: 0;
+      background: transparent;
+      color: rgba(255, 255, 255, 0.95);
+      font-size: 42px;
+      text-shadow: 0 4px 14px rgba(0, 0, 0, 0.66);
+      box-shadow: none;
     }
 
     .driver-card-info {
@@ -3387,7 +3449,7 @@ OVERLAY_HTML = r"""<!doctype html>
     .driver-card-position {
       margin-top: 2px;
       color: #fff;
-      font-size: 13px;
+      font-size: 14px;
       font-weight: 900;
       letter-spacing: 0.08em;
       white-space: nowrap;
@@ -3774,8 +3836,14 @@ OVERLAY_HTML = r"""<!doctype html>
   </section>
 
   <section id="driver-card" class="driver-card hidden">
-    <div id="driver-card-number" class="driver-card-number"></div>
-    <div id="driver-card-image" class="driver-card-image hidden"></div>
+    <div class="driver-card-position-rank">
+      <div id="driver-card-position-rank" class="rank">P--</div>
+      <div class="label">Position</div>
+    </div>
+    <div id="driver-card-image" class="driver-card-image no-source">
+      <img id="driver-card-car-img" alt="" />
+      <div id="driver-card-number" class="driver-card-number"></div>
+    </div>
     <div class="driver-card-info">
       <div id="driver-card-name" class="driver-card-name"></div>
       <div id="driver-card-position" class="driver-card-position"></div>
@@ -3981,13 +4049,38 @@ OVERLAY_HTML = r"""<!doctype html>
       if (!hasDriver) return;
       setText("driver-card-number", driver.car_number || "?");
       setText("driver-card-name", driver.driver_name || "Unknown Driver");
+      setText("driver-card-position-rank", buildDriverCardRankLine(driver));
       setText("driver-card-position", buildDriverCardPositionLine(driver));
       setText("driver-card-story", driver.story || "Featured driver");
-      const image = document.getElementById("driver-card-image");
-      const imageUrl = driver.car_image_url || "";
-      card.classList.toggle("no-image", !imageUrl);
-      image.classList.toggle("hidden", !imageUrl);
-      image.style.backgroundImage = imageUrl ? `url("${cssEscapeUrl(imageUrl)}")` : "";
+      renderDriverCardImage(driver.car_image_url || "");
+    }
+
+    function renderDriverCardImage(imageUrl) {
+      const imageShell = document.getElementById("driver-card-image");
+      const image = document.getElementById("driver-card-car-img");
+      imageShell.classList.toggle("no-source", !imageUrl);
+      if (!imageUrl) {
+        imageShell.classList.remove("image-failed");
+        image.dataset.currentSrc = "";
+        image.removeAttribute("src");
+        return;
+      }
+      if (image.dataset.currentSrc === imageUrl) return;
+      image.dataset.currentSrc = imageUrl;
+      imageShell.classList.remove("image-failed");
+      image.onload = () => {
+        imageShell.classList.remove("image-failed", "no-source");
+      };
+      image.onerror = () => {
+        imageShell.classList.add("image-failed");
+        image.removeAttribute("src");
+      };
+      image.src = imageUrl;
+    }
+
+    function buildDriverCardRankLine(driver) {
+      const position = Number(driver.position || 0);
+      return position > 0 ? `P${position}` : "P--";
     }
 
     function buildDriverCardPositionLine(driver) {
@@ -4073,10 +4166,6 @@ OVERLAY_HTML = r"""<!doctype html>
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#039;");
-    }
-
-    function cssEscapeUrl(value) {
-      return String(value).replace(/"/g, "%22").replace(/\\/g, "/");
     }
 
     function pickRotatingGraphic(graphics, seconds) {
