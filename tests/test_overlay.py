@@ -572,6 +572,41 @@ def test_featured_driver_card_includes_position_line():
     assert ".driver-card-image.image-failed" in OVERLAY_HTML
 
 
+def test_featured_driver_card_proxies_iracing_render_urls():
+    from production.overlay import OverlayServer, is_safe_iracing_render_url
+
+    raw_url = "http://127.0.0.1:32034/pk_car.png?size=2&carPath=stockcars%5Cchevy&number=34"
+    assert is_safe_iracing_render_url(raw_url)
+
+    server = OverlayServer()
+    server.show_featured_driver(
+        car_number="34",
+        driver_name="T.J. Lee",
+        car_image_url=raw_url,
+    )
+
+    featured = server.current_state_dict()["featured_driver"]
+    assert featured["car_image_url"].startswith("/iracing-render?url=")
+    assert "pk_car.png" in featured["car_image_url"]
+
+
+def test_featured_driver_card_does_not_proxy_external_images():
+    from production.overlay import OverlayServer, is_safe_iracing_render_url
+
+    raw_url = "https://example.com/car.png"
+    assert not is_safe_iracing_render_url(raw_url)
+
+    server = OverlayServer()
+    server.show_featured_driver(
+        car_number="34",
+        driver_name="T.J. Lee",
+        car_image_url=raw_url,
+    )
+
+    featured = server.current_state_dict()["featured_driver"]
+    assert featured["car_image_url"] == raw_url
+
+
 def test_crank_it_up_overlay_uses_logo_and_racing_speaker_style():
     assert ".special-presentation.crank_it_up .ceremony-logo" in OVERLAY_HTML
     assert "repeating-linear-gradient" in OVERLAY_HTML
@@ -595,6 +630,7 @@ def test_overlay_server_has_paint_preview_route(tmp_path):
     handler = server.make_handler()
 
     assert hasattr(handler, "send_paint_preview")
+    assert hasattr(handler, "send_iracing_render_proxy")
 
 
 def test_overlay_server_exposes_producer_assist_url():

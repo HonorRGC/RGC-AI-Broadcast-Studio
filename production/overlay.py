@@ -8,7 +8,8 @@ from dataclasses import dataclass, field
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
-from urllib.parse import unquote
+from urllib.parse import parse_qs, quote, unquote, urlparse
+from urllib.request import urlopen
 
 from config import (
     OVERLAY_BRAND_GRAPHICS,
@@ -17,6 +18,26 @@ from config import (
     OVERLAY_RACE_SPONSOR,
     OVERLAY_SERIES_NAME,
 )
+
+
+MAX_IRACING_RENDER_BYTES = 5 * 1024 * 1024
+
+
+def is_safe_iracing_render_url(url):
+    parsed = urlparse(str(url or ""))
+    host = (parsed.hostname or "").lower()
+    return (
+        parsed.scheme == "http"
+        and host in ("127.0.0.1", "localhost")
+        and parsed.path in ("/pk_car.png", "/pk_helmet.png")
+    )
+
+
+def proxied_iracing_render_url(url):
+    text = str(url or "").strip()
+    if not is_safe_iracing_render_url(text):
+        return text
+    return f"/iracing-render?url={quote(text, safe='')}"
 
 
 @dataclass
@@ -985,7 +1006,7 @@ class OverlayServer:
                 car_number=str(car_number or ""),
                 driver_name=str(driver_name or ""),
                 story=str(story or ""),
-                car_image_url=str(car_image_url or ""),
+                car_image_url=proxied_iracing_render_url(car_image_url),
                 position=self.state_builder.safe_int(position),
                 starting_position=self.state_builder.safe_int(starting_position),
                 position_delta=self.state_builder.safe_int(position_delta),
@@ -1357,6 +1378,10 @@ class OverlayServer:
                     self.send_paint_preview(self.path.removeprefix("/paint-previews/"))
                     return
 
+                if self.path.startswith("/iracing-render"):
+                    self.send_iracing_render_proxy()
+                    return
+
                 self.send_error(404)
 
             def do_POST(self):
@@ -1438,6 +1463,32 @@ class OverlayServer:
                 self.send_response(200)
                 self.send_header("Content-Type", content_type)
                 self.send_header("Cache-Control", "public, max-age=3600")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+            def send_iracing_render_proxy(self):
+                query = parse_qs(urlparse(self.path).query)
+                target = str((query.get("url") or [""])[0])
+                if not is_safe_iracing_render_url(target):
+                    self.send_error(400)
+                    return
+                try:
+                    with urlopen(target, timeout=2.0) as response:
+                        body = response.read(MAX_IRACING_RENDER_BYTES + 1)
+                        content_type = response.headers.get("Content-Type") or "image/png"
+                except OSError:
+                    self.send_error(502)
+                    return
+                if len(body) > MAX_IRACING_RENDER_BYTES:
+                    self.send_error(502)
+                    return
+                if not str(content_type).lower().startswith("image/"):
+                    content_type = "image/png"
+
+                self.send_response(200)
+                self.send_header("Content-Type", content_type)
+                self.send_header("Cache-Control", "no-store")
                 self.send_header("Content-Length", str(len(body)))
                 self.end_headers()
                 self.wfile.write(body)
