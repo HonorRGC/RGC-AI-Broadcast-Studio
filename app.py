@@ -22,6 +22,7 @@ from production.camera_director import CameraDirector
 from production.audio_bed import AudioBedPlayer
 from production.anthem_director import NationalAnthemDirector
 from production.caution_presentation import CautionPresentationDirector
+from production.discord_reporter import DiscordRaceReporter
 from production.non_race_presentation import (
     PracticePresentationDirector,
     QualifyingCameraDirector,
@@ -145,6 +146,7 @@ def run_source(
     caution_audio_bed,
     tick_seconds,
     race_control_service=None,
+    discord_reporter=None,
 ):
     while source.is_connected():
         if overlay_server:
@@ -196,6 +198,12 @@ def run_source(
                 overlay_server,
                 caution_audio_bed,
             ),
+            overlay_server,
+        )
+        report_discord_race_report(
+            discord_reporter,
+            source,
+            engine,
             overlay_server,
         )
         if item:
@@ -316,6 +324,31 @@ def publish_producer_event(overlay_server, kind="info", title="", message="", sp
     publisher = getattr(overlay_server, "add_producer_event", None)
     if publisher:
         publisher(kind=kind, title=title, message=message, speaker=speaker)
+
+
+def report_discord_race_report(discord_reporter, source, engine, overlay_server=None):
+    if not discord_reporter or getattr(discord_reporter, "posted", False):
+        return
+    race_director = getattr(engine, "race_director", None)
+    if not getattr(race_director, "post_race_results_queued", False):
+        return
+
+    race_state_reader = getattr(getattr(engine, "race_intelligence", None), "get_race_state", None)
+    race_state = race_state_reader() if race_state_reader else None
+    ok, message = discord_reporter.post_once(
+        results=source.get_results(),
+        driver_lookup=source.get_driver_lookup(),
+        track_info=source.get_track_info(),
+        total_laps=source.get_total_laps(),
+        race_state=race_state,
+        openai_director=getattr(engine, "openai_director", None),
+    )
+    publish_producer_event(
+        overlay_server,
+        "info" if ok else "warning",
+        "Discord Race Report",
+        message,
+    )
 
 
 def queue_race_control_admin_announcement(engine, result, payload=None):
@@ -1631,6 +1664,7 @@ def main():
     qualifying_camera_director = QualifyingCameraDirector()
     live_broadcast_validator = LiveBroadcastValidator()
     race_control_service = RaceControlService(enabled=RACE_ADMIN_MODE)
+    discord_reporter = DiscordRaceReporter()
     overlay_server = OverlayServer(
         host=args.overlay_host,
         port=args.overlay_port,
@@ -1688,6 +1722,7 @@ def main():
     )
     print(f"Incident replay: {args.incident_replay.upper()}")
     print(f"Race Admin Mode: {'ON' if race_control_service.enabled else 'OFF'}")
+    print(f"Discord Race Report: {'ON' if discord_reporter.ready() else 'OFF'}")
     if args.incident_debug:
         print("Incident debug: ON")
     print(
@@ -1738,6 +1773,7 @@ def main():
             caution_audio_bed,
             args.tick_seconds,
             race_control_service,
+            discord_reporter,
         )
         return
 
@@ -1759,6 +1795,7 @@ def main():
         engine.reset()
         camera_director.reset()
         replay_director.reset()
+        discord_reporter.reset()
         anthem_director = NationalAnthemDirector()
         practice_presentation_director = PracticePresentationDirector()
         caution_presentation_director = CautionPresentationDirector()
@@ -1779,6 +1816,7 @@ def main():
             caution_audio_bed,
             args.tick_seconds,
             race_control_service,
+            discord_reporter,
         )
         cleanup_live_broadcast_session(
             source,

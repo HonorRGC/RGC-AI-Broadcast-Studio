@@ -287,6 +287,21 @@ Then open Producer Assist if you want to switch between AI broadcast and human-b
 
 Race Control note: `Race Admin Send Mode = clipboard` is the broadcast-safe default. It copies commands like `!yellow` or `!eol #34` so the admin can send them without the program opening iRacing chat on stream. `open_chat` copies the command and opens iRacing text chat for quick Ctrl+V/Enter. `ui_paste` is testing-only and may show the iRacing window/chat box in the broadcast capture.
 
+Optional Discord race report:
+
+1. In Discord, open the results channel settings.
+2. Create a webhook for that channel.
+3. Copy the webhook URL.
+4. In RGC AI Broadcast Studio, set:
+
+   ```text
+   Discord Race Report = true
+   Race Report Webhook URL = your Discord webhook URL
+   Use OpenAI Race Recap = true
+   ```
+
+After the race, the Studio waits for the finishing order to stabilize, then posts a Discord recap with a short race breakdown, the top ten, biggest movers, and available race stats. The Discord interview bot fields are separate and can stay blank for now.
+
 ## 12. Remote Producer Assist with Tailscale
 
 Use Tailscale when a trusted admin in another location needs to help with Producer Assist, cameras, notes, incident review, or race control.

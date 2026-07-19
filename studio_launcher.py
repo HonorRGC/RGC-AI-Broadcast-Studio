@@ -108,6 +108,9 @@ LAUNCHER_FIELDS = [
     ("DISCORD_BOOTH_CHANNEL_ID", ""),
     ("DISCORD_WAITING_CHANNEL_ID", ""),
     ("DISCORD_INTERVIEW_CHANNEL_ID", ""),
+    ("DISCORD_RACE_REPORT_ENABLED", "false"),
+    ("DISCORD_RACE_REPORT_WEBHOOK_URL", ""),
+    ("DISCORD_RACE_REPORT_USE_OPENAI", "true"),
     ("USE_LEAGUE_DRIVER_NOTES", "false"),
     ("LEAGUE_DRIVERS_CSV", "league/drivers.csv"),
     ("LEAGUE_SEASON_STATS_CSV", "league/season.csv"),
@@ -170,6 +173,9 @@ BROADCAST_FIELD_LABELS = {
     "DISCORD_BOOTH_CHANNEL_ID": "Booth Voice Channel ID",
     "DISCORD_WAITING_CHANNEL_ID": "Driver Waiting Channel ID",
     "DISCORD_INTERVIEW_CHANNEL_ID": "Interview Voice Channel ID",
+    "DISCORD_RACE_REPORT_ENABLED": "Discord Race Report",
+    "DISCORD_RACE_REPORT_WEBHOOK_URL": "Race Report Webhook URL",
+    "DISCORD_RACE_REPORT_USE_OPENAI": "Use OpenAI Race Recap",
     "USE_LEAGUE_DRIVER_NOTES": "Use League Driver Notes",
     "LEAGUE_DRIVERS_CSV": "Driver Notes CSV",
     "LEAGUE_SEASON_STATS_CSV": "Season Stats CSV",
@@ -187,6 +193,7 @@ BROADCAST_FIELD_SECTIONS = {
     "POST_RACE_INTERVIEWS_ENABLED": "Race Flow",
     "RACE_ADMIN_MODE": "Race Control",
     "DISCORD_BOT_ENABLED": "Discord Interviews - Prepared for Later",
+    "DISCORD_RACE_REPORT_ENABLED": "Discord Race Report",
     "USE_LEAGUE_DRIVER_NOTES": "League Data",
 }
 
@@ -1366,7 +1373,12 @@ def run_gui():
                 state="readonly",
             )
             entry_widget.set(existing.get(key, "127.0.0.1") or "127.0.0.1")
-        elif key in ("REMOTE_PRODUCER_ENABLED", "DISCORD_BOT_ENABLED"):
+        elif key in (
+            "REMOTE_PRODUCER_ENABLED",
+            "DISCORD_BOT_ENABLED",
+            "DISCORD_RACE_REPORT_ENABLED",
+            "DISCORD_RACE_REPORT_USE_OPENAI",
+        ):
             entry_widget = ttk.Combobox(
                 settings_frame,
                 values=("false", "true"),

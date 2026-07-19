@@ -89,11 +89,15 @@ def test_broadcast_settings_have_friendly_labels_and_sections():
     assert BROADCAST_FIELD_LABELS["RACE_ADMIN_MODE"] == "Race Admin Mode"
     assert BROADCAST_FIELD_LABELS["RACE_ADMIN_SEND_MODE"] == "Race Admin Send Mode"
     assert BROADCAST_FIELD_LABELS["DISCORD_BOT_ENABLED"] == "Discord Bot Integration"
+    assert BROADCAST_FIELD_LABELS["DISCORD_RACE_REPORT_ENABLED"] == "Discord Race Report"
+    assert BROADCAST_FIELD_LABELS["DISCORD_RACE_REPORT_WEBHOOK_URL"] == "Race Report Webhook URL"
+    assert BROADCAST_FIELD_LABELS["DISCORD_RACE_REPORT_USE_OPENAI"] == "Use OpenAI Race Recap"
     assert "STUDIO_VOLUME" not in BROADCAST_FIELD_LABELS
     assert BROADCAST_FIELD_SECTIONS["USE_OPENAI"] == "AI Commentary"
     assert BROADCAST_FIELD_SECTIONS["OVERLAY_EVENT_TITLE"] == "Overlay Branding"
     assert BROADCAST_FIELD_SECTIONS["RACE_ADMIN_MODE"] == "Race Control"
     assert BROADCAST_FIELD_SECTIONS["DISCORD_BOT_ENABLED"] == "Discord Interviews - Prepared for Later"
+    assert BROADCAST_FIELD_SECTIONS["DISCORD_RACE_REPORT_ENABLED"] == "Discord Race Report"
 
 
 def test_launcher_version_comparison_helpers():
@@ -138,6 +142,9 @@ def test_launcher_defaults_include_split_league_stats_csvs():
     assert defaults["LEAGUE_SEASON_STATS_CSV"] == "league/season.csv"
     assert defaults["LEAGUE_CAREER_STATS_CSV"] == "league/career.csv"
     assert defaults["STAGE_END_LAPS"] == ""
+    assert defaults["DISCORD_RACE_REPORT_ENABLED"] == "false"
+    assert defaults["DISCORD_RACE_REPORT_WEBHOOK_URL"] == ""
+    assert defaults["DISCORD_RACE_REPORT_USE_OPENAI"] == "true"
     assert defaults["OVERLAY_LEADERBOARD_STYLE"] == "side"
     assert defaults["SPONSOR_READ_NAME_2"] == ""
     assert defaults["SPONSOR_READ_NAME_3"] == ""
