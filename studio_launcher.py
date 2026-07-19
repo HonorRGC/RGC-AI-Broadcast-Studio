@@ -1206,6 +1206,8 @@ def run_gui():
         color="#334b64",
     ).pack(side="left", padx=5)
 
+    main_page = scrollable_tab(root)
+
     status = tk.StringVar(
         value=(
             "Launcher ready. Broadcast is not started from this window yet. "
@@ -1213,7 +1215,7 @@ def run_gui():
         )
     )
 
-    profile_bar = frame(root, bg=PANEL_BG)
+    profile_bar = frame(main_page, bg=PANEL_BG)
     profile_bar.pack(fill="x", padx=18, pady=(0, 8))
     label(
         profile_bar,
@@ -1240,13 +1242,13 @@ def run_gui():
     profile_name_entry = entry(profile_bar, textvariable=profile_name_var, width=24)
     profile_name_entry.pack(side="left", padx=4, pady=8)
 
-    broadcast_bar = frame(root, bg=PANEL_BG)
+    broadcast_bar = frame(main_page, bg=PANEL_BG)
     broadcast_bar.pack(fill="x", padx=18, pady=(4, 6))
 
-    profile_action_bar = frame(root, bg=PANEL_BG)
+    profile_action_bar = frame(main_page, bg=PANEL_BG)
     profile_action_bar.pack(fill="x", padx=18, pady=(0, 10))
 
-    health_panel = frame(root, bg=PANEL_BG)
+    health_panel = frame(main_page, bg=PANEL_BG)
     health_panel.pack(fill="x", padx=18, pady=(0, 10))
     health_header = frame(health_panel, bg=PANEL_BG)
     health_header.pack(fill="x", padx=12, pady=(10, 4))
@@ -1275,8 +1277,8 @@ def run_gui():
     health_row_widgets = []
     health_panel.pack_forget()
 
-    notebook = ttk.Notebook(root)
-    notebook.pack(fill="both", expand=True, padx=18)
+    notebook = ttk.Notebook(main_page)
+    notebook.pack(fill="x", padx=18)
     health_panel.pack(fill="x", padx=18, pady=(8, 10))
 
     settings_tab = frame(notebook, bg=PANEL_BG)
@@ -1286,9 +1288,9 @@ def run_gui():
     notebook.add(league_tab, text="League / Sim Racer Hub")
     notebook.add(help_tab, text="Help / Setup Guide")
 
-    settings_content = scrollable_tab(settings_tab)
-    league_content = scrollable_tab(league_tab)
-    help_content = scrollable_tab(help_tab)
+    settings_content = settings_tab
+    league_content = league_tab
+    help_content = help_tab
 
     settings_frame = frame(settings_content, bg=PANEL_BG)
     settings_frame.pack(fill="both", expand=True, padx=14, pady=12)
@@ -1668,7 +1670,7 @@ def run_gui():
 
     settings_frame.columnconfigure(1, weight=1)
 
-    label(root, textvariable=status, anchor="w", fg=MUTED_FG).pack(
+    label(main_page, textvariable=status, anchor="w", fg=MUTED_FG).pack(
         fill="x",
         padx=18,
         pady=(8, 0),
