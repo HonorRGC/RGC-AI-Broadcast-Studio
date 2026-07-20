@@ -2115,6 +2115,99 @@ def test_cool_down_state_airs_checkered_and_suppresses_false_incident():
     assert "incident" not in categories
 
 
+def test_three_quarter_recap_waits_until_three_quarter_distance():
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    race_state = RaceState(
+        current_lap=59,
+        total_laps=80,
+        laps_remaining=21,
+        green_lap_count=18,
+        caution_count=1,
+        is_green=True,
+    )
+
+    queued = engine._queue_three_quarter_recap(
+        [],
+        {},
+        race_state,
+        current_lap=59,
+        total_laps=80,
+        track_info={"track_name": "Michigan International Speedway"},
+    )
+
+    assert queued is False
+    assert engine.three_quarter_recap_queued is False
+
+
+def test_three_quarter_recap_queues_once_with_key_stats():
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    drivers = {
+        1: {"name": "Leader One", "number": "1"},
+        2: {"name": "Fast Driver", "number": "2"},
+        3: {"name": "Mover Driver", "number": "3"},
+        4: {"name": "Fading Driver", "number": "4"},
+    }
+    race_state = RaceState(
+        current_lap=60,
+        total_laps=80,
+        laps_remaining=20,
+        green_lap_count=22,
+        caution_count=2,
+        is_green=True,
+    )
+    engine.lead_change_count = 3
+    engine.fastest_lap_tracker.fastest_car_idx = 2
+    engine.fastest_lap_tracker.fastest_time = 31.234
+    engine.race_intelligence.driver_summaries = {
+        3: SimpleNamespace(
+            car_idx=3,
+            driver_name="Mover Driver",
+            car_number="3",
+            positions_gained=8,
+            positions_lost=0,
+        ),
+        4: SimpleNamespace(
+            car_idx=4,
+            driver_name="Fading Driver",
+            car_number="4",
+            positions_gained=0,
+            positions_lost=6,
+        ),
+    }
+
+    queued = engine._queue_three_quarter_recap(
+        [],
+        drivers,
+        race_state,
+        current_lap=60,
+        total_laps=80,
+        track_info={"track_name": "Michigan International Speedway"},
+    )
+
+    item = engine.broadcast_queue.items[0]
+    assert queued is True
+    assert item.category == "race_recap"
+    assert item.protected is True
+    assert item.dedupe_key == "race_recap:three_quarter:80"
+    assert "three-quarter mark" in item.message
+    assert "2 cautions" in item.message
+    assert "3 lead changes" in item.message
+    assert "Fastest lap belongs to Fast Driver in the number 2" in item.message
+    assert "Biggest mover is Mover Driver" in item.message
+    assert "Fading Driver" in item.message
+
+    queued_again = engine._queue_three_quarter_recap(
+        [],
+        drivers,
+        race_state,
+        current_lap=61,
+        total_laps=80,
+        track_info={"track_name": "Michigan International Speedway"},
+    )
+
+    assert queued_again is False
+
+
 class RaceFlags:
     GREEN = 0x00000004
     CAUTION = 0x00004000

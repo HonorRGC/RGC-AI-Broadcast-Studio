@@ -83,6 +83,9 @@ class OpeningDirector:
         state = self.expand_state(track_info.get("track_state", ""))
         location = f" in {city}, {state}" if city and state else ""
         details = []
+        story = self.track_opening_story(track_info)
+        if story:
+            details.append(story)
         track_description = self.track_description(track_info)
         if track_description:
             details.append(track_description)
@@ -95,6 +98,61 @@ class OpeningDirector:
             f"Welcome to {track_name}{location}.{detail_text}",
             priority=10,
             category="opening_welcome",
+        )
+
+    def track_opening_story(self, track_info):
+        track_name = track_info.get("track_name", "the speedway")
+        name = str(track_name or "").lower()
+        if "daytona" in name:
+            return (
+                "This is one of racing's landmark venues, where the draft can "
+                "turn patience into a winning move in a heartbeat."
+            )
+        if "talladega" in name:
+            return (
+                "This place has built its reputation on huge packs, big runs, "
+                "and decisions that have to be made at nearly full throttle."
+            )
+        if "michigan" in name:
+            return (
+                "Michigan gives drivers room to search for clean air, but the "
+                "long straightaways punish anyone who loses momentum."
+            )
+        if "homestead" in name:
+            return (
+                "Homestead is a driver's track, with multiple lanes and a wall "
+                "that rewards commitment but punishes one small mistake."
+            )
+        if "martinsville" in name:
+            return (
+                "Martinsville is short-track pressure from the first lap, where "
+                "brake discipline and patience can matter more than raw speed."
+            )
+        if "bristol" in name:
+            return (
+                "Bristol turns every lap into traffic management, with the walls "
+                "close and patience in very short supply."
+            )
+        if "nashville" in name:
+            return (
+                "Nashville has become a momentum race, where clean exits and "
+                "traffic decisions can build or break a run."
+            )
+        length = self.track_length_miles(track_info.get("track_length"))
+        track_type = str(track_info.get("track_type", "") or "").lower()
+        if length and length <= 1.0 and "road" not in track_type:
+            return (
+                "Short-track nights are built on rhythm, patience, and surviving "
+                "the restart stack-ups."
+            )
+        if "road" in track_type:
+            return (
+                "This is a rhythm race, where braking zones, exits, and avoiding "
+                "the big mistake can decide the night."
+            )
+        return (
+            "Tonight is about building a complete race, balancing track position, "
+            "tire life, and the moments when it is time to attack."
         )
 
     def track_description(self, track_info):
@@ -137,24 +195,23 @@ class OpeningDirector:
         length_miles = self.track_length_miles(track_info.get("track_length"))
         if length_miles and length_miles <= 1.0:
             message = (
-                "The biggest thing tonight is patience. Restarts will stack up "
-                "quickly, and the drivers who keep the nose clean should have "
-                "options late."
+                "The biggest thing tonight is patience. Restarts stack up quickly, "
+                "and the drivers who keep the nose clean should have options late."
             )
         elif self.is_drafting_track(track_name):
             message = (
-                "The draft is going to shape this race. Runs will build fast, "
-                "and timing the lane changes may matter more than raw speed."
+                "The draft should shape this race. Runs build fast, and timing "
+                "the lane changes may matter more than raw speed."
             )
         elif "road" in track_type:
             message = (
-                "The rhythm sections and braking zones will decide this one. "
-                "Clean exits and mistake-free laps should pay off over a full run."
+                "Rhythm and braking zones decide this one. Clean exits and "
+                "mistake-free laps should pay off over a full run."
             )
         else:
             message = (
-                "The story to watch is who can balance early track position "
-                "against saving enough tire to attack when the run gets long."
+                "The story to watch is who can protect track position while "
+                "saving enough tire to attack when the run gets long."
             )
         return OpeningSegment(
             message,

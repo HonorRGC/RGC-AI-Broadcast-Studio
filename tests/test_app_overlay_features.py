@@ -233,6 +233,72 @@ def test_green_pit_cycle_update_shows_recent_stop_overlay():
     assert panel["minimum_interval"] == 30.0
 
 
+def test_race_recap_overlay_shows_three_quarter_summary():
+    overlay = OverlaySpy()
+    race_state = SimpleNamespace(
+        current_lap=60,
+        total_laps=80,
+        caution_count=2,
+    )
+    mover_summary = SimpleNamespace(
+        car_idx=3,
+        car_number="3",
+        driver_name="Mover Driver",
+        positions_gained=7,
+        positions_lost=0,
+    )
+    drop_summary = SimpleNamespace(
+        car_idx=4,
+        car_number="4",
+        driver_name="Fading Driver",
+        positions_gained=0,
+        positions_lost=5,
+    )
+    engine = SimpleNamespace(
+        race_intelligence=SimpleNamespace(
+            get_race_state=lambda: race_state,
+            get_biggest_movers=lambda limit=1: [mover_summary],
+            get_fading_drivers=lambda limit=1: [drop_summary],
+        ),
+        lead_change_count=3,
+        fastest_lap_tracker=SimpleNamespace(
+            fastest_car_idx=7,
+            fastest_time=31.234,
+            format_lap_time=lambda value: f"{value:.3f}",
+        ),
+    )
+    source = SimpleNamespace(
+        get_driver_lookup=lambda: {
+            7: {"name": "Fast Driver", "number": "7"},
+        }
+    )
+
+    show_overlay_feature(
+        item(category="race_recap", target=None),
+        overlay,
+        source=source,
+        engine=engine,
+    )
+
+    panel = overlay.stat_panels[0]
+    assert panel["kind"] == "race_recap"
+    assert panel["title"] == "Race Recap"
+    assert panel["minimum_interval"] == 600.0
+    labels = [row["label"] for row in panel["rows"]]
+    assert labels == [
+        "Distance",
+        "Cautions",
+        "Lead Changes",
+        "Fastest Lap",
+        "Biggest Mover",
+        "Biggest Drop",
+    ]
+    assert panel["rows"][3]["value"] == "31.234"
+    assert panel["rows"][3]["detail"] == "#7 Fast Driver"
+    assert panel["rows"][4]["value"] == "+7"
+    assert panel["rows"][4]["detail"] == "#3 Mover Driver"
+
+
 def test_producer_pit_road_rows_include_service_guess_and_tire_age():
     pit_state = SimpleNamespace(
         car_idx=4,

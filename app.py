@@ -1104,6 +1104,20 @@ def show_overlay_feature(item, overlay_server, source=None, engine=None):
             )
         return
 
+    if category == "race_recap":
+        rows = build_race_recap_rows(source, engine)
+        if rows:
+            overlay_server.show_stat_panel(
+                kind="race_recap",
+                title="Race Recap",
+                subtitle="Three-quarter reset",
+                rows=rows,
+                duration=14.0,
+                dedupe_key="race_recap:three_quarter",
+                minimum_interval=600.0,
+            )
+        return
+
     if category in ("pit_strategy", "caution_pit_summary"):
         return
 
@@ -1326,6 +1340,81 @@ def build_biggest_movers_rows(engine, limit=5):
                 "label": f"P{mover.current_position}  #{mover.car_number} {mover.driver_name}",
                 "value": f"+{gained}",
                 "detail": f"Started {ordinal(mover.starting_position)}",
+            }
+        )
+    return rows
+
+
+def build_race_recap_rows(source, engine):
+    if not engine:
+        return []
+    race_state = getattr(engine.race_intelligence, "get_race_state", lambda: None)()
+    current_lap = safe_int(getattr(race_state, "current_lap", 0), 0)
+    total_laps = safe_int(getattr(race_state, "total_laps", 0), 0)
+    rows = []
+    if current_lap and total_laps:
+        rows.append(
+            {
+                "label": "Distance",
+                "value": f"Lap {current_lap}/{total_laps}",
+                "detail": "Three-quarter reset",
+            }
+        )
+
+    caution_count = safe_int(getattr(race_state, "caution_count", 0), 0)
+    rows.append(
+        {
+            "label": "Cautions",
+            "value": str(caution_count),
+            "detail": "Caution-free" if caution_count == 0 else "Yellow flags so far",
+        }
+    )
+
+    lead_changes = safe_int(getattr(engine, "lead_change_count", 0), 0)
+    rows.append(
+        {
+            "label": "Lead Changes",
+            "value": str(lead_changes),
+            "detail": "Tracked at the front",
+        }
+    )
+
+    fastest_lap_tracker = getattr(engine, "fastest_lap_tracker", None)
+    fastest_idx = getattr(fastest_lap_tracker, "fastest_car_idx", None)
+    fastest_time = getattr(fastest_lap_tracker, "fastest_time", None)
+    if fastest_idx is not None and fastest_time:
+        drivers = source.get_driver_lookup() if source else {}
+        driver = drivers.get(fastest_idx, {})
+        rows.append(
+            {
+                "label": "Fastest Lap",
+                "value": fastest_lap_tracker.format_lap_time(fastest_time),
+                "detail": (
+                    f"#{driver.get('number', '?')} "
+                    f"{driver.get('name', f'Car {fastest_idx}')}"
+                ),
+            }
+        )
+
+    movers = getattr(engine.race_intelligence, "get_biggest_movers", lambda *_: [])(1)
+    if movers and getattr(movers[0], "positions_gained", 0) > 0:
+        mover = movers[0]
+        rows.append(
+            {
+                "label": "Biggest Mover",
+                "value": f"+{mover.positions_gained}",
+                "detail": f"#{mover.car_number} {mover.driver_name}",
+            }
+        )
+
+    fading = getattr(engine.race_intelligence, "get_fading_drivers", lambda *_: [])(1)
+    if fading and getattr(fading[0], "positions_lost", 0) > 0:
+        driver = fading[0]
+        rows.append(
+            {
+                "label": "Biggest Drop",
+                "value": f"-{driver.positions_lost}",
+                "detail": f"#{driver.car_number} {driver.driver_name}",
             }
         )
     return rows

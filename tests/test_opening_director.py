@@ -45,6 +45,7 @@ def test_opening_waits_for_lineup_after_welcome_and_weather():
         "opening_pit_report",
     ]
     track_message = first_segments[0].message
+    assert "momentum race" in track_message
     assert "partly cloudy" in track_message.lower()
     assert "mile-and-a-third oval" in track_message
     assert "81 degrees Fahrenheit" in track_message

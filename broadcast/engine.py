@@ -85,6 +85,9 @@ class BroadcastEngine:
         self.last_leader_gap = None
         self.leader_laps_led = {}
         self.last_leader_lap_counted = None
+        self.recap_leader_car_idx = None
+        self.lead_change_count = 0
+        self.three_quarter_recap_queued = False
         self.race_ticks_seen = 0
         self.joined_mid_race = False
         self.mid_race_join_note_queued = False
@@ -254,6 +257,16 @@ class BroadcastEngine:
                 caution=False,
             )
             if queued_stage_end:
+                return self.broadcast_queue.next_item()
+            queued_recap = self._queue_three_quarter_recap(
+                story_results,
+                driver_lookup,
+                race_state,
+                current_lap,
+                total_laps,
+                telemetry.get_track_info(),
+            )
+            if queued_recap:
                 return self.broadcast_queue.next_item()
             queued_final_battle = self._queue_final_laps_battle(
                 story_results,
@@ -677,8 +690,135 @@ class BroadcastEngine:
         leader_idx = ordered[0].get("CarIdx")
         if leader_idx is None:
             return
+        if self.recap_leader_car_idx is None:
+            self.recap_leader_car_idx = leader_idx
+        elif leader_idx != self.recap_leader_car_idx:
+            self.lead_change_count += 1
+            self.recap_leader_car_idx = leader_idx
         self.leader_laps_led[leader_idx] = self.leader_laps_led.get(leader_idx, 0) + 1
         self.last_leader_lap_counted = current_lap
+
+    def _queue_three_quarter_recap(
+        self,
+        results,
+        driver_lookup,
+        race_state,
+        current_lap,
+        total_laps,
+        track_info=None,
+    ):
+        if self.three_quarter_recap_queued:
+            return False
+        if total_laps <= 0 or current_lap <= 0:
+            return False
+        if current_lap < max(1, int(total_laps * 0.75)):
+            return False
+        if self.closing_lap_feature_blocked(current_lap, total_laps):
+            return False
+        if self.has_pending_race_control():
+            return False
+
+        message = self.build_three_quarter_recap(
+            results,
+            driver_lookup,
+            race_state,
+            current_lap,
+            total_laps,
+            track_info,
+        )
+        if not message:
+            return False
+
+        self.three_quarter_recap_queued = True
+        self.broadcast_queue.add(
+            message,
+            priority=10,
+            category="race_recap",
+            protected=True,
+            speaker="lead",
+            expires_after=45,
+            dedupe_key=f"race_recap:three_quarter:{total_laps}",
+        )
+        return True
+
+    def build_three_quarter_recap(
+        self,
+        results,
+        driver_lookup,
+        race_state,
+        current_lap,
+        total_laps,
+        track_info=None,
+    ):
+        track_name = (track_info or {}).get("track_name") or "the speedway"
+        caution_count = self.safe_int(getattr(race_state, "caution_count", 0))
+        caution_text = (
+            "This has been caution-free so far"
+            if caution_count <= 0
+            else f"We have had {caution_count} caution{'s' if caution_count != 1 else ''} so far"
+        )
+        lead_change_text = (
+            "the lead has stayed pretty steady"
+            if self.lead_change_count <= 0
+            else f"we have tracked {self.lead_change_count} lead change{'s' if self.lead_change_count != 1 else ''}"
+        )
+        fastest_text = self.fastest_lap_recap_text(driver_lookup)
+        mover_text = self.mover_recap_text()
+        tone_text = self.race_tone_text(race_state, caution_count)
+
+        lap_text = f"lap {current_lap} of {total_laps}"
+        parts = [
+            f"At the three-quarter mark here at {track_name}, we are at {lap_text}.",
+            f"{caution_text}, and {lead_change_text}.",
+        ]
+        if fastest_text:
+            parts.append(fastest_text)
+        if mover_text:
+            parts.append(mover_text)
+        if tone_text:
+            parts.append(tone_text)
+        return " ".join(parts)
+
+    def fastest_lap_recap_text(self, driver_lookup):
+        car_idx = self.fastest_lap_tracker.fastest_car_idx
+        lap_time = self.fastest_lap_tracker.fastest_time
+        if car_idx is None or not lap_time:
+            return ""
+        driver = (driver_lookup or {}).get(car_idx, {})
+        name = driver.get("name", f"Car {car_idx}")
+        number = driver.get("number", "?")
+        return (
+            f"Fastest lap belongs to {name} in the number {number}, "
+            f"a {self.fastest_lap_tracker.format_lap_time(lap_time)}."
+        )
+
+    def mover_recap_text(self):
+        movers = self.race_intelligence.get_biggest_movers(1)
+        fading = self.race_intelligence.get_fading_drivers(1)
+        parts = []
+        if movers and getattr(movers[0], "positions_gained", 0) > 0:
+            mover = movers[0]
+            parts.append(
+                f"Biggest mover is {mover.driver_name}, up {mover.positions_gained} spots"
+            )
+        if fading and getattr(fading[0], "positions_lost", 0) > 0:
+            fade = fading[0]
+            parts.append(
+                f"biggest drop is {fade.driver_name}, down {fade.positions_lost}"
+            )
+        if not parts:
+            return ""
+        return ", while ".join(parts) + "."
+
+    def race_tone_text(self, race_state, caution_count):
+        green_run = self.safe_int(getattr(race_state, "green_lap_count", 0))
+        if caution_count >= 4:
+            return "Cautions have shaped the rhythm, so restarts and pit calls have mattered as much as outright pace."
+        if caution_count == 0 and green_run >= 15:
+            return "With a long green run on the board, tire management and fuel windows are becoming the story."
+        if green_run >= 12:
+            return "This run is long enough now that tire falloff and patience can start separating the field."
+        return "The closing quarter should come down to execution, clean air, and who has saved enough for the finish."
 
     def _queue_final_laps_battle(self, results, driver_lookup, current_lap, total_laps):
         if self.final_laps_battle_queued:
