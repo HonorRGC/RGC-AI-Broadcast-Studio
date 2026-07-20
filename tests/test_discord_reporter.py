@@ -47,6 +47,35 @@ def test_discord_race_report_builds_payload_with_top_ten_and_movers():
     assert "1st - #34 Winner Driver" in embed["fields"][0]["value"]
     assert "#88 Mover Driver: +8 spots" in embed["fields"][1]["value"]
     assert "Scheduled distance: 100 laps" in embed["fields"][2]["value"]
+    assert "Green-flag laps" not in embed["fields"][2]["value"]
+    assert "Caution laps tracked: 12" in embed["fields"][2]["value"]
+
+
+def test_discord_race_report_uses_true_green_laps_only():
+    reporter = DiscordRaceReporter(enabled=True, webhook_url="https://discord.example/webhook")
+    results = [{"CarIdx": 1, "Position": 0}]
+    drivers = {1: {"name": "Winner Driver", "number": "34"}}
+
+    payload = reporter.build_payload(
+        results,
+        drivers,
+        total_laps=36,
+        race_state=SimpleNamespace(green_lap_count=1, caution_count=4),
+    )
+
+    stats = payload["embeds"][0]["fields"][-1]["value"]
+    assert "Green-flag laps" not in stats
+    assert "Cautions tracked: 4" in stats
+
+    payload = reporter.build_payload(
+        results,
+        drivers,
+        total_laps=36,
+        race_state=SimpleNamespace(green_laps=28, green_lap_count=1, caution_count=4),
+    )
+
+    stats = payload["embeds"][0]["fields"][-1]["value"]
+    assert "Green-flag laps: 28" in stats
 
 
 def test_discord_race_report_posts_only_once():

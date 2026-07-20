@@ -254,11 +254,11 @@ class DiscordRaceReporter:
         stats = []
         if self.safe_int(total_laps) > 0:
             stats.append(f"Scheduled distance: {self.safe_int(total_laps)} laps")
-        green_laps = self.safe_int(getattr(race_state, "green_laps", 0) or getattr(race_state, "green_lap_count", 0))
+        green_laps = self.safe_int(getattr(race_state, "green_laps", 0))
         caution_laps = self.safe_int(getattr(race_state, "caution_laps", 0))
         caution_count = self.safe_int(getattr(race_state, "cautions", 0) or getattr(race_state, "caution_count", 0))
         if green_laps > 0:
-            stats.append(f"Green-flag laps tracked: {green_laps}")
+            stats.append(f"Green-flag laps: {green_laps}")
         if caution_laps > 0:
             stats.append(f"Caution laps tracked: {caution_laps}")
         if caution_count > 0:
