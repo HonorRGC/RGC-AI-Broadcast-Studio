@@ -4183,7 +4183,6 @@ OVERLAY_HTML = r"""<!doctype html>
         pieces.push(`${sign}${delta} ${word}`);
       }
       if (driver.interval) pieces.push(driver.interval);
-      if (driver.speed) pieces.push(driver.speed);
       return pieces.join(" • ");
     }
 

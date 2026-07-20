@@ -5,6 +5,7 @@ from app import (
     build_featured_driver_story,
     build_featured_driver_image,
     featured_driver_position_info,
+    update_overlay_featured_driver,
     build_producer_pit_road_rows,
     find_brand_graphic_for_name,
     handle_producer_command,
@@ -27,6 +28,14 @@ class OverlaySpy:
 
     def show_special_presentation(self, **kwargs):
         self.special_presentations.append(kwargs)
+
+
+class FeaturedDriverOverlaySpy:
+    def __init__(self):
+        self.featured = []
+
+    def show_featured_driver(self, **kwargs):
+        self.featured.append(kwargs)
 
 
 class ProducerOverlaySpy:
@@ -650,7 +659,7 @@ def test_featured_driver_story_for_league_races_can_use_extra_profile_details():
     )
 
 
-def test_featured_driver_position_info_includes_gap_to_next_and_speed():
+def test_featured_driver_position_info_includes_gap_to_next_without_speed():
     info = featured_driver_position_info(
         34,
         [
@@ -670,17 +679,56 @@ def test_featured_driver_position_info_includes_gap_to_next_and_speed():
     assert info["starting_position"] == 8
     assert info["position_delta"] == 5
     assert info["interval"] == "+0.45 to next"
-    assert info["speed"] == "175 mph"
+    assert info["speed"] == ""
 
 
-def test_featured_driver_position_info_prefers_live_speed_lookup():
+def test_featured_driver_position_info_can_use_grid_position_as_start_for_intro():
     info = featured_driver_position_info(
         34,
         [
-            {"CarIdx": 7, "Position": 1, "Time": 0.0},
-            {"CarIdx": 34, "Position": 2, "Time": 0.5, "Speed": 72.0},
+            {"CarIdx": 7, "Position": 0, "Time": 0.0},
+            {"CarIdx": 34, "Position": 1, "Time": 0.5},
         ],
-        {34: 183.4},
+        use_position_as_start=True,
+        include_interval=False,
     )
 
-    assert info["speed"] == "183 mph"
+    assert info["position"] == 2
+    assert info["starting_position"] == 2
+    assert info["interval"] == ""
+    assert info["speed"] == ""
+
+
+def test_opening_field_rundown_driver_card_uses_starting_grid_and_country():
+    overlay = FeaturedDriverOverlaySpy()
+    camera_decision = SimpleNamespace(
+        status="switched",
+        car_idx=34,
+        car_number="34",
+    )
+    source = SimpleNamespace(
+        get_driver_lookup=lambda: {
+            34: {
+                "name": "T.J. Lee",
+                "number": "34",
+                "country": "United States",
+            }
+        },
+        get_results=lambda: [],
+        get_starting_grid=lambda: [
+            {"CarIdx": 12, "Position": 0},
+            {"CarIdx": 34, "Position": 1},
+        ],
+    )
+
+    update_overlay_featured_driver(
+        overlay,
+        item(category="opening_field_rundown_2", target=34),
+        source,
+        camera_decision,
+    )
+
+    assert overlay.featured[0]["position"] == 2
+    assert overlay.featured[0]["starting_position"] == 2
+    assert overlay.featured[0]["story"] == "United States"
+    assert overlay.featured[0]["speed"] == ""

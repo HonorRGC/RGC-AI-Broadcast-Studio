@@ -564,6 +564,7 @@ def test_featured_driver_card_includes_position_line():
     assert featured["interval"] == "+0.45 to next"
     assert featured["speed"] == "175 mph"
     assert "buildDriverCardPositionLine" in OVERLAY_HTML
+    assert "pieces.push(driver.speed)" not in OVERLAY_HTML
     assert "buildDriverCardRankLine" in OVERLAY_HTML
     assert 'id="driver-card-position"' in OVERLAY_HTML
     assert 'id="driver-card-position-rank"' in OVERLAY_HTML

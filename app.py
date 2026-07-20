@@ -1580,7 +1580,14 @@ def update_overlay_featured_driver(overlay_server, item, source, camera_decision
     if car_idx is None or car_idx != camera_decision.car_idx:
         return
 
-    update_overlay_focused_driver(overlay_server, source, camera_decision)
+    update_overlay_focused_driver(
+        overlay_server,
+        source,
+        camera_decision,
+        opening_intro=str(getattr(item, "category", "")).startswith(
+            "opening_field_rundown"
+        ),
+    )
 
 
 def update_overlay_focused_driver(
@@ -1588,6 +1595,7 @@ def update_overlay_focused_driver(
     source,
     camera_decision,
     duration=12.0,
+    opening_intro=False,
 ):
     if camera_decision is None:
         return
@@ -1605,10 +1613,12 @@ def update_overlay_focused_driver(
 
     story = build_featured_driver_story(driver)
     car_image_url = build_featured_driver_image(driver)
+    results = featured_driver_results(source, opening_intro=opening_intro)
     position_info = featured_driver_position_info(
         car_idx,
-        source.get_results(),
-        source_speed_lookup(source),
+        results,
+        use_position_as_start=opening_intro,
+        include_interval=not opening_intro,
     )
     overlay_server.show_featured_driver(
         car_number=car_number,
@@ -1620,21 +1630,29 @@ def update_overlay_focused_driver(
         starting_position=position_info["starting_position"],
         position_delta=position_info["position_delta"],
         interval=position_info["interval"],
-        speed=position_info["speed"],
+        speed="",
     )
 
 
-def source_speed_lookup(source):
-    getter = getattr(source, "get_car_speed_mph_lookup", None)
-    if not callable(getter):
-        return {}
-    try:
-        return getter() or {}
-    except Exception:
-        return {}
+def featured_driver_results(source, opening_intro=False):
+    if opening_intro:
+        grid_reader = getattr(source, "get_starting_grid", None)
+        if callable(grid_reader):
+            try:
+                grid = grid_reader() or []
+                if grid:
+                    return grid
+            except Exception:
+                pass
+    return source.get_results()
 
 
-def featured_driver_position_info(car_idx, results, speed_lookup=None):
+def featured_driver_position_info(
+    car_idx,
+    results,
+    use_position_as_start=False,
+    include_interval=True,
+):
     ordered_results = sorted_results_by_position(results)
     for car in ordered_results:
         if car.get("CarIdx") != car_idx:
@@ -1646,6 +1664,8 @@ def featured_driver_position_info(car_idx, results, speed_lookup=None):
             or car.get("QualifyingPosition"),
             0,
         )
+        if use_position_as_start and starting_position <= 0:
+            starting_position = position
         return {
             "position": position,
             "starting_position": starting_position,
@@ -1654,8 +1674,12 @@ def featured_driver_position_info(car_idx, results, speed_lookup=None):
                 if starting_position > 0 and position > 0
                 else 0
             ),
-            "interval": featured_driver_interval(car, ordered_results, results),
-            "speed": featured_driver_speed(car, speed_lookup, car_idx),
+            "interval": (
+                featured_driver_interval(car, ordered_results, results)
+                if include_interval
+                else ""
+            ),
+            "speed": "",
         }
     return {
         "position": 0,
@@ -1699,23 +1723,6 @@ def featured_driver_interval(car, ordered_results, all_results):
         value = str(car.get(key, "") or "").strip()
         if value:
             return f"{value} to next" if value.startswith("+") else value
-    return ""
-
-
-def featured_driver_speed(car, speed_lookup=None, car_idx=None):
-    if speed_lookup and car_idx in speed_lookup:
-        mph = safe_float(speed_lookup.get(car_idx), 0.0)
-        if mph > 0:
-            return f"{mph:.0f} mph"
-
-    for key in ("Speed", "speed", "TrackSpeed", "track_speed", "MPH", "mph"):
-        if key not in car or car.get(key) in (None, ""):
-            continue
-        value = safe_float(car.get(key), 0.0)
-        if value <= 0:
-            continue
-        mph = value * 2.236936 if value < 120 else value
-        return f"{mph:.0f} mph"
     return ""
 
 
