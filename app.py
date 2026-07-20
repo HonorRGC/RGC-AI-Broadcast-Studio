@@ -1025,7 +1025,7 @@ def set_producer_replay_speed(source, speed):
 def next_replay_speed(source, direction):
     current = safe_int(getattr(source, "_producer_replay_speed", 1), default=1)
     if direction == "reverse":
-        speed = -1 if current >= 0 else max(current * 2, -8)
+        speed = -1 if current >= 0 else max(current * 2, -4)
     else:
         speed = 2 if current <= 1 else min(current * 2, 8)
     set_producer_replay_speed(source, speed)

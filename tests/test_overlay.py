@@ -666,12 +666,12 @@ def test_producer_assist_html_reads_overlay_state():
     assert 'sendProducerCommand("replay_pause")' in PRODUCER_HTML
     assert 'id="slow-motion-button"' in PRODUCER_HTML
     assert 'sendProducerCommand("replay_reverse")' in PRODUCER_HTML
-    assert 'id="jump-back-button"' in PRODUCER_HTML
-    assert 'sendProducerCommand("replay_rewind", { seconds: 10 })' in PRODUCER_HTML
+    assert 'id="jump-back-button"' not in PRODUCER_HTML
+    assert 'sendProducerCommand("replay_rewind", { seconds: 10 })' not in PRODUCER_HTML
     assert 'sendProducerCommand("replay_slow_motion")' in PRODUCER_HTML
     assert 'sendProducerCommand("replay_fast_play")' in PRODUCER_HTML
-    assert 'id="jump-forward-button"' in PRODUCER_HTML
-    assert 'sendProducerCommand("replay_fast_forward", { seconds: 10 })' in PRODUCER_HTML
+    assert 'id="jump-forward-button"' not in PRODUCER_HTML
+    assert 'sendProducerCommand("replay_fast_forward", { seconds: 10 })' not in PRODUCER_HTML
     assert 'id="leaderboard-style-button"' in PRODUCER_HTML
     assert 'sendProducerCommand(style === "ticker" ? "leaderboard_side" : "leaderboard_ticker")' in PRODUCER_HTML
     assert "Move Camera to Driver" in PRODUCER_HTML

@@ -454,6 +454,43 @@ def test_producer_replay_speed_controls_source():
     assert all(event["kind"] == "replay" for event in overlay.events)
 
 
+def test_producer_replay_reverse_and_fast_forward_cycle_three_speeds():
+    overlay = ProducerOverlaySpy()
+    speeds = []
+
+    def set_replay_speed(speed, slow_motion=False):
+        speeds.append(speed)
+        return True
+
+    source = SimpleNamespace(set_replay_speed=set_replay_speed)
+    camera = CameraSpy()
+    replay = ReplaySpy()
+
+    for command in (
+        "replay_reverse",
+        "replay_reverse",
+        "replay_reverse",
+        "replay_reverse",
+        "replay_normal_speed",
+        "replay_fast_play",
+        "replay_fast_play",
+        "replay_fast_play",
+        "replay_fast_play",
+    ):
+        handle_producer_command(
+            command,
+            {},
+            overlay,
+            source=source,
+            engine=None,
+            booth=None,
+            camera_director=camera,
+            replay_director=replay,
+        )
+
+    assert speeds == [-1, -2, -4, -4, 1, 2, 4, 8, 8]
+
+
 def test_replay_return_live_restores_auto_camera_and_leader():
     overlay = ProducerOverlaySpy()
     camera = CameraSpy()
