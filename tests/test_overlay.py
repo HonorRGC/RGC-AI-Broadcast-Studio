@@ -549,6 +549,7 @@ def test_featured_driver_card_includes_position_line():
         car_number="34",
         driver_name="T.J. Lee",
         story="RGC Motorsports",
+        country="United States",
         position=4,
         starting_position=12,
         position_delta=8,
@@ -559,6 +560,7 @@ def test_featured_driver_card_includes_position_line():
     featured = server.current_state_dict()["featured_driver"]
 
     assert featured["position"] == 4
+    assert featured["country"] == "United States"
     assert featured["starting_position"] == 12
     assert featured["position_delta"] == 8
     assert featured["interval"] == "+0.45 to next"
@@ -567,6 +569,8 @@ def test_featured_driver_card_includes_position_line():
     assert "pieces.push(driver.speed)" not in OVERLAY_HTML
     assert "buildDriverCardRankLine" in OVERLAY_HTML
     assert 'id="driver-card-position"' in OVERLAY_HTML
+    assert 'id="driver-card-country"' in OVERLAY_HTML
+    assert ".driver-card-country" in OVERLAY_HTML
     assert 'id="driver-card-position-rank"' in OVERLAY_HTML
     assert 'id="driver-card-car-img"' in OVERLAY_HTML
     assert "image.onerror" in OVERLAY_HTML

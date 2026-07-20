@@ -1611,7 +1611,8 @@ def update_overlay_focused_driver(
     if not driver_name and not car_number:
         return
 
-    story = build_featured_driver_story(driver)
+    country = build_featured_driver_country(driver)
+    story = build_featured_driver_profile(driver)
     car_image_url = build_featured_driver_image(driver)
     results = featured_driver_results(source, opening_intro=opening_intro)
     position_info = featured_driver_position_info(
@@ -1624,6 +1625,7 @@ def update_overlay_focused_driver(
         car_number=car_number,
         driver_name=driver_name,
         story=story,
+        country=country,
         duration=duration,
         car_image_url=car_image_url,
         position=position_info["position"],
@@ -1726,6 +1728,26 @@ def featured_driver_interval(car, ordered_results, all_results):
     return ""
 
 
+def build_featured_driver_country(driver):
+    return str(driver.get("country", "") or "").strip()
+
+
+def build_featured_driver_profile(driver):
+    details = []
+    team_name = str(driver.get("team_name", "") or "").strip()
+    hometown = str(driver.get("hometown", "") or driver.get("home_town", "") or "").strip()
+    state = str(driver.get("state", "") or "").strip()
+
+    if team_name:
+        details.append(team_name)
+    if hometown and state:
+        details.append(f"{hometown}, {state}")
+    elif hometown:
+        details.append(hometown)
+
+    return " • ".join(details)
+
+
 def build_featured_driver_story(driver):
     league_keys = (
         "team_name",
@@ -1738,14 +1760,9 @@ def build_featured_driver_story(driver):
     )
     has_league_details = any(driver.get(key) for key in league_keys)
     if not has_league_details:
-        return str(driver.get("country", "") or "").strip() or "Featured driver"
+        return build_featured_driver_country(driver) or "Featured driver"
 
-    details = []
-    for key in ("team_name", "country", "sponsor"):
-        value = str(driver.get(key, "") or "").strip()
-        if value and value not in details:
-            details.append(value)
-    return " | ".join(details[:3]) or "Featured driver"
+    return build_featured_driver_profile(driver) or "Featured driver"
 
 
 def build_featured_driver_image(driver):

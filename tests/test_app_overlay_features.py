@@ -1,6 +1,8 @@
 from types import SimpleNamespace
 
 from app import (
+    build_featured_driver_country,
+    build_featured_driver_profile,
     build_director_suggestions,
     build_featured_driver_story,
     build_featured_driver_image,
@@ -632,31 +634,34 @@ def test_featured_driver_image_can_use_iracing_render_cache_fallback(monkeypatch
 
 
 def test_featured_driver_story_for_official_races_uses_country_only():
+    driver = {
+        "name": "T.J. Lee",
+        "club": "Ohio",
+        "country": "United States",
+        "sponsor": "RGC Motorsports",
+    }
+
+    assert build_featured_driver_country(driver) == "United States"
+    assert build_featured_driver_profile(driver) == ""
     assert (
-        build_featured_driver_story(
-            {
-                "name": "T.J. Lee",
-                "club": "Ohio",
-                "country": "United States",
-                "sponsor": "RGC Motorsports",
-            }
-        )
+        build_featured_driver_story(driver)
         == "United States"
     )
 
 
 def test_featured_driver_story_for_league_races_can_use_extra_profile_details():
-    assert (
-        build_featured_driver_story(
-            {
-                "name": "T.J. Lee",
-                "country": "United States",
-                "team_name": "RGC Motorsports",
-                "sponsor": "Autism Awareness",
-            }
-        )
-        == "RGC Motorsports | United States | Autism Awareness"
-    )
+    driver = {
+        "name": "T.J. Lee",
+        "country": "United States",
+        "team_name": "RGC Motorsports",
+        "hometown": "Richmond",
+        "state": "VA",
+        "sponsor": "Autism Awareness",
+    }
+
+    assert build_featured_driver_country(driver) == "United States"
+    assert build_featured_driver_profile(driver) == "RGC Motorsports • Richmond, VA"
+    assert build_featured_driver_story(driver) == "RGC Motorsports • Richmond, VA"
 
 
 def test_featured_driver_position_info_includes_gap_to_next_without_speed():
@@ -730,5 +735,6 @@ def test_opening_field_rundown_driver_card_uses_starting_grid_and_country():
 
     assert overlay.featured[0]["position"] == 2
     assert overlay.featured[0]["starting_position"] == 2
-    assert overlay.featured[0]["story"] == "United States"
+    assert overlay.featured[0]["country"] == "United States"
+    assert overlay.featured[0]["story"] == ""
     assert overlay.featured[0]["speed"] == ""

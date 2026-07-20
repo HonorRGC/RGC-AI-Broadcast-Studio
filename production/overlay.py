@@ -94,6 +94,7 @@ class FeaturedDriver:
     car_number: str = ""
     driver_name: str = ""
     story: str = ""
+    country: str = ""
     car_image_url: str = ""
     position: int = 0
     starting_position: int = 0
@@ -107,6 +108,7 @@ class FeaturedDriver:
             "car_number": self.car_number,
             "driver_name": self.driver_name,
             "story": self.story,
+            "country": self.country,
             "car_image_url": self.car_image_url,
             "position": self.position,
             "starting_position": self.starting_position,
@@ -993,6 +995,7 @@ class OverlayServer:
         car_number,
         driver_name,
         story="",
+        country="",
         duration=10.0,
         car_image_url="",
         position=0,
@@ -1006,6 +1009,7 @@ class OverlayServer:
                 car_number=str(car_number or ""),
                 driver_name=str(driver_name or ""),
                 story=str(story or ""),
+                country=str(country or ""),
                 car_image_url=proxied_iracing_render_url(car_image_url),
                 position=self.state_builder.safe_int(position),
                 starting_position=self.state_builder.safe_int(starting_position),
@@ -3535,6 +3539,17 @@ OVERLAY_HTML = r"""<!doctype html>
       text-overflow: ellipsis;
     }
 
+    .driver-card-country {
+      margin-top: 1px;
+      color: #f4d06f;
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: 0.12em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
     .driver-card-position {
       margin-top: 2px;
       color: #fff;
@@ -3935,6 +3950,7 @@ OVERLAY_HTML = r"""<!doctype html>
     </div>
     <div class="driver-card-info">
       <div id="driver-card-name" class="driver-card-name"></div>
+      <div id="driver-card-country" class="driver-card-country"></div>
       <div id="driver-card-position" class="driver-card-position"></div>
       <div id="driver-card-story" class="driver-card-story"></div>
     </div>
@@ -4138,9 +4154,10 @@ OVERLAY_HTML = r"""<!doctype html>
       if (!hasDriver) return;
       setText("driver-card-number", driver.car_number || "?");
       setText("driver-card-name", driver.driver_name || "Unknown Driver");
+      setText("driver-card-country", driver.country || "");
       setText("driver-card-position-rank", buildDriverCardRankLine(driver));
       setText("driver-card-position", buildDriverCardPositionLine(driver));
-      setText("driver-card-story", driver.story || "Featured driver");
+      setText("driver-card-story", driver.story || "");
       renderDriverCardImage(driver.car_image_url || "");
     }
 
