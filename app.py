@@ -1558,6 +1558,14 @@ def build_race_end_cap_rows(source, engine):
         }
     )
 
+    most_led = race_end_most_laps_led_row(results, drivers, engine)
+    if most_led:
+        rows.append(most_led)
+
+    lead_lap = race_end_lead_lap_row(results)
+    if lead_lap:
+        rows.append(lead_lap)
+
     fastest_lap_tracker = getattr(engine, "fastest_lap_tracker", None) if engine else None
     fastest_idx = getattr(fastest_lap_tracker, "fastest_car_idx", None)
     fastest_time = getattr(fastest_lap_tracker, "fastest_time", None)
@@ -1589,7 +1597,82 @@ def build_race_end_cap_rows(source, engine):
             }
         )
 
-    return rows[:6]
+    return rows[:7]
+
+
+def race_end_most_laps_led_row(results, drivers, engine):
+    best_car_idx = None
+    best_laps = 0
+    for car in results or []:
+        laps_led = max(
+            safe_int(car.get("LapsLed", 0), 0),
+            safe_int(car.get("LedLaps", 0), 0),
+            safe_int(car.get("LeaderLaps", 0), 0),
+        )
+        if laps_led > best_laps:
+            best_laps = laps_led
+            best_car_idx = car.get("CarIdx")
+
+    if best_laps <= 0 and engine:
+        led_counts = getattr(engine, "leader_laps_led", {}) or {}
+        if led_counts:
+            best_car_idx, best_laps = max(
+                led_counts.items(),
+                key=lambda item: safe_int(item[1], 0),
+            )
+
+    if best_car_idx is None or best_laps <= 0:
+        return None
+
+    driver = drivers.get(best_car_idx, {})
+    return {
+        "label": "Most Laps Led",
+        "value": str(best_laps),
+        "detail": f"#{driver.get('number', '?')} {driver.get('name', f'Car {best_car_idx}')}",
+    }
+
+
+def race_end_lead_lap_row(results):
+    ordered = sorted_results_by_position(results)
+    if not ordered:
+        return None
+
+    starters = len([car for car in results or [] if car.get("CarIdx") is not None])
+    leader_laps = max(
+        safe_int(ordered[0].get("LapsComplete", 0), 0),
+        safe_int(ordered[0].get("Lap", 0), 0),
+    )
+    if leader_laps <= 0:
+        leader_laps = max(
+            max(
+                safe_int(car.get("LapsComplete", 0), 0),
+                safe_int(car.get("Lap", 0), 0),
+            )
+            for car in ordered
+        )
+
+    lead_lap_finishers = 0
+    for car in ordered:
+        car_laps = max(
+            safe_int(car.get("LapsComplete", 0), 0),
+            safe_int(car.get("Lap", 0), 0),
+        )
+        laps_behind_values = [
+            safe_int(car.get(key), 0)
+            for key in ("LapsBehind", "ClassLapsBehind")
+            if key in car
+        ]
+        on_lead_lap_by_gap = bool(laps_behind_values) and max(laps_behind_values) == 0
+        if (leader_laps > 0 and car_laps >= leader_laps) or on_lead_lap_by_gap:
+            lead_lap_finishers += 1
+
+    if starters <= 0:
+        return None
+    return {
+        "label": "Lead Lap Finishers",
+        "value": f"{lead_lap_finishers}/{starters}",
+        "detail": "Drivers who finished on the lead lap",
+    }
 
 
 def build_pit_update_rows(source, engine, limit=5):

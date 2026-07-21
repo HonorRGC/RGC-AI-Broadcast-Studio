@@ -329,9 +329,9 @@ def test_post_race_overlay_shows_end_cap_summary():
     )
     source = SimpleNamespace(
         get_results=lambda: [
-            {"CarIdx": 1, "Position": 1},
-            {"CarIdx": 2, "Position": 2},
-            {"CarIdx": 7, "Position": 3},
+            {"CarIdx": 1, "Position": 1, "LapsComplete": 80, "LapsLed": 34},
+            {"CarIdx": 2, "Position": 2, "LapsComplete": 80, "LapsLed": 12},
+            {"CarIdx": 7, "Position": 3, "LapsComplete": 79, "LapsLed": 0},
         ],
         get_driver_lookup=lambda: {
             1: {"name": "Winner Driver", "number": "1"},
@@ -357,13 +357,19 @@ def test_post_race_overlay_shows_end_cap_summary():
         "Winner",
         "Podium",
         "Race Story",
+        "Most Laps Led",
+        "Lead Lap Finishers",
         "Fastest Lap",
         "Biggest Mover",
     ]
     assert panel["rows"][0]["detail"] == "Winner Driver"
     assert "1st #1 Winner Driver" in panel["rows"][1]["detail"]
     assert panel["rows"][2]["value"] == "4Y / 5L"
-    assert panel["rows"][3]["value"] == "31.234"
+    assert panel["rows"][3]["value"] == "34"
+    assert panel["rows"][3]["detail"] == "#1 Winner Driver"
+    assert panel["rows"][4]["value"] == "2/3"
+    assert panel["rows"][5]["value"] == "31.234"
+    assert panel["rows"][6]["value"] == "+9"
 
 
 def test_producer_pit_road_rows_include_service_guess_and_tire_age():

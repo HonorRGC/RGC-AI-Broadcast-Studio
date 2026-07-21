@@ -4320,7 +4320,7 @@ OVERLAY_HTML = r"""<!doctype html>
       setText("stat-panel-subtitle", panel.subtitle || "");
       const rows = document.getElementById("stat-panel-rows");
       rows.innerHTML = "";
-      for (const row of (panel.rows || []).slice(0, 6)) {
+      for (const row of (panel.rows || []).slice(0, 7)) {
         const item = document.createElement("div");
         item.className = "stat-panel-row";
         item.innerHTML = `
