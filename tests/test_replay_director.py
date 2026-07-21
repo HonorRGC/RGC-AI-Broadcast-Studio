@@ -314,6 +314,15 @@ def test_manual_replay_control_suspends_automated_replay():
     assert camera.focuses == []
 
 
+def test_manual_replay_control_does_not_stop_caution_audio_bed():
+    audio_bed = AudioBedSpy()
+    director = ReplayDirector(mode="auto", audio_player=audio_bed)
+
+    director.begin_manual_control()
+
+    assert audio_bed.stops == 0
+
+
 def test_observe_mode_never_seeks_or_changes_live_replay_state():
     telemetry = ReplayTelemetry()
     camera = ReplayCamera()

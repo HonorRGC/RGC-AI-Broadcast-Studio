@@ -64,7 +64,6 @@ class ReplayDirector:
         self.manual_control_active = True
         self.angle_started_at = None
         self.camera_engaged = False
-        self.stop_replay_audio()
 
     def end_manual_control(self):
         self.manual_control_active = False
