@@ -22,6 +22,11 @@ class ElevenLabsClient:
         for voice in voices.voices:
             print(f"{voice.name} | {voice.voice_id}")
 
+    def set_volume_percent(self, volume_percent):
+        setter = getattr(self.player, "set_volume", None)
+        if setter:
+            setter(percent_to_mci_volume(volume_percent))
+
     def speak(self, text, voice_id):
         try:
             audio = self.client.text_to_speech.convert(

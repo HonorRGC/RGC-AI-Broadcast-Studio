@@ -46,6 +46,7 @@ def test_overlay_state_includes_title_sponsor_track_and_lap():
         event_config=OverlayEventConfig(
             title="RGC 80 at Nashville",
             sponsor="Lee Family Racing",
+            cause="Autism Awareness",
             series="RGC Cup Series",
             leaderboard_style="ticker",
         )
@@ -55,6 +56,7 @@ def test_overlay_state_includes_title_sponsor_track_and_lap():
 
     assert state["event"]["title"] == "RGC 80 at Nashville"
     assert state["event"]["sponsor"] == "Lee Family Racing"
+    assert state["event"]["cause"] == "Autism Awareness"
     assert state["event"]["series"] == "RGC Cup Series"
     assert state["event"]["leaderboard_style"] == "ticker"
     assert state["track_name"] == "Nashville Superspeedway"
@@ -531,10 +533,13 @@ def test_overlay_has_optional_ticker_leaderboard_and_compact_lap_bar():
     assert 'id="ticker-leaderboard"' in OVERLAY_HTML
     assert 'id="ticker-label"' in OVERLAY_HTML
     assert 'id="leaderboard-series"' in OVERLAY_HTML
+    assert 'id="cause-line"' in OVERLAY_HTML
     assert "normalizeLeaderboardStyle" in OVERLAY_HTML
     assert "renderTickerLeaderboard" in OVERLAY_HTML
     assert "setLeaderboardSeries" in OVERLAY_HTML
-    assert '${series} - Leaderboard' in OVERLAY_HTML
+    assert '${series} - Leaderboard' not in OVERLAY_HTML
+    assert 'setText("ticker-label", "Leaderboard")' in OVERLAY_HTML
+    assert "animation: tickerScroll 62s linear infinite" in OVERLAY_HTML
     assert "leaderboard-ticker-mode" in OVERLAY_HTML
     assert "const maxSegments = 54" in OVERLAY_HTML
     assert "min-width: 0;" in OVERLAY_HTML
@@ -741,6 +746,9 @@ def test_producer_assist_html_reads_overlay_state():
     assert 'id="jump-forward-button"' not in PRODUCER_HTML
     assert 'sendProducerCommand("replay_fast_forward", { seconds: 10 })' not in PRODUCER_HTML
     assert 'id="leaderboard-style-button"' in PRODUCER_HTML
+    assert 'id="broadcaster-volume-slider"' in PRODUCER_HTML
+    assert 'id="music-volume-slider"' in PRODUCER_HTML
+    assert 'sendProducerCommand("set_audio_volume"' in PRODUCER_HTML
     assert 'sendProducerCommand(style === "ticker" ? "leaderboard_side" : "leaderboard_ticker")' in PRODUCER_HTML
     assert "Move Camera to Driver" in PRODUCER_HTML
     assert 'id="director-suggestions-list"' in PRODUCER_HTML

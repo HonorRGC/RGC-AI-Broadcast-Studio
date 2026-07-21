@@ -17,6 +17,7 @@ from config import (
     OVERLAY_LEADERBOARD_STYLE,
     OVERLAY_RACE_SPONSOR,
     OVERLAY_SERIES_NAME,
+    SPONSOR_READ_CAUSE,
 )
 from production.sim_racing_apps import (
     build_sim_racing_apps_car_debug_info,
@@ -78,6 +79,7 @@ def is_safe_hex_color(value):
 class OverlayEventConfig:
     title: str = OVERLAY_EVENT_TITLE
     sponsor: str = OVERLAY_RACE_SPONSOR
+    cause: str = SPONSOR_READ_CAUSE
     series: str = OVERLAY_SERIES_NAME
     leaderboard_style: str = OVERLAY_LEADERBOARD_STYLE
     graphics: list[str] = field(default_factory=lambda: list(OVERLAY_BRAND_GRAPHICS))
@@ -302,6 +304,7 @@ class OverlayState:
             "event": {
                 "title": self.event.title,
                 "sponsor": self.event.sponsor,
+                "cause": self.event.cause,
                 "series": self.event.series,
                 "leaderboard_style": self.event.leaderboard_style,
                 "graphics": list(self.event.graphics),
@@ -901,6 +904,8 @@ class OverlayServer:
             "auto_camera": True,
             "openai": False,
             "elevenlabs": False,
+            "broadcaster_volume": 65,
+            "music_volume": 65,
             "leaderboard_style": self.normalize_leaderboard_style(
                 self.state_builder.event_config.leaderboard_style
             ),
@@ -1917,6 +1922,23 @@ PRODUCER_HTML = r"""<!doctype html>
       gap: 8px;
     }
 
+    .audio-control-row {
+      margin-top: 12px;
+      display: grid;
+      grid-template-columns: auto minmax(120px, 1fr);
+      gap: 8px 12px;
+      align-items: center;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .audio-control-row input[type="range"] {
+      width: 100%;
+      accent-color: var(--blue);
+    }
+
     .camera-shot-row {
       display: grid;
       grid-template-columns: minmax(150px, 0.8fr) repeat(4, minmax(0, 1fr));
@@ -2289,6 +2311,12 @@ PRODUCER_HTML = r"""<!doctype html>
             <button class="control-button" id="elevenlabs-button">ElevenLabs</button>
             <button class="control-button" id="leaderboard-style-button">Leaderboard: Side</button>
             <button class="control-button danger" id="race-admin-button">Race Admin: OFF</button>
+          </div>
+          <div class="audio-control-row">
+            <label>Broadcasters <span id="broadcaster-volume-label">65%</span></label>
+            <input id="broadcaster-volume-slider" type="range" min="0" max="100" value="65" />
+            <label>Music <span id="music-volume-label">65%</span></label>
+            <input id="music-volume-slider" type="range" min="0" max="100" value="65" />
           </div>
         </div>
 
@@ -2864,6 +2892,8 @@ PRODUCER_HTML = r"""<!doctype html>
       const elevenButton = document.getElementById("elevenlabs-button");
       const leaderboardButton = document.getElementById("leaderboard-style-button");
       const raceAdminButton = document.getElementById("race-admin-button");
+      const broadcasterSlider = document.getElementById("broadcaster-volume-slider");
+      const musicSlider = document.getElementById("music-volume-slider");
       const autoOn = controlEnabled(state, "auto_camera");
       const openAiOn = controlEnabled(state, "openai");
       const elevenOn = controlEnabled(state, "elevenlabs");
@@ -2879,7 +2909,21 @@ PRODUCER_HTML = r"""<!doctype html>
       elevenButton.className = `control-button ${elevenOn ? "good" : "danger"}`;
       raceAdminButton.className = `control-button ${raceAdminOn ? "good" : "danger"}`;
       leaderboardButton.className = `control-button ${leaderboardStyle === "ticker" ? "good" : ""}`;
+      renderAudioSliders(state, broadcasterSlider, musicSlider);
       renderRaceControl(state);
+    }
+
+    function renderAudioSliders(state, broadcasterSlider, musicSlider) {
+      const control = state.control_state || {};
+      setVolumeSlider(broadcasterSlider, "broadcaster-volume-label", control.broadcaster_volume ?? 65);
+      setVolumeSlider(musicSlider, "music-volume-label", control.music_volume ?? 65);
+    }
+
+    function setVolumeSlider(slider, labelId, value) {
+      if (!slider) return;
+      const volume = Math.max(0, Math.min(100, Number(value || 0)));
+      if (document.activeElement !== slider) slider.value = String(volume);
+      text(labelId, `${Math.round(volume)}%`);
     }
 
     function renderRaceControl(state) {
@@ -3009,6 +3053,8 @@ PRODUCER_HTML = r"""<!doctype html>
       const style = currentLeaderboardStyle(lastState || {});
       sendProducerCommand(style === "ticker" ? "leaderboard_side" : "leaderboard_ticker");
     });
+    setupVolumeSlider("broadcaster-volume-slider", "broadcaster-volume-label", "broadcaster");
+    setupVolumeSlider("music-volume-slider", "music-volume-label", "music");
     for (const button of document.querySelectorAll(".race-control-button")) {
       button.addEventListener("click", () => {
         const action = button.dataset.raceAction;
@@ -3022,6 +3068,21 @@ PRODUCER_HTML = r"""<!doctype html>
         if (!payload) return;
         sendProducerCommand("race_control", payload);
       });
+    }
+
+    function setupVolumeSlider(sliderId, labelId, target) {
+      const slider = document.getElementById(sliderId);
+      if (!slider) return;
+      const send = () => {
+        const volume = Math.max(0, Math.min(100, Number(slider.value || 0)));
+        text(labelId, `${Math.round(volume)}%`);
+        sendProducerCommand("set_audio_volume", { target, volume });
+      };
+      slider.addEventListener("input", () => {
+        text(labelId, `${Math.round(Number(slider.value || 0))}%`);
+      });
+      slider.addEventListener("change", send);
+      slider.addEventListener("pointerup", send);
     }
     document.getElementById("add-producer-note-button").addEventListener("click", () => {
       const input = document.getElementById("producer-note-input");
@@ -3218,8 +3279,9 @@ OVERLAY_HTML = r"""<!doctype html>
     }
 
     .title-side {
-      display: flex;
+      display: grid;
       align-items: center;
+      gap: 5px;
       min-width: 0;
     }
 
@@ -3250,6 +3312,23 @@ OVERLAY_HTML = r"""<!doctype html>
       opacity: 0.98;
     }
 
+    .cause-line {
+      color: #ffffff;
+      font-size: 13px;
+      font-weight: 950;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 5px 11px;
+      border-radius: 999px;
+      background: rgba(7, 9, 13, 0.62);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      box-shadow: 0 0 16px rgba(255, 255, 255, 0.10);
+      max-width: 245px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
     .event-meta {
       display: flex;
       flex-direction: column;
@@ -3275,7 +3354,7 @@ OVERLAY_HTML = r"""<!doctype html>
     .track-pill {
       color: #ffffff;
       font-weight: 950;
-      font-size: 17px;
+      font-size: 18px;
       max-width: 100%;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -3400,11 +3479,11 @@ OVERLAY_HTML = r"""<!doctype html>
       left: 24px;
       right: 24px;
       top: 118px;
-      height: 46px;
+      height: 50px;
       display: grid;
-      grid-template-columns: auto minmax(0, 1fr) auto;
+      grid-template-columns: auto auto minmax(0, 1fr);
       align-items: center;
-      gap: 14px;
+      gap: 12px;
       padding: 0 16px;
       background:
         linear-gradient(90deg, rgba(215, 25, 32, 0.16), transparent 36%, rgba(255, 255, 255, 0.05) 62%, transparent),
@@ -3452,9 +3531,9 @@ OVERLAY_HTML = r"""<!doctype html>
     .ticker-track {
       display: inline-flex;
       align-items: center;
-      gap: 20px;
+      gap: 24px;
       min-width: max-content;
-      animation: tickerScroll 42s linear infinite;
+      animation: tickerScroll 62s linear infinite;
     }
 
     .ticker-item {
@@ -3468,8 +3547,12 @@ OVERLAY_HTML = r"""<!doctype html>
     }
 
     .ticker-pos {
-      color: var(--rgc-muted);
+      color: #ffffff;
       font-weight: 950;
+      padding: 1px 6px;
+      border-radius: 999px;
+      background: rgba(215, 25, 32, 0.78);
+      border: 1px solid rgba(255, 255, 255, 0.18);
     }
 
     .ticker-num {
@@ -3483,7 +3566,8 @@ OVERLAY_HTML = r"""<!doctype html>
 
     .ticker-gap {
       color: var(--rgc-muted);
-      font-size: 12px;
+      font-size: 13px;
+      font-weight: 850;
     }
 
     @keyframes tickerScroll {
@@ -4015,14 +4099,15 @@ OVERLAY_HTML = r"""<!doctype html>
   <section id="top-banner" class="top-banner">
     <div class="title-side">
       <img id="brand-graphic" class="brand-graphic hidden" alt="" />
+      <div id="cause-line" class="cause-line hidden"></div>
     </div>
     <div class="title-center">
       <div id="event-title" class="event-title">RGC AI Broadcast</div>
       <div id="series" class="event-meta"></div>
     </div>
     <div class="event-meta title-right">
-      <span id="sponsor" class="sponsor"></span>
       <span id="track" class="track-pill">Waiting for iRacing</span>
+      <span id="sponsor" class="sponsor"></span>
     </div>
     <div id="session-center" class="session-center hidden"></div>
   </section>
@@ -4039,10 +4124,10 @@ OVERLAY_HTML = r"""<!doctype html>
 
   <section id="ticker-leaderboard" class="ticker-leaderboard hidden">
     <div id="ticker-label" class="ticker-label">Leaderboard</div>
+    <div id="ticker-lap" class="lap">Lap --</div>
     <div class="ticker-window">
       <div id="ticker-track" class="ticker-track"></div>
     </div>
-    <div id="ticker-lap" class="lap">Lap --</div>
   </section>
 
   <section id="driver-card" class="driver-card hidden">
@@ -4099,6 +4184,8 @@ OVERLAY_HTML = r"""<!doctype html>
       setText("series", event.series || "");
       setText("track", buildTrackLine(state));
       setText("sponsor", event.sponsor ? `Presented by ${event.sponsor}` : "");
+      setText("cause-line", event.cause || "");
+      document.getElementById("cause-line").classList.toggle("hidden", !(event.cause || "").trim());
       setText("lap", buildLapLine(state));
       setText("ticker-lap", buildLapLine(state));
       setText("session-center", buildSessionCenterLine(state));
@@ -4112,7 +4199,7 @@ OVERLAY_HTML = r"""<!doctype html>
       document.getElementById("ticker-leaderboard").classList.toggle("caution", !!state.caution);
       renderBrandGraphic(event.graphics || [], state.session_type);
       renderLapHistory(state.lap_history || []);
-      renderTickerLeaderboard(state.leaderboard || [], leaderboardStyle, event.series || "");
+      renderTickerLeaderboard(state.leaderboard || [], leaderboardStyle);
       renderDriverCard(state.featured_driver);
       renderSpecialPresentation(state.special_presentation);
       renderStatPanel(state.stat_panel);
@@ -4143,14 +4230,14 @@ OVERLAY_HTML = r"""<!doctype html>
       const label = String(series || "").trim();
       element.classList.toggle("hidden", !label);
       element.textContent = label;
-      setText("ticker-label", label ? `${label} - Leaderboard` : "Leaderboard");
+      setText("ticker-label", "Leaderboard");
     }
 
-    function renderTickerLeaderboard(leaderboard, leaderboardStyle, series) {
+    function renderTickerLeaderboard(leaderboard, leaderboardStyle) {
       const layer = document.getElementById("ticker-leaderboard");
       const track = document.getElementById("ticker-track");
       const active = leaderboardStyle === "ticker" && leaderboard.length;
-      setText("ticker-label", series ? `${series} - Leaderboard` : "Leaderboard");
+      setText("ticker-label", "Leaderboard");
       layer.classList.toggle("hidden", !active);
       if (!active) {
         track.innerHTML = "";
@@ -4338,6 +4425,7 @@ OVERLAY_HTML = r"""<!doctype html>
     }
 
     function buildTrackLine(state) {
+      return state.track_name || "Waiting for iRacing";
       const pieces = [];
       if (state.track_name) pieces.push(state.track_name);
       if (state.session_type) pieces.push(state.session_type);

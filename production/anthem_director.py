@@ -129,3 +129,8 @@ class NationalAnthemDirector:
         stopper = getattr(self.player, "stop", None)
         if stopper:
             stopper()
+
+    def set_music_volume(self, volume_percent):
+        setter = getattr(self.player, "set_volume", None)
+        if setter:
+            setter(percent_to_mci_volume(volume_percent))

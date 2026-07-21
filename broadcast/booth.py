@@ -51,6 +51,14 @@ class BroadcastBooth:
     def set_voice_enabled(self, enabled):
         self.voice_runtime_enabled = bool(enabled)
 
+    def set_studio_volume(self, volume_percent):
+        try:
+            self.studio_volume = max(0, min(100, int(volume_percent)))
+        except (TypeError, ValueError):
+            return
+        if self.voice_client and hasattr(self.voice_client, "set_volume_percent"):
+            self.voice_client.set_volume_percent(self.studio_volume)
+
     def voice_id_status(self):
         return {
             "lead": bool(LEAD_VOICE_ID),

@@ -183,6 +183,7 @@ class AudioBedPlayer:
     def set_volume(self, volume):
         volume = max(0, min(1000, int(volume)))
         self.current_volume = volume
+        self.normal_volume = volume
         return self.send(f"setaudio {self.alias} volume to {volume}")
 
     def send(self, command):
@@ -320,6 +321,7 @@ class PlaylistAudioPlayer:
 
     def set_volume(self, volume):
         volume = max(0, min(1000, int(volume)))
+        self.normal_volume = volume
         return self.send(f"setaudio {self.alias} volume to {volume}")
 
     def send(self, command):
@@ -406,6 +408,7 @@ class OneShotAudioPlayer:
 
     def set_volume(self, volume):
         volume = max(0, min(1000, int(volume)))
+        self.normal_volume = volume
         return self.send(f"setaudio {self.alias} volume to {volume}")
 
     def send(self, command):

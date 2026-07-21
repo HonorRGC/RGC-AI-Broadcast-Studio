@@ -20,7 +20,7 @@ from broadcast.booth import BroadcastBooth
 from broadcast.engine import BroadcastEngine
 from broadcaster.telemetry import IRacingTelemetry
 from production.camera_director import CameraDirector
-from production.audio_bed import AudioBedPlayer
+from production.audio_bed import AudioBedPlayer, percent_to_mci_volume
 from production.anthem_director import NationalAnthemDirector
 from production.caution_presentation import CautionPresentationDirector
 from production.discord_reporter import DiscordRaceReporter
@@ -165,6 +165,9 @@ def run_source(
                 camera_director,
                 replay_director,
                 race_control_service,
+                caution_audio_bed,
+                practice_presentation_director,
+                anthem_director,
             )
         report_practice_presentation(
             practice_presentation_director.update(
@@ -535,12 +538,21 @@ def parse_interval_seconds(value):
         return None
 
 
+def clamp_percent(value, default=65):
+    try:
+        number = int(float(value))
+    except (TypeError, ValueError):
+        number = int(default)
+    return max(0, min(100, number))
+
+
 def sync_producer_control_state(
     overlay_server,
     engine,
     booth,
     camera_director,
     race_control_service=None,
+    music_volume=None,
 ):
     if not overlay_server:
         return
@@ -555,7 +567,17 @@ def sync_producer_control_state(
         elevenlabs=booth.voice_status()[0],
         leaderboard_style=current_leaderboard_style(),
         race_admin=bool(getattr(race_control_service, "enabled", False)),
+        broadcaster_volume=clamp_percent(getattr(booth, "studio_volume", STUDIO_VOLUME)),
+        music_volume=clamp_percent(music_volume if music_volume is not None else STUDIO_VOLUME),
     )
+
+
+def producer_music_volume(caution_audio_bed=None, practice_presentation_director=None):
+    if caution_audio_bed is not None:
+        return round(max(0, min(1000, int(getattr(caution_audio_bed, "normal_volume", STUDIO_VOLUME * 10)))) / 10)
+    if practice_presentation_director is not None:
+        return getattr(practice_presentation_director, "music_volume", STUDIO_VOLUME)
+    return STUDIO_VOLUME
 
 
 def process_producer_commands(
@@ -566,6 +588,9 @@ def process_producer_commands(
     camera_director,
     replay_director=None,
     race_control_service=None,
+    caution_audio_bed=None,
+    practice_presentation_director=None,
+    anthem_director=None,
 ):
     commands = overlay_server.drain_commands()
     if not commands:
@@ -575,6 +600,7 @@ def process_producer_commands(
             booth,
             camera_director,
             race_control_service,
+            music_volume=producer_music_volume(caution_audio_bed, practice_presentation_director),
         )
         return
 
@@ -591,6 +617,9 @@ def process_producer_commands(
             camera_director,
             replay_director,
             race_control_service,
+            caution_audio_bed,
+            practice_presentation_director,
+            anthem_director,
         )
 
     sync_producer_control_state(
@@ -599,6 +628,7 @@ def process_producer_commands(
         booth,
         camera_director,
         race_control_service,
+        music_volume=producer_music_volume(caution_audio_bed, practice_presentation_director),
     )
 
 
@@ -612,6 +642,9 @@ def handle_producer_command(
     camera_director,
     replay_director=None,
     race_control_service=None,
+    caution_audio_bed=None,
+    practice_presentation_director=None,
+    anthem_director=None,
 ):
     if command == "camera_claim":
         claimer = getattr(overlay_server, "claim_camera_control", None)
@@ -637,6 +670,40 @@ def handle_producer_command(
             message,
         )
         return
+
+    if command == "set_audio_volume":
+        target = str(payload.get("target", "") or "").strip().lower()
+        volume = clamp_percent(payload.get("volume"), STUDIO_VOLUME)
+        if target == "broadcaster":
+            setter = getattr(booth, "set_studio_volume", None)
+            if setter:
+                setter(volume)
+            publish_producer_event(
+                overlay_server,
+                "info",
+                "Audio",
+                f"Broadcaster volume set to {volume}%.",
+            )
+            return
+        if target == "music":
+            player_volume = percent_to_mci_volume(volume)
+            for controller in (caution_audio_bed, practice_presentation_director, anthem_director):
+                if controller is None:
+                    continue
+                setter = getattr(controller, "set_music_volume", None)
+                if setter:
+                    setter(volume)
+                    continue
+                direct_setter = getattr(controller, "set_volume", None)
+                if direct_setter:
+                    direct_setter(player_volume)
+            publish_producer_event(
+                overlay_server,
+                "info",
+                "Audio",
+                f"Music volume set to {volume}%.",
+            )
+            return
 
     if command == "camera_release":
         releaser = getattr(overlay_server, "release_camera_control", None)
@@ -1968,6 +2035,7 @@ def main():
             booth,
             camera_director,
             race_control_service,
+            music_volume=producer_music_volume(caution_audio_bed, practice_presentation_director),
         )
         print(f"Overlay: ON ({overlay_url})")
         print(f"Producer Assist: {overlay_server.producer_url}")

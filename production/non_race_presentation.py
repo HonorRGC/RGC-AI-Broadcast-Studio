@@ -97,6 +97,15 @@ class PracticePresentationDirector:
         if stopper:
             stopper()
 
+    def set_music_volume(self, volume_percent):
+        try:
+            self.music_volume = max(0, min(100, int(volume_percent)))
+        except (TypeError, ValueError):
+            return
+        setter = getattr(self.player, "set_volume", None)
+        if setter:
+            setter(percent_to_mci_volume(self.music_volume))
+
     @staticmethod
     def music_volume_to_player_volume(volume_percent):
         return percent_to_mci_volume(volume_percent)

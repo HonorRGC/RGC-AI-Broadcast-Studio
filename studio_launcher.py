@@ -1903,42 +1903,10 @@ def run_gui():
         padx=6,
         pady=8,
     )
-    volume_frame = frame(broadcast_bar, bg=PANEL_BG)
-    volume_frame.pack(side="right", padx=(14, 10), pady=8)
-    label(
-        volume_frame,
-        text="Master Volume",
-        bg=PANEL_BG,
-        fg=MUTED_FG,
-        font=("Segoe UI", 9, "bold"),
-    ).pack(side="left", padx=(0, 6))
     volume_var = tk.IntVar(value=int(existing.get("STUDIO_VOLUME", existing.get("PRACTICE_MUSIC_VOLUME", "65")) or 65))
-    volume_value = tk.StringVar(value=f"{volume_var.get()}%")
 
     def update_volume_label(value):
-        volume_value.set(f"{int(float(value))}%")
-
-    tk.Scale(
-        volume_frame,
-        from_=0,
-        to=100,
-        orient="horizontal",
-        variable=volume_var,
-        command=update_volume_label,
-        length=150,
-        bg=PANEL_BG,
-        fg=TEXT_FG,
-        troughcolor=FIELD_BG,
-        highlightthickness=0,
-        activebackground=ACCENT,
-    ).pack(side="left")
-    label(
-        volume_frame,
-        textvariable=volume_value,
-        bg=PANEL_BG,
-        fg=TEXT_FG,
-        width=4,
-    ).pack(side="left", padx=(4, 0))
+        return None
 
     build_league_tab(
         league_content,
