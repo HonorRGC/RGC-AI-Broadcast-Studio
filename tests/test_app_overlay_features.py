@@ -283,6 +283,7 @@ def test_race_recap_overlay_shows_three_quarter_summary():
     panel = overlay.stat_panels[0]
     assert panel["kind"] == "race_recap"
     assert panel["title"] == "Race Recap"
+    assert panel["duration"] == 24.0
     assert panel["minimum_interval"] == 600.0
     labels = [row["label"] for row in panel["rows"]]
     assert labels == [

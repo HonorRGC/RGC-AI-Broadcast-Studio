@@ -1388,7 +1388,7 @@ class BroadcastEngine:
         if green_lap_count < 10:
             return False
         laps_remaining = self.safe_int(laps_remaining) if laps_remaining is not None else 0
-        if 0 < laps_remaining < 10:
+        if 0 < laps_remaining <= 15:
             return False
         if self.broadcast_queue.items or not self.broadcast_queue.can_speak():
             return False

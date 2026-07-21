@@ -1112,7 +1112,7 @@ def show_overlay_feature(item, overlay_server, source=None, engine=None):
                 title="Race Recap",
                 subtitle="Three-quarter reset",
                 rows=rows,
-                duration=14.0,
+                duration=24.0,
                 dedupe_key="race_recap:three_quarter",
                 minimum_interval=600.0,
             )

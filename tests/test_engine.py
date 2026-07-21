@@ -543,7 +543,7 @@ def test_engine_queues_silent_crank_it_up_after_ten_green_laps():
     assert silent_item.camera_return_home_after_sequence is True
 
 
-def test_crank_it_up_does_not_queue_with_less_than_ten_to_go():
+def test_crank_it_up_does_not_queue_with_fifteen_or_less_to_go():
     results = [
         {"CarIdx": index, "Position": index + 1, "LapsComplete": 51}
         for index in range(8)
@@ -553,7 +553,7 @@ def test_crank_it_up_does_not_queue_with_less_than_ten_to_go():
     queued = engine._queue_crank_it_up(
         results,
         green_lap_count=20,
-        laps_remaining=9,
+        laps_remaining=15,
     )
 
     assert queued is False
