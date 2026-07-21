@@ -3226,9 +3226,9 @@ OVERLAY_HTML = r"""<!doctype html>
       max-width: none;
       height: 84px;
       display: grid;
-      grid-template-columns: minmax(190px, 300px) minmax(360px, 1fr) minmax(320px, 430px);
+      grid-template-columns: minmax(205px, 315px) minmax(360px, 1fr) minmax(320px, 430px);
       align-items: center;
-      gap: 26px;
+      gap: 22px;
       padding: 0 26px;
       background:
         linear-gradient(90deg, rgba(215, 25, 32, 0.18), transparent 28%, rgba(255, 255, 255, 0.06) 52%, transparent 75%),
@@ -3281,7 +3281,7 @@ OVERLAY_HTML = r"""<!doctype html>
     .title-side {
       display: grid;
       align-items: center;
-      gap: 5px;
+      gap: 4px;
       min-width: 0;
     }
 
@@ -3301,12 +3301,12 @@ OVERLAY_HTML = r"""<!doctype html>
       flex-direction: column;
       align-items: flex-end;
       justify-content: center;
-      gap: 7px;
+      gap: 4px;
     }
 
     .brand-graphic {
-      max-width: 235px;
-      max-height: 72px;
+      max-width: 220px;
+      max-height: 58px;
       object-fit: contain;
       filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.62));
       opacity: 0.98;
@@ -3314,16 +3314,16 @@ OVERLAY_HTML = r"""<!doctype html>
 
     .cause-line {
       color: #ffffff;
-      font-size: 13px;
+      font-size: 11px;
       font-weight: 950;
       letter-spacing: 0.08em;
       text-transform: uppercase;
-      padding: 5px 11px;
+      padding: 4px 9px;
       border-radius: 999px;
       background: rgba(7, 9, 13, 0.62);
       border: 1px solid rgba(255, 255, 255, 0.18);
       box-shadow: 0 0 16px rgba(255, 255, 255, 0.10);
-      max-width: 245px;
+      max-width: 220px;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
@@ -3343,8 +3343,9 @@ OVERLAY_HTML = r"""<!doctype html>
     .sponsor {
       color: #fff;
       font-weight: 700;
-      font-size: 13px;
-      padding-right: 4px;
+      font-size: 12px;
+      padding-right: 0;
+      margin-top: 2px;
       opacity: 0.88;
       max-width: 100%;
       overflow: hidden;
@@ -3354,11 +3355,11 @@ OVERLAY_HTML = r"""<!doctype html>
     .track-pill {
       color: #ffffff;
       font-weight: 950;
-      font-size: 18px;
+      font-size: 17px;
       max-width: 100%;
       overflow: hidden;
       text-overflow: ellipsis;
-      padding: 7px 14px;
+      padding: 6px 14px;
       border-radius: 999px;
       background: rgba(255, 255, 255, 0.08);
       border: 1px solid rgba(255, 255, 255, 0.16);
@@ -3486,10 +3487,10 @@ OVERLAY_HTML = r"""<!doctype html>
       gap: 12px;
       padding: 0 16px;
       background:
-        linear-gradient(90deg, rgba(215, 25, 32, 0.16), transparent 36%, rgba(255, 255, 255, 0.05) 62%, transparent),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.06), transparent 36%, rgba(255, 255, 255, 0.05) 62%, transparent),
         linear-gradient(90deg, rgba(7, 9, 13, 0.97), rgba(24, 30, 42, 0.93));
-      border-left: 5px solid var(--rgc-red);
-      border-bottom: 3px solid var(--rgc-line);
+      border-left: 0;
+      border-bottom: 2px solid rgba(255, 255, 255, 0.16);
       box-shadow: 0 12px 30px rgba(0, 0, 0, 0.38);
       overflow: hidden;
       text-transform: uppercase;
@@ -3500,13 +3501,11 @@ OVERLAY_HTML = r"""<!doctype html>
     }
 
     .ticker-leaderboard.green {
-      border-left-color: #15c85f;
       border-bottom-color: #15c85f;
       box-shadow: inset 0 -9px 16px rgba(21, 200, 95, 0.20), 0 12px 30px rgba(0, 0, 0, 0.38);
     }
 
     .ticker-leaderboard.caution {
-      border-left-color: #ffd400;
       border-bottom-color: #ffd400;
     }
 
@@ -3518,8 +3517,8 @@ OVERLAY_HTML = r"""<!doctype html>
       white-space: nowrap;
       padding: 7px 11px;
       border-radius: 999px;
-      background: rgba(215, 25, 32, 0.72);
-      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 0 14px rgba(215, 25, 32, 0.20);
+      background: rgba(255, 255, 255, 0.10);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14);
     }
 
     .ticker-window {
@@ -3549,10 +3548,13 @@ OVERLAY_HTML = r"""<!doctype html>
     .ticker-pos {
       color: #ffffff;
       font-weight: 950;
-      padding: 1px 6px;
-      border-radius: 999px;
-      background: rgba(215, 25, 32, 0.78);
-      border: 1px solid rgba(255, 255, 255, 0.18);
+      font-size: 15px;
+      min-width: 30px;
+      text-align: right;
+      padding: 0;
+      border-radius: 0;
+      background: transparent;
+      border: 0;
     }
 
     .ticker-num {
@@ -3779,6 +3781,15 @@ OVERLAY_HTML = r"""<!doctype html>
 
     .stat-panel.pit_update {
       border-left-color: #ffd400;
+    }
+
+    .stat-panel.race_end_cap {
+      right: 50%;
+      bottom: 74px;
+      transform: translateX(50%);
+      width: 520px;
+      border-left-color: #ffffff;
+      box-shadow: 0 18px 42px rgba(0, 0, 0, 0.50), 0 0 24px rgba(255, 255, 255, 0.10);
     }
 
     .stat-panel-header {

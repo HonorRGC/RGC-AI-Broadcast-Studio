@@ -301,6 +301,71 @@ def test_race_recap_overlay_shows_three_quarter_summary():
     assert panel["rows"][4]["detail"] == "#3 Mover Driver"
 
 
+def test_post_race_overlay_shows_end_cap_summary():
+    overlay = OverlaySpy()
+    race_state = SimpleNamespace(
+        current_lap=80,
+        total_laps=80,
+        caution_count=4,
+    )
+    mover_summary = SimpleNamespace(
+        car_idx=3,
+        car_number="3",
+        driver_name="Mover Driver",
+        positions_gained=9,
+        positions_lost=0,
+    )
+    engine = SimpleNamespace(
+        race_intelligence=SimpleNamespace(
+            get_race_state=lambda: race_state,
+            get_biggest_movers=lambda limit=1: [mover_summary],
+        ),
+        lead_change_count=5,
+        fastest_lap_tracker=SimpleNamespace(
+            fastest_car_idx=7,
+            fastest_time=31.234,
+            format_lap_time=lambda value: f"{value:.3f}",
+        ),
+    )
+    source = SimpleNamespace(
+        get_results=lambda: [
+            {"CarIdx": 1, "Position": 1},
+            {"CarIdx": 2, "Position": 2},
+            {"CarIdx": 7, "Position": 3},
+        ],
+        get_driver_lookup=lambda: {
+            1: {"name": "Winner Driver", "number": "1"},
+            2: {"name": "Runner Up", "number": "2"},
+            7: {"name": "Fast Driver", "number": "7"},
+        },
+    )
+
+    show_overlay_feature(
+        item(category="post_race", target=None),
+        overlay,
+        source=source,
+        engine=engine,
+    )
+
+    panel = overlay.stat_panels[0]
+    assert panel["kind"] == "race_end_cap"
+    assert panel["title"] == "Race Recap"
+    assert panel["subtitle"] == "Unofficial finish and key race notes"
+    assert panel["duration"] == 34.0
+    labels = [row["label"] for row in panel["rows"]]
+    assert labels == [
+        "Winner",
+        "Podium",
+        "Race Story",
+        "Fastest Lap",
+        "Biggest Mover",
+    ]
+    assert panel["rows"][0]["detail"] == "Winner Driver"
+    assert "1st #1 Winner Driver" in panel["rows"][1]["detail"]
+    assert panel["rows"][2]["value"] == "4Y / 5L"
+    assert panel["rows"][3]["value"] == "31.234"
+
+
 def test_producer_pit_road_rows_include_service_guess_and_tire_age():
     pit_state = SimpleNamespace(
         car_idx=4,

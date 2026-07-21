@@ -1186,6 +1186,20 @@ def show_overlay_feature(item, overlay_server, source=None, engine=None):
             )
         return
 
+    if category == "post_race":
+        rows = build_race_end_cap_rows(source, engine)
+        if rows:
+            overlay_server.show_stat_panel(
+                kind="race_end_cap",
+                title="Race Recap",
+                subtitle="Unofficial finish and key race notes",
+                rows=rows,
+                duration=34.0,
+                dedupe_key="race_end_cap:post_race",
+                minimum_interval=9999.0,
+            )
+        return
+
     if category in ("pit_strategy", "caution_pit_summary"):
         return
 
@@ -1486,6 +1500,96 @@ def build_race_recap_rows(source, engine):
             }
         )
     return rows
+
+
+def build_race_end_cap_rows(source, engine):
+    results = source.get_results() if source else []
+    drivers = source.get_driver_lookup() if source else {}
+    ordered = sorted_results_by_position(results)
+    rows = []
+
+    if ordered:
+        winner = ordered[0]
+        winner_driver = drivers.get(winner.get("CarIdx"), {})
+        rows.append(
+            {
+                "label": "Winner",
+                "value": f"#{winner_driver.get('number', '?')}",
+                "detail": winner_driver.get("name", f"Car {winner.get('CarIdx')}"),
+            }
+        )
+
+    podium = []
+    for car in ordered[:3]:
+        car_idx = car.get("CarIdx")
+        driver = drivers.get(car.get("CarIdx"), {})
+        position = normalized_result_position(car, results)
+        driver_name = driver.get("name", f"Car {car_idx}")
+        podium.append(
+            f"{ordinal(position)} #{driver.get('number', '?')} "
+            f"{driver_name}"
+        )
+    if podium:
+        rows.append(
+            {
+                "label": "Podium",
+                "value": str(len(podium)),
+                "detail": " | ".join(podium),
+            }
+        )
+
+    race_state = (
+        getattr(engine.race_intelligence, "get_race_state", lambda: None)()
+        if engine
+        else None
+    )
+    caution_count = safe_int(getattr(race_state, "caution_count", 0), 0)
+    lead_changes = safe_int(getattr(engine, "lead_change_count", 0), 0) if engine else 0
+    rows.append(
+        {
+            "label": "Race Story",
+            "value": f"{caution_count}Y / {lead_changes}L",
+            "detail": (
+                "Caution-free finish"
+                if caution_count == 0
+                else f"{caution_count} caution{'s' if caution_count != 1 else ''}; "
+                f"{lead_changes} tracked lead change{'s' if lead_changes != 1 else ''}"
+            ),
+        }
+    )
+
+    fastest_lap_tracker = getattr(engine, "fastest_lap_tracker", None) if engine else None
+    fastest_idx = getattr(fastest_lap_tracker, "fastest_car_idx", None)
+    fastest_time = getattr(fastest_lap_tracker, "fastest_time", None)
+    if fastest_idx is not None and fastest_time:
+        driver = drivers.get(fastest_idx, {})
+        rows.append(
+            {
+                "label": "Fastest Lap",
+                "value": fastest_lap_tracker.format_lap_time(fastest_time),
+                "detail": (
+                    f"#{driver.get('number', '?')} "
+                    f"{driver.get('name', f'Car {fastest_idx}')}"
+                ),
+            }
+        )
+
+    movers = (
+        getattr(engine.race_intelligence, "get_biggest_movers", lambda *_: [])(1)
+        if engine
+        else []
+    )
+    if movers and getattr(movers[0], "positions_gained", 0) > 0:
+        mover = movers[0]
+        rows.append(
+            {
+                "label": "Biggest Mover",
+                "value": f"+{mover.positions_gained}",
+                "detail": f"#{mover.car_number} {mover.driver_name}",
+            }
+        )
+
+    return rows[:6]
 
 
 def build_pit_update_rows(source, engine, limit=5):

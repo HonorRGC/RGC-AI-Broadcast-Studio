@@ -540,6 +540,8 @@ def test_overlay_has_optional_ticker_leaderboard_and_compact_lap_bar():
     assert '${series} - Leaderboard' not in OVERLAY_HTML
     assert 'setText("ticker-label", "Leaderboard")' in OVERLAY_HTML
     assert "animation: tickerScroll 62s linear infinite" in OVERLAY_HTML
+    assert "border-left: 0;" in OVERLAY_HTML
+    assert "background: transparent;" in OVERLAY_HTML
     assert "leaderboard-ticker-mode" in OVERLAY_HTML
     assert "const maxSegments = 54" in OVERLAY_HTML
     assert "min-width: 0;" in OVERLAY_HTML
@@ -550,10 +552,11 @@ def test_overlay_has_optional_ticker_leaderboard_and_compact_lap_bar():
 
 
 def test_overlay_title_branding_is_larger_and_more_polished():
-    assert "max-width: 235px" in OVERLAY_HTML
-    assert "max-height: 72px" in OVERLAY_HTML
+    assert "max-width: 220px" in OVERLAY_HTML
+    assert "max-height: 58px" in OVERLAY_HTML
     assert "height: 84px" in OVERLAY_HTML
-    assert "grid-template-columns: minmax(190px, 300px) minmax(360px, 1fr) minmax(320px, 430px)" in OVERLAY_HTML
+    assert "grid-template-columns: minmax(205px, 315px) minmax(360px, 1fr) minmax(320px, 430px)" in OVERLAY_HTML
+    assert ".cause-line" in OVERLAY_HTML
     assert 'class="title-center"' in OVERLAY_HTML
     assert 'class="event-meta title-right"' in OVERLAY_HTML
     assert 'class="track-pill"' in OVERLAY_HTML
