@@ -26,9 +26,11 @@ def test_build_car_image_url_uses_live_car_idx_endpoint(monkeypatch):
 
     def fake_urlopen(url, timeout=0):
         calls.append((url, timeout))
-        return Response(
-            '{"State":"NORMAL","Value":{"ImageUrl":{"State":"NORMAL","Value":"iRacing/pk_car.png?carPath=stockcars2%5Ccamaro2019&carCustPaint=car_num_90223.tga"}}}'
-        )
+        if url.endswith("/ImageUrl"):
+            return Response(
+                '{"State":"NORMAL","Value":"iRacing/pk_car.png?carPath=stockcars2%5Ccamaro2019&carCustPaint=car_num_90223.tga"}'
+            )
+        return Response('{"State":"NORMAL","Value":""}')
 
     monkeypatch.setattr(sim_racing_apps, "urlopen", fake_urlopen)
     sim_racing_apps._CACHE.clear()
@@ -40,8 +42,9 @@ def test_build_car_image_url_uses_live_car_idx_endpoint(monkeypatch):
         now=10.0,
     )
 
-    assert calls[0][0] == "http://127.0.0.1/SIMRacingApps/Data/Car/I12"
+    assert calls[0][0] == "http://127.0.0.1/SIMRacingApps/Data/Car/I12/Number"
     assert calls[0][1] == sim_racing_apps.REQUEST_TIMEOUT_SECONDS
+    assert any(call[0].endswith("/ImageUrl") for call in calls)
     assert url.startswith("http://127.0.0.1/SIMRacingApps/iRacing/pk_car.png?")
 
 
@@ -68,24 +71,21 @@ def test_build_car_image_url_ignores_error_state(monkeypatch):
 
 
 def test_build_car_render_info_includes_number_style(monkeypatch):
+    values = {
+        "Number": "34",
+        "DriverName": "T.J. Lee",
+        "ImageUrl": "iRacing/pk_car.png?car=34",
+        "ColorNumber": 16777215,
+        "ColorNumberBackground": 0,
+        "ColorNumberOutline": 7829367,
+        "NumberFont": "Arial",
+        "NumberSlant": "slant",
+    }
+
     def fake_urlopen(url, timeout=0):
-        return Response(
-            """
-            {
-              "State":"NORMAL",
-              "Value":{
-                "Number":{"State":"NORMAL","Value":"34"},
-                "DriverName":{"State":"NORMAL","Value":"T.J. Lee"},
-                "ImageUrl":{"State":"OFF","Value":"iRacing/pk_car.png?car=34"},
-                "ColorNumber":{"State":"OFF","Value":16777215},
-                "ColorNumberBackground":{"State":"OFF","Value":0},
-                "ColorNumberOutline":{"State":"OFF","Value":7829367},
-                "NumberFont":{"State":"OFF","Value":"Arial"},
-                "NumberSlant":{"State":"OFF","Value":"slant"}
-              }
-            }
-            """
-        )
+        field = url.rsplit("/", 1)[-1]
+        state = "OFF" if field in {"ImageUrl", "ColorNumber", "ColorNumberBackground", "ColorNumberOutline", "NumberFont", "NumberSlant"} else "NORMAL"
+        return Response(json.dumps({"State": state, "Value": values.get(field, "")}))
 
     monkeypatch.setattr(sim_racing_apps, "urlopen", fake_urlopen)
     sim_racing_apps._CACHE.clear()
@@ -108,22 +108,12 @@ def test_build_car_render_info_includes_number_style(monkeypatch):
 
 def test_build_car_render_info_scans_roster_when_car_idx_does_not_match(monkeypatch):
     responses = {
-        "Data/Car/I5": {
-            "State": "NORMAL",
-            "Value": {
-                "Number": {"State": "NORMAL", "Value": "99"},
-                "DriverName": {"State": "NORMAL", "Value": "Wrong Driver"},
-            },
-        },
         "Data/Session/Cars": {"State": "NORMAL", "Value": 3},
-        "Data/Car/I0": {
-            "State": "NORMAL",
-            "Value": {
-                "Number": {"State": "NORMAL", "Value": "34"},
-                "DriverName": {"State": "NORMAL", "Value": "T.J. Lee"},
-                "ImageUrl": {"State": "OFF", "Value": "iRacing/pk_car.png?car=34"},
-            },
-        },
+        "Data/Car/I5/Number": {"State": "NORMAL", "Value": "99"},
+        "Data/Car/I5/DriverName": {"State": "NORMAL", "Value": "Wrong Driver"},
+        "Data/Car/I0/Number": {"State": "NORMAL", "Value": "34"},
+        "Data/Car/I0/DriverName": {"State": "NORMAL", "Value": "T.J. Lee"},
+        "Data/Car/I0/ImageUrl": {"State": "OFF", "Value": "iRacing/pk_car.png?car=34"},
     }
 
     def fake_urlopen(url, timeout=0):

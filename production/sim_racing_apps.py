@@ -15,6 +15,18 @@ MAX_ROSTER_CARS = 80
 
 _CACHE = {}
 _ROSTER_CACHE = {}
+CAR_FIELDS = (
+    "Number",
+    "DriverName",
+    "Name",
+    "DriverNameShort",
+    "ImageUrl",
+    "ColorNumber",
+    "ColorNumberBackground",
+    "ColorNumberOutline",
+    "NumberFont",
+    "NumberSlant",
+)
 
 
 def build_sim_racing_apps_car_image_url(
@@ -45,16 +57,11 @@ def build_sim_racing_apps_car_render_info(
     now=None,
 ):
     """Return live car render image plus number styling from SimRacingApps."""
-    car_idx = normalize_car_idx(
-        driver_info.get("car_idx")
-        or driver_info.get("CarIdx")
-        or driver_info.get("id")
-        or driver_info.get("Id")
-    )
+    car_idx = normalize_car_idx(first_present(driver_info, "car_idx", "CarIdx", "id", "Id"))
 
     data = {}
     if car_idx is not None:
-        data = fetch_sim_racing_apps_data(f"Data/Car/I{car_idx}", base_url=base_url, now=now)
+        data = fetch_sim_racing_apps_car_data(car_idx, base_url=base_url, now=now)
         if data.get("State") == "NORMAL" and sim_racing_apps_car_matches(data, driver_info):
             return render_info_from_car_data(data, base_url=base_url)
 
@@ -78,14 +85,9 @@ def build_sim_racing_apps_car_debug_info(
     now=None,
 ):
     """Return match diagnostics for the current live SimRacingApps roster."""
-    car_idx = normalize_car_idx(
-        driver_info.get("car_idx")
-        or driver_info.get("CarIdx")
-        or driver_info.get("id")
-        or driver_info.get("Id")
-    )
+    car_idx = normalize_car_idx(first_present(driver_info, "car_idx", "CarIdx", "id", "Id"))
     direct = (
-        fetch_sim_racing_apps_data(f"Data/Car/I{car_idx}", base_url=base_url, now=now)
+        fetch_sim_racing_apps_car_data(car_idx, base_url=base_url, now=now)
         if car_idx is not None
         else {}
     )
@@ -151,6 +153,11 @@ def summarize_car_data(data):
 
 
 def find_matching_sim_racing_apps_car_data(driver_info, *, base_url=DEFAULT_BASE_URL, now=None):
+    if not (
+        first_present(driver_info, "number", "car_number", "CarNumber")
+        or first_present(driver_info, "name", "driver_name", "UserName")
+    ):
+        return {}
     for data in sim_racing_apps_roster(base_url=base_url, now=now):
         if data.get("State") == "NORMAL" and sim_racing_apps_car_matches(data, driver_info):
             return data
@@ -171,7 +178,7 @@ def sim_racing_apps_roster(*, base_url=DEFAULT_BASE_URL, now=None):
 
     roster = []
     for car_idx in range(min(count, MAX_ROSTER_CARS)):
-        data = fetch_sim_racing_apps_data(f"Data/Car/I{car_idx}", base_url=base_url, now=now)
+        data = fetch_sim_racing_apps_car_data(car_idx, base_url=base_url, now=now)
         if data.get("State") == "NORMAL":
             roster.append(data)
     _ROSTER_CACHE[key] = {"time": now, "data": roster}
@@ -210,6 +217,43 @@ def sim_racing_apps_car_matches(data, driver_info):
     number_matches = not expected_number or expected_number == actual_number
     name_matches = not expected_name or names_match(expected_name, actual_name)
     return number_matches and name_matches
+
+
+def fetch_sim_racing_apps_car_data(car_idx, *, base_url=DEFAULT_BASE_URL, now=None):
+    """Fetch only the small per-car fields needed for render matching.
+
+    The full /Data/Car/I# payload can be very large. Pulling the entire bundle
+    can timeout or be truncated, which made live cars look missing even while
+    SimRacingApps widgets were working.
+    """
+    values = {}
+    any_ok = False
+    for field_name in CAR_FIELDS:
+        data = fetch_sim_racing_apps_data(
+            f"Data/Car/I{car_idx}/{field_name}",
+            base_url=base_url,
+            now=now,
+        )
+        if data.get("State") == "ERROR":
+            continue
+        values[field_name] = data
+        if data:
+            any_ok = True
+    if not any_ok:
+        return {}
+    return {
+        "State": "NORMAL",
+        "Value": values,
+        "Name": f"Car/I{car_idx}",
+    }
+
+
+def first_present(mapping, *keys):
+    for key in keys:
+        value = mapping.get(key)
+        if value is not None and value != "":
+            return value
+    return None
 
 
 def names_match(expected, actual):
