@@ -3240,22 +3240,27 @@ OVERLAY_HTML = r"""<!doctype html>
 
     .session-center {
       position: absolute;
-      left: 50%;
-      top: 50%;
-      transform: translate(-50%, -50%);
-      min-width: 300px;
-      padding: 8px 22px;
+      right: 48px;
+      top: 116px;
+      width: 264px;
+      box-sizing: border-box;
+      padding: 8px 14px;
       border-radius: 999px;
       background: linear-gradient(90deg, rgba(215, 25, 32, 0.92), rgba(7, 9, 13, 0.88));
       border: 1px solid rgba(255, 255, 255, 0.26);
       box-shadow: 0 0 22px rgba(215, 25, 32, 0.34);
       color: #ffffff;
       text-align: center;
-      font-size: 22px;
+      font-size: 18px;
       font-weight: 950;
       text-transform: uppercase;
-      letter-spacing: 0.08em;
+      letter-spacing: 0.07em;
       white-space: nowrap;
+      z-index: 21;
+    }
+
+    body.leaderboard-ticker-mode .session-center {
+      top: 176px;
     }
 
     .top-banner.caution {
@@ -3865,7 +3870,7 @@ OVERLAY_HTML = r"""<!doctype html>
     .special-presentation.race_sponsors {
       left: auto;
       right: 48px;
-      top: 148px;
+      top: 166px;
       width: 264px;
       height: 264px;
       justify-content: flex-end;
@@ -3874,7 +3879,7 @@ OVERLAY_HTML = r"""<!doctype html>
     body.leaderboard-ticker-mode .special-presentation.race_sponsors {
       left: auto;
       right: 48px;
-      top: 232px;
+      top: 226px;
       width: 264px;
       height: 264px;
     }
@@ -4120,8 +4125,9 @@ OVERLAY_HTML = r"""<!doctype html>
       <span id="track" class="track-pill">Waiting for iRacing</span>
       <span id="sponsor" class="sponsor"></span>
     </div>
-    <div id="session-center" class="session-center hidden"></div>
   </section>
+
+  <div id="session-center" class="session-center hidden"></div>
 
   <section id="leaderboard" class="leaderboard">
     <div class="leaderboard-header">
