@@ -130,3 +130,30 @@ def test_build_car_render_info_scans_roster_when_car_idx_does_not_match(monkeypa
     )
 
     assert info["image_url"] == "http://127.0.0.1/SIMRacingApps/iRacing/pk_car.png?car=34"
+
+
+def test_build_car_render_info_does_not_reuse_mismatched_direct_car(monkeypatch):
+    responses = {
+        "Data/Session/Cars": {"State": "NORMAL", "Value": 1},
+        "Data/Car/I5/Number": {"State": "NORMAL", "Value": "99"},
+        "Data/Car/I5/DriverName": {"State": "NORMAL", "Value": "Wrong Driver"},
+        "Data/Car/I5/ImageUrl": {"State": "OFF", "Value": "iRacing/pk_car.png?car=99"},
+        "Data/Car/I0/Number": {"State": "NORMAL", "Value": "99"},
+        "Data/Car/I0/DriverName": {"State": "NORMAL", "Value": "Wrong Driver"},
+        "Data/Car/I0/ImageUrl": {"State": "OFF", "Value": "iRacing/pk_car.png?car=99"},
+    }
+
+    def fake_urlopen(url, timeout=0):
+        key = url.split("/SIMRacingApps/")[-1]
+        return Response(json.dumps(responses.get(key, {"State": "ERROR"})))
+
+    monkeypatch.setattr(sim_racing_apps, "urlopen", fake_urlopen)
+    sim_racing_apps._CACHE.clear()
+    sim_racing_apps._ROSTER_CACHE.clear()
+
+    info = build_sim_racing_apps_car_render_info(
+        {"car_idx": 5, "number": "34", "name": "T.J. Lee"},
+        now=10.0,
+    )
+
+    assert info == {}

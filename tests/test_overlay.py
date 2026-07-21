@@ -666,6 +666,7 @@ def test_featured_driver_card_proxies_sim_racing_apps_render_urls():
     assert featured["car_idx"] == 12
     assert featured["car_image_url"].startswith("/iracing-render?url=")
     assert "SIMRacingApps" in featured["car_image_url"]
+    assert 'image.removeAttribute("src");' in OVERLAY_HTML
 
 
 def test_featured_driver_card_does_not_proxy_external_images():

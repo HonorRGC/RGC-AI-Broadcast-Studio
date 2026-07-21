@@ -58,6 +58,10 @@ def build_sim_racing_apps_car_render_info(
 ):
     """Return live car render image plus number styling from SimRacingApps."""
     car_idx = normalize_car_idx(first_present(driver_info, "car_idx", "CarIdx", "id", "Id"))
+    has_identity = bool(
+        first_present(driver_info, "number", "car_number", "CarNumber")
+        or first_present(driver_info, "name", "driver_name", "UserName")
+    )
 
     data = {}
     if car_idx is not None:
@@ -74,6 +78,8 @@ def build_sim_racing_apps_car_render_info(
         return render_info_from_car_data(matched_data, base_url=base_url)
 
     if data.get("State") != "NORMAL":
+        return {}
+    if has_identity:
         return {}
     return render_info_from_car_data(data, base_url=base_url)
 

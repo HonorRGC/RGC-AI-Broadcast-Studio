@@ -4412,6 +4412,7 @@ OVERLAY_HTML = r"""<!doctype html>
       if (image.dataset.currentSrc === imageUrl) return;
       image.dataset.currentSrc = imageUrl;
       imageShell.classList.remove("image-failed");
+      image.removeAttribute("src");
       image.onload = () => {
         imageShell.classList.remove("image-failed", "no-source");
       };
