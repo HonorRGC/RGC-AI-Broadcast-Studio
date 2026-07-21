@@ -32,6 +32,7 @@ from production.live_broadcast_validator import LiveBroadcastValidator
 from production.overlay import OverlayServer
 from production.car_paint_preview import ensure_preview_file
 from production.iracing_render_cache import build_iracing_render_image_url
+from production.sim_racing_apps import build_sim_racing_apps_car_image_url
 from production.replay_director import ReplayDirector
 from production.race_control import RaceControlService
 
@@ -1694,7 +1695,9 @@ def update_overlay_focused_driver(
     if car_idx is None:
         return
 
-    driver = source.get_driver_lookup().get(car_idx, {})
+    driver = dict(source.get_driver_lookup().get(car_idx, {}) or {})
+    driver["car_idx"] = car_idx
+    driver.setdefault("CarIdx", car_idx)
     driver_name = driver.get("name", "")
     car_number = driver.get("number", camera_decision.car_number)
     if not driver_name and not car_number:
@@ -1871,6 +1874,9 @@ def build_featured_driver_image(driver):
         if preview_path:
             return f"/paint-previews/{preview_path.name}"
     if USE_IRACING_RENDERED_CAR_IMAGES:
+        sim_racing_apps_url = build_sim_racing_apps_car_image_url(driver)
+        if sim_racing_apps_url:
+            return sim_racing_apps_url
         render_url = build_iracing_render_image_url(driver)
         if render_url:
             return render_url

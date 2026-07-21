@@ -689,6 +689,7 @@ def test_featured_driver_image_can_use_iracing_render_cache_fallback(monkeypatch
     import app
 
     monkeypatch.setattr(app, "USE_IRACING_RENDERED_CAR_IMAGES", True)
+    monkeypatch.setattr(app, "build_sim_racing_apps_car_image_url", lambda driver: "")
     monkeypatch.setattr(
         app,
         "build_iracing_render_image_url",
@@ -697,6 +698,26 @@ def test_featured_driver_image_can_use_iracing_render_cache_fallback(monkeypatch
 
     assert build_featured_driver_image({"number": "34"}) == (
         "http://127.0.0.1:32034/pk_car.png?number=34"
+    )
+
+
+def test_featured_driver_image_prefers_sim_racing_apps_live_render(monkeypatch):
+    import app
+
+    monkeypatch.setattr(app, "USE_IRACING_RENDERED_CAR_IMAGES", True)
+    monkeypatch.setattr(
+        app,
+        "build_sim_racing_apps_car_image_url",
+        lambda driver: "http://127.0.0.1/SIMRacingApps/iRacing/pk_car.png?car=34",
+    )
+    monkeypatch.setattr(
+        app,
+        "build_iracing_render_image_url",
+        lambda driver: "http://127.0.0.1:32034/pk_car.png?number=34",
+    )
+
+    assert build_featured_driver_image({"car_idx": 34, "number": "34"}) == (
+        "http://127.0.0.1/SIMRacingApps/iRacing/pk_car.png?car=34"
     )
 
 
