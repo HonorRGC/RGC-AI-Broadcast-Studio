@@ -6,6 +6,7 @@ from app import (
     build_director_suggestions,
     build_featured_driver_story,
     build_featured_driver_image,
+    build_featured_driver_render_info,
     featured_driver_position_info,
     update_overlay_featured_driver,
     build_producer_pit_road_rows,
@@ -689,7 +690,7 @@ def test_featured_driver_image_can_use_iracing_render_cache_fallback(monkeypatch
     import app
 
     monkeypatch.setattr(app, "USE_IRACING_RENDERED_CAR_IMAGES", True)
-    monkeypatch.setattr(app, "build_sim_racing_apps_car_image_url", lambda driver: "")
+    monkeypatch.setattr(app, "build_sim_racing_apps_car_render_info", lambda driver: {})
     monkeypatch.setattr(
         app,
         "build_iracing_render_image_url",
@@ -707,8 +708,11 @@ def test_featured_driver_image_prefers_sim_racing_apps_live_render(monkeypatch):
     monkeypatch.setattr(app, "USE_IRACING_RENDERED_CAR_IMAGES", True)
     monkeypatch.setattr(
         app,
-        "build_sim_racing_apps_car_image_url",
-        lambda driver: "http://127.0.0.1/SIMRacingApps/iRacing/pk_car.png?car=34",
+        "build_sim_racing_apps_car_render_info",
+        lambda driver: {
+            "image_url": "http://127.0.0.1/SIMRacingApps/iRacing/pk_car.png?car=34",
+            "number_style": {"color": "#ffffff", "background": "#000000"},
+        },
     )
     monkeypatch.setattr(
         app,
@@ -719,6 +723,10 @@ def test_featured_driver_image_prefers_sim_racing_apps_live_render(monkeypatch):
     assert build_featured_driver_image({"car_idx": 34, "number": "34"}) == (
         "http://127.0.0.1/SIMRacingApps/iRacing/pk_car.png?car=34"
     )
+    assert build_featured_driver_render_info({"car_idx": 34, "number": "34"})["number_style"] == {
+        "color": "#ffffff",
+        "background": "#000000",
+    }
 
 
 def test_featured_driver_story_for_official_races_uses_country_only():

@@ -40,6 +40,29 @@ def proxied_iracing_render_url(url):
     return f"/iracing-render?url={quote(text, safe='')}"
 
 
+def sanitize_driver_number_style(style):
+    clean = {}
+    if not isinstance(style, dict):
+        return clean
+    for key in ("color", "background", "outline"):
+        value = str(style.get(key) or "").strip().lower()
+        if is_safe_hex_color(value):
+            clean[key] = value
+    font_family = str(style.get("font_family") or "").strip()
+    if font_family and all(ch.isalnum() or ch in " ,_-'\"" for ch in font_family):
+        clean["font_family"] = font_family[:60]
+    font_style = str(style.get("font_style") or "").strip().lower()
+    if font_style == "italic":
+        clean["font_style"] = "italic"
+    return clean
+
+
+def is_safe_hex_color(value):
+    if len(value) not in (4, 7) or not value.startswith("#"):
+        return False
+    return all(ch in "0123456789abcdef" for ch in value[1:])
+
+
 @dataclass
 class OverlayEventConfig:
     title: str = OVERLAY_EVENT_TITLE
@@ -96,6 +119,7 @@ class FeaturedDriver:
     story: str = ""
     country: str = ""
     car_image_url: str = ""
+    number_style: dict[str, str] = field(default_factory=dict)
     position: int = 0
     starting_position: int = 0
     position_delta: int = 0
@@ -110,6 +134,7 @@ class FeaturedDriver:
             "story": self.story,
             "country": self.country,
             "car_image_url": self.car_image_url,
+            "number_style": dict(self.number_style or {}),
             "position": self.position,
             "starting_position": self.starting_position,
             "position_delta": self.position_delta,
@@ -1003,6 +1028,7 @@ class OverlayServer:
         position_delta=0,
         interval="",
         speed="",
+        number_style=None,
     ):
         with self.lock:
             self.featured_driver = FeaturedDriver(
@@ -1011,6 +1037,7 @@ class OverlayServer:
                 story=str(story or ""),
                 country=str(country or ""),
                 car_image_url=proxied_iracing_render_url(car_image_url),
+                number_style=sanitize_driver_number_style(number_style),
                 position=self.state_builder.safe_int(position),
                 starting_position=self.state_builder.safe_int(starting_position),
                 position_delta=self.state_builder.safe_int(position_delta),
@@ -3501,6 +3528,7 @@ OVERLAY_HTML = r"""<!doctype html>
       min-width: 44px;
       padding: 3px 9px;
       border-radius: 8px;
+      border: 2px solid rgba(0, 0, 0, 0.48);
       background: rgba(255, 255, 255, 0.94);
       color: #111;
       font-weight: 950;
@@ -3523,6 +3551,7 @@ OVERLAY_HTML = r"""<!doctype html>
       background: transparent;
       color: rgba(255, 255, 255, 0.95);
       font-size: 42px;
+      border: 0;
       text-shadow: 0 4px 14px rgba(0, 0, 0, 0.66);
       box-shadow: none;
     }
@@ -4153,12 +4182,26 @@ OVERLAY_HTML = r"""<!doctype html>
       card.classList.toggle("hidden", !hasDriver);
       if (!hasDriver) return;
       setText("driver-card-number", driver.car_number || "?");
+      applyDriverCardNumberStyle(driver.number_style || {});
       setText("driver-card-name", driver.driver_name || "Unknown Driver");
       setText("driver-card-country", driver.country || "");
       setText("driver-card-position-rank", buildDriverCardRankLine(driver));
       setText("driver-card-position", buildDriverCardPositionLine(driver));
       setText("driver-card-story", driver.story || "");
       renderDriverCardImage(driver.car_image_url || "");
+    }
+
+    function applyDriverCardNumberStyle(style) {
+      const number = document.getElementById("driver-card-number");
+      const outline = style.outline || "";
+      number.style.color = style.color || "";
+      number.style.background = style.background || "";
+      number.style.borderColor = outline || "";
+      number.style.fontFamily = style.font_family ? `${style.font_family}, Arial, sans-serif` : "";
+      number.style.fontStyle = style.font_style || "";
+      number.style.textShadow = outline
+        ? `-1px -1px 0 ${outline}, 1px -1px 0 ${outline}, -1px 1px 0 ${outline}, 1px 1px 0 ${outline}, 0 4px 14px rgba(0,0,0,.66)`
+        : "";
     }
 
     function renderDriverCardImage(imageUrl) {

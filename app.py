@@ -32,7 +32,7 @@ from production.live_broadcast_validator import LiveBroadcastValidator
 from production.overlay import OverlayServer
 from production.car_paint_preview import ensure_preview_file
 from production.iracing_render_cache import build_iracing_render_image_url
-from production.sim_racing_apps import build_sim_racing_apps_car_image_url
+from production.sim_racing_apps import build_sim_racing_apps_car_render_info
 from production.replay_director import ReplayDirector
 from production.race_control import RaceControlService
 
@@ -1705,7 +1705,8 @@ def update_overlay_focused_driver(
 
     country = build_featured_driver_country(driver)
     story = build_featured_driver_profile(driver)
-    car_image_url = build_featured_driver_image(driver)
+    car_render_info = build_featured_driver_render_info(driver)
+    car_image_url = car_render_info.get("image_url", "")
     results = featured_driver_results(source, opening_intro=opening_intro)
     position_info = featured_driver_position_info(
         car_idx,
@@ -1720,6 +1721,7 @@ def update_overlay_focused_driver(
         country=country,
         duration=duration,
         car_image_url=car_image_url,
+        number_style=car_render_info.get("number_style", {}),
         position=position_info["position"],
         starting_position=position_info["starting_position"],
         position_delta=position_info["position_delta"],
@@ -1858,29 +1860,33 @@ def build_featured_driver_story(driver):
 
 
 def build_featured_driver_image(driver):
+    return build_featured_driver_render_info(driver).get("image_url", "")
+
+
+def build_featured_driver_render_info(driver):
     for key in ("car_image_url", "paint_image_url"):
         value = str(driver.get(key, "") or "").strip()
         if value.startswith(("http://", "https://", "/")):
-            return value
+            return {"image_url": value, "number_style": {}}
 
     manual_image = str(driver.get("car_image", "") or "").strip()
     if manual_image.startswith(("http://", "https://", "/assets/", "/paint-previews/")):
-        return manual_image
+        return {"image_url": manual_image, "number_style": {}}
     if manual_image:
         image_path = Path(manual_image).expanduser()
         if not image_path.is_absolute():
             image_path = Path(__file__).resolve().parent / image_path
         preview_path = ensure_preview_file(image_path, driver)
         if preview_path:
-            return f"/paint-previews/{preview_path.name}"
+            return {"image_url": f"/paint-previews/{preview_path.name}", "number_style": {}}
     if USE_IRACING_RENDERED_CAR_IMAGES:
-        sim_racing_apps_url = build_sim_racing_apps_car_image_url(driver)
-        if sim_racing_apps_url:
-            return sim_racing_apps_url
+        sim_racing_apps_info = build_sim_racing_apps_car_render_info(driver)
+        if sim_racing_apps_info.get("image_url") or sim_racing_apps_info.get("number_style"):
+            return sim_racing_apps_info
         render_url = build_iracing_render_image_url(driver)
         if render_url:
-            return render_url
-    return ""
+            return {"image_url": render_url, "number_style": {}}
+    return {"image_url": "", "number_style": {}}
 
 
 def report_camera_decision(decision, overlay_server=None):

@@ -555,6 +555,14 @@ def test_featured_driver_card_includes_position_line():
         position_delta=8,
         interval="+0.45 to next",
         speed="175 mph",
+        number_style={
+            "color": "#FFFFFF",
+            "background": "#000000",
+            "outline": "#777777",
+            "font_family": "Arial",
+            "font_style": "italic",
+            "unsafe": "nope",
+        },
     )
 
     featured = server.current_state_dict()["featured_driver"]
@@ -565,6 +573,13 @@ def test_featured_driver_card_includes_position_line():
     assert featured["position_delta"] == 8
     assert featured["interval"] == "+0.45 to next"
     assert featured["speed"] == "175 mph"
+    assert featured["number_style"] == {
+        "color": "#ffffff",
+        "background": "#000000",
+        "outline": "#777777",
+        "font_family": "Arial",
+        "font_style": "italic",
+    }
     assert "buildDriverCardPositionLine" in OVERLAY_HTML
     assert "pieces.push(driver.speed)" not in OVERLAY_HTML
     assert "buildDriverCardRankLine" in OVERLAY_HTML
@@ -574,6 +589,7 @@ def test_featured_driver_card_includes_position_line():
     assert 'id="driver-card-position-rank"' in OVERLAY_HTML
     assert 'id="driver-card-car-img"' in OVERLAY_HTML
     assert "image.onerror" in OVERLAY_HTML
+    assert "applyDriverCardNumberStyle" in OVERLAY_HTML
     assert ".driver-card-image.image-failed" in OVERLAY_HTML
 
 
