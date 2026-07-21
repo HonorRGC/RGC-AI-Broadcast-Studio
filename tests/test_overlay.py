@@ -119,6 +119,33 @@ def test_overlay_leaderboard_sorts_and_formats_zero_based_positions():
     assert leaderboard[2]["interval"] == "+1.6"
 
 
+def test_overlay_leaderboard_can_include_live_number_style(monkeypatch):
+    import production.overlay as overlay_module
+
+    monkeypatch.setattr(overlay_module, "sim_racing_apps_session_car_count", lambda: 3)
+    monkeypatch.setattr(
+        overlay_module,
+        "build_sim_racing_apps_car_render_info",
+        lambda driver: {
+            "number_style": {
+                "color": "#ffffff",
+                "background": "#000000",
+                "outline": "#777777",
+            }
+        },
+    )
+
+    state = OverlayStateBuilder().build_from_telemetry(OverlayTelemetry()).to_dict()
+
+    assert state["leaderboard"][0]["number_style"] == {
+        "color": "#ffffff",
+        "background": "#000000",
+        "outline": "#777777",
+    }
+    assert "numberStyleAttribute" in OVERLAY_HTML
+    assert 'class="ticker-num" style="${numberStyleAttribute' in OVERLAY_HTML
+
+
 def test_overlay_leaderboard_includes_producer_driver_stats():
     class StatsTelemetry(OverlayTelemetry):
         def get_results(self):

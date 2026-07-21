@@ -1,3 +1,5 @@
+import json
+
 from production import sim_racing_apps
 from production.sim_racing_apps import (
     build_sim_racing_apps_car_image_url,
@@ -30,6 +32,7 @@ def test_build_car_image_url_uses_live_car_idx_endpoint(monkeypatch):
 
     monkeypatch.setattr(sim_racing_apps, "urlopen", fake_urlopen)
     sim_racing_apps._CACHE.clear()
+    sim_racing_apps._ROSTER_CACHE.clear()
 
     url = build_sim_racing_apps_car_image_url(
         {"car_idx": 12},
@@ -48,6 +51,7 @@ def test_build_car_image_url_returns_empty_when_sim_racing_apps_is_unavailable(m
 
     monkeypatch.setattr(sim_racing_apps, "urlopen", fake_urlopen)
     sim_racing_apps._CACHE.clear()
+    sim_racing_apps._ROSTER_CACHE.clear()
 
     assert build_sim_racing_apps_car_image_url({"car_idx": 12}) == ""
 
@@ -58,6 +62,7 @@ def test_build_car_image_url_ignores_error_state(monkeypatch):
 
     monkeypatch.setattr(sim_racing_apps, "urlopen", fake_urlopen)
     sim_racing_apps._CACHE.clear()
+    sim_racing_apps._ROSTER_CACHE.clear()
 
     assert build_sim_racing_apps_car_image_url({"car_idx": 12}) == ""
 
@@ -69,12 +74,14 @@ def test_build_car_render_info_includes_number_style(monkeypatch):
             {
               "State":"NORMAL",
               "Value":{
-                "ImageUrl":{"State":"NORMAL","Value":"iRacing/pk_car.png?car=34"},
-                "ColorNumber":{"State":"NORMAL","Value":16777215},
-                "ColorNumberBackground":{"State":"NORMAL","Value":0},
-                "ColorNumberOutline":{"State":"NORMAL","Value":7829367},
-                "NumberFont":{"State":"NORMAL","Value":"Arial"},
-                "NumberSlant":{"State":"NORMAL","Value":"slant"}
+                "Number":{"State":"NORMAL","Value":"34"},
+                "DriverName":{"State":"NORMAL","Value":"T.J. Lee"},
+                "ImageUrl":{"State":"OFF","Value":"iRacing/pk_car.png?car=34"},
+                "ColorNumber":{"State":"OFF","Value":16777215},
+                "ColorNumberBackground":{"State":"OFF","Value":0},
+                "ColorNumberOutline":{"State":"OFF","Value":7829367},
+                "NumberFont":{"State":"OFF","Value":"Arial"},
+                "NumberSlant":{"State":"OFF","Value":"slant"}
               }
             }
             """
@@ -82,8 +89,12 @@ def test_build_car_render_info_includes_number_style(monkeypatch):
 
     monkeypatch.setattr(sim_racing_apps, "urlopen", fake_urlopen)
     sim_racing_apps._CACHE.clear()
+    sim_racing_apps._ROSTER_CACHE.clear()
 
-    info = build_sim_racing_apps_car_render_info({"car_idx": 34}, now=10.0)
+    info = build_sim_racing_apps_car_render_info(
+        {"car_idx": 34, "number": "34", "name": "T.J. Lee"},
+        now=10.0,
+    )
 
     assert info["image_url"] == "http://127.0.0.1/SIMRacingApps/iRacing/pk_car.png?car=34"
     assert info["number_style"] == {
@@ -93,3 +104,39 @@ def test_build_car_render_info_includes_number_style(monkeypatch):
         "font_family": "Arial",
         "font_style": "italic",
     }
+
+
+def test_build_car_render_info_scans_roster_when_car_idx_does_not_match(monkeypatch):
+    responses = {
+        "Data/Car/I5": {
+            "State": "NORMAL",
+            "Value": {
+                "Number": {"State": "NORMAL", "Value": "99"},
+                "DriverName": {"State": "NORMAL", "Value": "Wrong Driver"},
+            },
+        },
+        "Data/Session/Cars": {"State": "NORMAL", "Value": 3},
+        "Data/Car/I0": {
+            "State": "NORMAL",
+            "Value": {
+                "Number": {"State": "NORMAL", "Value": "34"},
+                "DriverName": {"State": "NORMAL", "Value": "T.J. Lee"},
+                "ImageUrl": {"State": "OFF", "Value": "iRacing/pk_car.png?car=34"},
+            },
+        },
+    }
+
+    def fake_urlopen(url, timeout=0):
+        key = url.split("/SIMRacingApps/")[-1]
+        return Response(json.dumps(responses.get(key, {"State": "ERROR"})))
+
+    monkeypatch.setattr(sim_racing_apps, "urlopen", fake_urlopen)
+    sim_racing_apps._CACHE.clear()
+    sim_racing_apps._ROSTER_CACHE.clear()
+
+    info = build_sim_racing_apps_car_render_info(
+        {"car_idx": 5, "number": "34", "name": "T.J. Lee"},
+        now=10.0,
+    )
+
+    assert info["image_url"] == "http://127.0.0.1/SIMRacingApps/iRacing/pk_car.png?car=34"

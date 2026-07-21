@@ -9,9 +9,12 @@ from urllib.request import urlopen
 
 DEFAULT_BASE_URL = "http://127.0.0.1/SIMRacingApps/"
 CACHE_TTL_SECONDS = 3.0
+ROSTER_CACHE_TTL_SECONDS = 15.0
 REQUEST_TIMEOUT_SECONDS = 0.35
+MAX_ROSTER_CARS = 80
 
 _CACHE = {}
+_ROSTER_CACHE = {}
 
 
 def build_sim_racing_apps_car_image_url(
@@ -48,17 +51,27 @@ def build_sim_racing_apps_car_render_info(
         or driver_info.get("id")
         or driver_info.get("Id")
     )
-    if car_idx is None:
-        return {}
 
-    data = fetch_sim_racing_apps_data(
-        f"Data/Car/I{car_idx}",
+    data = {}
+    if car_idx is not None:
+        data = fetch_sim_racing_apps_data(f"Data/Car/I{car_idx}", base_url=base_url, now=now)
+        if data.get("State") == "NORMAL" and sim_racing_apps_car_matches(data, driver_info):
+            return render_info_from_car_data(data, base_url=base_url)
+
+    matched_data = find_matching_sim_racing_apps_car_data(
+        driver_info,
         base_url=base_url,
         now=now,
     )
+    if matched_data:
+        return render_info_from_car_data(matched_data, base_url=base_url)
+
     if data.get("State") != "NORMAL":
         return {}
+    return render_info_from_car_data(data, base_url=base_url)
 
+
+def render_info_from_car_data(data, *, base_url=DEFAULT_BASE_URL):
     values = data.get("Value") if isinstance(data.get("Value"), dict) else {}
     image_url = resolve_sim_racing_apps_image_url(
         data_value(values, "ImageUrl"),
@@ -72,6 +85,78 @@ def build_sim_racing_apps_car_render_info(
         "image_url": image_url,
         "number_style": number_style,
     }
+
+
+def find_matching_sim_racing_apps_car_data(driver_info, *, base_url=DEFAULT_BASE_URL, now=None):
+    for data in sim_racing_apps_roster(base_url=base_url, now=now):
+        if data.get("State") == "NORMAL" and sim_racing_apps_car_matches(data, driver_info):
+            return data
+    return {}
+
+
+def sim_racing_apps_roster(*, base_url=DEFAULT_BASE_URL, now=None):
+    now = time.time() if now is None else float(now)
+    key = ensure_base_url(base_url)
+    cached = _ROSTER_CACHE.get(key)
+    if cached and now - cached["time"] <= ROSTER_CACHE_TTL_SECONDS:
+        return list(cached["data"])
+
+    count = sim_racing_apps_session_car_count(base_url=base_url, now=now)
+    if count <= 0:
+        _ROSTER_CACHE[key] = {"time": now, "data": []}
+        return []
+
+    roster = []
+    for car_idx in range(min(count, MAX_ROSTER_CARS)):
+        data = fetch_sim_racing_apps_data(f"Data/Car/I{car_idx}", base_url=base_url, now=now)
+        if data.get("State") == "NORMAL":
+            roster.append(data)
+    _ROSTER_CACHE[key] = {"time": now, "data": roster}
+    return list(roster)
+
+
+def sim_racing_apps_session_car_count(*, base_url=DEFAULT_BASE_URL, now=None):
+    data = fetch_sim_racing_apps_data("Data/Session/Cars", base_url=base_url, now=now)
+    if data.get("State") != "NORMAL":
+        return 0
+    try:
+        count = int(data.get("Value") or data.get("ValueFormatted") or 0)
+    except (TypeError, ValueError):
+        return 0
+    return max(0, count)
+
+
+def sim_racing_apps_car_matches(data, driver_info):
+    values = data.get("Value") if isinstance(data.get("Value"), dict) else {}
+    expected_number = normalize_text(
+        driver_info.get("number")
+        or driver_info.get("car_number")
+        or driver_info.get("CarNumber")
+    )
+    expected_name = normalize_text(
+        driver_info.get("name")
+        or driver_info.get("driver_name")
+        or driver_info.get("UserName")
+    )
+    actual_number = normalize_text(data_value(values, "Number"))
+    actual_name = normalize_text(
+        data_value(values, "DriverName")
+        or data_value(values, "Name")
+        or data_value(values, "DriverNameShort")
+    )
+    number_matches = not expected_number or expected_number == actual_number
+    name_matches = not expected_name or names_match(expected_name, actual_name)
+    return number_matches and name_matches
+
+
+def names_match(expected, actual):
+    if not expected or not actual:
+        return False
+    return expected == actual or expected in actual or actual in expected
+
+
+def normalize_text(value):
+    return " ".join(str(value or "").strip().lower().replace(".", "").split())
 
 
 def resolve_sim_racing_apps_image_url(value, base_url=DEFAULT_BASE_URL):
@@ -106,9 +191,10 @@ def build_number_style(values):
 
 def data_value(values, key):
     item = values.get(key) if isinstance(values, dict) else None
-    if not isinstance(item, dict) or item.get("State") != "NORMAL":
+    if not isinstance(item, dict) or item.get("State") == "ERROR":
         return None
-    return item.get("Value")
+    value = item.get("Value")
+    return value if value not in (None, "") else item.get("ValueFormatted")
 
 
 def rgb_int_to_hex(value):
@@ -132,6 +218,7 @@ def fetch_sim_racing_apps_data(path, *, base_url=DEFAULT_BASE_URL, now=None):
         with urlopen(url, timeout=REQUEST_TIMEOUT_SECONDS) as response:
             raw = response.read(64_000).decode("utf-8", errors="ignore")
     except (OSError, TimeoutError, URLError):
+        _CACHE[url] = {"time": now, "data": {}}
         return {}
 
     try:

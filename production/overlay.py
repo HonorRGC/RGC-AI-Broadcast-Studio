@@ -18,6 +18,10 @@ from config import (
     OVERLAY_RACE_SPONSOR,
     OVERLAY_SERIES_NAME,
 )
+from production.sim_racing_apps import (
+    build_sim_racing_apps_car_render_info,
+    sim_racing_apps_session_car_count,
+)
 
 
 MAX_IRACING_RENDER_BYTES = 5 * 1024 * 1024
@@ -78,6 +82,7 @@ class LeaderboardEntry:
     car_idx: int
     car_number: str
     driver_name: str
+    number_style: dict[str, str] = field(default_factory=dict)
     laps_complete: int = 0
     interval: str = ""
     fastest_lap: str = ""
@@ -97,6 +102,7 @@ class LeaderboardEntry:
             "car_idx": self.car_idx,
             "car_number": self.car_number,
             "driver_name": self.driver_name,
+            "number_style": dict(self.number_style or {}),
             "laps_complete": self.laps_complete,
             "interval": self.interval,
             "fastest_lap": self.fastest_lap,
@@ -406,11 +412,15 @@ class OverlayStateBuilder:
             default=0,
         )
         leader_car = valid_results[0] if valid_results else {}
+        sim_racing_apps_available = sim_racing_apps_session_car_count() > 0
 
         leaderboard = []
         for car in valid_results:
             car_idx = car.get("CarIdx")
             driver = (driver_lookup or {}).get(car_idx, {})
+            driver_info = dict(driver or {})
+            driver_info.setdefault("car_idx", car_idx)
+            driver_info.setdefault("CarIdx", car_idx)
             raw_position = self.safe_int(car.get("Position"), len(leaderboard) + 1)
             display_position = raw_position + 1 if zero_based else raw_position
             starting_position = self.starting_position(car, car_idx)
@@ -430,6 +440,13 @@ class OverlayStateBuilder:
                     car_idx=car_idx,
                     car_number=str(driver.get("number") or "?"),
                     driver_name=str(driver.get("name") or f"Car {car_idx}"),
+                    number_style=sanitize_driver_number_style(
+                        build_sim_racing_apps_car_render_info(driver_info).get(
+                            "number_style", {}
+                        )
+                        if sim_racing_apps_available
+                        else {}
+                    ),
                     laps_complete=self.safe_int(
                         car.get("LapsComplete", car.get("Lap", 0))
                     ),
@@ -3400,6 +3417,7 @@ OVERLAY_HTML = r"""<!doctype html>
     .ticker-num {
       background: #fff;
       color: #111;
+      border: 1px solid rgba(0, 0, 0, 0.55);
       border-radius: 3px;
       padding: 1px 5px;
       font-weight: 950;
@@ -3438,6 +3456,7 @@ OVERLAY_HTML = r"""<!doctype html>
     .num {
       background: #fff;
       color: #111;
+      border: 1px solid rgba(0, 0, 0, 0.55);
       border-radius: 3px;
       text-align: center;
       font-weight: 900;
@@ -4048,7 +4067,7 @@ OVERLAY_HTML = r"""<!doctype html>
         if (index === 14) row.classList.add("cycle-divider");
         row.innerHTML = `
           <span class="pos">${entry.position}</span>
-          <span class="num">${escapeHtml(entry.car_number || "?")}</span>
+          <span class="num" style="${numberStyleAttribute(entry.number_style || {})}">${escapeHtml(entry.car_number || "?")}</span>
           <span class="name">${escapeHtml(entry.driver_name || "Unknown")}</span>
           <span class="gap">${escapeHtml(entry.interval || "")}</span>
         `;
@@ -4083,12 +4102,26 @@ OVERLAY_HTML = r"""<!doctype html>
       const items = leaderboard.slice(0, 40).map((entry) => `
         <span class="ticker-item">
           <span class="ticker-pos">P${escapeHtml(entry.position || "")}</span>
-          <span class="ticker-num">${escapeHtml(entry.car_number || "?")}</span>
+          <span class="ticker-num" style="${numberStyleAttribute(entry.number_style || {})}">${escapeHtml(entry.car_number || "?")}</span>
           <span>${escapeHtml(entry.driver_name || "Unknown")}</span>
           <span class="ticker-gap">${escapeHtml(entry.interval || "")}</span>
         </span>
       `).join("");
       track.innerHTML = items + items;
+    }
+
+    function numberStyleAttribute(style) {
+      const safe = style || {};
+      const pieces = [];
+      if (safe.color) pieces.push(`color:${safe.color}`);
+      if (safe.background) pieces.push(`background:${safe.background}`);
+      if (safe.outline) {
+        pieces.push(`border-color:${safe.outline}`);
+        pieces.push(`text-shadow:-1px -1px 0 ${safe.outline},1px -1px 0 ${safe.outline},-1px 1px 0 ${safe.outline},1px 1px 0 ${safe.outline}`);
+      }
+      if (safe.font_family) pieces.push(`font-family:${safe.font_family}, Arial, sans-serif`);
+      if (safe.font_style) pieces.push(`font-style:${safe.font_style}`);
+      return pieces.join(";");
     }
 
     function renderSpecialPresentation(presentation) {
