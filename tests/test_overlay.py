@@ -638,6 +638,26 @@ def test_featured_driver_card_proxies_iracing_render_urls():
     assert "pk_car.png" in featured["car_image_url"]
 
 
+def test_featured_driver_card_proxies_sim_racing_apps_render_urls():
+    from production.overlay import OverlayServer, is_safe_iracing_render_url
+
+    raw_url = "http://127.0.0.1/SIMRacingApps/iRacing/pk_car.png?carCustPaint=C%3A%5Cpaint%5Ccar.tga"
+    assert is_safe_iracing_render_url(raw_url)
+
+    server = OverlayServer()
+    server.show_featured_driver(
+        car_number="34",
+        driver_name="T.J. Lee",
+        car_idx=12,
+        car_image_url=raw_url,
+    )
+
+    featured = server.current_state_dict()["featured_driver"]
+    assert featured["car_idx"] == 12
+    assert featured["car_image_url"].startswith("/iracing-render?url=")
+    assert "SIMRacingApps" in featured["car_image_url"]
+
+
 def test_featured_driver_card_does_not_proxy_external_images():
     from production.overlay import OverlayServer, is_safe_iracing_render_url
 

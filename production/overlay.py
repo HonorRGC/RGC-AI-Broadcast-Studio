@@ -19,6 +19,7 @@ from config import (
     OVERLAY_SERIES_NAME,
 )
 from production.sim_racing_apps import (
+    build_sim_racing_apps_car_debug_info,
     build_sim_racing_apps_car_render_info,
     sim_racing_apps_session_car_count,
 )
@@ -33,7 +34,13 @@ def is_safe_iracing_render_url(url):
     return (
         parsed.scheme == "http"
         and host in ("127.0.0.1", "localhost")
-        and parsed.path in ("/pk_car.png", "/pk_helmet.png")
+        and parsed.path
+        in (
+            "/pk_car.png",
+            "/pk_helmet.png",
+            "/SIMRacingApps/iRacing/pk_car.png",
+            "/SIMRacingApps/iRacing/pk_helmet.png",
+        )
     )
 
 
@@ -120,6 +127,7 @@ class LeaderboardEntry:
 
 @dataclass
 class FeaturedDriver:
+    car_idx: int = -1
     car_number: str = ""
     driver_name: str = ""
     story: str = ""
@@ -135,6 +143,7 @@ class FeaturedDriver:
 
     def to_dict(self):
         return {
+            "car_idx": self.car_idx,
             "car_number": self.car_number,
             "driver_name": self.driver_name,
             "story": self.story,
@@ -1036,6 +1045,7 @@ class OverlayServer:
         self,
         car_number,
         driver_name,
+        car_idx=-1,
         story="",
         country="",
         duration=10.0,
@@ -1049,6 +1059,7 @@ class OverlayServer:
     ):
         with self.lock:
             self.featured_driver = FeaturedDriver(
+                car_idx=self.state_builder.safe_int(car_idx, -1),
                 car_number=str(car_number or ""),
                 driver_name=str(driver_name or ""),
                 story=str(story or ""),
@@ -1418,6 +1429,10 @@ class OverlayServer:
                     self.send_json(server.current_state_dict())
                     return
 
+                if self.path == "/overlay/debug/sim-racing-apps":
+                    self.send_json(server.sim_racing_apps_debug_state())
+                    return
+
                 if self.path.startswith("/assets/"):
                     self.send_asset(self.path.removeprefix("/assets/"))
                     return
@@ -1554,6 +1569,49 @@ class OverlayServer:
             return default_preview_cache_dir()
         except Exception:
             return Path.home() / ".rgc_ai_broadcast_studio" / "paint_previews"
+
+    def sim_racing_apps_debug_state(self):
+        with self.lock:
+            state = self.state.to_dict()
+        leaderboard = list(state.get("producer_leaderboard") or state.get("leaderboard") or [])
+        featured = dict(state.get("featured_driver") or {})
+        drivers = []
+        if featured:
+            drivers.append(
+                {
+                    "source": "featured_driver",
+                    "car_idx": featured.get("car_idx"),
+                    "number": featured.get("car_number"),
+                    "name": featured.get("driver_name"),
+                }
+            )
+        for entry in leaderboard[:10]:
+            drivers.append(
+                {
+                    "source": f"P{entry.get('position')}",
+                    "car_idx": entry.get("car_idx"),
+                    "number": entry.get("car_number"),
+                    "name": entry.get("driver_name"),
+                    "overlay_number_style": entry.get("number_style") or {},
+                }
+            )
+        return {
+            "sim_racing_apps_cars": sim_racing_apps_session_car_count(),
+            "drivers": [
+                {
+                    **driver,
+                    "sim_racing_apps": build_sim_racing_apps_car_debug_info(
+                        {
+                            "car_idx": driver.get("car_idx"),
+                            "number": driver.get("number"),
+                            "name": driver.get("name"),
+                        }
+                    ),
+                }
+                for driver in drivers
+                if driver.get("name") or driver.get("number")
+            ],
+        }
 
 
 PRODUCER_HTML = r"""<!doctype html>

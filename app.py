@@ -1717,6 +1717,7 @@ def update_overlay_focused_driver(
     overlay_server.show_featured_driver(
         car_number=car_number,
         driver_name=driver_name,
+        car_idx=car_idx,
         story=story,
         country=country,
         duration=duration,

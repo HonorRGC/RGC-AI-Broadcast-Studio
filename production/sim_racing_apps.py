@@ -71,6 +71,56 @@ def build_sim_racing_apps_car_render_info(
     return render_info_from_car_data(data, base_url=base_url)
 
 
+def build_sim_racing_apps_car_debug_info(
+    driver_info,
+    *,
+    base_url=DEFAULT_BASE_URL,
+    now=None,
+):
+    """Return match diagnostics for the current live SimRacingApps roster."""
+    car_idx = normalize_car_idx(
+        driver_info.get("car_idx")
+        or driver_info.get("CarIdx")
+        or driver_info.get("id")
+        or driver_info.get("Id")
+    )
+    direct = (
+        fetch_sim_racing_apps_data(f"Data/Car/I{car_idx}", base_url=base_url, now=now)
+        if car_idx is not None
+        else {}
+    )
+    direct_summary = summarize_car_data(direct)
+    matched = find_matching_sim_racing_apps_car_data(
+        driver_info,
+        base_url=base_url,
+        now=now,
+    )
+    matched_summary = summarize_car_data(matched)
+    return {
+        "expected": {
+            "car_idx": car_idx,
+            "number": driver_info.get("number")
+            or driver_info.get("car_number")
+            or driver_info.get("CarNumber"),
+            "name": driver_info.get("name")
+            or driver_info.get("driver_name")
+            or driver_info.get("UserName"),
+        },
+        "session_cars": sim_racing_apps_session_car_count(base_url=base_url, now=now),
+        "direct": direct_summary,
+        "direct_matches": bool(
+            direct.get("State") == "NORMAL"
+            and sim_racing_apps_car_matches(direct, driver_info)
+        ),
+        "matched": matched_summary,
+        "render_info": build_sim_racing_apps_car_render_info(
+            driver_info,
+            base_url=base_url,
+            now=now,
+        ),
+    }
+
+
 def render_info_from_car_data(data, *, base_url=DEFAULT_BASE_URL):
     values = data.get("Value") if isinstance(data.get("Value"), dict) else {}
     image_url = resolve_sim_racing_apps_image_url(
@@ -84,6 +134,19 @@ def render_info_from_car_data(data, *, base_url=DEFAULT_BASE_URL):
     return {
         "image_url": image_url,
         "number_style": number_style,
+    }
+
+
+def summarize_car_data(data):
+    if data.get("State") != "NORMAL":
+        return {"state": data.get("State", "MISSING")}
+    values = data.get("Value") if isinstance(data.get("Value"), dict) else {}
+    return {
+        "state": data.get("State"),
+        "name": data_value(values, "DriverName") or data_value(values, "Name"),
+        "number": data_value(values, "Number"),
+        "image_url": data_value(values, "ImageUrl"),
+        "number_style": build_number_style(values),
     }
 
 
