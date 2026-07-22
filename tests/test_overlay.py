@@ -724,6 +724,7 @@ def test_producer_assist_html_reads_overlay_state():
     assert "RGC Producer Assist" in PRODUCER_HTML
     assert 'fetch("/overlay/state"' in PRODUCER_HTML
     assert 'id="leaderboard-rows"' in PRODUCER_HTML
+    assert 'class="left-rail"' in PRODUCER_HTML
     assert 'id="detail-start"' in PRODUCER_HTML
     assert 'id="detail-delta"' in PRODUCER_HTML
     assert 'id="detail-led"' in PRODUCER_HTML
@@ -762,6 +763,7 @@ def test_producer_assist_html_reads_overlay_state():
     assert 'id="incident-review-list"' in PRODUCER_HTML
     assert 'id="interview-queue-list"' in PRODUCER_HTML
     assert 'id="race-event-log-list"' in PRODUCER_HTML
+    assert 'class="panel wide"' in PRODUCER_HTML
     assert 'id="race-control-audit-list"' in PRODUCER_HTML
     assert "event-log-table" in PRODUCER_HTML
     assert "renderRaceEventLog" in PRODUCER_HTML

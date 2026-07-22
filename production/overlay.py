@@ -1814,9 +1814,15 @@ PRODUCER_HTML = r"""<!doctype html>
 
     .main {
       display: grid;
-      grid-template-columns: minmax(520px, 0.92fr) minmax(760px, 1.45fr);
+      grid-template-columns: minmax(520px, 0.82fr) minmax(820px, 1.5fr);
       gap: 12px;
       align-items: start;
+    }
+
+    .left-rail {
+      display: grid;
+      gap: 12px;
+      align-content: start;
     }
 
     .leaderboard {
@@ -2051,6 +2057,7 @@ PRODUCER_HTML = r"""<!doctype html>
     }
 
     .panel.full,
+    .panel.wide,
     .button-row.primary-actions {
       grid-column: 1 / -1;
     }
@@ -2185,7 +2192,7 @@ PRODUCER_HTML = r"""<!doctype html>
     .control-room-item.replay { border-left-color: var(--blue); }
 
     .event-log-table {
-      max-height: 360px;
+      max-height: 470px;
       overflow: auto;
       border: 1px solid rgba(255, 255, 255, 0.10);
       border-radius: 12px;
@@ -2194,7 +2201,7 @@ PRODUCER_HTML = r"""<!doctype html>
 
     .event-log-row {
       display: grid;
-      grid-template-columns: 112px 72px 56px minmax(120px, 0.8fr) minmax(220px, 1.4fr) 92px;
+      grid-template-columns: 126px 82px 62px minmax(150px, 0.9fr) minmax(360px, 1.8fr) 104px;
       gap: 8px;
       align-items: center;
       padding: 7px 9px;
@@ -2320,6 +2327,7 @@ PRODUCER_HTML = r"""<!doctype html>
     @media (max-width: 1050px) {
       .grid { grid-template-columns: repeat(2, minmax(150px, 1fr)); }
       .main { grid-template-columns: 1fr; }
+      .left-rail { grid-template-columns: 1fr; }
       .driver-detail { grid-template-columns: 1fr; }
       .detail-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .button-row.control-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -2360,13 +2368,27 @@ PRODUCER_HTML = r"""<!doctype html>
     </section>
 
     <main class="main">
-      <section class="leaderboard">
-        <div class="section-head">
-          <h2>Live Leaderboard</h2>
-          <span class="hint">Click a driver for notes</span>
+      <div class="left-rail">
+        <section class="leaderboard">
+          <div class="section-head">
+            <h2>Live Leaderboard</h2>
+            <span class="hint">Click a driver for notes</span>
+          </div>
+          <div class="rows" id="leaderboard-rows"></div>
+        </section>
+
+        <div class="panel" id="stat-panel">
+          <h3>Active Graphic / Stat Panel</h3>
+          <div class="small">No stat panel is active.</div>
         </div>
-        <div class="rows" id="leaderboard-rows"></div>
-      </section>
+
+        <div class="panel">
+          <h3>Producer Feed</h3>
+          <div class="feed" id="producer-feed">
+            <div class="small">Broadcast notes will appear here once the session starts.</div>
+          </div>
+        </div>
+      </div>
 
       <aside class="driver-detail">
         <div class="driver-title">
@@ -2471,12 +2493,7 @@ PRODUCER_HTML = r"""<!doctype html>
           </div>
         </div>
 
-        <div class="panel" id="stat-panel">
-          <h3>Active Graphic / Stat Panel</h3>
-          <div class="small">No stat panel is active.</div>
-        </div>
-
-        <div class="panel">
+        <div class="panel wide">
           <h3>Pit Road / Strategy</h3>
           <div class="pit-road-list" id="pit-road-list">
             <div class="small">Pit stop data will appear after cars visit pit road.</div>
@@ -2519,7 +2536,7 @@ PRODUCER_HTML = r"""<!doctype html>
           </div>
         </div>
 
-        <div class="panel">
+        <div class="panel wide">
           <h3>Race Event Log</h3>
           <div class="small">Automatic race events. Click Review to jump the replay back before that moment for recap clips or race-control decisions.</div>
           <div class="event-log-table" id="race-event-log-list" style="margin-top: 10px;">
@@ -2540,12 +2557,6 @@ PRODUCER_HTML = r"""<!doctype html>
           <div class="small" id="discord-status" style="margin-top: 6px;">Discord bot is not connected yet.</div>
         </div>
 
-        <div class="panel full">
-          <h3>Producer Feed</h3>
-          <div class="feed" id="producer-feed">
-            <div class="small">Broadcast notes will appear here once the session starts.</div>
-          </div>
-        </div>
       </aside>
     </main>
   </div>
