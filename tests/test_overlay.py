@@ -763,6 +763,11 @@ def test_producer_assist_html_reads_overlay_state():
     assert 'id="interview-queue-list"' in PRODUCER_HTML
     assert 'id="race-event-log-list"' in PRODUCER_HTML
     assert 'id="race-control-audit-list"' in PRODUCER_HTML
+    assert "event-log-table" in PRODUCER_HTML
+    assert "renderRaceEventLog" in PRODUCER_HTML
+    assert "focusRaceEvent" in PRODUCER_HTML
+    assert "Session</div>" in PRODUCER_HTML
+    assert "Camera</div>" in PRODUCER_HTML
     assert "Discord Setup" in PRODUCER_HTML
 
 
@@ -823,8 +828,17 @@ def test_overlay_server_exposes_control_room_state():
     server.add_race_event_log(
         "Pit Road",
         "The 34 has entered pit road.",
-        {"car_idx": 34, "car_number": "34", "driver_name": "T.J. Lee"},
-        kind="pit_road",
+        {
+            "car_idx": 34,
+            "car_number": "34",
+            "driver_name": "T.J. Lee",
+            "session_type": "Race",
+            "session_lap": 51,
+            "camera_group": "TV2",
+            "replay_session_num": 2,
+            "replay_session_time": 1234.5,
+        },
+        kind="pit",
     )
     server.set_director_suggestions(
         [
@@ -843,6 +857,12 @@ def test_overlay_server_exposes_control_room_state():
     assert state["interview_queue"][0]["driver_name"] == "Race Winner"
     assert state["race_control_audit"][0]["status"] == "sent"
     assert state["race_event_log"][0]["title"] == "Pit Road"
+    assert state["race_event_log"][0]["kind"] == "pit"
+    assert state["race_event_log"][0]["session_type"] == "Race"
+    assert state["race_event_log"][0]["session_lap"] == 51
+    assert state["race_event_log"][0]["camera_group"] == "TV2"
+    assert state["race_event_log"][0]["replay_session_num"] == 2
+    assert state["race_event_log"][0]["replay_session_time"] == 1234.5
     assert state["race_event_log"][1]["title"] == "Race Control"
     assert state["director_suggestions"][0]["title"] == "Closest Battle"
 

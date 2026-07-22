@@ -242,6 +242,12 @@ def run_source(
                         source,
                         camera_decision,
                     )
+                    log_race_event_for_item(
+                        item,
+                        overlay_server,
+                        source,
+                        camera_decision,
+                    )
             else:
                 camera_decision = camera_director.follow(item, source)
                 report_camera_decision(camera_decision, overlay_server)
@@ -249,6 +255,12 @@ def run_source(
                     update_overlay_featured_driver(
                         overlay_server,
                         item,
+                        source,
+                        camera_decision,
+                    )
+                    log_race_event_for_item(
+                        item,
+                        overlay_server,
                         source,
                         camera_decision,
                     )
@@ -1215,6 +1227,170 @@ def show_overlay_feature(item, overlay_server, source=None, engine=None):
                 dedupe_key="biggest_movers",
                 minimum_interval=180.0,
             )
+
+
+def log_race_event_for_item(item, overlay_server, source=None, camera_decision=None):
+    if not overlay_server or not hasattr(overlay_server, "add_race_event_log"):
+        return None
+
+    details = race_event_log_details(item)
+    if not details:
+        return None
+
+    car_idx = getattr(item, "camera_target_car_idx", None)
+    if car_idx is None and camera_decision is not None:
+        car_idx = getattr(camera_decision, "car_idx", None)
+
+    driver = {}
+    if car_idx is not None and source is not None:
+        driver = (getattr(source, "get_driver_lookup", lambda: {})() or {}).get(car_idx, {})
+
+    session_type = ""
+    session_lap = 0
+    if source is not None:
+        session_type = str(getattr(source, "get_session_type", lambda: "")() or "")
+        session_lap = safe_int(getattr(source, "get_lap", lambda: 0)(), 0)
+
+    camera_group = (
+        getattr(camera_decision, "group_name", "")
+        or getattr(item, "camera_incident_group", "")
+        or "TV1"
+    )
+    payload = {
+        "car_idx": car_idx if car_idx is not None else -1,
+        "car_number": driver.get("number", getattr(camera_decision, "car_number", "")),
+        "driver_name": driver.get("name", ""),
+        "session_type": session_type,
+        "session_lap": session_lap,
+        "camera_group": camera_group,
+        "replay_session_num": getattr(item, "replay_session_num", None),
+        "replay_session_time": getattr(item, "replay_session_time", None),
+        "created_by": "RGC AI",
+    }
+    return overlay_server.add_race_event_log(
+        details["title"],
+        details["message"],
+        payload,
+        kind=details["kind"],
+        status=details["status"],
+    )
+
+
+def race_event_log_details(item):
+    category = str(getattr(item, "category", "") or "")
+    message = str(getattr(item, "message", "") or "").strip()
+    if not message:
+        return None
+
+    lower = message.lower()
+    story_key = str(getattr(item, "dedupe_key", "") or "").split(":", 1)[0]
+    skip_categories = {
+        "sponsor_read",
+        "booth_conversation",
+        "race_story_follow_up",
+        "crank_it_up",
+        "crank_it_up_intro",
+        "opening_welcome",
+        "opening_track_info",
+        "opening_race_outlook",
+        "opening_pit_report",
+        "opening_hype",
+    }
+    if category in skip_categories or category.startswith("opening_field_rundown"):
+        return None
+
+    if category == "incident":
+        return {
+            "kind": "incident",
+            "title": "Incident",
+            "message": message,
+            "status": "needs review",
+        }
+    if category in ("pit_strategy", "green_pit_cycle_update", "caution_pit_summary"):
+        return {
+            "kind": "pit",
+            "title": "Pit Road",
+            "message": message,
+            "status": "logged",
+        }
+    if category == "penalty":
+        return {
+            "kind": "penalty",
+            "title": "Penalty",
+            "message": message,
+            "status": "logged",
+        }
+    if category == "race_control":
+        return {
+            "kind": "race_control",
+            "title": "Race Control",
+            "message": message,
+            "status": "logged",
+        }
+    if category == "fastest_lap":
+        return {
+            "kind": "race_event",
+            "title": "Fastest Lap",
+            "message": message,
+            "status": "logged",
+        }
+    if category in ("race_recap", "post_race", "post_race_interviews", "post_race_signoff"):
+        return {
+            "kind": "race_event",
+            "title": "Race Recap",
+            "message": message,
+            "status": "logged",
+        }
+    if category == "restart_launch":
+        return {
+            "kind": "race_event",
+            "title": "Restart",
+            "message": message,
+            "status": "logged",
+        }
+    if category == "stage_end":
+        return {
+            "kind": "race_event",
+            "title": "Stage",
+            "message": message,
+            "status": "logged",
+        }
+    if category == "race_story":
+        if story_key == "lead_change" or "lead" in lower and "leader" not in lower:
+            title = "Lead Change"
+            kind = "lead_change"
+        elif story_key in ("pass", "top_five_pass") or any(
+            word in lower for word in ("pass", "passes", "move", "moved", "takes")
+        ):
+            title = "Pass / Position"
+            kind = "pass"
+        elif "battle" in lower or "side by side" in lower or "three wide" in lower:
+            title = "Battle"
+            kind = "race_event"
+        else:
+            title = "Race Story"
+            kind = "race_event"
+        return {
+            "kind": kind,
+            "title": title,
+            "message": message,
+            "status": "logged",
+        }
+    if category.startswith("race_stat") or category.startswith("race_insight"):
+        return {
+            "kind": "race_event",
+            "title": "Race Insight",
+            "message": message,
+            "status": "logged",
+        }
+    if category in ("final_laps_battle", "late_caution_note", "lucky_dog", "race_progress"):
+        return {
+            "kind": "race_event",
+            "title": "Race Event",
+            "message": message,
+            "status": "logged",
+        }
+    return None
 
 
 def show_sponsor_mention_bug(item, overlay_server):

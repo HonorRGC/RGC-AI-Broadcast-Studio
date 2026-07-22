@@ -12,6 +12,7 @@ from app import (
     build_producer_pit_road_rows,
     find_brand_graphic_for_name,
     handle_producer_command,
+    log_race_event_for_item,
     split_sponsor_names,
     should_show_movers_graphic,
     show_overlay_feature,
@@ -51,6 +52,7 @@ class ProducerOverlaySpy:
         self.incident_reviews = []
         self.interviews = []
         self.race_control_audit = []
+        self.race_event_log = []
 
     def set_leaderboard_style(self, style):
         self.styles.append(style)
@@ -106,6 +108,17 @@ class ProducerOverlaySpy:
         clean_payload.pop("message", None)
         item = SimpleNamespace(message=message, **clean_payload)
         self.race_control_audit.append(item)
+        return item
+
+    def add_race_event_log(self, title, message, payload=None, kind="race_event", status="logged"):
+        item = SimpleNamespace(
+            title=title,
+            message=message,
+            kind=kind,
+            status=status,
+            **dict(payload or {}),
+        )
+        self.race_event_log.append(item)
         return item
 
     def update_control_room_item_status(self, collection_name, item_id, status):
@@ -474,6 +487,64 @@ def test_biggest_movers_graphic_uses_shared_long_cooldown():
     assert overlay.stat_panels[0]["kind"] == "biggest_movers"
     assert overlay.stat_panels[0]["dedupe_key"] == "biggest_movers"
     assert overlay.stat_panels[0]["minimum_interval"] == 180.0
+
+
+def test_race_event_log_records_pass_with_session_lap_and_camera():
+    overlay = ProducerOverlaySpy()
+    source = SimpleNamespace(
+        get_session_type=lambda: "Race",
+        get_lap=lambda: 42,
+        get_driver_lookup=lambda: {
+            24: {"name": "Dean Marsh", "number": "24"},
+        },
+    )
+    broadcast_item = SimpleNamespace(
+        category="race_story",
+        dedupe_key="pass:dean marsh:24:made the pass",
+        message="Dean Marsh completes the pass for fifth.",
+        camera_target_car_idx=24,
+    )
+    camera_decision = SimpleNamespace(car_idx=24, car_number="24", group_name="TV2")
+
+    log_race_event_for_item(broadcast_item, overlay, source, camera_decision)
+
+    event = overlay.race_event_log[0]
+    assert event.title == "Pass / Position"
+    assert event.kind == "pass"
+    assert event.session_type == "Race"
+    assert event.session_lap == 42
+    assert event.driver_name == "Dean Marsh"
+    assert event.car_number == "24"
+    assert event.camera_group == "TV2"
+
+
+def test_race_event_log_records_incident_replay_metadata():
+    overlay = ProducerOverlaySpy()
+    source = SimpleNamespace(
+        get_session_type=lambda: "Race",
+        get_lap=lambda: 66,
+        get_driver_lookup=lambda: {
+            14: {"name": "Nick Hunt", "number": "14"},
+        },
+    )
+    broadcast_item = SimpleNamespace(
+        category="incident",
+        message="Nick Hunt may have crashed.",
+        camera_target_car_idx=14,
+        camera_incident_group="Far Chase",
+        replay_session_num=2,
+        replay_session_time=1234.5,
+    )
+
+    log_race_event_for_item(broadcast_item, overlay, source, None)
+
+    event = overlay.race_event_log[0]
+    assert event.title == "Incident"
+    assert event.kind == "incident"
+    assert event.status == "needs review"
+    assert event.camera_group == "Far Chase"
+    assert event.replay_session_num == 2
+    assert event.replay_session_time == 1234.5
 
 
 def test_sponsor_mention_graphic_pops_for_rgc_and_autism():

@@ -264,6 +264,11 @@ class ProducerControlRoomItem:
     car_idx: int = 0
     car_number: str = ""
     driver_name: str = ""
+    session_type: str = ""
+    session_lap: int = 0
+    camera_group: str = ""
+    replay_session_num: int | None = None
+    replay_session_time: float | None = None
     created_by: str = ""
     created_at: float = 0.0
 
@@ -277,6 +282,11 @@ class ProducerControlRoomItem:
             "car_idx": self.car_idx,
             "car_number": self.car_number,
             "driver_name": self.driver_name,
+            "session_type": self.session_type,
+            "session_lap": self.session_lap,
+            "camera_group": self.camera_group,
+            "replay_session_num": self.replay_session_num,
+            "replay_session_time": self.replay_session_time,
             "created_by": self.created_by,
             "created_at": self.created_at,
         }
@@ -1190,6 +1200,11 @@ class OverlayServer:
         car_idx=0,
         car_number="",
         driver_name="",
+        session_type="",
+        session_lap=0,
+        camera_group="",
+        replay_session_num=None,
+        replay_session_time=None,
         created_by="",
         limit=30,
     ):
@@ -1202,6 +1217,19 @@ class OverlayServer:
             car_idx=self.state_builder.safe_int(car_idx),
             car_number=str(car_number or ""),
             driver_name=str(driver_name or ""),
+            session_type=str(session_type or ""),
+            session_lap=self.state_builder.safe_int(session_lap),
+            camera_group=str(camera_group or ""),
+            replay_session_num=(
+                self.state_builder.safe_int(replay_session_num)
+                if replay_session_num is not None
+                else None
+            ),
+            replay_session_time=(
+                float(replay_session_time)
+                if replay_session_time not in (None, "")
+                else None
+            ),
             created_by=str(created_by or ""),
             created_at=time.time(),
         )
@@ -1300,6 +1328,11 @@ class OverlayServer:
                 car_idx=payload.get("car_idx", 0),
                 car_number=payload.get("car_number", ""),
                 driver_name=payload.get("driver_name", ""),
+                session_type=payload.get("session_type", ""),
+                session_lap=payload.get("session_lap", 0),
+                camera_group=payload.get("camera_group", ""),
+                replay_session_num=payload.get("replay_session_num"),
+                replay_session_time=payload.get("replay_session_time"),
                 created_by=payload.get("producer_name", "") or payload.get("created_by", ""),
                 limit=100,
             )
@@ -1325,6 +1358,11 @@ class OverlayServer:
                     car_idx=self.state_builder.safe_int((row or {}).get("car_idx")),
                     car_number=str((row or {}).get("car_number", "")),
                     driver_name=str((row or {}).get("driver_name", "")),
+                    session_type=str((row or {}).get("session_type", "")),
+                    session_lap=self.state_builder.safe_int((row or {}).get("session_lap")),
+                    camera_group=str((row or {}).get("camera_group", "")),
+                    replay_session_num=(row or {}).get("replay_session_num"),
+                    replay_session_time=(row or {}).get("replay_session_time"),
                     created_by="RGC Director",
                     created_at=time.time(),
                 )
@@ -2140,6 +2178,98 @@ PRODUCER_HTML = r"""<!doctype html>
     .control-room-item.incident_review { border-left-color: var(--yellow); }
     .control-room-item.interview { border-left-color: #c78cff; }
     .control-room-item.race_control { border-left-color: var(--red); }
+    .control-room-item.incident { border-left-color: var(--red); }
+    .control-room-item.pass { border-left-color: var(--green); }
+    .control-room-item.pit { border-left-color: var(--yellow); }
+    .control-room-item.penalty { border-left-color: #c78cff; }
+    .control-room-item.replay { border-left-color: var(--blue); }
+
+    .event-log-table {
+      max-height: 360px;
+      overflow: auto;
+      border: 1px solid rgba(255, 255, 255, 0.10);
+      border-radius: 12px;
+      background: rgba(0, 0, 0, 0.22);
+    }
+
+    .event-log-row {
+      display: grid;
+      grid-template-columns: 112px 72px 56px minmax(120px, 0.8fr) minmax(220px, 1.4fr) 92px;
+      gap: 8px;
+      align-items: center;
+      padding: 7px 9px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      font-size: 12px;
+    }
+
+    .event-log-row.header {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background: #313743;
+      color: #cbd5e1;
+      font-weight: 950;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .event-log-row:not(.header) {
+      cursor: pointer;
+      background: rgba(255, 255, 255, 0.035);
+    }
+
+    .event-log-row:not(.header):hover {
+      background: rgba(43, 115, 255, 0.16);
+    }
+
+    .event-log-row.incident {
+      background: rgba(130, 21, 32, 0.62);
+      color: #fff;
+    }
+
+    .event-log-row.pass,
+    .event-log-row.lead_change {
+      background: rgba(21, 90, 55, 0.38);
+    }
+
+    .event-log-row.pit {
+      background: rgba(116, 82, 22, 0.42);
+    }
+
+    .event-log-row.penalty {
+      background: rgba(92, 58, 132, 0.42);
+    }
+
+    .event-log-row.replay {
+      background: rgba(22, 55, 120, 0.46);
+    }
+
+    .event-log-cell {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .event-log-driver,
+    .event-log-desc {
+      font-weight: 800;
+      color: #fff;
+    }
+
+    .event-log-camera {
+      display: flex;
+      gap: 5px;
+      align-items: center;
+      justify-content: flex-end;
+    }
+
+    .event-log-camera-label {
+      color: #fff;
+      font-weight: 900;
+      min-width: 38px;
+      text-align: right;
+    }
 
     .control-room-title {
       color: #fff;
@@ -2391,8 +2521,8 @@ PRODUCER_HTML = r"""<!doctype html>
 
         <div class="panel">
           <h3>Race Event Log</h3>
-          <div class="small">Race-control actions are logged here now. Telemetry pit and incident events will use this same log next.</div>
-          <div class="control-room-list" id="race-event-log-list" style="margin-top: 10px;">
+          <div class="small">Automatic race events. Click a row or camera button to jump the camera to that driver.</div>
+          <div class="event-log-table" id="race-event-log-list" style="margin-top: 10px;">
             <div class="small">Race events will appear here.</div>
           </div>
         </div>
@@ -2457,6 +2587,14 @@ PRODUCER_HTML = r"""<!doctype html>
 
     function text(id, value) {
       document.getElementById(id).textContent = value;
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
     }
 
     function ordinal(n) {
@@ -2746,6 +2884,64 @@ PRODUCER_HTML = r"""<!doctype html>
       }
     }
 
+    function renderRaceEventLog(items) {
+      const list = document.getElementById("race-event-log-list");
+      if (!list) return;
+      const rows = items || [];
+      if (!rows.length) {
+        list.innerHTML = `<div class="small">Race events will appear here.</div>`;
+        return;
+      }
+      list.innerHTML = `
+        <div class="event-log-row header">
+          <div>Time</div>
+          <div>Session</div>
+          <div>Lap</div>
+          <div>Driver</div>
+          <div>Description</div>
+          <div>Camera</div>
+        </div>
+      `;
+      for (const item of rows) {
+        const row = document.createElement("div");
+        row.className = `event-log-row ${item.kind || "race_event"}`;
+        row.title = item.message || "";
+        row.innerHTML = `
+          <div class="event-log-cell">${escapeHtml(formatClock(item.created_at) || "--")}</div>
+          <div class="event-log-cell">${escapeHtml(item.session_type || "--")}</div>
+          <div class="event-log-cell">${escapeHtml(item.session_lap || "--")}</div>
+          <div class="event-log-cell event-log-driver">${escapeHtml(driverLine(item) || "--")}</div>
+          <div class="event-log-cell event-log-desc">${escapeHtml(item.message || item.title || "")}</div>
+          <div class="event-log-cell event-log-camera">
+            <span class="event-log-camera-label">${escapeHtml(item.camera_group || "TV1")}</span>
+          </div>
+        `;
+        if (item.car_idx !== undefined && item.car_idx !== null && Number(item.car_idx) >= 0) {
+          row.addEventListener("click", () => focusRaceEvent(item));
+          const cell = row.querySelector(".event-log-camera");
+          const button = document.createElement("button");
+          button.className = "mini-button";
+          button.textContent = "Go";
+          button.addEventListener("click", event => {
+            event.stopPropagation();
+            focusRaceEvent(item);
+          });
+          cell.appendChild(button);
+        }
+        list.appendChild(row);
+      }
+    }
+
+    function focusRaceEvent(item) {
+      if (!item || item.car_idx === undefined || item.car_idx === null || Number(item.car_idx) < 0) return;
+      sendProducerCommand("camera_follow_driver", {
+        car_idx: item.car_idx,
+        car_number: item.car_number || "",
+        driver_name: item.driver_name || "",
+        group_name: item.camera_group || "TV1"
+      });
+    }
+
     function renderControlRoomPanels(state) {
       renderControlRoomList(
         "director-suggestions-list",
@@ -2803,11 +2999,7 @@ PRODUCER_HTML = r"""<!doctype html>
           }
         ]
       );
-      renderControlRoomList(
-        "race-event-log-list",
-        state.race_event_log || [],
-        "Race events will appear here."
-      );
+      renderRaceEventLog(state.race_event_log || []);
       renderControlRoomList(
         "race-control-audit-list",
         state.race_control_audit || [],
