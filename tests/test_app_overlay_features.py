@@ -871,6 +871,23 @@ def test_featured_driver_image_prefers_sim_racing_apps_live_render(monkeypatch):
     }
 
 
+def test_opening_intro_driver_image_does_not_use_stale_render_cache(monkeypatch):
+    import app
+
+    monkeypatch.setattr(app, "USE_IRACING_RENDERED_CAR_IMAGES", True)
+    monkeypatch.setattr(app, "build_sim_racing_apps_car_render_info", lambda driver: {})
+    monkeypatch.setattr(
+        app,
+        "build_iracing_render_image_url",
+        lambda driver: "http://127.0.0.1:32034/pk_car.png?stale=pole-car",
+    )
+
+    assert build_featured_driver_render_info(
+        {"car_idx": 34, "number": "34"},
+        require_live_render_match=True,
+    ) == {"image_url": "", "number_style": {}}
+
+
 def test_featured_driver_story_for_official_races_uses_country_only():
     driver = {
         "name": "T.J. Lee",

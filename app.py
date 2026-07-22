@@ -2135,7 +2135,10 @@ def update_overlay_focused_driver(
 
     country = build_featured_driver_country(driver)
     story = build_featured_driver_profile(driver)
-    car_render_info = build_featured_driver_render_info(driver)
+    car_render_info = build_featured_driver_render_info(
+        driver,
+        require_live_render_match=opening_intro,
+    )
     car_image_url = car_render_info.get("image_url", "")
     results = featured_driver_results(source, opening_intro=opening_intro)
     position_info = featured_driver_position_info(
@@ -2294,7 +2297,7 @@ def build_featured_driver_image(driver):
     return build_featured_driver_render_info(driver).get("image_url", "")
 
 
-def build_featured_driver_render_info(driver):
+def build_featured_driver_render_info(driver, require_live_render_match=False):
     for key in ("car_image_url", "paint_image_url"):
         value = str(driver.get(key, "") or "").strip()
         if value.startswith(("http://", "https://", "/")):
@@ -2314,6 +2317,8 @@ def build_featured_driver_render_info(driver):
         sim_racing_apps_info = build_sim_racing_apps_car_render_info(driver)
         if sim_racing_apps_info.get("image_url") or sim_racing_apps_info.get("number_style"):
             return sim_racing_apps_info
+        if require_live_render_match:
+            return {"image_url": "", "number_style": {}}
         render_url = build_iracing_render_image_url(driver)
         if render_url:
             return {"image_url": render_url, "number_style": {}}
