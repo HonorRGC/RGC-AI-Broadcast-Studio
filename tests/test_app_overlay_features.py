@@ -798,6 +798,44 @@ def test_race_event_review_falls_back_to_frame_rewind_when_seek_fails():
     assert any("frame rewind" in event["message"] for event in overlay.events)
 
 
+def test_race_event_note_marks_event_log_item_for_review():
+    overlay = ProducerOverlaySpy()
+    overlay.add_race_event_log(
+        "Incident",
+        "Possible contact.",
+        {"car_number": "34", "driver_name": "T.J. Lee"},
+        kind="incident",
+    )
+
+    def update_race_event_log_item(item_id, status=None, note=None, producer_name=""):
+        event = overlay.race_event_log[0]
+        event.status = status
+        event.message = f"{event.message} | Review note: {note}"
+        event.created_by = producer_name
+        return event
+
+    overlay.update_race_event_log_item = update_race_event_log_item
+
+    handle_producer_command(
+        "race_event_note",
+        {
+            "item_id": 1,
+            "status": "needs review",
+            "note": "Check if the 34 came down.",
+            "producer_name": "Race Control",
+        },
+        overlay,
+        source=SimpleNamespace(),
+        engine=None,
+        booth=None,
+        camera_director=CameraSpy(),
+    )
+
+    assert overlay.race_event_log[0].status == "needs review"
+    assert "Check if the 34 came down." in overlay.race_event_log[0].message
+    assert any("Marked event for review" in event["message"] for event in overlay.events)
+
+
 def test_replay_return_live_restores_auto_camera_and_leader():
     overlay = ProducerOverlaySpy()
     camera = CameraSpy()

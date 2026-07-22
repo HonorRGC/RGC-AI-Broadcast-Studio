@@ -759,8 +759,9 @@ def test_producer_assist_html_reads_overlay_state():
     assert 'sendProducerCommand(style === "ticker" ? "leaderboard_side" : "leaderboard_ticker")' in PRODUCER_HTML
     assert "Move Camera to Driver" in PRODUCER_HTML
     assert 'id="director-suggestions-list"' in PRODUCER_HTML
+    assert "Live booth cues with race data" in PRODUCER_HTML
     assert 'id="producer-note-input"' in PRODUCER_HTML
-    assert 'id="incident-review-list"' in PRODUCER_HTML
+    assert 'id="incident-review-list"' not in PRODUCER_HTML
     assert 'id="interview-queue-list"' in PRODUCER_HTML
     assert 'id="race-event-log-list"' in PRODUCER_HTML
     assert 'class="panel wide"' in PRODUCER_HTML
@@ -768,28 +769,30 @@ def test_producer_assist_html_reads_overlay_state():
     assert "event-log-table" in PRODUCER_HTML
     assert "renderRaceEventLog" in PRODUCER_HTML
     assert "reviewRaceEvent" in PRODUCER_HTML
+    assert "noteRaceEvent" in PRODUCER_HTML
     assert 'sendProducerCommand("race_event_review"' in PRODUCER_HTML
+    assert 'sendProducerCommand("race_event_note"' in PRODUCER_HTML
     assert "Session</div>" in PRODUCER_HTML
     assert "Camera</div>" in PRODUCER_HTML
     assert "Discord Setup" in PRODUCER_HTML
 
 
 def test_producer_assist_prioritizes_live_control_room_panels():
-    focus_index = PRODUCER_HTML.index("<h3>Current Broadcast Focus</h3>")
     suggestions_index = PRODUCER_HTML.index("<h3>Director Suggestions</h3>")
+    focus_index = PRODUCER_HTML.index("<h3>Current Broadcast Focus</h3>")
+    camera_index = PRODUCER_HTML.index('id="follow-driver-button"')
     race_control_index = PRODUCER_HTML.index("<h3>Race Control</h3>")
     pit_road_index = PRODUCER_HTML.index("<h3>Pit Road / Strategy</h3>")
-    incident_index = PRODUCER_HTML.index("<h3>Incident Review Queue</h3>")
     interview_index = PRODUCER_HTML.index("<h3>Interview Queue</h3>")
     event_log_index = PRODUCER_HTML.index("<h3>Race Event Log</h3>")
     audit_index = PRODUCER_HTML.index("<h3>Race Control Audit</h3>")
     discord_index = PRODUCER_HTML.index("<h3>Discord Setup</h3>")
 
-    assert focus_index < suggestions_index < race_control_index < pit_road_index
-    assert pit_road_index < incident_index < interview_index < event_log_index
+    assert suggestions_index < focus_index < camera_index < race_control_index < pit_road_index
+    assert pit_road_index < interview_index < event_log_index
     assert event_log_index < audit_index < discord_index
     assert "button-row control-grid" in PRODUCER_HTML
-    assert "panel priority" in PRODUCER_HTML
+    assert "panel full priority" in PRODUCER_HTML
 
 
 def test_overlay_server_exposes_producer_feed_in_state():
@@ -868,6 +871,30 @@ def test_overlay_server_exposes_control_room_state():
     assert state["race_event_log"][0]["replay_session_time"] == 1234.5
     assert state["race_event_log"][1]["title"] == "Race Control"
     assert state["director_suggestions"][0]["title"] == "Closest Battle"
+
+
+def test_overlay_server_can_mark_race_event_log_item_for_review():
+    from production.overlay import OverlayServer
+
+    server = OverlayServer()
+    event = server.add_race_event_log(
+        "Incident",
+        "Possible contact in turn three.",
+        {"car_number": "34", "driver_name": "T.J. Lee"},
+        kind="incident",
+    )
+
+    server.update_race_event_log_item(
+        event.id,
+        status="needs review",
+        note="Check if the 34 came down.",
+        producer_name="Race Control",
+    )
+    state = server.current_state_dict()
+
+    assert state["race_event_log"][0]["status"] == "needs review"
+    assert "Review note: Check if the 34 came down." in state["race_event_log"][0]["message"]
+    assert state["race_event_log"][0]["created_by"] == "Race Control"
 
 
 def test_overlay_server_queues_producer_commands():

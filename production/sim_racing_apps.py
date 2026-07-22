@@ -135,6 +135,7 @@ def render_info_from_car_data(data, *, base_url=DEFAULT_BASE_URL):
         data_value(values, "ImageUrl"),
         base_url,
     )
+    image_url = ensure_car_specific_image_url(image_url, data.get("CarIdx"))
     number_style = build_number_style(values)
     if not image_url and not number_style:
         return {}
@@ -250,6 +251,7 @@ def fetch_sim_racing_apps_car_data(car_idx, *, base_url=DEFAULT_BASE_URL, now=No
     return {
         "State": "NORMAL",
         "Value": values,
+        "CarIdx": car_idx,
         "Name": f"Car/I{car_idx}",
     }
 
@@ -279,6 +281,17 @@ def resolve_sim_racing_apps_image_url(value, base_url=DEFAULT_BASE_URL):
     if value.startswith(("http://", "https://", "/")):
         return value
     return urljoin(ensure_base_url(base_url), value)
+
+
+def ensure_car_specific_image_url(image_url, car_idx):
+    image_url = str(image_url or "").strip()
+    if not image_url or "pk_car.png" not in image_url or "?" in image_url:
+        return image_url
+    car_idx = normalize_car_idx(car_idx)
+    if car_idx is None:
+        return image_url
+    separator = "&" if "?" in image_url else "?"
+    return f"{image_url}{separator}car=I{car_idx}"
 
 
 def build_number_style(values):

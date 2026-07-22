@@ -106,6 +106,29 @@ def test_build_car_render_info_includes_number_style(monkeypatch):
     }
 
 
+def test_build_car_render_info_makes_generic_image_url_car_specific(monkeypatch):
+    values = {
+        "Number": "34",
+        "DriverName": "T.J. Lee",
+        "ImageUrl": "iRacing/pk_car.png",
+    }
+
+    def fake_urlopen(url, timeout=0):
+        field = url.rsplit("/", 1)[-1]
+        return Response(json.dumps({"State": "NORMAL", "Value": values.get(field, "")}))
+
+    monkeypatch.setattr(sim_racing_apps, "urlopen", fake_urlopen)
+    sim_racing_apps._CACHE.clear()
+    sim_racing_apps._ROSTER_CACHE.clear()
+
+    info = build_sim_racing_apps_car_render_info(
+        {"car_idx": 34, "number": "34", "name": "T.J. Lee"},
+        now=10.0,
+    )
+
+    assert info["image_url"] == "http://127.0.0.1/SIMRacingApps/iRacing/pk_car.png?car=I34"
+
+
 def test_build_car_render_info_scans_roster_when_car_idx_does_not_match(monkeypatch):
     responses = {
         "Data/Session/Cars": {"State": "NORMAL", "Value": 3},

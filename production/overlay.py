@@ -1346,6 +1346,21 @@ class OverlayServer:
                     return item
         return None
 
+    def update_race_event_log_item(self, item_id, status=None, note=None, producer_name=""):
+        item_id = self.state_builder.safe_int(item_id)
+        clean_note = str(note or "").strip()
+        with self.lock:
+            for item in self.race_event_log:
+                if item.id != item_id:
+                    continue
+                if status:
+                    item.status = str(status)
+                if clean_note:
+                    item.message = f"{item.message} | Review note: {clean_note}"
+                    item.created_by = str(producer_name or item.created_by or "")
+                return item
+        return None
+
     def set_director_suggestions(self, rows):
         with self.lock:
             self.director_suggestions = [
@@ -2066,6 +2081,14 @@ PRODUCER_HTML = r"""<!doctype html>
       min-height: 142px;
     }
 
+    .panel.director-suggestions {
+      min-height: 210px;
+    }
+
+    .panel.director-suggestions .control-room-list {
+      max-height: 175px;
+    }
+
     .panel h3 {
       margin-bottom: 6px;
       color: #fff;
@@ -2269,6 +2292,7 @@ PRODUCER_HTML = r"""<!doctype html>
       gap: 5px;
       align-items: center;
       justify-content: flex-end;
+      flex-wrap: wrap;
     }
 
     .event-log-camera-label {
@@ -2416,6 +2440,19 @@ PRODUCER_HTML = r"""<!doctype html>
           Producer note: pick a driver from the leaderboard. This panel is built to become the broadcaster control room.
         </div>
 
+        <div class="panel full priority director-suggestions">
+          <h3>Director Suggestions</h3>
+          <div class="small">Live booth cues with race data, story ideas, and camera targets.</div>
+          <div class="control-room-list" id="director-suggestions-list" style="margin-top: 8px;">
+            <div class="small">Suggested camera/story targets will appear here.</div>
+          </div>
+        </div>
+
+        <div class="panel full priority" id="featured-panel">
+          <h3>Current Broadcast Focus</h3>
+          <div class="small">No featured driver on the overlay right now.</div>
+        </div>
+
         <div class="button-row primary-actions">
           <button class="control-button" id="follow-driver-button">Move Camera to Driver</button>
           <button class="control-button" id="leader-camera-button">Back to Leader</button>
@@ -2441,18 +2478,6 @@ PRODUCER_HTML = r"""<!doctype html>
           <button class="control-button warn" id="play-replay-button">Play</button>
           <button class="control-button warn" id="fast-forward-button">Fast Forward Speed</button>
           <button class="control-button" id="return-live-button">Return Live</button>
-        </div>
-
-        <div class="panel priority" id="featured-panel">
-          <h3>Current Broadcast Focus</h3>
-          <div class="small">No featured driver on the overlay right now.</div>
-        </div>
-
-        <div class="panel priority">
-          <h3>Director Suggestions</h3>
-          <div class="control-room-list" id="director-suggestions-list">
-            <div class="small">Suggested camera/story targets will appear here.</div>
-          </div>
         </div>
 
         <div class="panel full">
@@ -2513,18 +2538,6 @@ PRODUCER_HTML = r"""<!doctype html>
         </div>
 
         <div class="panel">
-          <h3>Incident Review Queue</h3>
-          <div class="small">Mark wrecks, disputed moments, or no-caution incidents for the booth/admin team.</div>
-          <div class="button-row" style="margin-top: 10px;">
-            <button class="control-button warn" id="add-incident-review-button">Review Selected Driver</button>
-            <button class="control-button warn" id="add-general-incident-button">Add General Review</button>
-          </div>
-          <div class="control-room-list" id="incident-review-list" style="margin-top: 10px;">
-            <div class="small">Incident reviews will appear here.</div>
-          </div>
-        </div>
-
-        <div class="panel">
           <h3>Interview Queue</h3>
           <div class="small">Manual for now. Discord bot hookup can use this same queue later.</div>
           <div class="button-row" style="margin-top: 10px;">
@@ -2538,7 +2551,7 @@ PRODUCER_HTML = r"""<!doctype html>
 
         <div class="panel wide">
           <h3>Race Event Log</h3>
-          <div class="small">Automatic race events. Click Review to jump the replay back before that moment for recap clips or race-control decisions.</div>
+          <div class="small">Automatic race events. Click Review to jump replay back, or Note to mark an event for admin/recap follow-up.</div>
           <div class="event-log-table" id="race-event-log-list" style="margin-top: 10px;">
             <div class="small">Race events will appear here.</div>
           </div>
@@ -2922,7 +2935,7 @@ PRODUCER_HTML = r"""<!doctype html>
           <div class="event-log-cell">${escapeHtml(item.session_type || "--")}</div>
           <div class="event-log-cell">${escapeHtml(item.session_lap || "--")}</div>
           <div class="event-log-cell event-log-driver">${escapeHtml(driverLine(item) || "--")}</div>
-          <div class="event-log-cell event-log-desc">${escapeHtml(item.message || item.title || "")}</div>
+          <div class="event-log-cell event-log-desc">${escapeHtml(eventLogDescription(item))}</div>
           <div class="event-log-cell event-log-camera">
             <span class="event-log-camera-label">${escapeHtml(item.camera_group || "TV1")}</span>
           </div>
@@ -2939,8 +2952,22 @@ PRODUCER_HTML = r"""<!doctype html>
           });
           cell.appendChild(button);
         }
+        const cell = row.querySelector(".event-log-camera");
+        const noteButton = document.createElement("button");
+        noteButton.className = "mini-button warn";
+        noteButton.textContent = "Note";
+        noteButton.addEventListener("click", event => {
+          event.stopPropagation();
+          noteRaceEvent(item);
+        });
+        cell.appendChild(noteButton);
         list.appendChild(row);
       }
+    }
+
+    function eventLogDescription(item) {
+      const status = item.status && item.status !== "logged" ? `[${item.status}] ` : "";
+      return `${status}${item.message || item.title || ""}`;
     }
 
     function reviewRaceEvent(item) {
@@ -2953,6 +2980,18 @@ PRODUCER_HTML = r"""<!doctype html>
         replay_session_num: item.replay_session_num,
         replay_session_time: item.replay_session_time,
         pre_roll_seconds: 15
+      });
+    }
+
+    function noteRaceEvent(item) {
+      if (!item) return;
+      const defaultDriver = driverLine(item) || "this event";
+      const note = prompt("Review note for this race event:", `Review ${defaultDriver}`);
+      if (note === null) return;
+      sendProducerCommand("race_event_note", {
+        item_id: item.id,
+        status: "needs review",
+        note
       });
     }
 
@@ -2972,25 +3011,6 @@ PRODUCER_HTML = r"""<!doctype html>
             className: "good",
             show: item => item.status !== "done",
             handler: item => sendProducerCommand("producer_note_mark", { item_id: item.id, status: "done" })
-          }
-        ]
-      );
-      renderControlRoomList(
-        "incident-review-list",
-        state.incident_reviews || [],
-        "Incident reviews will appear here.",
-        [
-          {
-            label: "Reviewed",
-            className: "good",
-            show: item => item.status !== "reviewed",
-            handler: item => sendProducerCommand("incident_review_mark", { item_id: item.id, status: "reviewed" })
-          },
-          {
-            label: "No Action",
-            className: "warn",
-            show: item => item.status !== "no action",
-            handler: item => sendProducerCommand("incident_review_mark", { item_id: item.id, status: "no action" })
           }
         ]
       );
@@ -3312,26 +3332,6 @@ PRODUCER_HTML = r"""<!doctype html>
         driver_name: driver.driver_name || ""
       });
       input.value = "";
-    });
-    document.getElementById("add-incident-review-button").addEventListener("click", () => {
-      const driver = selectedDriver(lastState || {});
-      if (!driver) {
-        alert("Select a driver from the leaderboard first.");
-        return;
-      }
-      const message = prompt("Incident review note:", `Review possible incident involving #${driver.car_number || "--"} ${driver.driver_name || ""}.`);
-      if (message === null || !message.trim()) return;
-      sendProducerCommand("incident_review_add", {
-        message: message.trim(),
-        car_idx: driver.car_idx,
-        car_number: driver.car_number || "",
-        driver_name: driver.driver_name || ""
-      });
-    });
-    document.getElementById("add-general-incident-button").addEventListener("click", () => {
-      const message = prompt("General incident review note:", "Review possible incident.");
-      if (message === null || !message.trim()) return;
-      sendProducerCommand("incident_review_add", { message: message.trim() });
     });
     document.getElementById("queue-interview-button").addEventListener("click", () => {
       const driver = selectedDriver(lastState || {});
@@ -4364,9 +4364,9 @@ OVERLAY_HTML = r"""<!doctype html>
     </div>
     <div class="driver-card-info">
       <div id="driver-card-name" class="driver-card-name"></div>
-      <div id="driver-card-country" class="driver-card-country"></div>
       <div id="driver-card-position" class="driver-card-position"></div>
       <div id="driver-card-story" class="driver-card-story"></div>
+      <div id="driver-card-country" class="driver-card-country"></div>
     </div>
   </section>
 
@@ -4588,8 +4588,8 @@ OVERLAY_HTML = r"""<!doctype html>
       setText("driver-card-country", driver.country || "");
       setText("driver-card-position-rank", buildDriverCardRankLine(driver));
       setText("driver-card-position", buildDriverCardPositionLine(driver));
-      setText("driver-card-story", driver.story || "");
-      renderDriverCardImage(driver.car_image_url || "");
+      setText("driver-card-story", cleanDriverCardStory(driver));
+      renderDriverCardImage(driver.car_image_url || "", driver);
     }
 
     function applyDriverCardNumberStyle(style) {
@@ -4605,20 +4605,36 @@ OVERLAY_HTML = r"""<!doctype html>
         : "";
     }
 
-    function renderDriverCardImage(imageUrl) {
+    function cleanDriverCardStory(driver) {
+      const story = String(driver.story || "").trim();
+      if (!story) return "";
+      const driverName = String(driver.driver_name || "").trim().toLowerCase();
+      const country = String(driver.country || "").trim().toLowerCase();
+      const normalized = story.toLowerCase();
+      if (normalized === driverName || normalized === country) return "";
+      return story;
+    }
+
+    function renderDriverCardImage(imageUrl, driver = {}) {
       const imageShell = document.getElementById("driver-card-image");
       const image = document.getElementById("driver-card-car-img");
       imageShell.classList.toggle("no-source", !imageUrl);
       if (!imageUrl) {
         imageShell.classList.remove("image-failed");
         image.dataset.currentSrc = "";
+        image.dataset.currentKey = "";
         image.removeAttribute("src");
         return;
       }
-      if (image.dataset.currentSrc === imageUrl) return;
+      const imageKey = `${imageUrl}|${driver.car_idx || ""}|${driver.car_number || ""}|${driver.driver_name || ""}`;
+      if (image.dataset.currentKey === imageKey) return;
       image.dataset.currentSrc = imageUrl;
+      image.dataset.currentKey = imageKey;
       imageShell.classList.remove("image-failed");
       image.removeAttribute("src");
+      const cacheBustedUrl = imageUrl.startsWith("/iracing-render")
+        ? `${imageUrl}&rgc_card_key=${encodeURIComponent(imageKey)}`
+        : imageUrl;
       image.onload = () => {
         imageShell.classList.remove("image-failed", "no-source");
       };
@@ -4626,7 +4642,7 @@ OVERLAY_HTML = r"""<!doctype html>
         imageShell.classList.add("image-failed");
         image.removeAttribute("src");
       };
-      image.src = imageUrl;
+      image.src = cacheBustedUrl;
     }
 
     function buildDriverCardRankLine(driver) {

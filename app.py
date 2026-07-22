@@ -447,10 +447,9 @@ def build_director_suggestions(state):
             {
                 "kind": "suggestion",
                 "title": "Leader Story",
-                "message": (
-                    f"Check the leader, #{leader.get('car_number', '--')} "
-                    f"{leader.get('driver_name', 'Unknown Driver')}. "
-                    f"Gap shown: {leader.get('interval') or 'leader of the race'}."
+                "message": director_driver_story(
+                    leader,
+                    "Leader camera first. Build the story around pace, gap, and control of the race.",
                 ),
                 "car_idx": leader.get("car_idx", 0),
                 "car_number": leader.get("car_number", ""),
@@ -479,9 +478,9 @@ def build_director_suggestions(state):
             {
                 "kind": "suggestion",
                 "title": "Big Mover",
-                "message": (
-                    f"#{driver.get('car_number', '--')} {driver.get('driver_name', 'Unknown Driver')} "
-                    f"is {direction} {abs(delta)} spots from the start."
+                "message": director_driver_story(
+                    driver,
+                    f"Big mover: {direction} {abs(delta)} spots from the start. Good reset/update candidate.",
                 ),
                 "car_idx": driver.get("car_idx", 0),
                 "car_number": driver.get("car_number", ""),
@@ -513,6 +512,38 @@ def build_director_suggestions(state):
     return suggestions[:5]
 
 
+def director_driver_story(driver, lead):
+    pieces = [
+        lead,
+        f"#{driver.get('car_number', '--')} {driver.get('driver_name', 'Unknown Driver')}.",
+    ]
+    position = safe_int(driver.get("position"), 0)
+    if position > 0:
+        pieces.append(f"Running {ordinal(position)}.")
+    start = safe_int(driver.get("starting_position"), 0)
+    delta = safe_int(driver.get("position_delta"), 0)
+    if start > 0:
+        movement = "even from the start"
+        if delta > 0:
+            movement = f"up {delta}"
+        elif delta < 0:
+            movement = f"down {abs(delta)}"
+        pieces.append(f"Started {ordinal(start)}, {movement}.")
+    interval = str(driver.get("interval", "") or "").strip()
+    if interval:
+        pieces.append(f"Interval: {interval}.")
+    laps_led = safe_int(driver.get("laps_led"), 0)
+    if laps_led > 0:
+        pieces.append(f"Laps led: {laps_led}.")
+    fastest = str(driver.get("fastest_lap", "") or "").strip()
+    if fastest:
+        pieces.append(f"Best lap: {fastest}.")
+    last_pit = safe_int(driver.get("last_pit_lap"), 0)
+    if last_pit > 0:
+        pieces.append(f"Last pit lap {last_pit}.")
+    return " ".join(pieces)
+
+
 def closest_battle_suggestion(leaderboard):
     candidates = []
     for driver in leaderboard[1:]:
@@ -526,10 +557,12 @@ def closest_battle_suggestion(leaderboard):
     return {
         "kind": "suggestion",
         "title": "Closest Battle",
-        "message": (
-            f"Closest visible battle is around {ordinal(driver.get('position'))}: "
-            f"#{driver.get('car_number', '--')} {driver.get('driver_name', 'Unknown Driver')} "
-            f"is about {interval:.2f} seconds from the car ahead."
+        "message": director_driver_story(
+            driver,
+            (
+                f"Closest visible battle around {ordinal(driver.get('position'))}: "
+                f"{interval:.2f}s to the car ahead. Good live action target."
+            ),
         ),
         "car_idx": driver.get("car_idx", 0),
         "car_number": driver.get("car_number", ""),
@@ -815,6 +848,31 @@ def handle_producer_command(
                 payload.get("item_id"),
                 payload.get("status", "reviewed"),
             )
+        return
+
+    if command == "race_event_note":
+        updater = getattr(overlay_server, "update_race_event_log_item", None)
+        item = (
+            updater(
+                payload.get("item_id"),
+                status=payload.get("status", "needs review"),
+                note=payload.get("note", ""),
+                producer_name=payload.get("producer_name", ""),
+            )
+            if updater
+            else None
+        )
+        message = (
+            f"Marked event for review: {item.title}."
+            if item
+            else "Race event could not be marked for review."
+        )
+        publish_producer_event(
+            overlay_server,
+            "warning" if item else "info",
+            "Race Event Log",
+            message,
+        )
         return
 
     if command == "interview_queue_add":
