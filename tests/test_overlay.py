@@ -780,15 +780,15 @@ def test_producer_assist_html_reads_overlay_state():
 def test_producer_assist_prioritizes_live_control_room_panels():
     suggestions_index = PRODUCER_HTML.index("<h3>Director Suggestions</h3>")
     focus_index = PRODUCER_HTML.index("<h3>Current Broadcast Focus</h3>")
+    pit_road_index = PRODUCER_HTML.index("<h3>Pit Road / Strategy</h3>")
     camera_index = PRODUCER_HTML.index('id="follow-driver-button"')
     race_control_index = PRODUCER_HTML.index("<h3>Race Control</h3>")
-    pit_road_index = PRODUCER_HTML.index("<h3>Pit Road / Strategy</h3>")
     interview_index = PRODUCER_HTML.index("<h3>Interview Queue</h3>")
     event_log_index = PRODUCER_HTML.index("<h3>Race Event Log</h3>")
     audit_index = PRODUCER_HTML.index("<h3>Race Control Audit</h3>")
     discord_index = PRODUCER_HTML.index("<h3>Discord Setup</h3>")
 
-    assert suggestions_index < focus_index < camera_index < race_control_index < pit_road_index
+    assert suggestions_index < focus_index < pit_road_index < camera_index < race_control_index
     assert pit_road_index < interview_index < event_log_index
     assert event_log_index < audit_index < discord_index
     assert "button-row control-grid" in PRODUCER_HTML

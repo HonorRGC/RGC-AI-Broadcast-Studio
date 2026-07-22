@@ -2453,6 +2453,13 @@ PRODUCER_HTML = r"""<!doctype html>
           <div class="small">No featured driver on the overlay right now.</div>
         </div>
 
+        <div class="panel wide">
+          <h3>Pit Road / Strategy</h3>
+          <div class="pit-road-list" id="pit-road-list">
+            <div class="small">Pit stop data will appear after cars visit pit road.</div>
+          </div>
+        </div>
+
         <div class="button-row primary-actions">
           <button class="control-button" id="follow-driver-button">Move Camera to Driver</button>
           <button class="control-button" id="leader-camera-button">Back to Leader</button>
@@ -2515,13 +2522,6 @@ PRODUCER_HTML = r"""<!doctype html>
             <button class="control-button race-control-button" data-race-action="waveby" data-driver-required="true">Wave Around</button>
             <button class="control-button danger race-control-button" data-race-action="dq" data-driver-required="true" data-dangerous="true">DQ</button>
             <button class="control-button danger race-control-button" data-race-action="remove" data-driver-required="true" data-dangerous="true">Remove</button>
-          </div>
-        </div>
-
-        <div class="panel wide">
-          <h3>Pit Road / Strategy</h3>
-          <div class="pit-road-list" id="pit-road-list">
-            <div class="small">Pit stop data will appear after cars visit pit road.</div>
           </div>
         </div>
 

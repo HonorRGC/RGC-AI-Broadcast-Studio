@@ -1227,7 +1227,17 @@ class BroadcastEngine:
         )
         defer_penalties = self.should_defer_penalty_stories()
         penalty_delay_seconds = 35.0 if defer_penalties else 0.0
+        meatball_events = [event for event in events if event.event_type == "meatball"]
+        if len(meatball_events) > 1:
+            self._queue_grouped_meatball_story(
+                meatball_events,
+                penalty_delay_seconds,
+                defer_penalties,
+                current_lap,
+            )
         for event in events:
+            if event.event_type == "meatball" and len(meatball_events) > 1:
+                continue
             self.broadcast_queue.add(
                 event.message,
                 priority=event.priority,
@@ -1240,6 +1250,50 @@ class BroadcastEngine:
                 camera_target_car_idx=event.car_idx,
                 participant_car_indices=(event.car_idx,),
             )
+
+    def _queue_grouped_meatball_story(
+        self,
+        events,
+        penalty_delay_seconds,
+        defer_penalties,
+        current_lap,
+    ):
+        participant_car_indices = tuple(event.car_idx for event in events)
+        names = self.format_penalty_driver_list(events)
+        plural = len(events) != 1
+        message = (
+            f"Meatball flags are out for {names}. "
+            f"Race control is calling {'those drivers' if plural else 'that driver'} "
+            "to pit road for required repairs, so there may be too much damage "
+            "to continue without extensive work."
+        )
+        self.broadcast_queue.add(
+            message,
+            priority=max(event.priority for event in events),
+            category="penalty",
+            protected=(not defer_penalties),
+            speaker="lead",
+            delay_seconds=penalty_delay_seconds,
+            expires_after=45,
+            dedupe_key=(
+                f"penalty:meatball_group:{current_lap}:"
+                + "-".join(str(event.car_idx) for event in events)
+            ),
+            camera_target_car_idx=events[0].car_idx,
+            participant_car_indices=participant_car_indices,
+        )
+
+    @staticmethod
+    def format_penalty_driver_list(events):
+        labels = [
+            f"{event.driver_name} in the number {event.car_number}"
+            for event in events
+        ]
+        if len(labels) <= 1:
+            return labels[0] if labels else "the damaged car"
+        if len(labels) == 2:
+            return f"{labels[0]} and {labels[1]}"
+        return f"{', '.join(labels[:-1])}, and {labels[-1]}"
 
     def should_defer_penalty_stories(self):
         if self.race_director.phase in (RacePhase.CAUTION, RacePhase.ONE_TO_GREEN):

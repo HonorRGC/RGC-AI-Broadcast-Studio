@@ -2034,6 +2034,57 @@ def test_meatball_flag_waits_when_caution_replay_is_pending():
     assert item.protected is False
 
 
+def test_multiple_meatball_flags_are_grouped_into_one_story():
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    drivers = {
+        4: {"name": "Damaged Driver", "number": "44"},
+        7: {"name": "Second Damaged", "number": "77"},
+    }
+    snapshot = TelemetrySnapshot(
+        lap=12,
+        total_laps=40,
+        session_flags=RaceFlags.GREEN,
+        results=[
+            {"CarIdx": 4, "Position": 1, "LapsComplete": 12},
+            {"CarIdx": 7, "Position": 2, "LapsComplete": 12},
+        ],
+        driver_lookup=drivers,
+        pit_road_status=[False] * 8,
+        track_surface=[3] * 8,
+        track_surface_material=[0] * 8,
+        lap_dist_pct=[0.0] * 8,
+        est_time=[0.0] * 8,
+        car_idx_session_flags=[
+            0,
+            0,
+            0,
+            0,
+            PenaltyDetector.REPAIR_FLAG,
+            0,
+            0,
+            PenaltyDetector.REPAIR_FLAG,
+        ],
+        car_idx_penalty_reasons=[""] * 8,
+    )
+
+    engine._collect_penalty_stories(
+        telemetry=SnapshotSource(snapshot),
+        results=snapshot.results,
+        driver_lookup=drivers,
+        current_lap=12,
+    )
+
+    penalty_items = [
+        item for item in engine.broadcast_queue.items if item.category == "penalty"
+    ]
+    assert len(penalty_items) == 1
+    assert "Meatball flags are out for" in penalty_items[0].message
+    assert "Damaged Driver" in penalty_items[0].message
+    assert "Second Damaged" in penalty_items[0].message
+    assert "extensive work" in penalty_items[0].message
+    assert penalty_items[0].participant_car_indices == (4, 7)
+
+
 def test_final_laps_battle_prioritizes_closest_top_five_gap():
     engine = BroadcastEngine(openai_director=SilentOpenAI())
     results = [
