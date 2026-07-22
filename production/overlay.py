@@ -2521,7 +2521,7 @@ PRODUCER_HTML = r"""<!doctype html>
 
         <div class="panel">
           <h3>Race Event Log</h3>
-          <div class="small">Automatic race events. Click a row or camera button to jump the camera to that driver.</div>
+          <div class="small">Automatic race events. Click Review to jump the replay back before that moment for recap clips or race-control decisions.</div>
           <div class="event-log-table" id="race-event-log-list" style="margin-top: 10px;">
             <div class="small">Race events will appear here.</div>
           </div>
@@ -2916,15 +2916,15 @@ PRODUCER_HTML = r"""<!doctype html>
             <span class="event-log-camera-label">${escapeHtml(item.camera_group || "TV1")}</span>
           </div>
         `;
-        if (item.car_idx !== undefined && item.car_idx !== null && Number(item.car_idx) >= 0) {
-          row.addEventListener("click", () => focusRaceEvent(item));
+        if (item.replay_session_num !== undefined && item.replay_session_num !== null && item.replay_session_time !== undefined && item.replay_session_time !== null) {
+          row.addEventListener("click", () => reviewRaceEvent(item));
           const cell = row.querySelector(".event-log-camera");
           const button = document.createElement("button");
           button.className = "mini-button";
-          button.textContent = "Go";
+          button.textContent = "Review";
           button.addEventListener("click", event => {
             event.stopPropagation();
-            focusRaceEvent(item);
+            reviewRaceEvent(item);
           });
           cell.appendChild(button);
         }
@@ -2932,13 +2932,16 @@ PRODUCER_HTML = r"""<!doctype html>
       }
     }
 
-    function focusRaceEvent(item) {
-      if (!item || item.car_idx === undefined || item.car_idx === null || Number(item.car_idx) < 0) return;
-      sendProducerCommand("camera_follow_driver", {
+    function reviewRaceEvent(item) {
+      if (!item || item.replay_session_num === undefined || item.replay_session_time === undefined) return;
+      sendProducerCommand("race_event_review", {
         car_idx: item.car_idx,
         car_number: item.car_number || "",
         driver_name: item.driver_name || "",
-        group_name: item.camera_group || "TV1"
+        session_lap: item.session_lap || 0,
+        replay_session_num: item.replay_session_num,
+        replay_session_time: item.replay_session_time,
+        pre_roll_seconds: 15
       });
     }
 

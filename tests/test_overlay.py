@@ -765,7 +765,8 @@ def test_producer_assist_html_reads_overlay_state():
     assert 'id="race-control-audit-list"' in PRODUCER_HTML
     assert "event-log-table" in PRODUCER_HTML
     assert "renderRaceEventLog" in PRODUCER_HTML
-    assert "focusRaceEvent" in PRODUCER_HTML
+    assert "reviewRaceEvent" in PRODUCER_HTML
+    assert 'sendProducerCommand("race_event_review"' in PRODUCER_HTML
     assert "Session</div>" in PRODUCER_HTML
     assert "Camera</div>" in PRODUCER_HTML
     assert "Discord Setup" in PRODUCER_HTML

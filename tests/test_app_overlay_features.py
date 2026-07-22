@@ -494,6 +494,8 @@ def test_race_event_log_records_pass_with_session_lap_and_camera():
     source = SimpleNamespace(
         get_session_type=lambda: "Race",
         get_lap=lambda: 42,
+        get_current_session_num=lambda: 2,
+        get_session_time=lambda: 765.4,
         get_driver_lookup=lambda: {
             24: {"name": "Dean Marsh", "number": "24"},
         },
@@ -516,6 +518,8 @@ def test_race_event_log_records_pass_with_session_lap_and_camera():
     assert event.driver_name == "Dean Marsh"
     assert event.car_number == "24"
     assert event.camera_group == "TV2"
+    assert event.replay_session_num == 2
+    assert event.replay_session_time == 765.4
 
 
 def test_race_event_log_records_incident_replay_metadata():
@@ -710,6 +714,49 @@ def test_producer_replay_reverse_and_fast_forward_cycle_three_speeds():
         )
 
     assert speeds == [-1, -2, -4, -4, 1, 2, 4, 8, 8]
+
+
+def test_race_event_review_jumps_replay_without_following_driver():
+    overlay = ProducerOverlaySpy()
+    seeks = []
+    pauses = []
+
+    def seek_replay_session_time(session_num, session_time):
+        seeks.append((session_num, session_time))
+        return True
+
+    source = SimpleNamespace(
+        seek_replay_session_time=seek_replay_session_time,
+        pause_replay=lambda: pauses.append(True) or True,
+    )
+    camera = CameraSpy()
+    replay = ReplaySpy()
+
+    handle_producer_command(
+        "race_event_review",
+        {
+            "client_id": "producer-a",
+            "producer_name": "Lee",
+            "car_idx": 24,
+            "session_lap": 51,
+            "replay_session_num": 2,
+            "replay_session_time": 1234.5,
+            "pre_roll_seconds": 15,
+        },
+        overlay,
+        source=source,
+        engine=None,
+        booth=None,
+        camera_director=camera,
+        replay_director=replay,
+    )
+
+    assert seeks == [(2, 1219.5)]
+    assert pauses == [True]
+    assert camera.mode == "off"
+    assert camera.focused == []
+    assert replay.manual_started == 1
+    assert any("Loaded review lap 51" in event["message"] for event in overlay.events)
 
 
 def test_replay_return_live_restores_auto_camera_and_leader():

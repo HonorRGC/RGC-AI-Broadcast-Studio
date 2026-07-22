@@ -928,6 +928,51 @@ def handle_producer_command(
         report_camera_decision(decision, overlay_server)
         return
 
+    if command == "race_event_review":
+        if not ensure_camera_control(overlay_server, payload):
+            return
+        begin_producer_camera_takeover(camera_director, replay_director)
+        session_num = safe_int(payload.get("replay_session_num"), default=None)
+        session_time = safe_float(payload.get("replay_session_time"), default=None)
+        if session_num is None or session_time is None:
+            publish_producer_event(
+                overlay_server,
+                "warning",
+                "Event Review",
+                "This event does not have a replay time marker yet.",
+            )
+            return
+
+        pre_roll_seconds = max(
+            0,
+            min(45, safe_int(payload.get("pre_roll_seconds"), default=15) or 15),
+        )
+        review_time = max(0.0, float(session_time) - float(pre_roll_seconds))
+        seeker = getattr(source, "seek_replay_session_time", None)
+        accepted = bool(seeker(session_num, review_time)) if seeker else False
+        paused = False
+        if accepted:
+            paused = bool(getattr(source, "pause_replay", lambda: False)())
+            set_producer_replay_speed(source, 0)
+
+        lap = safe_int(payload.get("session_lap"), default=0)
+        lap_text = f" lap {lap}" if lap > 0 else ""
+        message = (
+            f"Loaded review{lap_text}, {pre_roll_seconds} seconds before the event. "
+            "Use Play/Rewind/Fast Forward and camera buttons to inspect it."
+            if accepted
+            else "Event review seek was not accepted by iRacing."
+        )
+        if accepted and not paused:
+            message += " Pause was not accepted, so replay may be playing."
+        publish_producer_event(
+            overlay_server,
+            "replay" if accepted else "warning",
+            "Event Review",
+            message,
+        )
+        return
+
     if command == "camera_follow_leader":
         if not ensure_camera_control(overlay_server, payload):
             return
@@ -1247,9 +1292,17 @@ def log_race_event_for_item(item, overlay_server, source=None, camera_decision=N
 
     session_type = ""
     session_lap = 0
+    live_session_num = None
+    live_session_time = None
     if source is not None:
         session_type = str(getattr(source, "get_session_type", lambda: "")() or "")
         session_lap = safe_int(getattr(source, "get_lap", lambda: 0)(), 0)
+        session_num_reader = getattr(source, "get_current_session_num", None)
+        if session_num_reader:
+            live_session_num = session_num_reader()
+        session_time_reader = getattr(source, "get_session_time", None)
+        if session_time_reader:
+            live_session_time = session_time_reader()
 
     camera_group = (
         getattr(camera_decision, "group_name", "")
@@ -1263,8 +1316,16 @@ def log_race_event_for_item(item, overlay_server, source=None, camera_decision=N
         "session_type": session_type,
         "session_lap": session_lap,
         "camera_group": camera_group,
-        "replay_session_num": getattr(item, "replay_session_num", None),
-        "replay_session_time": getattr(item, "replay_session_time", None),
+        "replay_session_num": (
+            getattr(item, "replay_session_num", None)
+            if getattr(item, "replay_session_num", None) is not None
+            else live_session_num
+        ),
+        "replay_session_time": (
+            getattr(item, "replay_session_time", None)
+            if getattr(item, "replay_session_time", None) is not None
+            else live_session_time
+        ),
         "created_by": "RGC AI",
     }
     return overlay_server.add_race_event_log(
