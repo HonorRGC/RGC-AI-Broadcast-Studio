@@ -950,6 +950,13 @@ def handle_producer_command(
         review_time = max(0.0, float(session_time) - float(pre_roll_seconds))
         seeker = getattr(source, "seek_replay_session_time", None)
         accepted = bool(seeker(session_num, review_time)) if seeker else False
+        method = "session-time marker"
+        if accepted and replay_seek_appears_live(source):
+            accepted = False
+        if not accepted:
+            fallback = fallback_rewind_to_event_review(source, review_time)
+            accepted = fallback["accepted"]
+            method = fallback["method"]
         paused = False
         if accepted:
             paused = bool(getattr(source, "pause_replay", lambda: False)())
@@ -959,9 +966,9 @@ def handle_producer_command(
         lap_text = f" lap {lap}" if lap > 0 else ""
         message = (
             f"Loaded review{lap_text}, {pre_roll_seconds} seconds before the event. "
-            "Use Play/Rewind/Fast Forward and camera buttons to inspect it."
+            f"Method: {method}. Use Play/Rewind/Fast Forward and camera buttons to inspect it."
             if accepted
-            else "Event review seek was not accepted by iRacing."
+            else "Event review seek was not accepted by iRacing using session-time or frame-rewind fallback."
         )
         if accepted and not paused:
             message += " Pause was not accepted, so replay may be playing."
@@ -1145,6 +1152,45 @@ def set_producer_replay_speed(source, speed):
         setattr(source, "_producer_replay_speed", int(speed))
     except Exception:
         return
+
+
+def replay_seek_appears_live(source):
+    checker = getattr(source, "is_replay_at_live_edge", None)
+    if not checker:
+        return False
+    try:
+        return checker() is True
+    except Exception:
+        return False
+
+
+def fallback_rewind_to_event_review(source, review_time):
+    current_time_reader = getattr(source, "get_session_time", None)
+    rewinder = getattr(source, "rewind_replay_frames", None)
+    if not current_time_reader or not rewinder:
+        return {"accepted": False, "method": "unavailable"}
+
+    current_time = safe_float(current_time_reader(), default=0.0)
+    delta_seconds = max(0.0, current_time - safe_float(review_time, default=0.0))
+    if delta_seconds <= 0.0:
+        return {"accepted": False, "method": "frame-rewind unavailable"}
+
+    return_live = getattr(source, "return_to_live", None)
+    if return_live:
+        try:
+            return_live()
+        except Exception:
+            pass
+
+    frames = max(1, min(int(delta_seconds * 60), 60 * 60 * 10))
+    try:
+        accepted = bool(rewinder(frames))
+    except Exception:
+        accepted = False
+    return {
+        "accepted": accepted,
+        "method": f"frame rewind ({delta_seconds:.1f}s)",
+    }
 
 
 def next_replay_speed(source, direction):

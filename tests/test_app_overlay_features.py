@@ -759,6 +759,45 @@ def test_race_event_review_jumps_replay_without_following_driver():
     assert any("Loaded review lap 51" in event["message"] for event in overlay.events)
 
 
+def test_race_event_review_falls_back_to_frame_rewind_when_seek_fails():
+    overlay = ProducerOverlaySpy()
+    rewinds = []
+    return_live_calls = []
+
+    source = SimpleNamespace(
+        seek_replay_session_time=lambda *_: False,
+        get_session_time=lambda: 1250.0,
+        return_to_live=lambda: return_live_calls.append(True) or True,
+        rewind_replay_frames=lambda frames: rewinds.append(frames) or True,
+        pause_replay=lambda: True,
+    )
+    camera = CameraSpy()
+    replay = ReplaySpy()
+
+    handle_producer_command(
+        "race_event_review",
+        {
+            "client_id": "producer-a",
+            "producer_name": "Lee",
+            "session_lap": 51,
+            "replay_session_num": 2,
+            "replay_session_time": 1234.5,
+            "pre_roll_seconds": 15,
+        },
+        overlay,
+        source=source,
+        engine=None,
+        booth=None,
+        camera_director=camera,
+        replay_director=replay,
+    )
+
+    assert return_live_calls == [True]
+    assert rewinds == [1830]
+    assert camera.focused == []
+    assert any("frame rewind" in event["message"] for event in overlay.events)
+
+
 def test_replay_return_live_restores_auto_camera_and_leader():
     overlay = ProducerOverlaySpy()
     camera = CameraSpy()
