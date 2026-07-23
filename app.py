@@ -2481,6 +2481,17 @@ def build_featured_driver_render_info(driver, require_live_render_match=False):
     if USE_IRACING_RENDERED_CAR_IMAGES:
         sim_racing_apps_info = build_sim_racing_apps_car_render_info(driver)
         if sim_racing_apps_info.get("image_url") or sim_racing_apps_info.get("number_style"):
+            if (
+                require_live_render_match
+                and sim_racing_apps_info.get("image_url")
+                and not is_driver_specific_render_image_url(
+                    sim_racing_apps_info.get("image_url")
+                )
+            ):
+                return {
+                    "image_url": "",
+                    "number_style": sim_racing_apps_info.get("number_style", {}),
+                }
             return sim_racing_apps_info
         if require_live_render_match:
             return {"image_url": "", "number_style": {}}
@@ -2488,6 +2499,20 @@ def build_featured_driver_render_info(driver, require_live_render_match=False):
         if render_url:
             return {"image_url": render_url, "number_style": {}}
     return {"image_url": "", "number_style": {}}
+
+
+def is_driver_specific_render_image_url(image_url):
+    text = str(image_url or "").lower()
+    return any(
+        marker in text
+        for marker in (
+            "carcustpaint=",
+            "car_num_",
+            "car_",
+            "cust_id=",
+            "custid=",
+        )
+    )
 
 
 def report_camera_decision(decision, overlay_server=None):

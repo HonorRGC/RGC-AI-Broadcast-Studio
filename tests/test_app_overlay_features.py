@@ -1012,6 +1012,53 @@ def test_opening_intro_driver_image_does_not_use_stale_render_cache(monkeypatch)
     ) == {"image_url": "", "number_style": {}}
 
 
+def test_opening_intro_keeps_number_style_but_drops_generic_live_car_render(monkeypatch):
+    import app
+
+    monkeypatch.setattr(app, "USE_IRACING_RENDERED_CAR_IMAGES", True)
+    monkeypatch.setattr(
+        app,
+        "build_sim_racing_apps_car_render_info",
+        lambda driver: {
+            "image_url": "http://127.0.0.1/SIMRacingApps/iRacing/pk_car.png?car=I34",
+            "number_style": {"color": "#ffffff", "background": "#000000"},
+        },
+    )
+
+    assert build_featured_driver_render_info(
+        {"car_idx": 34, "number": "34"},
+        require_live_render_match=True,
+    ) == {
+        "image_url": "",
+        "number_style": {"color": "#ffffff", "background": "#000000"},
+    }
+
+
+def test_opening_intro_allows_paint_specific_live_car_render(monkeypatch):
+    import app
+
+    monkeypatch.setattr(app, "USE_IRACING_RENDERED_CAR_IMAGES", True)
+    monkeypatch.setattr(
+        app,
+        "build_sim_racing_apps_car_render_info",
+        lambda driver: {
+            "image_url": (
+                "http://127.0.0.1/SIMRacingApps/iRacing/pk_car.png?"
+                "carPath=stockcars2%5Ccamaro2019&carCustPaint=car_num_90223.tga"
+            ),
+            "number_style": {"color": "#ffffff", "background": "#000000"},
+        },
+    )
+
+    info = build_featured_driver_render_info(
+        {"car_idx": 34, "number": "34"},
+        require_live_render_match=True,
+    )
+
+    assert "carCustPaint" in info["image_url"]
+    assert info["number_style"] == {"color": "#ffffff", "background": "#000000"}
+
+
 def test_featured_driver_story_for_official_races_uses_country_only():
     driver = {
         "name": "T.J. Lee",
