@@ -38,6 +38,123 @@ from production.race_control import RaceControlService
 
 DEFAULT_CRANK_IT_UP_SECONDS = 50.0
 
+COUNTRY_ALIASES = {
+    "arg": "Argentina",
+    "ar": "Argentina",
+    "aus": "Australia",
+    "au": "Australia",
+    "bel": "Belgium",
+    "be": "Belgium",
+    "bra": "Brazil",
+    "br": "Brazil",
+    "can": "Canada",
+    "ca": "Canada",
+    "den": "Denmark",
+    "dk": "Denmark",
+    "england": "United Kingdom",
+    "fin": "Finland",
+    "fi": "Finland",
+    "fra": "France",
+    "fr": "France",
+    "ger": "Germany",
+    "de": "Germany",
+    "gbr": "United Kingdom",
+    "gb": "United Kingdom",
+    "ire": "Ireland",
+    "ie": "Ireland",
+    "ita": "Italy",
+    "it": "Italy",
+    "jpn": "Japan",
+    "jp": "Japan",
+    "mex": "Mexico",
+    "mx": "Mexico",
+    "nld": "Netherlands",
+    "nl": "Netherlands",
+    "nor": "Norway",
+    "no": "Norway",
+    "nzl": "New Zealand",
+    "nz": "New Zealand",
+    "sco": "United Kingdom",
+    "scotland": "United Kingdom",
+    "spa": "Spain",
+    "esp": "Spain",
+    "es": "Spain",
+    "swe": "Sweden",
+    "se": "Sweden",
+    "uk": "United Kingdom",
+    "united states of america": "United States",
+    "usa": "United States",
+    "us": "United States",
+    "wales": "United Kingdom",
+}
+
+US_STATE_NAMES = {
+    "alabama",
+    "alaska",
+    "arizona",
+    "arkansas",
+    "california",
+    "colorado",
+    "connecticut",
+    "delaware",
+    "florida",
+    "georgia",
+    "hawaii",
+    "idaho",
+    "illinois",
+    "indiana",
+    "iowa",
+    "kansas",
+    "kentucky",
+    "louisiana",
+    "maine",
+    "maryland",
+    "massachusetts",
+    "michigan",
+    "minnesota",
+    "mississippi",
+    "missouri",
+    "montana",
+    "nebraska",
+    "nevada",
+    "new hampshire",
+    "new jersey",
+    "new mexico",
+    "new york",
+    "north carolina",
+    "north dakota",
+    "ohio",
+    "oklahoma",
+    "oregon",
+    "pennsylvania",
+    "rhode island",
+    "south carolina",
+    "south dakota",
+    "tennessee",
+    "texas",
+    "utah",
+    "vermont",
+    "virginia",
+    "washington",
+    "west virginia",
+    "wisconsin",
+    "wyoming",
+}
+
+CANADIAN_PROVINCES = {
+    "alberta",
+    "british columbia",
+    "manitoba",
+    "new brunswick",
+    "newfoundland",
+    "newfoundland and labrador",
+    "nova scotia",
+    "ontario",
+    "prince edward island",
+    "quebec",
+    "saskatchewan",
+}
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description="RGC AI Broadcast Studio")
@@ -2421,8 +2538,43 @@ def featured_driver_interval(car, ordered_results, all_results):
     return ""
 
 
+def normalize_country_value(value):
+    text = " ".join(str(value or "").replace("_", " ").strip().split())
+    if not text:
+        return ""
+    lookup = text.lower().replace(".", "")
+    return COUNTRY_ALIASES.get(lookup, text)
+
+
 def build_featured_driver_country(driver):
-    return str(driver.get("country", "") or "").strip()
+    for key in (
+        "country",
+        "Country",
+        "country_name",
+        "CountryName",
+        "country_code",
+        "CountryCode",
+        "flair_country_code",
+        "flairCountryCode",
+        "club_country",
+        "ClubCountry",
+    ):
+        country = normalize_country_value(driver.get(key))
+        if country:
+            return country
+
+    for key in ("club", "Club", "club_name", "ClubName"):
+        club = normalize_country_value(driver.get(key))
+        if not club:
+            continue
+        club_key = club.lower().replace(".", "")
+        if club_key in US_STATE_NAMES:
+            return f"{club}, United States"
+        if club_key in CANADIAN_PROVINCES:
+            return f"{club}, Canada"
+        return club
+
+    return ""
 
 
 def build_featured_driver_profile(driver):

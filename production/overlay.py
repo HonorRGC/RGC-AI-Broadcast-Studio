@@ -4585,7 +4585,7 @@ OVERLAY_HTML = r"""<!doctype html>
       setText("driver-card-number", driver.car_number || "?");
       applyDriverCardNumberStyle(driver.number_style || {});
       setText("driver-card-name", driver.driver_name || "Unknown Driver");
-      setText("driver-card-country", driver.country || "");
+      setText("driver-card-country", formatDriverCountry(driver));
       setText("driver-card-position-rank", buildDriverCardRankLine(driver));
       setText("driver-card-position", buildDriverCardPositionLine(driver));
       setText("driver-card-story", cleanDriverCardStory(driver));
@@ -4613,6 +4613,41 @@ OVERLAY_HTML = r"""<!doctype html>
       const normalized = story.toLowerCase();
       if (normalized === driverName || normalized === country) return "";
       return story;
+    }
+
+    function formatDriverCountry(driver) {
+      const country = String(driver.country || "").trim();
+      if (!country) return "";
+      const flag = countryFlag(country);
+      return flag ? `${flag} ${country}` : country;
+    }
+
+    function countryFlag(country) {
+      const normalized = String(country || "").toLowerCase().replace(/\./g, "").trim();
+      if (!normalized) return "";
+      if (normalized.includes("united states") || /\busa?\b/.test(normalized)) return "🇺🇸";
+      if (normalized.includes("canada")) return "🇨🇦";
+      if (normalized.includes("united kingdom") || normalized.includes("england") || normalized.includes("scotland") || normalized.includes("wales")) return "🇬🇧";
+      const byName = {
+        "argentina": "🇦🇷",
+        "australia": "🇦🇺",
+        "belgium": "🇧🇪",
+        "brazil": "🇧🇷",
+        "denmark": "🇩🇰",
+        "finland": "🇫🇮",
+        "france": "🇫🇷",
+        "germany": "🇩🇪",
+        "ireland": "🇮🇪",
+        "italy": "🇮🇹",
+        "japan": "🇯🇵",
+        "mexico": "🇲🇽",
+        "netherlands": "🇳🇱",
+        "new zealand": "🇳🇿",
+        "norway": "🇳🇴",
+        "spain": "🇪🇸",
+        "sweden": "🇸🇪",
+      };
+      return byName[normalized] || "";
     }
 
     function renderDriverCardImage(imageUrl, driver = {}) {

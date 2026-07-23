@@ -623,6 +623,9 @@ def test_featured_driver_card_includes_position_line():
     assert 'id="driver-card-position"' in OVERLAY_HTML
     assert 'id="driver-card-country"' in OVERLAY_HTML
     assert ".driver-card-country" in OVERLAY_HTML
+    assert "formatDriverCountry" in OVERLAY_HTML
+    assert "countryFlag" in OVERLAY_HTML
+    assert "🇺🇸" in OVERLAY_HTML
     assert 'id="driver-card-position-rank"' in OVERLAY_HTML
     assert 'id="driver-card-car-img"' in OVERLAY_HTML
     assert "image.onerror" in OVERLAY_HTML
