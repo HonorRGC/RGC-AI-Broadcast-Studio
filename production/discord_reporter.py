@@ -4,6 +4,8 @@ import urllib.request
 
 from config import (
     DISCORD_RACE_REPORT_ENABLED,
+    DISCORD_RACE_REPORT_CHAMPIONSHIP_URL,
+    DISCORD_RACE_REPORT_RESULTS_URL,
     DISCORD_RACE_REPORT_USE_OPENAI,
     DISCORD_RACE_REPORT_WEBHOOK_URL,
     OVERLAY_EVENT_TITLE,
@@ -19,6 +21,8 @@ class DiscordRaceReporter:
         enabled=DISCORD_RACE_REPORT_ENABLED,
         webhook_url=DISCORD_RACE_REPORT_WEBHOOK_URL,
         use_openai=DISCORD_RACE_REPORT_USE_OPENAI,
+        results_url=DISCORD_RACE_REPORT_RESULTS_URL,
+        championship_url=DISCORD_RACE_REPORT_CHAMPIONSHIP_URL,
         event_title=OVERLAY_EVENT_TITLE,
         series_name=OVERLAY_SERIES_NAME,
         opener=None,
@@ -26,6 +30,8 @@ class DiscordRaceReporter:
         self.enabled = bool(enabled)
         self.webhook_url = str(webhook_url or "").strip()
         self.use_openai = bool(use_openai)
+        self.results_url = str(results_url or "").strip()
+        self.championship_url = str(championship_url or "").strip()
         self.event_title = str(event_title or "RGC AI Broadcast").strip()
         self.series_name = str(series_name or "").strip()
         self.opener = opener or urllib.request.urlopen
@@ -103,6 +109,9 @@ class DiscordRaceReporter:
             fields.append({"name": "Biggest Movers", "value": movers, "inline": False})
         if stats:
             fields.append({"name": "Race Stats", "value": stats, "inline": False})
+        links = self.format_result_links()
+        if links:
+            fields.append({"name": "Official Links", "value": links, "inline": False})
 
         winner = self.driver_label(ordered[0], driver_lookup) if ordered else "the race winner"
         return {
@@ -118,6 +127,14 @@ class DiscordRaceReporter:
                 }
             ],
         }
+
+    def format_result_links(self):
+        links = []
+        if self.results_url:
+            links.append(f"[Race results]({self.results_url})")
+        if self.championship_url:
+            links.append(f"[Championship standings]({self.championship_url})")
+        return "\n".join(links)
 
     def ai_breakdown(
         self,

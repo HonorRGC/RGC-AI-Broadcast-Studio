@@ -21,6 +21,8 @@ def test_discord_race_report_builds_payload_with_top_ten_and_movers():
         event_title="Autism Awareness 100",
         series_name="WFO Trucks",
         use_openai=False,
+        results_url="https://www.simracerhub.com/scoring/season_race.php?schedule_id=356761",
+        championship_url="https://www.simracerhub.com/series_seasons.php?series_id=3872",
     )
     results = [
         {"CarIdx": 1, "Position": 0, "StartingPosition": 5, "LapsLed": 10},
@@ -49,6 +51,9 @@ def test_discord_race_report_builds_payload_with_top_ten_and_movers():
     assert "Scheduled distance: 100 laps" in embed["fields"][2]["value"]
     assert "Green-flag laps" not in embed["fields"][2]["value"]
     assert "Caution laps tracked: 12" in embed["fields"][2]["value"]
+    assert "Race results" in embed["fields"][3]["value"]
+    assert "schedule_id=356761" in embed["fields"][3]["value"]
+    assert "Championship standings" in embed["fields"][3]["value"]
 
 
 def test_discord_race_report_uses_true_green_laps_only():

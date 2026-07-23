@@ -7,6 +7,7 @@ from studio_launcher import (
     BROADCAST_FIELD_SECTIONS,
     DEFAULT_OVERLAY_URL,
     DEFAULT_PRODUCER_URL,
+    LAUNCHER_FIELDS,
     RGC_DISCORD_URL,
     RGC_WEBSITE_URL,
     TAILSCALE_WINDOWS_DOWNLOAD_URL,
@@ -92,12 +93,17 @@ def test_broadcast_settings_have_friendly_labels_and_sections():
     assert BROADCAST_FIELD_LABELS["DISCORD_RACE_REPORT_ENABLED"] == "Discord Race Report"
     assert BROADCAST_FIELD_LABELS["DISCORD_RACE_REPORT_WEBHOOK_URL"] == "Race Report Webhook URL"
     assert BROADCAST_FIELD_LABELS["DISCORD_RACE_REPORT_USE_OPENAI"] == "Use OpenAI Race Recap"
+    assert BROADCAST_FIELD_LABELS["DISCORD_RACE_REPORT_RESULTS_URL"] == "Race Results Link"
+    assert BROADCAST_FIELD_LABELS["DISCORD_RACE_REPORT_CHAMPIONSHIP_URL"] == "Championship Standings Link"
     assert "STUDIO_VOLUME" not in BROADCAST_FIELD_LABELS
     assert BROADCAST_FIELD_SECTIONS["USE_OPENAI"] == "AI Commentary"
     assert BROADCAST_FIELD_SECTIONS["OVERLAY_EVENT_TITLE"] == "Overlay Branding"
     assert BROADCAST_FIELD_SECTIONS["RACE_ADMIN_MODE"] == "Race Control"
     assert BROADCAST_FIELD_SECTIONS["DISCORD_BOT_ENABLED"] == "Discord Interviews - Prepared for Later"
     assert BROADCAST_FIELD_SECTIONS["DISCORD_RACE_REPORT_ENABLED"] == "Discord Race Report"
+    saved_keys = [key for key, _default in LAUNCHER_FIELDS]
+    assert "DISCORD_RACE_REPORT_RESULTS_URL" in saved_keys
+    assert "DISCORD_RACE_REPORT_CHAMPIONSHIP_URL" in saved_keys
 
 
 def test_launcher_version_comparison_helpers():
