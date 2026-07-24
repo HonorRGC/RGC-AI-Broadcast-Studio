@@ -9,6 +9,7 @@ from app import (
     build_featured_driver_render_info,
     featured_driver_position_info,
     update_overlay_featured_driver,
+    update_overlay_focused_driver,
     build_producer_pit_road_rows,
     find_brand_graphic_for_name,
     handle_producer_command,
@@ -1190,3 +1191,38 @@ def test_opening_field_rundown_driver_card_uses_starting_grid_and_country():
     assert overlay.featured[0]["country"] == "United States"
     assert overlay.featured[0]["story"] == ""
     assert overlay.featured[0]["speed"] == ""
+
+
+def test_opening_field_rundown_driver_card_updates_when_camera_step_fails():
+    overlay = FeaturedDriverOverlaySpy()
+    camera_decision = SimpleNamespace(
+        status="failed",
+        car_idx=34,
+        car_number="",
+    )
+    source = SimpleNamespace(
+        get_driver_lookup=lambda: {
+            34: {
+                "name": "T.J. Lee",
+                "number": "34",
+                "country": "United States",
+            }
+        },
+        get_results=lambda: [],
+        get_starting_grid=lambda: [
+            {"CarIdx": 12, "Position": 0},
+            {"CarIdx": 34, "Position": 1},
+        ],
+    )
+
+    update_overlay_focused_driver(
+        overlay,
+        source,
+        camera_decision,
+        opening_intro=True,
+    )
+
+    assert overlay.featured[0]["car_number"] == "34"
+    assert overlay.featured[0]["driver_name"] == "T.J. Lee"
+    assert overlay.featured[0]["position"] == 2
+    assert overlay.featured[0]["country"] == "United States"

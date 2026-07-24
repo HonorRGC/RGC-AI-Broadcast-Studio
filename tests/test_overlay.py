@@ -631,6 +631,9 @@ def test_featured_driver_card_includes_position_line():
     assert 'id="driver-card-position-rank"' in OVERLAY_HTML
     assert 'id="driver-card-car-img"' in OVERLAY_HTML
     assert "image.onerror" in OVERLAY_HTML
+    assert ".driver-card-image.image-loading" in OVERLAY_HTML
+    assert 'image.removeAttribute("src")' in OVERLAY_HTML
+    assert "image.dataset.currentKey !== imageKey" in OVERLAY_HTML
     assert "applyDriverCardNumberStyle" in OVERLAY_HTML
     assert ".driver-card-image.image-failed" in OVERLAY_HTML
 

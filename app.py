@@ -302,7 +302,16 @@ def run_source(
             overlay_server,
         )
         report_replay_decision(replay_director.update(source, camera_director), overlay_server)
-        report_camera_decision(camera_director.update(source), overlay_server)
+        camera_update_decision = camera_director.update(source)
+        report_camera_decision(camera_update_decision, overlay_server)
+        if overlay_server:
+            update_overlay_focused_driver(
+                overlay_server,
+                source,
+                camera_update_decision,
+                duration=9.0,
+                opening_intro=getattr(camera_update_decision, "role", "") == "lineup",
+            )
         non_race_camera_decision = qualifying_camera_director.update(
             source, camera_director
         )
@@ -2469,7 +2478,10 @@ def update_overlay_focused_driver(
 ):
     if camera_decision is None:
         return
-    if camera_decision.status not in ("suggested", "switched", "held"):
+    allowed_statuses = ("suggested", "switched", "held")
+    if opening_intro:
+        allowed_statuses = (*allowed_statuses, "failed")
+    if camera_decision.status not in allowed_statuses:
         return
     car_idx = camera_decision.car_idx
     if car_idx is None:

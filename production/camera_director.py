@@ -10,6 +10,7 @@ class CameraDecision:
     car_number: str = ""
     group_number: int | None = None
     group_name: str = ""
+    role: str = ""
 
 
 class CameraDirector:
@@ -58,7 +59,7 @@ class CameraDirector:
             return CameraDecision("ignored", "Camera direction is inactive.")
 
         if self.replay_active:
-            return CameraDecision("held", "Incident replay controls the camera.")
+            return CameraDecision("held", "Incident replay controls the camera.", role="replay")
 
         now = self.clock()
         live_decision = self.ensure_live_edge(telemetry, now)
@@ -93,6 +94,7 @@ class CameraDirector:
                     "Lineup camera holds until the next driver or green flag.",
                     car_idx=self.current_car_idx,
                     group_number=self.current_group_number,
+                    role="lineup",
                 )
             self.clear_sequence()
             return self.focus_home(telemetry, now, force=True)
@@ -106,6 +108,7 @@ class CameraDirector:
                 "held",
                 "Incident camera holds until the replay or leader return.",
                 group_number=self.current_group_number,
+                role="replay",
             )
 
         if self.current_car_idx is None:
@@ -116,7 +119,13 @@ class CameraDirector:
             if leader_idx is not None and leader_idx != self.current_car_idx:
                 return self.focus_home(telemetry, now, force=True)
 
-        return CameraDecision("held", "The current camera shot remains active.")
+        return CameraDecision(
+            "held",
+            "The current camera shot remains active.",
+            car_idx=self.current_car_idx,
+            group_number=self.current_group_number,
+            role=self.current_role,
+        )
 
     def ensure_live_edge(self, telemetry, now):
         if self.mode != "auto":
@@ -155,7 +164,7 @@ class CameraDirector:
 
         now = self.clock()
         if self.replay_active and not self.is_green_flag_item(item):
-            return CameraDecision("held", "Incident replay controls the camera.")
+            return CameraDecision("held", "Incident replay controls the camera.", role="replay")
 
         if self.is_green_flag_item(item):
             self.clear_sequence()
@@ -343,12 +352,22 @@ class CameraDirector:
             and now - self.last_switch_at < self.minimum_hold_seconds
             and car_idx != self.current_car_idx
         ):
-            return CameraDecision("held", "The minimum camera hold is still active.", car_idx=car_idx)
+            return CameraDecision(
+                "held",
+                "The minimum camera hold is still active.",
+                car_idx=car_idx,
+                role=role,
+            )
 
         driver = telemetry.get_driver_lookup().get(car_idx, {})
         car_number = str(driver.get("number", "") or "")
         if not car_number or car_number == "?":
-            return CameraDecision("failed", "The target car number is unavailable.", car_idx=car_idx)
+            return CameraDecision(
+                "failed",
+                "The target car number is unavailable.",
+                car_idx=car_idx,
+                role=role,
+            )
 
         group = self.resolve_camera_group(telemetry.get_camera_groups(), group_name)
         if group is None:
@@ -357,6 +376,7 @@ class CameraDirector:
                 f"Camera group {group_name!r} was not found.",
                 car_idx=car_idx,
                 car_number=car_number,
+                role=role,
             )
 
         group_number = self.safe_int(group.get("GroupNum"))
@@ -368,6 +388,7 @@ class CameraDirector:
                 car_idx=car_idx,
                 car_number=car_number,
                 group_name=resolved_name,
+                role=role,
             )
 
         if car_idx == self.current_car_idx and group_number == self.current_group_number:
@@ -379,6 +400,7 @@ class CameraDirector:
                 car_number=car_number,
                 group_number=group_number,
                 group_name=resolved_name,
+                role=role,
             )
 
         status = "suggested"
@@ -393,6 +415,7 @@ class CameraDirector:
                     car_number=car_number,
                     group_number=group_number,
                     group_name=resolved_name,
+                    role=role,
                 )
             status = "switched"
             reason = "Camera switched."
@@ -408,6 +431,7 @@ class CameraDirector:
             car_number=car_number,
             group_number=group_number,
             group_name=resolved_name,
+            role=role,
         )
 
     def get_leader_car_idx(self, telemetry):

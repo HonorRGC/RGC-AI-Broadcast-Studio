@@ -3895,6 +3895,7 @@ OVERLAY_HTML = r"""<!doctype html>
     }
 
     .driver-card-image.image-failed img,
+    .driver-card-image.image-loading img,
     .driver-card-image.no-source img {
       display: none;
     }
@@ -3917,6 +3918,7 @@ OVERLAY_HTML = r"""<!doctype html>
     }
 
     .driver-card-image.image-failed .driver-card-number,
+    .driver-card-image.image-loading .driver-card-number,
     .driver-card-image.no-source .driver-card-number {
       position: absolute;
       inset: 0;
@@ -4740,7 +4742,7 @@ OVERLAY_HTML = r"""<!doctype html>
       const image = document.getElementById("driver-card-car-img");
       imageShell.classList.toggle("no-source", !imageUrl);
       if (!imageUrl) {
-        imageShell.classList.remove("image-failed");
+        imageShell.classList.remove("image-failed", "image-loading");
         image.dataset.currentSrc = "";
         image.dataset.currentKey = "";
         image.removeAttribute("src");
@@ -4751,14 +4753,18 @@ OVERLAY_HTML = r"""<!doctype html>
       image.dataset.currentSrc = imageUrl;
       image.dataset.currentKey = imageKey;
       imageShell.classList.remove("image-failed");
+      imageShell.classList.add("image-loading");
       image.removeAttribute("src");
       const cacheBustedUrl = imageUrl.startsWith("/iracing-render")
         ? `${imageUrl}&rgc_card_key=${encodeURIComponent(imageKey)}`
         : imageUrl;
       image.onload = () => {
-        imageShell.classList.remove("image-failed", "no-source");
+        if (image.dataset.currentKey !== imageKey) return;
+        imageShell.classList.remove("image-failed", "image-loading", "no-source");
       };
       image.onerror = () => {
+        if (image.dataset.currentKey !== imageKey) return;
+        imageShell.classList.remove("image-loading");
         imageShell.classList.add("image-failed");
         image.removeAttribute("src");
       };
