@@ -1,5 +1,7 @@
 from dataclasses import dataclass
 
+from production.track_style import racecraft_profile
+
 
 @dataclass(frozen=True)
 class BoothConversationLine:
@@ -19,7 +21,6 @@ class BoothConversationDirector:
     racecraft while the camera watches a live battle or the lead pack.
     """
 
-    DRAFT_TRACKS = ("daytona", "talladega", "superspeedway")
     SHORT_TRACKS = ("martinsville", "bristol", "richmond", "wilkesboro")
     ROAD_TRACKS = ("road", "glen", "sonoma", "spa", "mosport", "virginia")
 
@@ -76,20 +77,15 @@ class BoothConversationDirector:
         return lines
 
     def choose_topic(self, track_info, green_lap_count, laps_remaining):
-        track_name = str(
-            track_info.get("track_name")
-            or track_info.get("track_display_name")
-            or ""
-        ).lower()
-        track_type = str(track_info.get("track_type") or "").lower()
-        text = f"{track_name} {track_type}"
+        profile = racecraft_profile(track_info)
+        style = profile["style"]
 
         preferred = []
-        if any(key in text for key in self.DRAFT_TRACKS):
+        if style == "pack_draft":
             preferred.extend(["draft_rhythm", "fuel_save"])
-        elif any(key in text for key in self.SHORT_TRACKS):
+        elif style == "short_track":
             preferred.extend(["short_track_patience", "tire_heat"])
-        elif any(key in text for key in self.ROAD_TRACKS):
+        elif style == "road_course":
             preferred.extend(["road_course_rhythm", "brake_management"])
         else:
             preferred.extend(["tire_falloff", "clean_air"])

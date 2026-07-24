@@ -74,3 +74,24 @@ def test_booth_conversation_uses_track_specific_tire_topic():
 
     assert len(lines) == 3
     assert "tire-management" in lines[0].message
+
+
+def test_superspeedway_name_alone_does_not_force_draft_topic():
+    director = BoothConversationDirector()
+    results = [
+        {"CarIdx": index, "Position": index + 1, "Time": 2.0}
+        for index in range(8)
+    ]
+
+    lines = director.build(
+        results=results,
+        driver_lookup={},
+        track_info={"track_name": "Nashville Superspeedway"},
+        race_state=race_state(green_lap_count=16, laps_remaining=45),
+        current_lap=22,
+        total_laps=80,
+    )
+
+    assert len(lines) == 3
+    assert "draft" not in " ".join(line.message.lower() for line in lines)
+    assert "tire-management" in lines[0].message

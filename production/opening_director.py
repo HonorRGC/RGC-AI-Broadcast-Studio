@@ -1,5 +1,10 @@
 from dataclasses import dataclass
 
+from production.track_style import (
+    is_long_straight_draft_assist_track,
+    is_true_pack_drafting_track,
+)
+
 
 @dataclass
 class OpeningSegment:
@@ -198,10 +203,16 @@ class OpeningDirector:
                 "The biggest thing tonight is patience. Restarts stack up quickly, "
                 "and the drivers who keep the nose clean should have options late."
             )
-        elif self.is_drafting_track(track_name):
+        elif self.is_drafting_track(track_info):
             message = (
                 "The draft should shape this race. Runs build fast, and timing "
                 "the lane changes may matter more than raw speed."
+            )
+        elif is_long_straight_draft_assist_track(track_info):
+            message = (
+                "The long straightaways can help drivers build a run, but this "
+                "is still about braking, corner exit, and keeping the car "
+                "balanced through the slower corners."
             )
         elif "road" in track_type:
             message = (
@@ -228,7 +239,7 @@ class OpeningDirector:
                 "Down here on pit road, track position will be huge. A clean stop "
                 "can keep a driver out of the hornet's nest."
             )
-        elif self.is_drafting_track(track_name):
+        elif self.is_drafting_track(track_info):
             message = (
                 "Pit road timing could be a big swing tonight. If fuel strategy "
                 "comes into play, the cleanest group stop can win track position."
@@ -477,18 +488,8 @@ class OpeningDirector:
             return "mostly cloudy"
         return text
 
-    def is_drafting_track(self, track_name):
-        text = str(track_name or "").lower()
-        return any(
-            name in text
-            for name in (
-                "daytona",
-                "talladega",
-                "echopark",
-                "echo park",
-                "atlanta",
-            )
-        )
+    def is_drafting_track(self, track_info):
+        return is_true_pack_drafting_track(track_info)
 
     def format_humidity(self, value):
         try:

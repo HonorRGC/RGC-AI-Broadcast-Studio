@@ -1,5 +1,7 @@
 from dataclasses import dataclass
 
+from production.track_style import is_true_pack_drafting_track
+
 
 @dataclass(frozen=True)
 class FormationStory:
@@ -35,6 +37,7 @@ class FormationDetector:
         lap_dist_pct_status,
         pit_road_status=None,
         current_lap=0,
+        track_info=None,
     ):
         if current_lap < 1 or not results or not lap_dist_pct_status:
             return []
@@ -47,10 +50,13 @@ class FormationDetector:
         if len(lead_pack) < 4:
             return []
 
+        draft_pack_track = (
+            True if track_info is None else is_true_pack_drafting_track(track_info)
+        )
         story = (
-            self.detect_three_wide(lead_pack, driver_lookup)
-            or self.detect_two_wide(lead_pack)
-            or self.detect_single_file(lead_pack)
+            self.detect_three_wide(lead_pack, driver_lookup, draft_pack_track)
+            or self.detect_two_wide(lead_pack, draft_pack_track)
+            or self.detect_single_file(lead_pack, draft_pack_track)
             or self.detect_compressed_pack(lead_pack)
         )
         if not story:
@@ -66,26 +72,33 @@ class FormationDetector:
         self.last_story_lap = current_lap
         return [story]
 
-    def detect_three_wide(self, cars, driver_lookup):
+    def detect_three_wide(self, cars, driver_lookup, draft_pack_track=True):
         for index in range(len(cars) - 2):
             group = cars[index : index + 3]
             if self.spread(group) > self.OVERLAP_GAP:
                 continue
             names = [self.name(driver_lookup, car["car_idx"]) for car in group]
+            summary = (
+                f"{names[0]}, {names[1]}, and {names[2]} are nearly even "
+                "in the draft. That is three-wide pressure building in the pack."
+                if draft_pack_track
+                else (
+                    f"{names[0]}, {names[1]}, and {names[2]} are nearly even "
+                    "on track. That is three-wide pressure building without much "
+                    "room to sort it out."
+                )
+            )
             return FormationStory(
                 story_type="formation_three_wide",
                 headline="Three-wide pressure in the pack.",
-                summary=(
-                    f"{names[0]}, {names[1]}, and {names[2]} are nearly even "
-                    "in the draft. That is three-wide pressure building in the pack."
-                ),
+                summary=summary,
                 importance=10,
                 primary_car_idx=group[1]["car_idx"],
                 participant_car_indices=tuple(car["car_idx"] for car in group),
             )
         return None
 
-    def detect_two_wide(self, cars):
+    def detect_two_wide(self, cars, draft_pack_track=True):
         overlap_pairs = 0
         participants = []
         for first, second in zip(cars, cars[1:]):
@@ -95,20 +108,27 @@ class FormationDetector:
         if overlap_pairs < 2:
             return None
         unique_participants = tuple(dict.fromkeys(participants))
+        summary = (
+            f"The front pack is doubled up with {len(cars)} cars covered "
+            "by just a few car lengths. This is where the draft can start "
+            "to create big runs."
+            if draft_pack_track
+            else (
+                f"The front group is doubled up with {len(cars)} cars covered "
+                "by just a few car lengths. Track position is getting tense, "
+                "and clean corner exits matter more than forcing the issue."
+            )
+        )
         return FormationStory(
             story_type="formation_two_wide",
             headline="The lead pack is doubled up.",
-            summary=(
-                f"The front pack is doubled up with {len(cars)} cars covered "
-                "by just a few car lengths. This is where the draft can start "
-                "to create big runs."
-            ),
+            summary=summary,
             importance=9,
             primary_car_idx=unique_participants[0] if unique_participants else None,
             participant_car_indices=unique_participants[:8],
         )
 
-    def detect_single_file(self, cars):
+    def detect_single_file(self, cars, draft_pack_track=True):
         close_pairs = [
             self.gap(first, second)
             for first, second in zip(cars, cars[1:])
@@ -121,14 +141,21 @@ class FormationDetector:
             for first, second in zip(cars, cars[1:])
         ):
             return None
+        summary = (
+            f"The front {len(cars)} have settled into one long draft train. "
+            "It is calm for the moment, but this kind of single-file run can "
+            "turn into a scramble once someone decides to jump out of line."
+            if draft_pack_track
+            else (
+                f"The front {len(cars)} have settled into a single-file rhythm. "
+                "It is calm for the moment, but traffic, tire falloff, and corner "
+                "exit can still open the door for a move."
+            )
+        )
         return FormationStory(
             story_type="formation_single_file",
             headline="The lead pack is single file.",
-            summary=(
-                f"The front {len(cars)} have settled into one long draft train. "
-                "It is calm for the moment, but this kind of single-file run can "
-                "turn into a scramble once someone decides to jump out of line."
-            ),
+            summary=summary,
             importance=7,
             primary_car_idx=cars[0]["car_idx"],
             participant_car_indices=tuple(car["car_idx"] for car in cars[:8]),

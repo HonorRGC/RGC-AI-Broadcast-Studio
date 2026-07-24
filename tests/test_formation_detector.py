@@ -30,6 +30,23 @@ def test_detects_single_file_draft_train():
     assert "draft train" in stories[0].summary
 
 
+def test_non_draft_oval_single_file_avoids_draft_train_language():
+    detector = FormationDetector()
+
+    stories = detector.analyze(
+        results=results(6),
+        driver_lookup=drivers(6),
+        lap_dist_pct_status=[0.5000, 0.5040, 0.5080, 0.5120, 0.5160, 0.5200],
+        pit_road_status=[False] * 6,
+        current_lap=5,
+        track_info={"track_name": "Nashville Superspeedway", "track_type": "oval"},
+    )
+
+    assert stories[0].story_type == "formation_single_file"
+    assert "single-file rhythm" in stories[0].summary
+    assert "draft train" not in stories[0].summary.lower()
+
+
 def test_detects_two_wide_pack_without_claiming_lane_names():
     detector = FormationDetector()
 
@@ -45,6 +62,23 @@ def test_detects_two_wide_pack_without_claiming_lane_names():
     assert "doubled up" in stories[0].summary
     assert "inside" not in stories[0].summary.lower()
     assert "outside" not in stories[0].summary.lower()
+
+
+def test_non_draft_oval_two_wide_avoids_big_draft_run_language():
+    detector = FormationDetector()
+
+    stories = detector.analyze(
+        results=results(6),
+        driver_lookup=drivers(6),
+        lap_dist_pct_status=[0.5000, 0.5008, 0.5060, 0.5069, 0.5120, 0.5128],
+        pit_road_status=[False] * 6,
+        current_lap=5,
+        track_info={"track_name": "Pocono Raceway", "track_type": "oval"},
+    )
+
+    assert stories[0].story_type == "formation_two_wide"
+    assert "doubled up" in stories[0].summary
+    assert "draft can start" not in stories[0].summary.lower()
 
 
 def test_detects_three_wide_pressure():

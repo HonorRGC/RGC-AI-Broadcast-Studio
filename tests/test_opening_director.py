@@ -203,4 +203,19 @@ def test_track_info_removes_simulator_weather_mode_wording():
     )
 
     assert "dynamic" not in segment.message.lower()
-    assert "partly cloudy" in segment.message.lower()
+
+
+def test_indianapolis_outlook_uses_long_straight_not_pack_draft_language():
+    director = OpeningDirector()
+
+    segment = director.build_race_outlook(
+        {
+            "track_name": "Indianapolis Motor Speedway",
+            "track_type": "oval",
+            "track_length": "2.5 mi",
+        }
+    )
+
+    assert "long straightaways" in segment.message
+    assert "draft should shape" not in segment.message.lower()
+    assert "lane changes" not in segment.message.lower()

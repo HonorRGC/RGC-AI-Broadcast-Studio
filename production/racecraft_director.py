@@ -1,5 +1,7 @@
 from dataclasses import dataclass
 
+from production.track_style import is_true_pack_drafting_track
+
 
 @dataclass(frozen=True)
 class RacecraftEvent:
@@ -22,13 +24,6 @@ class RacecraftDirector:
     supports it. It turns live context into realistic booth talking points:
     lap traffic, fuel-save possibilities, pit windows, and short-stop strategy.
     """
-
-    DRAFT_TRACK_KEYWORDS = (
-        "daytona",
-        "talladega",
-        "dega",
-        "draft",
-    )
 
     def __init__(self):
         self.sent_lap_traffic_cars = {}
@@ -329,11 +324,7 @@ class RacecraftDirector:
         return len(times) >= 5 and max(times) - min(times) <= 2.5
 
     def is_draft_track(self, track_info):
-        text = " ".join(
-            str(track_info.get(key, "") or "").lower()
-            for key in ("track_name", "track_config", "track_type")
-        )
-        return any(keyword in text for keyword in self.DRAFT_TRACK_KEYWORDS)
+        return is_true_pack_drafting_track(track_info)
 
     def sorted_running_order(self, results):
         valid = [car for car in results or [] if car.get("CarIdx") is not None]

@@ -1116,6 +1116,7 @@ class BroadcastEngine:
             lap_dist_pct_status=telemetry.get_car_idx_lap_dist_pct(),
             pit_road_status=pit_road_status,
             current_lap=current_lap,
+            track_info=telemetry.get_track_info(),
         )
         for event in events:
             primary = driver_lookup.get(event.primary_car_idx, {})

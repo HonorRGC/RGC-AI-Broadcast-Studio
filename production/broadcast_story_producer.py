@@ -135,12 +135,26 @@ class BroadcastStoryProducer:
             return "localized battle with consequences"
         if story_type == "live_three_wide":
             return "three-wide live battle building"
+        summary = str(getattr(item, "summary", "") or "").lower()
+        is_draft_summary = "draft" in summary
         if story_type == "formation_three_wide":
-            return "three-wide pressure in the draft"
+            return (
+                "three-wide pressure in the draft"
+                if is_draft_summary
+                else "three-wide pressure for track position"
+            )
         if story_type == "formation_two_wide":
-            return "pack is doubled up and momentum is building"
+            return (
+                "pack is doubled up and momentum is building"
+                if is_draft_summary
+                else "front group is doubled up and track position is tense"
+            )
         if story_type == "formation_single_file":
-            return "single-file draft train setting up the next move"
+            return (
+                "single-file draft train setting up the next move"
+                if is_draft_summary
+                else "single-file rhythm as tire falloff and traffic build"
+            )
         if story_type == "formation_compressed_pack":
             return "lead pack compression"
         if story_type == "race_recovery":

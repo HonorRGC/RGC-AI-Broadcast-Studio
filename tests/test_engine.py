@@ -433,7 +433,8 @@ def test_engine_submits_pack_formation_story():
         if item.story_type == "formation_single_file"
     ]
     assert len(formation_items) == 1
-    assert "draft train" in formation_items[0].summary
+    assert "single-file rhythm" in formation_items[0].summary
+    assert "draft train" not in formation_items[0].summary.lower()
     assert formation_items[0].speaker == "jeff"
 
 
