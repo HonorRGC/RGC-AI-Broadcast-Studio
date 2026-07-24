@@ -2089,8 +2089,8 @@ def test_final_laps_battle_prioritizes_closest_top_five_gap():
     engine = BroadcastEngine(openai_director=SilentOpenAI())
     results = [
         {"CarIdx": 0, "Position": 0, "Time": 0.0},
-        {"CarIdx": 1, "Position": 1, "Time": 1.5},
-        {"CarIdx": 2, "Position": 2, "Time": 1.8},
+        {"CarIdx": 1, "Position": 1, "Time": 2.3},
+        {"CarIdx": 2, "Position": 2, "Time": 2.6},
         {"CarIdx": 3, "Position": 3, "Time": 4.0},
         {"CarIdx": 4, "Position": 4, "Time": 5.0},
     ]
@@ -2112,6 +2112,68 @@ def test_final_laps_battle_prioritizes_closest_top_five_gap():
     assert item.camera_target_car_idx == 2
     assert "for 3rd" in item.message
     assert "0.3 seconds" in item.message
+    assert "comfortable lead" in item.message
+
+
+def test_final_laps_focuses_leader_when_win_is_close():
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    results = [
+        {"CarIdx": 0, "Position": 0, "Time": 0.0},
+        {"CarIdx": 1, "Position": 1, "Time": 0.6},
+        {"CarIdx": 2, "Position": 2, "Time": 0.9},
+    ]
+    drivers = {
+        0: {"name": "Race Leader", "number": "77"},
+        1: {"name": "Chaser", "number": "24"},
+        2: {"name": "Third Place", "number": "3"},
+    }
+    for lap in (46, 47, 48):
+        engine._update_leader_laps_led(results, lap)
+
+    queued = engine._queue_final_laps_battle(
+        results,
+        drivers,
+        current_lap=48,
+        total_laps=50,
+    )
+
+    item = engine.broadcast_queue.items[0]
+    assert queued is True
+    assert item.category == "final_laps_battle"
+    assert item.camera_target_car_idx == 0
+    assert "Race Leader" in item.message
+    assert "trying to close this out" in item.message
+    assert "has led 3 laps" in item.message
+
+
+def test_final_laps_can_show_best_battle_outside_top_five_when_leader_checked_out():
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    results = [
+        {"CarIdx": 0, "Position": 0, "Time": 0.0},
+        {"CarIdx": 1, "Position": 1, "Time": 2.4},
+        {"CarIdx": 2, "Position": 2, "Time": 4.0},
+        {"CarIdx": 3, "Position": 3, "Time": 5.0},
+        {"CarIdx": 4, "Position": 4, "Time": 6.0},
+        {"CarIdx": 5, "Position": 5, "Time": 7.0},
+        {"CarIdx": 6, "Position": 6, "Time": 7.2},
+    ]
+    drivers = {
+        index: {"name": f"Driver {index + 1}", "number": str(index + 1)}
+        for index in range(7)
+    }
+
+    queued = engine._queue_final_laps_battle(
+        results,
+        drivers,
+        current_lap=49,
+        total_laps=50,
+    )
+
+    item = engine.broadcast_queue.items[0]
+    assert queued is True
+    assert item.camera_target_car_idx == 6
+    assert "for 7th" in item.message
+    assert "0.2 seconds" in item.message
 
 
 def test_cool_down_state_airs_checkered_and_suppresses_false_incident():

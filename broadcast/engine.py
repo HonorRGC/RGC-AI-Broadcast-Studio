@@ -837,32 +837,71 @@ class BroadcastEngine:
         if total_laps <= 0 or current_lap <= 0:
             return False
         laps_to_go = total_laps - current_lap
-        if laps_to_go < 0 or laps_to_go > 3:
+        if laps_to_go < 0 or laps_to_go > 5:
             return False
         if self.broadcast_queue.items:
             return False
 
-        battle = self.closest_top_five_battle(results)
-        if not battle:
+        ordered = self.sorted_running_order(results)
+        if len(ordered) < 2:
             return False
 
+        leader = ordered[0]
+        second = ordered[1]
+        leader_gap = self.gap_between_adjacent(leader, second)
+        battle = None
+        if leader_gap >= 2.0:
+            battle = self.closest_late_race_battle(results, start_index=1, max_position=15)
+
+        if battle and battle[2] <= 0.75:
+            return self._queue_final_laps_position_battle(
+                battle,
+                results,
+                driver_lookup,
+                current_lap,
+                total_laps,
+                leader,
+                leader_gap,
+            )
+
+        return self._queue_final_laps_leader_story(
+            ordered,
+            driver_lookup,
+            current_lap,
+            total_laps,
+            leader_gap,
+        )
+
+    def _queue_final_laps_position_battle(
+        self,
+        battle,
+        results,
+        driver_lookup,
+        current_lap,
+        total_laps,
+        leader,
+        leader_gap,
+    ):
         front, chasing, gap = battle
         front_idx = front.get("CarIdx")
         chasing_idx = chasing.get("CarIdx")
+        leader_idx = leader.get("CarIdx")
+        leader_driver = driver_lookup.get(leader_idx, {})
         front_driver = driver_lookup.get(front_idx, {})
         chasing_driver = driver_lookup.get(chasing_idx, {})
+        leader_name = leader_driver.get("name", f"Car {leader_idx}")
         front_name = front_driver.get("name", f"Car {front_idx}")
         chasing_name = chasing_driver.get("name", f"Car {chasing_idx}")
         front_number = front_driver.get("number", "?")
         chasing_number = chasing_driver.get("number", "?")
-        position = self.safe_int(chasing.get("Position"), 0)
-        if any(self.safe_int(car.get("Position"), 999) == 0 for car in results or []):
-            position += 1
+        position = self.display_position_for_car(chasing, results)
+        laps_to_go = max(total_laps - current_lap, 0)
         message = (
-            f"Inside the final three laps, the closest battle in the top five is "
-            f"for {self.ordinal_position(position)}. {chasing_name} in the number "
-            f"{chasing_number} is only {gap:.1f} seconds behind {front_name} "
-            f"in the number {front_number}."
+            f"Inside the {self.laps_to_go_phrase(laps_to_go)}, {leader_name} "
+            f"has a comfortable lead at about {leader_gap:.1f} seconds, so the best "
+            f"fight on the track is for {self.ordinal_position(position)}. "
+            f"{chasing_name} in the number {chasing_number} is only {gap:.1f} "
+            f"seconds behind {front_name} in the number {front_number}."
         )
         self.broadcast_queue.add(
             message,
@@ -880,13 +919,58 @@ class BroadcastEngine:
         self.final_laps_battle_queued = True
         return True
 
+    def _queue_final_laps_leader_story(
+        self,
+        ordered,
+        driver_lookup,
+        current_lap,
+        total_laps,
+        leader_gap,
+    ):
+        leader = ordered[0]
+        leader_idx = leader.get("CarIdx")
+        driver = driver_lookup.get(leader_idx, {})
+        name = driver.get("name", f"Car {leader_idx}")
+        number = driver.get("number", "?")
+        laps_to_go = max(total_laps - current_lap, 0)
+        laps_led_total = max(1, self.leader_laps_led.get(leader_idx, 1))
+        gap_line = (
+            "but the battle for the win is still within reach"
+            if leader_gap < 1.0
+            else f"with about {leader_gap:.1f} seconds back to second"
+        )
+        led_word = "lap" if laps_led_total == 1 else "laps"
+        message = (
+            f"Inside the {self.laps_to_go_phrase(laps_to_go)}, {name} in "
+            f"the number {number} is trying to close this out {gap_line}. "
+            f"The {number} has led {laps_led_total} {led_word}, and now it is "
+            "about clean marks, smart traffic management, and not giving the "
+            "chasers one last opening."
+        )
+        self.broadcast_queue.add(
+            message,
+            priority=11,
+            category="final_laps_battle",
+            protected=True,
+            speaker="jeff",
+            expires_after=15,
+            dedupe_key=f"final_laps_leader:{leader_idx}:{current_lap}",
+            camera_target_car_idx=leader_idx,
+            participant_car_indices=(leader_idx,),
+        )
+        self.final_laps_battle_queued = True
+        return True
+
     def closest_top_five_battle(self, results):
-        ordered = self.sorted_running_order(results)[:5]
+        return self.closest_late_race_battle(results, start_index=0, max_position=5)
+
+    def closest_late_race_battle(self, results, start_index=0, max_position=15):
+        ordered = self.sorted_running_order(results)[:max_position]
         if len(ordered) < 2:
             return None
 
         best = None
-        for index in range(1, len(ordered)):
+        for index in range(max(1, start_index), len(ordered)):
             front = ordered[index - 1]
             chasing = ordered[index]
             gap = self.gap_between_adjacent(front, chasing)
@@ -895,6 +979,20 @@ class BroadcastEngine:
             if best is None or gap < best[2]:
                 best = (front, chasing, gap)
         return best
+
+    def display_position_for_car(self, car, results):
+        position = self.safe_int(car.get("Position"), 0)
+        if any(self.safe_int(item.get("Position"), 999) == 0 for item in results or []):
+            position += 1
+        return position
+
+    def laps_to_go_phrase(self, laps_to_go):
+        laps_to_go = self.safe_int(laps_to_go)
+        if laps_to_go <= 1:
+            return "final lap"
+        if laps_to_go == 2:
+            return "final two laps"
+        return f"final {laps_to_go} laps"
 
     def gap_between_adjacent(self, front, chasing):
         chasing_gap = self.safe_float(chasing.get("Time", chasing.get("Gap", 0)))
