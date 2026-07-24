@@ -1,5 +1,5 @@
 from broadcaster.race_director import RacePhase
-from config import CAUTION_PRESENTATION_GRAPHICS, SPONSOR_READ_CAUSE, SPONSOR_READ_NAME
+from config import CAUTION_PRESENTATION_GRAPHICS, RACE_SPONSOR_NAMES, SPONSOR_READ_CAUSE, SPONSOR_READ_NAME
 
 
 class CautionPresentationDirector:
@@ -13,6 +13,7 @@ class CautionPresentationDirector:
         graphics=None,
     ):
         self.sponsor_name = sponsor_name
+        self.sponsor_names = list(RACE_SPONSOR_NAMES or ([sponsor_name] if sponsor_name else []))
         self.sponsor_cause = sponsor_cause
         self.overlay_duration = float(overlay_duration)
         self.graphics = list(graphics if graphics is not None else CAUTION_PRESENTATION_GRAPHICS)
@@ -61,7 +62,8 @@ class CautionPresentationDirector:
         self.presentation_shown = False
 
     def subtitle(self):
-        parts = [part for part in [self.sponsor_name, self.sponsor_cause] if part]
+        parts = [", ".join(self.sponsor_names[:5]) or self.sponsor_name, self.sponsor_cause]
+        parts = [part for part in parts if part]
         return " • ".join(parts) if parts else "RGC AI Broadcast Studio"
 
     @staticmethod

@@ -24,6 +24,28 @@ def env_int_list(name, default=""):
     return values
 
 
+def env_list(name, default="", separators=(";", "|", ",")):
+    text = os.getenv(name, default)
+    for separator in separators:
+        text = text.replace(separator, "||")
+    return [item.strip() for item in text.split("||") if item.strip()]
+
+
+def unique_list(values):
+    seen = set()
+    cleaned = []
+    for value in values or []:
+        text = str(value or "").strip()
+        if not text:
+            continue
+        key = text.lower()
+        if key in seen:
+            continue
+        cleaned.append(text)
+        seen.add(key)
+    return cleaned
+
+
 # OpenAI
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 USE_OPENAI = os.getenv("USE_OPENAI", "true").lower() == "true"
@@ -70,32 +92,15 @@ USE_IRACING_RENDERED_CAR_IMAGES = (
     os.getenv("USE_IRACING_RENDERED_CAR_IMAGES", "true").lower() == "true"
 )
 OVERLAY_EVENT_TITLE = os.getenv("OVERLAY_EVENT_TITLE", "RGC AI Broadcast")
-OVERLAY_RACE_SPONSOR = os.getenv("OVERLAY_RACE_SPONSOR", "")
+OVERLAY_RACE_SPONSOR = os.getenv("OVERLAY_RACE_SPONSOR", os.getenv("RACE_SPONSOR_1_NAME", ""))
 OVERLAY_SERIES_NAME = os.getenv("OVERLAY_SERIES_NAME", "")
+OVERLAY_SERIES_LOGO = os.getenv("OVERLAY_SERIES_LOGO", "").strip()
 OVERLAY_HOST = os.getenv("OVERLAY_HOST", "127.0.0.1").strip() or "127.0.0.1"
 REMOTE_PRODUCER_ENABLED = os.getenv("REMOTE_PRODUCER_ENABLED", "false").lower() == "true"
 REMOTE_PRODUCER_RELAY_URL = os.getenv("REMOTE_PRODUCER_RELAY_URL", "").strip()
 REMOTE_PRODUCER_SESSION_CODE = os.getenv("REMOTE_PRODUCER_SESSION_CODE", "").strip()
 REMOTE_PRODUCER_PIN = os.getenv("REMOTE_PRODUCER_PIN", "").strip()
 OVERLAY_LEADERBOARD_STYLE = os.getenv("OVERLAY_LEADERBOARD_STYLE", "side").strip().lower()
-OVERLAY_BRAND_GRAPHICS = [
-    item.strip()
-    for item in os.getenv(
-        "OVERLAY_BRAND_GRAPHICS",
-        "/assets/rgc_motorsports.png,/assets/autism_awareness.png,/assets/keep_it_real.webp",
-    ).split(",")
-    if item.strip()
-]
-NATIONAL_ANTHEM_GRAPHICS = [
-    item.strip()
-    for item in os.getenv("NATIONAL_ANTHEM_GRAPHICS", ",".join(OVERLAY_BRAND_GRAPHICS)).split(",")
-    if item.strip()
-]
-CAUTION_PRESENTATION_GRAPHICS = [
-    item.strip()
-    for item in os.getenv("CAUTION_PRESENTATION_GRAPHICS", ",".join(OVERLAY_BRAND_GRAPHICS)).split(",")
-    if item.strip()
-]
 CRANK_IT_UP_SPONSOR_GRAPHIC = os.getenv(
     "CRANK_IT_UP_SPONSOR_GRAPHIC",
     "/assets/rgc_motorsports.png",
@@ -108,11 +113,112 @@ CRANK_IT_UP_ICON_GRAPHIC = os.getenv(
 
 # Sponsor reads
 USE_SPONSOR_READS = os.getenv("USE_SPONSOR_READS", "true").lower() == "true"
-SPONSOR_READ_NAME = os.getenv("SPONSOR_READ_NAME", OVERLAY_RACE_SPONSOR)
-SPONSOR_READ_NAME_2 = os.getenv("SPONSOR_READ_NAME_2", "")
-SPONSOR_READ_NAME_3 = os.getenv("SPONSOR_READ_NAME_3", "")
 SPONSOR_READ_CAUSE = os.getenv("SPONSOR_READ_CAUSE", "")
+SPONSOR_READ_CAUSE_LOGO = os.getenv("SPONSOR_READ_CAUSE_LOGO", "").strip()
 SPONSOR_READ_MESSAGE = os.getenv("SPONSOR_READ_MESSAGE", "")
+RACE_SPONSOR_1_NAME = os.getenv(
+    "RACE_SPONSOR_1_NAME",
+    os.getenv("SPONSOR_READ_NAME", OVERLAY_RACE_SPONSOR),
+).strip()
+RACE_SPONSOR_2_NAME = os.getenv("RACE_SPONSOR_2_NAME", os.getenv("SPONSOR_READ_NAME_2", "")).strip()
+RACE_SPONSOR_3_NAME = os.getenv("RACE_SPONSOR_3_NAME", os.getenv("SPONSOR_READ_NAME_3", "")).strip()
+RACE_SPONSOR_4_NAME = os.getenv("RACE_SPONSOR_4_NAME", "").strip()
+RACE_SPONSOR_5_NAME = os.getenv("RACE_SPONSOR_5_NAME", "").strip()
+RACE_SPONSOR_1_LOGO = os.getenv("RACE_SPONSOR_1_LOGO", "").strip()
+RACE_SPONSOR_2_LOGO = os.getenv("RACE_SPONSOR_2_LOGO", "").strip()
+RACE_SPONSOR_3_LOGO = os.getenv("RACE_SPONSOR_3_LOGO", "").strip()
+RACE_SPONSOR_4_LOGO = os.getenv("RACE_SPONSOR_4_LOGO", "").strip()
+RACE_SPONSOR_5_LOGO = os.getenv("RACE_SPONSOR_5_LOGO", "").strip()
+RACE_SPONSOR_1_READ = os.getenv("RACE_SPONSOR_1_READ", SPONSOR_READ_MESSAGE).strip()
+RACE_SPONSOR_2_READ = os.getenv("RACE_SPONSOR_2_READ", "").strip()
+RACE_SPONSOR_3_READ = os.getenv("RACE_SPONSOR_3_READ", "").strip()
+RACE_SPONSOR_4_READ = os.getenv("RACE_SPONSOR_4_READ", "").strip()
+RACE_SPONSOR_5_READ = os.getenv("RACE_SPONSOR_5_READ", "").strip()
+RACE_SPONSOR_1_VIDEO = os.getenv("RACE_SPONSOR_1_VIDEO", "").strip()
+RACE_SPONSOR_2_VIDEO = os.getenv("RACE_SPONSOR_2_VIDEO", "").strip()
+RACE_SPONSOR_3_VIDEO = os.getenv("RACE_SPONSOR_3_VIDEO", "").strip()
+RACE_SPONSOR_4_VIDEO = os.getenv("RACE_SPONSOR_4_VIDEO", "").strip()
+RACE_SPONSOR_5_VIDEO = os.getenv("RACE_SPONSOR_5_VIDEO", "").strip()
+SPONSOR_READ_NAME = os.getenv("SPONSOR_READ_NAME", RACE_SPONSOR_1_NAME or OVERLAY_RACE_SPONSOR)
+SPONSOR_READ_NAME_2 = os.getenv("SPONSOR_READ_NAME_2", RACE_SPONSOR_2_NAME)
+SPONSOR_READ_NAME_3 = os.getenv("SPONSOR_READ_NAME_3", RACE_SPONSOR_3_NAME)
+RACE_SPONSOR_NAMES = unique_list(
+    [
+        RACE_SPONSOR_1_NAME,
+        RACE_SPONSOR_2_NAME,
+        RACE_SPONSOR_3_NAME,
+        RACE_SPONSOR_4_NAME,
+        RACE_SPONSOR_5_NAME,
+    ]
+)
+RACE_SPONSOR_LOGOS = unique_list(
+    [
+        RACE_SPONSOR_1_LOGO,
+        RACE_SPONSOR_2_LOGO,
+        RACE_SPONSOR_3_LOGO,
+        RACE_SPONSOR_4_LOGO,
+        RACE_SPONSOR_5_LOGO,
+    ]
+)
+RACE_SPONSOR_READS = {
+    name: read
+    for name, read in zip(
+        [
+            RACE_SPONSOR_1_NAME,
+            RACE_SPONSOR_2_NAME,
+            RACE_SPONSOR_3_NAME,
+            RACE_SPONSOR_4_NAME,
+            RACE_SPONSOR_5_NAME,
+        ],
+        [
+            RACE_SPONSOR_1_READ,
+            RACE_SPONSOR_2_READ,
+            RACE_SPONSOR_3_READ,
+            RACE_SPONSOR_4_READ,
+            RACE_SPONSOR_5_READ,
+        ],
+    )
+    if name and read
+}
+RACE_SPONSOR_GRAPHICS = {
+    name: logo
+    for name, logo in zip(
+        [
+            RACE_SPONSOR_1_NAME,
+            RACE_SPONSOR_2_NAME,
+            RACE_SPONSOR_3_NAME,
+            RACE_SPONSOR_4_NAME,
+            RACE_SPONSOR_5_NAME,
+        ],
+        [
+            RACE_SPONSOR_1_LOGO,
+            RACE_SPONSOR_2_LOGO,
+            RACE_SPONSOR_3_LOGO,
+            RACE_SPONSOR_4_LOGO,
+            RACE_SPONSOR_5_LOGO,
+        ],
+    )
+    if name and logo
+}
+OVERLAY_BRAND_GRAPHICS = unique_list(
+    env_list(
+        "OVERLAY_BRAND_GRAPHICS",
+        "/assets/rgc_motorsports.png,/assets/autism_awareness.png,/assets/keep_it_real.webp",
+    )
+    + [OVERLAY_SERIES_LOGO]
+    + RACE_SPONSOR_LOGOS
+    + [SPONSOR_READ_CAUSE_LOGO]
+)
+NATIONAL_ANTHEM_GRAPHICS = [
+    item.strip()
+    for item in os.getenv("NATIONAL_ANTHEM_GRAPHICS", ",".join(OVERLAY_BRAND_GRAPHICS)).split(",")
+    if item.strip()
+]
+CAUTION_PRESENTATION_GRAPHICS = [
+    item.strip()
+    for item in os.getenv("CAUTION_PRESENTATION_GRAPHICS", ",".join(OVERLAY_BRAND_GRAPHICS)).split(",")
+    if item.strip()
+]
 
 
 # Optional post-race interviews.

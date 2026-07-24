@@ -2,6 +2,7 @@ from pathlib import Path
 
 from config import (
     PRACTICE_MUSIC_PLAYLIST,
+    RACE_SPONSOR_NAMES,
     STUDIO_VOLUME,
     SPONSOR_READ_CAUSE,
     SPONSOR_READ_NAME,
@@ -25,6 +26,7 @@ class PracticePresentationDirector:
             normal_volume=percent_to_mci_volume(self.music_volume)
         )
         self.sponsor_name = sponsor_name
+        self.sponsor_names = list(RACE_SPONSOR_NAMES or ([sponsor_name] if sponsor_name else []))
         self.sponsor_cause = sponsor_cause
         self.session_tracker = SessionTracker()
         self.presentation_shown = False
@@ -57,7 +59,8 @@ class PracticePresentationDirector:
         return None
 
     def subtitle(self):
-        parts = [part for part in [self.sponsor_name, self.sponsor_cause] if part]
+        parts = [", ".join(self.sponsor_names[:5]) or self.sponsor_name, self.sponsor_cause]
+        parts = [part for part in parts if part]
         return " • ".join(parts) if parts else "RGC AI Broadcast Studio"
 
     def start_practice_music_loop(self):

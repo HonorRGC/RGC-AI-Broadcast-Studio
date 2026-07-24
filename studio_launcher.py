@@ -74,24 +74,41 @@ LAUNCHER_FIELDS = [
     ("COLOR_VOICE_ID", ""),
     ("PIT_VOICE_ID", ""),
     ("OVERLAY_EVENT_TITLE", "RGC AI Broadcast"),
-    ("OVERLAY_RACE_SPONSOR", ""),
     ("OVERLAY_SERIES_NAME", ""),
+    ("OVERLAY_SERIES_LOGO", ""),
     ("OVERLAY_LEADERBOARD_STYLE", "side"),
     ("OVERLAY_HOST", "127.0.0.1"),
-    ("REMOTE_PRODUCER_ENABLED", "false"),
-    ("REMOTE_PRODUCER_RELAY_URL", ""),
-    ("REMOTE_PRODUCER_SESSION_CODE", ""),
-    ("REMOTE_PRODUCER_PIN", ""),
     (
         "OVERLAY_BRAND_GRAPHICS",
         "/assets/rgc_motorsports.png,/assets/autism_awareness.png,/assets/keep_it_real.webp",
     ),
     ("USE_SPONSOR_READS", "true"),
-    ("SPONSOR_READ_NAME", ""),
-    ("SPONSOR_READ_NAME_2", ""),
-    ("SPONSOR_READ_NAME_3", ""),
     ("SPONSOR_READ_CAUSE", ""),
-    ("SPONSOR_READ_MESSAGE", ""),
+    ("SPONSOR_READ_CAUSE_LOGO", ""),
+    ("RACE_SPONSOR_1_NAME", ""),
+    ("RACE_SPONSOR_1_LOGO", ""),
+    ("RACE_SPONSOR_1_READ", ""),
+    ("RACE_SPONSOR_1_VIDEO", ""),
+    ("RACE_SPONSOR_2_NAME", ""),
+    ("RACE_SPONSOR_2_LOGO", ""),
+    ("RACE_SPONSOR_2_READ", ""),
+    ("RACE_SPONSOR_2_VIDEO", ""),
+    ("RACE_SPONSOR_3_NAME", ""),
+    ("RACE_SPONSOR_3_LOGO", ""),
+    ("RACE_SPONSOR_3_READ", ""),
+    ("RACE_SPONSOR_3_VIDEO", ""),
+    ("RACE_SPONSOR_4_NAME", ""),
+    ("RACE_SPONSOR_4_LOGO", ""),
+    ("RACE_SPONSOR_4_READ", ""),
+    ("RACE_SPONSOR_4_VIDEO", ""),
+    ("RACE_SPONSOR_5_NAME", ""),
+    ("RACE_SPONSOR_5_LOGO", ""),
+    ("RACE_SPONSOR_5_READ", ""),
+    ("RACE_SPONSOR_5_VIDEO", ""),
+    ("REMOTE_PRODUCER_ENABLED", "false"),
+    ("REMOTE_PRODUCER_RELAY_URL", ""),
+    ("REMOTE_PRODUCER_SESSION_CODE", ""),
+    ("REMOTE_PRODUCER_PIN", ""),
     ("USE_NATIONAL_ANTHEM", "false"),
     ("NATIONAL_ANTHEM_AUDIO", ""),
     ("NATIONAL_ANTHEM_GRAPHICS", ""),
@@ -133,7 +150,15 @@ SIM_RACER_HUB_FIELDS = [
     ("SIMRACERHUB_CAREER_MODE", "false"),
 ]
 
-SAVED_FIELDS = LAUNCHER_FIELDS + SIM_RACER_HUB_FIELDS
+LEGACY_SPONSOR_FIELDS = [
+    ("OVERLAY_RACE_SPONSOR", ""),
+    ("SPONSOR_READ_NAME", ""),
+    ("SPONSOR_READ_NAME_2", ""),
+    ("SPONSOR_READ_NAME_3", ""),
+    ("SPONSOR_READ_MESSAGE", ""),
+]
+
+SAVED_FIELDS = LAUNCHER_FIELDS + LEGACY_SPONSOR_FIELDS + SIM_RACER_HUB_FIELDS
 
 BROADCAST_FIELD_LABELS = {
     "USE_OPENAI": "Use OpenAI Commentary",
@@ -145,8 +170,8 @@ BROADCAST_FIELD_LABELS = {
     "COLOR_VOICE_ID": "Jeff Voice ID",
     "PIT_VOICE_ID": "Sarah Voice ID",
     "OVERLAY_EVENT_TITLE": "Overlay Event Title",
-    "OVERLAY_RACE_SPONSOR": "Race Sponsor",
     "OVERLAY_SERIES_NAME": "Series Name",
+    "OVERLAY_SERIES_LOGO": "Series Logo",
     "OVERLAY_LEADERBOARD_STYLE": "Leaderboard Style",
     "OVERLAY_HOST": "Producer Assist Access",
     "REMOTE_PRODUCER_ENABLED": "Future Remote Relay",
@@ -155,11 +180,28 @@ BROADCAST_FIELD_LABELS = {
     "REMOTE_PRODUCER_PIN": "Remote Session PIN",
     "OVERLAY_BRAND_GRAPHICS": "Overlay Brand Graphics",
     "USE_SPONSOR_READS": "Use Sponsor Reads",
-    "SPONSOR_READ_NAME": "Spoken Sponsor 1",
-    "SPONSOR_READ_NAME_2": "Spoken Sponsor 2",
-    "SPONSOR_READ_NAME_3": "Spoken Sponsor 3",
     "SPONSOR_READ_CAUSE": "Cause / Awareness Read",
-    "SPONSOR_READ_MESSAGE": "Sponsor Read Script",
+    "SPONSOR_READ_CAUSE_LOGO": "Cause / Awareness Logo",
+    "RACE_SPONSOR_1_NAME": "Sponsor 1 Name",
+    "RACE_SPONSOR_1_LOGO": "Sponsor 1 Logo",
+    "RACE_SPONSOR_1_READ": "Sponsor 1 Spoken Read",
+    "RACE_SPONSOR_1_VIDEO": "Sponsor 1 Commercial Video",
+    "RACE_SPONSOR_2_NAME": "Sponsor 2 Name",
+    "RACE_SPONSOR_2_LOGO": "Sponsor 2 Logo",
+    "RACE_SPONSOR_2_READ": "Sponsor 2 Spoken Read",
+    "RACE_SPONSOR_2_VIDEO": "Sponsor 2 Commercial Video",
+    "RACE_SPONSOR_3_NAME": "Sponsor 3 Name",
+    "RACE_SPONSOR_3_LOGO": "Sponsor 3 Logo",
+    "RACE_SPONSOR_3_READ": "Sponsor 3 Spoken Read",
+    "RACE_SPONSOR_3_VIDEO": "Sponsor 3 Commercial Video",
+    "RACE_SPONSOR_4_NAME": "Sponsor 4 Name",
+    "RACE_SPONSOR_4_LOGO": "Sponsor 4 Logo",
+    "RACE_SPONSOR_4_READ": "Sponsor 4 Spoken Read",
+    "RACE_SPONSOR_4_VIDEO": "Sponsor 4 Commercial Video",
+    "RACE_SPONSOR_5_NAME": "Sponsor 5 Name",
+    "RACE_SPONSOR_5_LOGO": "Sponsor 5 Logo",
+    "RACE_SPONSOR_5_READ": "Sponsor 5 Spoken Read",
+    "RACE_SPONSOR_5_VIDEO": "Sponsor 5 Commercial Video",
     "USE_NATIONAL_ANTHEM": "Use RGC Anthem",
     "NATIONAL_ANTHEM_AUDIO": "RGC Anthem Audio",
     "NATIONAL_ANTHEM_GRAPHICS": "RGC Anthem Graphics",
@@ -190,9 +232,8 @@ BROADCAST_FIELD_LABELS = {
 BROADCAST_FIELD_SECTIONS = {
     "USE_OPENAI": "AI Commentary",
     "USE_ELEVENLABS": "Broadcaster Voices",
-    "OVERLAY_EVENT_TITLE": "Overlay Branding",
+    "OVERLAY_EVENT_TITLE": "Event Sponsors / Overlay Links",
     "REMOTE_PRODUCER_ENABLED": "Future Remote Relay",
-    "USE_SPONSOR_READS": "Sponsor Reads",
     "USE_NATIONAL_ANTHEM": "Practice / Qualifying / Caution Media",
     "POST_RACE_INTERVIEWS_ENABLED": "Race Flow",
     "RACE_ADMIN_MODE": "Race Control",
@@ -211,17 +252,34 @@ BROADCAST_FIELD_HELP = {
     "COLOR_VOICE_ID": "Jeff / analyst voice.",
     "PIT_VOICE_ID": "Sarah / pit road and strategy voice.",
     "OVERLAY_EVENT_TITLE": "Required for a polished overlay and Discord report title. Example: Autism Awareness 100.",
-    "OVERLAY_RACE_SPONSOR": "Main race sponsor shown on the overlay and used in sponsor reads.",
     "OVERLAY_SERIES_NAME": "League or series name. Example: WFO Wicked Wednesday Truck Series.",
+    "OVERLAY_SERIES_LOGO": "Logo for the series. It can rotate in the title with sponsor and cause logos.",
     "OVERLAY_LEADERBOARD_STYLE": "side keeps the NASCAR-style left leaderboard. ticker scrolls across the top under the title.",
     "OVERLAY_HOST": "Use 127.0.0.1 for this PC only. Use 0.0.0.0 when trusted helpers connect through Tailscale.",
-    "OVERLAY_BRAND_GRAPHICS": "Sponsor/brand logos used in the title rotation, anthem/practice presentation, and sponsor popups.",
+    "OVERLAY_BRAND_GRAPHICS": "Optional extra title graphics. Sponsor logos, series logo, and cause logo are added automatically.",
     "USE_SPONSOR_READS": "Lets the AI work sponsor mentions into pre-race, caution, and race-update moments.",
-    "SPONSOR_READ_NAME": "First spoken sponsor. This is the main sponsor read.",
-    "SPONSOR_READ_NAME_2": "Optional second spoken sponsor.",
-    "SPONSOR_READ_NAME_3": "Optional third spoken sponsor.",
-    "SPONSOR_READ_CAUSE": "Optional cause or awareness message paired with sponsor reads, such as Autism Awareness.",
-    "SPONSOR_READ_MESSAGE": "Optional exact sponsor script. Use {sponsor} and {cause}; leave blank for a natural AI-written read.",
+    "SPONSOR_READ_CAUSE": "Cause or awareness message added to the end of sponsor reads, such as Autism Awareness.",
+    "SPONSOR_READ_CAUSE_LOGO": "Logo for the cause/awareness message. It can rotate in the title and appear on sponsor popups.",
+    "RACE_SPONSOR_1_NAME": "First race sponsor. Sponsor reads, caution overlays, and title rotation use sponsors in this order.",
+    "RACE_SPONSOR_1_LOGO": "Logo for Sponsor 1.",
+    "RACE_SPONSOR_1_READ": "Optional exact spoken read for Sponsor 1. Use {sponsor} and {cause}; leave blank for AI to write it.",
+    "RACE_SPONSOR_1_VIDEO": "Optional commercial video path for a future commercial-break feature.",
+    "RACE_SPONSOR_2_NAME": "Second race sponsor.",
+    "RACE_SPONSOR_2_LOGO": "Logo for Sponsor 2.",
+    "RACE_SPONSOR_2_READ": "Optional exact spoken read for Sponsor 2.",
+    "RACE_SPONSOR_2_VIDEO": "Optional commercial video path for Sponsor 2.",
+    "RACE_SPONSOR_3_NAME": "Third race sponsor.",
+    "RACE_SPONSOR_3_LOGO": "Logo for Sponsor 3.",
+    "RACE_SPONSOR_3_READ": "Optional exact spoken read for Sponsor 3.",
+    "RACE_SPONSOR_3_VIDEO": "Optional commercial video path for Sponsor 3.",
+    "RACE_SPONSOR_4_NAME": "Fourth race sponsor.",
+    "RACE_SPONSOR_4_LOGO": "Logo for Sponsor 4.",
+    "RACE_SPONSOR_4_READ": "Optional exact spoken read for Sponsor 4.",
+    "RACE_SPONSOR_4_VIDEO": "Optional commercial video path for Sponsor 4.",
+    "RACE_SPONSOR_5_NAME": "Fifth race sponsor.",
+    "RACE_SPONSOR_5_LOGO": "Logo for Sponsor 5.",
+    "RACE_SPONSOR_5_READ": "Optional exact spoken read for Sponsor 5.",
+    "RACE_SPONSOR_5_VIDEO": "Optional commercial video path for Sponsor 5.",
     "USE_NATIONAL_ANTHEM": "Plays the configured RGC Anthem audio once during qualifying.",
     "NATIONAL_ANTHEM_AUDIO": "Audio file(s) for the RGC Anthem moment. MP3 or WAV is recommended.",
     "NATIONAL_ANTHEM_GRAPHICS": "Graphics shown during the anthem/qualifying presentation.",
@@ -251,7 +309,8 @@ IMPORTANT_SETUP_FIELDS = {
     "COLOR_VOICE_ID",
     "PIT_VOICE_ID",
     "OVERLAY_EVENT_TITLE",
-    "OVERLAY_BRAND_GRAPHICS",
+    "RACE_SPONSOR_1_NAME",
+    "RACE_SPONSOR_1_LOGO",
     "DISCORD_RACE_REPORT_WEBHOOK_URL",
     "LEAGUE_DRIVERS_CSV",
     "LEAGUE_SEASON_STATS_CSV",
@@ -264,8 +323,19 @@ INLINE_HELP_FIELDS = {
     "USE_ELEVENLABS",
     "ELEVENLABS_API_KEY",
     "OVERLAY_EVENT_TITLE",
+    "OVERLAY_SERIES_LOGO",
     "OVERLAY_BRAND_GRAPHICS",
     "USE_SPONSOR_READS",
+    "SPONSOR_READ_CAUSE",
+    "SPONSOR_READ_CAUSE_LOGO",
+    "RACE_SPONSOR_1_NAME",
+    "RACE_SPONSOR_1_LOGO",
+    "RACE_SPONSOR_1_READ",
+    "RACE_SPONSOR_1_VIDEO",
+    "RACE_SPONSOR_2_NAME",
+    "RACE_SPONSOR_2_LOGO",
+    "RACE_SPONSOR_2_READ",
+    "RACE_SPONSOR_2_VIDEO",
     "USE_NATIONAL_ANTHEM",
     "PRACTICE_MUSIC_PLAYLIST",
     "DISCORD_BOT_ENABLED",
@@ -410,6 +480,28 @@ def load_profile(profile_name, profile_dir=PROFILE_DIR):
 def launcher_defaults(existing=None):
     existing = existing or {}
     defaults = {key: existing.get(key, default) for key, default in SAVED_FIELDS}
+    if not defaults.get("RACE_SPONSOR_1_NAME"):
+        defaults["RACE_SPONSOR_1_NAME"] = (
+            existing.get("SPONSOR_READ_NAME")
+            or existing.get("OVERLAY_RACE_SPONSOR")
+            or ""
+        )
+    if not defaults.get("RACE_SPONSOR_2_NAME"):
+        defaults["RACE_SPONSOR_2_NAME"] = existing.get("SPONSOR_READ_NAME_2", "")
+    if not defaults.get("RACE_SPONSOR_3_NAME"):
+        defaults["RACE_SPONSOR_3_NAME"] = existing.get("SPONSOR_READ_NAME_3", "")
+    if not defaults.get("RACE_SPONSOR_1_READ"):
+        defaults["RACE_SPONSOR_1_READ"] = existing.get("SPONSOR_READ_MESSAGE", "")
+    if not defaults.get("OVERLAY_RACE_SPONSOR"):
+        defaults["OVERLAY_RACE_SPONSOR"] = defaults.get("RACE_SPONSOR_1_NAME", "")
+    if not defaults.get("SPONSOR_READ_NAME"):
+        defaults["SPONSOR_READ_NAME"] = defaults.get("RACE_SPONSOR_1_NAME", "")
+    if not defaults.get("SPONSOR_READ_NAME_2"):
+        defaults["SPONSOR_READ_NAME_2"] = defaults.get("RACE_SPONSOR_2_NAME", "")
+    if not defaults.get("SPONSOR_READ_NAME_3"):
+        defaults["SPONSOR_READ_NAME_3"] = defaults.get("RACE_SPONSOR_3_NAME", "")
+    if not defaults.get("SPONSOR_READ_MESSAGE"):
+        defaults["SPONSOR_READ_MESSAGE"] = defaults.get("RACE_SPONSOR_1_READ", "")
     if "STUDIO_VOLUME" not in existing and "PRACTICE_MUSIC_VOLUME" in existing:
         defaults["STUDIO_VOLUME"] = existing["PRACTICE_MUSIC_VOLUME"]
     return defaults
@@ -690,10 +782,23 @@ def build_first_time_setup_checklist(
         rows.append((name, state, detail, level))
 
     event_title = str(values.get("OVERLAY_EVENT_TITLE", "")).strip()
-    sponsor = str(values.get("OVERLAY_RACE_SPONSOR", "")).strip()
+    sponsor = str(
+        values.get("RACE_SPONSOR_1_NAME")
+        or values.get("OVERLAY_RACE_SPONSOR", "")
+    ).strip()
     graphics = [
         item.strip()
-        for item in str(values.get("OVERLAY_BRAND_GRAPHICS", "")).split(",")
+        for item in ",".join(
+            [
+                str(values.get("OVERLAY_BRAND_GRAPHICS", "")),
+                str(values.get("OVERLAY_SERIES_LOGO", "")),
+                str(values.get("SPONSOR_READ_CAUSE_LOGO", "")),
+                ",".join(
+                    str(values.get(f"RACE_SPONSOR_{index}_LOGO", ""))
+                    for index in range(1, 6)
+                ),
+            ]
+        ).split(",")
         if item.strip()
     ]
     if event_title and sponsor and graphics:
@@ -1685,6 +1790,38 @@ def run_gui():
             "the overlay title rotation",
         )
 
+    def choose_single_graphic_for_field(field_name, title, status_label):
+        paths = filedialog.askopenfilenames(
+            title=title,
+            filetypes=[
+                ("Image files", "*.png *.jpg *.jpeg *.webp *.gif *.svg"),
+                ("All files", "*.*"),
+            ],
+        )
+        asset_paths = install_overlay_brand_graphics(paths[:1])
+        if not asset_paths:
+            status.set("No graphic was copied. Choose a PNG, JPG, WEBP, GIF, or SVG file.")
+            return
+        field = entries[field_name]
+        field.delete(0, "end")
+        field.insert(0, asset_paths[0])
+        status.set(f"Set graphic for {status_label}.")
+
+    def choose_video_for_field(field_name, title, status_label):
+        path = filedialog.askopenfilename(
+            title=title,
+            filetypes=[
+                ("Video files", "*.mp4 *.mov *.mkv *.webm *.avi"),
+                ("All files", "*.*"),
+            ],
+        )
+        if not path:
+            return
+        field = entries[field_name]
+        field.delete(0, "end")
+        field.insert(0, path)
+        status.set(f"Set commercial video for {status_label}. Video playback will be wired into a future commercial-break feature.")
+
     def choose_practice_music():
         paths = filedialog.askopenfilenames(
             title="Choose practice music files",
@@ -1744,6 +1881,51 @@ def run_gui():
         command=choose_brand_graphics,
         color="#334b64",
     ).grid(row=settings_rows_by_key["OVERLAY_BRAND_GRAPHICS"], column=2, padx=(8, 0), sticky="w")
+    button(
+        settings_frame,
+        text="Choose Logo",
+        command=lambda: choose_single_graphic_for_field(
+            "OVERLAY_SERIES_LOGO",
+            "Choose series logo",
+            "the series",
+        ),
+        color="#334b64",
+    ).grid(row=settings_rows_by_key["OVERLAY_SERIES_LOGO"], column=2, padx=(8, 0), sticky="w")
+    button(
+        settings_frame,
+        text="Choose Logo",
+        command=lambda: choose_single_graphic_for_field(
+            "SPONSOR_READ_CAUSE_LOGO",
+            "Choose cause / awareness logo",
+            "the cause / awareness sponsor",
+        ),
+        color="#334b64",
+    ).grid(row=settings_rows_by_key["SPONSOR_READ_CAUSE_LOGO"], column=2, padx=(8, 0), sticky="w")
+    for sponsor_index in range(1, 6):
+        logo_key = f"RACE_SPONSOR_{sponsor_index}_LOGO"
+        video_key = f"RACE_SPONSOR_{sponsor_index}_VIDEO"
+        if logo_key in settings_rows_by_key:
+            button(
+                settings_frame,
+                text="Choose Logo",
+                command=lambda key=logo_key, index=sponsor_index: choose_single_graphic_for_field(
+                    key,
+                    f"Choose Sponsor {index} logo",
+                    f"Sponsor {index}",
+                ),
+                color="#334b64",
+            ).grid(row=settings_rows_by_key[logo_key], column=2, padx=(8, 0), sticky="w")
+        if video_key in settings_rows_by_key:
+            button(
+                settings_frame,
+                text="Choose Video",
+                command=lambda key=video_key, index=sponsor_index: choose_video_for_field(
+                    key,
+                    f"Choose Sponsor {index} commercial video",
+                    f"Sponsor {index}",
+                ),
+                color="#334b64",
+            ).grid(row=settings_rows_by_key[video_key], column=2, padx=(8, 0), sticky="w")
     button(
         settings_frame,
         text="Copy Remote Link",
@@ -1806,6 +1988,11 @@ def run_gui():
     def collect_values():
         values = {key: entry.get().strip() for key, entry in entries.items()}
         values["STUDIO_VOLUME"] = str(int(volume_var.get()))
+        values["OVERLAY_RACE_SPONSOR"] = values.get("RACE_SPONSOR_1_NAME", "")
+        values["SPONSOR_READ_NAME"] = values.get("RACE_SPONSOR_1_NAME", "")
+        values["SPONSOR_READ_NAME_2"] = values.get("RACE_SPONSOR_2_NAME", "")
+        values["SPONSOR_READ_NAME_3"] = values.get("RACE_SPONSOR_3_NAME", "")
+        values["SPONSOR_READ_MESSAGE"] = values.get("RACE_SPONSOR_1_READ", "")
         for key, widget in sim_racer_hub_state["entries"].items():
             values[key] = widget.get().strip()
         career_mode = sim_racer_hub_state.get("career_mode")

@@ -186,16 +186,20 @@ The no-dependency Remote Producer relay is a future/advanced path, not the curre
 
 Producer Assist also includes an optional Race Control panel for hosted-race admins. Keep `RACE_ADMIN_MODE=false` unless the broadcaster PC is an iRacing admin in the hosted session. In broadcast-safe mode, Race Control copies the iRacing admin command, such as `!yellow` or `!eol #34`, so the admin can send it without the program popping the iRacing chat box on stream. `RACE_ADMIN_SEND_MODE=open_chat` copies the command and opens iRacing text chat for quick Ctrl+V/Enter. `RACE_ADMIN_SEND_MODE=ui_paste` is testing-only and may show iRacing chat/window on the broadcast. Dangerous actions use confirmation prompts and every command is logged to Producer Feed.
 
-Optional sponsor reads can use the same sponsor or a specific read:
+Optional sponsor reads now use the race sponsor slots in the Studio:
 
 ```text
 USE_SPONSOR_READS=true
-SPONSOR_READ_NAME=RGC Motorsports
+RACE_SPONSOR_1_NAME=RGC Motorsports
+RACE_SPONSOR_1_LOGO=/assets/rgc_motorsports.png
+RACE_SPONSOR_1_READ=
+RACE_SPONSOR_2_NAME=
+RACE_SPONSOR_2_LOGO=
 SPONSOR_READ_CAUSE=Autism Awareness
-SPONSOR_READ_MESSAGE=
+SPONSOR_READ_CAUSE_LOGO=/assets/autism_awareness.png
 ```
 
-When enabled, the broadcast can place short sponsor mentions after the pre-race field rundown and during natural caution breaks after replay or pit-road coverage.
+When enabled, the broadcast rotates up to five race sponsors in order after the pre-race field rundown, during natural caution breaks after replay or pit-road coverage, and during race-update sponsor reads. If a sponsor-specific read is blank, the AI writes a natural read. The cause/awareness message is added to sponsor calls.
 
 Optional RGC Anthem ceremony:
 

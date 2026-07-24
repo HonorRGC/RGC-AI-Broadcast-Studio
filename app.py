@@ -9,7 +9,10 @@ from config import (
     OVERLAY_HOST,
     OVERLAY_RACE_SPONSOR,
     RACE_ADMIN_MODE,
+    RACE_SPONSOR_GRAPHICS,
+    RACE_SPONSOR_NAMES,
     SPONSOR_READ_CAUSE,
+    SPONSOR_READ_CAUSE_LOGO,
     SPONSOR_READ_NAME,
     SPONSOR_READ_NAME_2,
     SPONSOR_READ_NAME_3,
@@ -1710,6 +1713,7 @@ def sponsor_mentions_for_message(message):
 def configured_sponsor_names():
     names = []
     for raw in (
+        *RACE_SPONSOR_NAMES,
         SPONSOR_READ_NAME,
         SPONSOR_READ_NAME_2,
         SPONSOR_READ_NAME_3,
@@ -1755,10 +1759,15 @@ def sponsor_graphics_for_mentions(mentions):
 
 def sponsor_graphic_for_mention(mention):
     mention_text = normalize_sponsor_text(mention)
+    for sponsor_name, graphic in RACE_SPONSOR_GRAPHICS.items():
+        if sponsor_name_matches_text(sponsor_name, mention.lower()):
+            return graphic
     graphic = find_brand_graphic_for_name(mention)
     if graphic:
         return graphic
     if "autism" in mention_text:
+        if SPONSOR_READ_CAUSE_LOGO:
+            return SPONSOR_READ_CAUSE_LOGO
         return find_brand_graphic(("autism",), "/assets/autism_awareness.png")
     if "rgc" in mention_text:
         return find_brand_graphic(("rgc", "motor"), "/assets/rgc_motorsports.png")
@@ -1769,6 +1778,9 @@ def find_brand_graphic_for_name(name):
     name_tokens = sponsor_tokens(name)
     if not name_tokens:
         return ""
+    for sponsor_name, graphic in RACE_SPONSOR_GRAPHICS.items():
+        if sponsor_name_matches_text(sponsor_name, str(name or "").lower()):
+            return graphic
     best_graphic = ""
     best_score = 0
     for graphic in OVERLAY_BRAND_GRAPHICS:

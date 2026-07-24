@@ -244,7 +244,30 @@ Use:
 
 The driver import is designed to preserve manual notes. That means you can add hometown, sponsor, team, driving style, or other notes later without the import wiping them out.
 
-## 10. Save settings and create a profile
+## 10. Set up event sponsors
+
+In **Broadcast Settings**, use the **Event Sponsors / Overlay Links** section.
+
+Recommended setup:
+
+```text
+Overlay Event Title = race name
+Series Name = league or series name
+Series Logo = optional series logo
+Cause / Awareness Read = optional cause, such as Autism Awareness
+Cause / Awareness Logo = optional cause logo
+Sponsor 1 Name / Logo / Spoken Read / Commercial Video
+Sponsor 2 Name / Logo / Spoken Read / Commercial Video
+Sponsor 3 Name / Logo / Spoken Read / Commercial Video
+Sponsor 4 Name / Logo / Spoken Read / Commercial Video
+Sponsor 5 Name / Logo / Spoken Read / Commercial Video
+```
+
+Sponsor names are used in order for spoken reads during pre-race, caution breaks, and race updates. Sponsor logos rotate in the title overlay and are shown when a sponsor is mentioned. If a sponsor read is blank, the AI writes a natural sponsor mention. If a cause/awareness read is set, it is added to sponsor calls. Commercial video paths are saved for a future commercial-break feature.
+
+The **Streamlabs / OBS Link** and **Producer Assist Link** are in this same section so the overlay setup stays near the event branding.
+
+## 11. Save settings and create a profile
 
 After filling out the launcher:
 
@@ -266,7 +289,7 @@ Profiles are useful because you can keep separate setups, such as:
 
 Before race night, load the correct profile and check the Broadcast Health panel.
 
-## 11. Start the broadcast
+## 12. Start the broadcast
 
 Start Broadcast launches:
 

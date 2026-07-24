@@ -85,10 +85,11 @@ def test_broadcast_settings_have_friendly_labels_and_sections():
     assert BROADCAST_FIELD_LABELS["USE_OPENAI"] == "Use OpenAI Commentary"
     assert BROADCAST_FIELD_LABELS["OVERLAY_EVENT_TITLE"] == "Overlay Event Title"
     assert BROADCAST_FIELD_LABELS["OVERLAY_LEADERBOARD_STYLE"] == "Leaderboard Style"
-    assert BROADCAST_FIELD_LABELS["SPONSOR_READ_NAME"] == "Spoken Sponsor 1"
-    assert BROADCAST_FIELD_LABELS["SPONSOR_READ_NAME_2"] == "Spoken Sponsor 2"
-    assert BROADCAST_FIELD_LABELS["SPONSOR_READ_NAME_3"] == "Spoken Sponsor 3"
-    assert BROADCAST_FIELD_LABELS["SPONSOR_READ_MESSAGE"] == "Sponsor Read Script"
+    assert BROADCAST_FIELD_LABELS["RACE_SPONSOR_1_NAME"] == "Sponsor 1 Name"
+    assert BROADCAST_FIELD_LABELS["RACE_SPONSOR_1_LOGO"] == "Sponsor 1 Logo"
+    assert BROADCAST_FIELD_LABELS["RACE_SPONSOR_1_READ"] == "Sponsor 1 Spoken Read"
+    assert BROADCAST_FIELD_LABELS["RACE_SPONSOR_1_VIDEO"] == "Sponsor 1 Commercial Video"
+    assert BROADCAST_FIELD_LABELS["SPONSOR_READ_CAUSE_LOGO"] == "Cause / Awareness Logo"
     assert BROADCAST_FIELD_LABELS["RACE_ADMIN_MODE"] == "Race Admin Mode"
     assert BROADCAST_FIELD_LABELS["RACE_ADMIN_SEND_MODE"] == "Race Admin Send Mode"
     assert BROADCAST_FIELD_LABELS["DISCORD_BOT_ENABLED"] == "Discord Bot Integration"
@@ -102,11 +103,12 @@ def test_broadcast_settings_have_friendly_labels_and_sections():
     assert "OPENAI_API_KEY" in IMPORTANT_SETUP_FIELDS
     assert "STUDIO_VOLUME" not in BROADCAST_FIELD_LABELS
     assert BROADCAST_FIELD_SECTIONS["USE_OPENAI"] == "AI Commentary"
-    assert BROADCAST_FIELD_SECTIONS["OVERLAY_EVENT_TITLE"] == "Overlay Branding"
+    assert BROADCAST_FIELD_SECTIONS["OVERLAY_EVENT_TITLE"] == "Event Sponsors / Overlay Links"
     assert BROADCAST_FIELD_SECTIONS["RACE_ADMIN_MODE"] == "Race Control"
     assert BROADCAST_FIELD_SECTIONS["DISCORD_BOT_ENABLED"] == "Discord Interviews - Prepared for Later"
     assert BROADCAST_FIELD_SECTIONS["DISCORD_RACE_REPORT_ENABLED"] == "Discord Race Report"
     saved_keys = [key for key, _default in LAUNCHER_FIELDS]
+    assert "RACE_SPONSOR_5_VIDEO" in saved_keys
     assert "DISCORD_RACE_REPORT_RESULTS_URL" in saved_keys
     assert "DISCORD_RACE_REPORT_CHAMPIONSHIP_URL" in saved_keys
 
@@ -157,9 +159,9 @@ def test_launcher_defaults_include_split_league_stats_csvs():
     assert defaults["DISCORD_RACE_REPORT_WEBHOOK_URL"] == ""
     assert defaults["DISCORD_RACE_REPORT_USE_OPENAI"] == "true"
     assert defaults["OVERLAY_LEADERBOARD_STYLE"] == "side"
-    assert defaults["SPONSOR_READ_NAME_2"] == ""
-    assert defaults["SPONSOR_READ_NAME_3"] == ""
-    assert defaults["SPONSOR_READ_MESSAGE"] == ""
+    assert defaults["RACE_SPONSOR_2_NAME"] == ""
+    assert defaults["RACE_SPONSOR_3_NAME"] == ""
+    assert defaults["RACE_SPONSOR_1_READ"] == ""
     assert "/assets/rgc_motorsports.png" in defaults["OVERLAY_BRAND_GRAPHICS"]
     assert defaults["PRACTICE_MUSIC_PLAYLIST"] == ""
     assert defaults["STUDIO_VOLUME"] == "65"
@@ -345,6 +347,20 @@ def test_launcher_migrates_old_practice_music_volume_to_studio_volume():
     assert defaults["STUDIO_VOLUME"] == "42"
 
 
+def test_launcher_migrates_old_sponsor_fields_to_new_slots():
+    defaults = launcher_defaults(
+        {
+            "OVERLAY_RACE_SPONSOR": "RGC Motorsports",
+            "SPONSOR_READ_NAME_2": "Autism Awareness",
+            "SPONSOR_READ_MESSAGE": "Presented by {sponsor}.",
+        }
+    )
+
+    assert defaults["RACE_SPONSOR_1_NAME"] == "RGC Motorsports"
+    assert defaults["RACE_SPONSOR_2_NAME"] == "Autism Awareness"
+    assert defaults["RACE_SPONSOR_1_READ"] == "Presented by {sponsor}."
+
+
 def test_launcher_saves_known_settings(tmp_path):
     env_path = tmp_path / ".env"
 
@@ -353,8 +369,8 @@ def test_launcher_saves_known_settings(tmp_path):
             "USE_OPENAI": "false",
             "OVERLAY_EVENT_TITLE": "League Race",
             "LEAGUE_SEASON_STATS_CSV": "league/season.csv",
-            "SPONSOR_READ_NAME_2": "Second Sponsor",
-            "SPONSOR_READ_MESSAGE": "Presented by {sponsor}.",
+            "RACE_SPONSOR_2_NAME": "Second Sponsor",
+            "RACE_SPONSOR_1_READ": "Presented by {sponsor}.",
         },
         env_path,
     )
@@ -363,8 +379,8 @@ def test_launcher_saves_known_settings(tmp_path):
     assert "USE_OPENAI=false" in saved
     assert "OVERLAY_EVENT_TITLE=League Race" in saved
     assert "LEAGUE_SEASON_STATS_CSV=league/season.csv" in saved
-    assert "SPONSOR_READ_NAME_2=Second Sponsor" in saved
-    assert "SPONSOR_READ_MESSAGE=Presented by {sponsor}." in saved
+    assert "RACE_SPONSOR_2_NAME=Second Sponsor" in saved
+    assert "RACE_SPONSOR_1_READ=Presented by {sponsor}." in saved
 
 
 def test_launcher_saves_sim_racer_hub_settings(tmp_path):

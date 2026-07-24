@@ -45,7 +45,7 @@ def test_caution_sponsor_reads_are_capped_and_once_per_lap():
     assert second_caution is None
 
 
-def test_sponsor_reads_rotate_up_to_three_spoken_sponsors_in_order():
+def test_sponsor_reads_rotate_spoken_sponsors_in_order():
     director = SponsorReadDirector(
         sponsor_names=["Sponsor One", "Sponsor Two", "Sponsor Three"],
         cause="Community Night",
@@ -59,6 +59,33 @@ def test_sponsor_reads_rotate_up_to_three_spoken_sponsors_in_order():
     assert opening == "Sponsor One is supporting Community Night."
     assert first_caution == "Sponsor Two is supporting Community Night."
     assert second_caution == "Sponsor Three is supporting Community Night."
+
+
+def test_sponsor_reads_support_five_sponsors_and_per_sponsor_scripts():
+    director = SponsorReadDirector(
+        sponsor_names=["One", "Two", "Three", "Four", "Five"],
+        sponsor_reads={
+            "One": "{sponsor} brings you the opening laps.",
+            "Two": "{sponsor} keeps us rolling.",
+        },
+        cause="Autism Awareness",
+        max_caution_reads=5,
+    )
+
+    messages = [
+        director.opening_read(),
+        director.caution_read(current_lap=10),
+        director.caution_read(current_lap=20),
+        director.caution_read(current_lap=30),
+        director.caution_read(current_lap=40),
+    ]
+
+    assert "One brings you the opening laps." in messages[0]
+    assert "Two keeps us rolling." in messages[1]
+    assert "Three" in messages[2]
+    assert "Four" in messages[3]
+    assert "Five" in messages[4]
+    assert all("Autism Awareness" in message for message in messages)
 
 
 def test_sponsor_read_custom_script_supports_tokens():
