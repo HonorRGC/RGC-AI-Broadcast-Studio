@@ -13,6 +13,20 @@ def test_commentary_cleaner_removes_broadcast_angle_label():
     assert "Broadcast angle" not in cleaned
 
 
+def test_commentary_cleaner_removes_live_battle_prompt_leakage():
+    cleaner = CommentaryCleaner()
+
+    cleaned = cleaner.clean(
+        "Use confident but careful wording: the pass looks complete live, "
+        "while official scoring may take a moment to update. T.J. Lee has "
+        "cleared the 24 on the outside."
+    )
+
+    assert cleaned == "T.J. Lee has cleared the 24 on the outside."
+    assert "confident but careful" not in cleaned
+    assert "official scoring" not in cleaned
+
+
 def test_commentary_cleaner_removes_broadcaster_script_prefixes():
     cleaner = CommentaryCleaner()
 

@@ -165,9 +165,8 @@ class LiveBattleDetector:
                 headline=f"{challenger_label} has the advantage for {self.ordinal(position)}.",
                 summary=(
                     f"{challenger_label} appears to have cleared {leader_label} "
-                    f"for {self.ordinal(position)} on track. Use confident but "
-                    "careful wording: the pass looks complete live, while official "
-                    "scoring may take a moment to update."
+                    f"for {self.ordinal(position)} on track. The pass looks "
+                    "complete as they run."
                 ),
                 importance=self.importance_for_position(position, total_laps, current_lap) + 1,
                 primary_car_idx=challenger["car_idx"],

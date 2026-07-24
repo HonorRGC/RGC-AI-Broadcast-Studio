@@ -82,6 +82,13 @@ class CommentaryCleaner:
             r"\bConfidence:\s*\d+\s*percent\.?",
             r"\bBroadcast angle:\s*[^.?!]+[.?!]?",
             r"\bBroadcast Angle:\s*[^.?!]+[.?!]?",
+            r"\bUse confident but careful wording:\s*[^.?!]+[.?!]?",
+            r"\bUse confident but careful language\.?",
+            r"\bconfident but careful wording[:,]?\s*",
+            r"\bconfident but careful language[:,]?\s*",
+            r"\bwithout mentioning telemetry, confidence, leaderboard delay, or official scoring delay\.?",
+            r"\bwithout mentioning telemetry, confidence, or official scoring delay\.?",
+            r"\bofficial scoring delay\.?",
             r"\bHe is currently the biggest mover in the field\.?",
             r"\bShe is currently the biggest mover in the field\.?",
         ]

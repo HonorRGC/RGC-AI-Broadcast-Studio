@@ -55,11 +55,11 @@ class BroadcastStoryProducer:
 
         if story_type in {"live_side_by_side", "live_three_wide", "live_pass_clear"}:
             notes.append(
-                "This is a live on-track battle read. Use confident but careful "
-                "language. If the summary says the spot is not settled, do not "
-                "declare the pass complete. If the summary says the pass looks "
-                "clear, say it looks complete on track without mentioning "
-                "telemetry, confidence, or official scoring delay."
+                "This is a live on-track battle read. If the summary says the "
+                "spot is not settled, do not declare the pass complete. If the "
+                "summary says the pass looks clear, call it naturally as an "
+                "on-track move without mentioning scoring systems or internal "
+                "confidence language."
             )
 
         if story_type.startswith("formation_"):
