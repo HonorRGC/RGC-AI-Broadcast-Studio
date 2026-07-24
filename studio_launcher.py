@@ -84,10 +84,6 @@ LAUNCHER_FIELDS = [
     ("OVERLAY_SERIES_LOGO", ""),
     ("OVERLAY_LEADERBOARD_STYLE", "side"),
     ("OVERLAY_HOST", "127.0.0.1"),
-    (
-        "OVERLAY_BRAND_GRAPHICS",
-        "/assets/rgc_motorsports.png,/assets/autism_awareness.png,/assets/keep_it_real.webp",
-    ),
     ("USE_SPONSOR_READS", "true"),
     ("SPONSOR_READ_CAUSE", ""),
     ("SPONSOR_READ_CAUSE_LOGO", ""),
@@ -157,6 +153,10 @@ SIM_RACER_HUB_FIELDS = [
 ]
 
 LEGACY_SPONSOR_FIELDS = [
+    (
+        "OVERLAY_BRAND_GRAPHICS",
+        "/assets/rgc_motorsports.png,/assets/autism_awareness.png,/assets/keep_it_real.webp",
+    ),
     ("OVERLAY_RACE_SPONSOR", ""),
     ("SPONSOR_READ_NAME", ""),
     ("SPONSOR_READ_NAME_2", ""),
@@ -184,7 +184,6 @@ BROADCAST_FIELD_LABELS = {
     "REMOTE_PRODUCER_RELAY_URL": "Future Relay Server URL",
     "REMOTE_PRODUCER_SESSION_CODE": "Remote Session Code",
     "REMOTE_PRODUCER_PIN": "Remote Session PIN",
-    "OVERLAY_BRAND_GRAPHICS": "Overlay Brand Graphics",
     "USE_SPONSOR_READS": "Use Sponsor Reads",
     "SPONSOR_READ_CAUSE": "Cause / Awareness Read",
     "SPONSOR_READ_CAUSE_LOGO": "Cause / Awareness Logo",
@@ -262,14 +261,13 @@ BROADCAST_FIELD_HELP = {
     "OVERLAY_SERIES_LOGO": "Logo for the series. It can rotate in the title with sponsor and cause logos.",
     "OVERLAY_LEADERBOARD_STYLE": "side keeps the NASCAR-style left leaderboard. ticker scrolls across the top under the title.",
     "OVERLAY_HOST": "Use 127.0.0.1 for this PC only. Use 0.0.0.0 when trusted helpers connect through Tailscale.",
-    "OVERLAY_BRAND_GRAPHICS": "Optional extra title graphics. Sponsor logos, series logo, and cause logo are added automatically.",
     "USE_SPONSOR_READS": "Lets the AI work sponsor mentions into pre-race, caution, and race-update moments.",
     "SPONSOR_READ_CAUSE": "Cause or awareness message added to the end of sponsor reads, such as Autism Awareness.",
     "SPONSOR_READ_CAUSE_LOGO": "Logo for the cause/awareness message. It can rotate in the title and appear on sponsor popups.",
     "RACE_SPONSOR_1_NAME": "First race sponsor. Sponsor reads, caution overlays, and title rotation use sponsors in this order.",
     "RACE_SPONSOR_1_LOGO": "Logo for Sponsor 1.",
     "RACE_SPONSOR_1_READ": "Optional exact spoken read for Sponsor 1. Use {sponsor} and {cause}; leave blank for AI to write it.",
-    "RACE_SPONSOR_1_VIDEO": "Optional commercial video path for a future commercial-break feature.",
+    "RACE_SPONSOR_1_VIDEO": "Optional commercial video. When this sponsor is read, the Studio can play it full screen over the broadcast.",
     "RACE_SPONSOR_2_NAME": "Second race sponsor.",
     "RACE_SPONSOR_2_LOGO": "Logo for Sponsor 2.",
     "RACE_SPONSOR_2_READ": "Optional exact spoken read for Sponsor 2.",
@@ -330,7 +328,6 @@ INLINE_HELP_FIELDS = {
     "ELEVENLABS_API_KEY",
     "OVERLAY_EVENT_TITLE",
     "OVERLAY_SERIES_LOGO",
-    "OVERLAY_BRAND_GRAPHICS",
     "USE_SPONSOR_READS",
     "SPONSOR_READ_CAUSE",
     "SPONSOR_READ_CAUSE_LOGO",
@@ -796,7 +793,6 @@ def build_first_time_setup_checklist(
         item.strip()
         for item in ",".join(
             [
-                str(values.get("OVERLAY_BRAND_GRAPHICS", "")),
                 str(values.get("OVERLAY_SERIES_LOGO", "")),
                 str(values.get("SPONSOR_READ_CAUSE_LOGO", "")),
                 ",".join(
@@ -923,6 +919,17 @@ def sanitize_asset_name(path):
     return f"{stem}{suffix}"
 
 
+def sanitize_video_asset_name(path):
+    source = Path(path)
+    stem = re.sub(r"[^A-Za-z0-9_-]+", "_", source.stem).strip("_").lower()
+    suffix = source.suffix.lower()
+    if not stem:
+        stem = "sponsor_commercial"
+    if suffix not in {".mp4", ".mov", ".mkv", ".webm", ".avi"}:
+        suffix = ".mp4"
+    return f"{stem}{suffix}"
+
+
 def install_overlay_brand_graphics(paths, static_dir=STATIC_ASSET_DIR):
     static_dir = Path(static_dir)
     static_dir.mkdir(parents=True, exist_ok=True)
@@ -941,6 +948,21 @@ def install_overlay_brand_graphics(paths, static_dir=STATIC_ASSET_DIR):
         asset_paths.append(f"/assets/{target.name}")
 
     return asset_paths
+
+
+def install_overlay_commercial_video(path, static_dir=STATIC_ASSET_DIR):
+    if not path:
+        return ""
+    source = Path(path)
+    if not source.exists() or not source.is_file():
+        return ""
+
+    static_dir = Path(static_dir)
+    static_dir.mkdir(parents=True, exist_ok=True)
+    target = static_dir / sanitize_video_asset_name(source)
+    if source.resolve() != target.resolve():
+        shutil.copyfile(source, target)
+    return f"/assets/{target.name}"
 
 
 def format_playlist_paths(paths):
@@ -1688,7 +1710,7 @@ def run_gui():
                 "Later, each league can add its own bot token, server ID, booth channel, waiting room, and interview channel."
             )
 
-        if key == "OVERLAY_BRAND_GRAPHICS":
+        if key == "SPONSOR_READ_CAUSE_LOGO":
             label(
                 settings_frame,
                 text="Streamlabs / OBS Link",
@@ -1789,13 +1811,6 @@ def run_gui():
         field.insert(0, ",".join(asset_paths))
         status.set(f"Added {len(asset_paths)} graphic(s) for {status_label}.")
 
-    def choose_brand_graphics():
-        choose_graphics_for_field(
-            "OVERLAY_BRAND_GRAPHICS",
-            "Choose sponsor / brand logos for the overlay title",
-            "the overlay title rotation",
-        )
-
     def choose_single_graphic_for_field(field_name, title, status_label):
         paths = filedialog.askopenfilenames(
             title=title,
@@ -1823,10 +1838,14 @@ def run_gui():
         )
         if not path:
             return
+        asset_path = install_overlay_commercial_video(path)
+        if not asset_path:
+            status.set("No video was copied. Choose an MP4, MOV, MKV, WEBM, or AVI file.")
+            return
         field = entries[field_name]
         field.delete(0, "end")
-        field.insert(0, path)
-        status.set(f"Set commercial video for {status_label}. Video playback will be wired into a future commercial-break feature.")
+        field.insert(0, asset_path)
+        status.set(f"Set commercial video for {status_label}. It will play full-screen when that sponsor read is used.")
 
     def choose_practice_music():
         paths = filedialog.askopenfilenames(
@@ -1881,12 +1900,6 @@ def run_gui():
             return
         status.set(f"Set {field_name}. Save settings before starting.")
 
-    button(
-        settings_frame,
-        text="Choose Sponsor Logos",
-        command=choose_brand_graphics,
-        color="#334b64",
-    ).grid(row=settings_rows_by_key["OVERLAY_BRAND_GRAPHICS"], column=2, padx=(8, 0), sticky="w")
     button(
         settings_frame,
         text="Choose Logo",

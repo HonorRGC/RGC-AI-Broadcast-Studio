@@ -485,6 +485,7 @@ def test_overlay_special_presentation_updates_state_immediately():
         title="Crank It Up",
         subtitle="Presented by RGC Motorsports",
         graphics=["/assets/rgc_motorsports.png", "/assets/crank_it_up.png"],
+        video_url="/assets/rgc_ad.mp4",
         duration=28,
     )
     state = server.current_state_dict()
@@ -494,6 +495,7 @@ def test_overlay_special_presentation_updates_state_immediately():
         "/assets/rgc_motorsports.png",
         "/assets/crank_it_up.png",
     ]
+    assert state["special_presentation"]["video_url"] == "/assets/rgc_ad.mp4"
 
 
 def test_overlay_preserves_stat_panel():

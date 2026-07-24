@@ -200,15 +200,36 @@ RACE_SPONSOR_GRAPHICS = {
     )
     if name and logo
 }
-OVERLAY_BRAND_GRAPHICS = unique_list(
-    env_list(
-        "OVERLAY_BRAND_GRAPHICS",
-        "/assets/rgc_motorsports.png,/assets/autism_awareness.png,/assets/keep_it_real.webp",
+RACE_SPONSOR_VIDEOS = {
+    name: video
+    for name, video in zip(
+        [
+            RACE_SPONSOR_1_NAME,
+            RACE_SPONSOR_2_NAME,
+            RACE_SPONSOR_3_NAME,
+            RACE_SPONSOR_4_NAME,
+            RACE_SPONSOR_5_NAME,
+        ],
+        [
+            RACE_SPONSOR_1_VIDEO,
+            RACE_SPONSOR_2_VIDEO,
+            RACE_SPONSOR_3_VIDEO,
+            RACE_SPONSOR_4_VIDEO,
+            RACE_SPONSOR_5_VIDEO,
+        ],
     )
+    if name and video
+}
+_DEFAULT_BRAND_GRAPHICS = env_list(
+    "OVERLAY_BRAND_GRAPHICS",
+    "/assets/rgc_motorsports.png,/assets/autism_awareness.png,/assets/keep_it_real.webp",
+)
+_SPONSOR_BRAND_GRAPHICS = unique_list(
+    RACE_SPONSOR_LOGOS
     + [OVERLAY_SERIES_LOGO]
-    + RACE_SPONSOR_LOGOS
     + [SPONSOR_READ_CAUSE_LOGO]
 )
+OVERLAY_BRAND_GRAPHICS = _SPONSOR_BRAND_GRAPHICS or _DEFAULT_BRAND_GRAPHICS
 NATIONAL_ANTHEM_GRAPHICS = [
     item.strip()
     for item in os.getenv("NATIONAL_ANTHEM_GRAPHICS", ",".join(OVERLAY_BRAND_GRAPHICS)).split(",")

@@ -46,7 +46,7 @@ python studio_launcher.py
 
 The launcher can save the main `.env` settings, create `league\drivers.csv`, `league\season.csv`, and `league\career.csv` from the examples, and start the broadcast engine. Use `Start Broadcast` for AI or human-broadcaster workflows: the overlay, Producer Assist control room, cameras, and incident replay all launch together. Producer Assist can turn OpenAI, ElevenLabs, and auto cameras on or off while the broadcast is running. Use `Stop Broadcast` to stop a broadcast launched from the program.
 
-Use `Choose Sponsor Logos` to copy sponsor or league graphics into the overlay assets folder and update the title-logo rotation shown in the upper-left of the broadcast overlay.
+Use each sponsor slot’s `Choose Logo` button to copy one sponsor graphic into the overlay assets folder. The title-logo rotation follows Sponsor 1 through Sponsor 5 in order, with the series and cause logos added from their own fields.
 
 Practice music, RGC Anthem audio, caution replay audio, and presentation graphics can also be selected in the launcher. These local audio files play through hidden Windows audio controls so testers do not get a media-player window popping up on the desktop. MP3 or WAV files are recommended; OGA/OGG files are not supported by the hidden Windows player. Practice music loops through the playlist until practice ends. The RGC Anthem remains a one-time qualifying ceremony and can play multiple selected songs once in order. Use semicolons between multiple songs if editing a playlist manually.
 Use the **Studio Volume** slider in the launcher to control program audio, including practice music, RGC Anthem audio, caution replay audio, and ElevenLabs voice playback. The slider is a percentage from 0 to 100.
@@ -173,7 +173,8 @@ REMOTE_PRODUCER_ENABLED=false
 REMOTE_PRODUCER_RELAY_URL=
 REMOTE_PRODUCER_SESSION_CODE=
 REMOTE_PRODUCER_PIN=
-OVERLAY_BRAND_GRAPHICS=/assets/rgc_motorsports.png,/assets/autism_awareness.png,/assets/keep_it_real.webp
+RACE_SPONSOR_1_LOGO=/assets/rgc_motorsports.png
+RACE_SPONSOR_2_LOGO=/assets/autism_awareness.png
 CRANK_IT_UP_SPONSOR_GRAPHIC=/assets/rgc_motorsports.png
 CRANK_IT_UP_ICON_GRAPHIC=/assets/crank_it_up.png
 ```

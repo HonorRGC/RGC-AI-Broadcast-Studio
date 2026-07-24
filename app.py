@@ -11,6 +11,7 @@ from config import (
     RACE_ADMIN_MODE,
     RACE_SPONSOR_GRAPHICS,
     RACE_SPONSOR_NAMES,
+    RACE_SPONSOR_VIDEOS,
     SPONSOR_READ_CAUSE,
     SPONSOR_READ_CAUSE_LOGO,
     SPONSOR_READ_NAME,
@@ -351,6 +352,7 @@ def run_source(
                 if not getattr(item, "silent", False):
                     prefade_music_before_restart_call(item, caution_audio_bed)
                     broadcast_with_actual_timing(booth, engine, item)
+                    show_sponsor_commercial_if_available(item, overlay_server)
                 else:
                     report_silent_feature(item, overlay_server)
                 camera_decision = camera_director.follow(item, source)
@@ -387,6 +389,7 @@ def run_source(
                 if not getattr(item, "silent", False):
                     prefade_music_before_restart_call(item, caution_audio_bed)
                     broadcast_with_actual_timing(booth, engine, item)
+                    show_sponsor_commercial_if_available(item, overlay_server)
                 else:
                     report_silent_feature(item, overlay_server)
 
@@ -1701,6 +1704,36 @@ def show_sponsor_mention_bug(item, overlay_server):
     return True
 
 
+def show_sponsor_commercial_if_available(item, overlay_server):
+    if not overlay_server:
+        return False
+    if str(getattr(item, "category", "") or "") != "sponsor_read":
+        return False
+    mentions = sponsor_mentions_for_message(getattr(item, "message", ""))
+    if not mentions:
+        return False
+    video_url = sponsor_video_for_mentions(mentions)
+    if not video_url:
+        return False
+    graphics = sponsor_graphics_for_mentions(mentions)
+    overlay_server.show_special_presentation(
+        kind="sponsor_commercial",
+        title=" / ".join(mentions),
+        subtitle="Commercial Break",
+        duration=60.0,
+        graphics=graphics,
+        video_url=video_url,
+    )
+    print(f"SPONSOR: playing commercial for {' / '.join(mentions)}.")
+    publish_producer_event(
+        overlay_server,
+        "info",
+        "Sponsor commercial",
+        f"Playing commercial for {' / '.join(mentions)}.",
+    )
+    return True
+
+
 def sponsor_mentions_for_message(message):
     text = str(message or "").lower()
     mentions = []
@@ -1772,6 +1805,21 @@ def sponsor_graphic_for_mention(mention):
     if "rgc" in mention_text:
         return find_brand_graphic(("rgc", "motor"), "/assets/rgc_motorsports.png")
     return OVERLAY_BRAND_GRAPHICS[0] if OVERLAY_BRAND_GRAPHICS else ""
+
+
+def sponsor_video_for_mentions(mentions):
+    for mention in mentions:
+        video = sponsor_video_for_mention(mention)
+        if video:
+            return video
+    return ""
+
+
+def sponsor_video_for_mention(mention):
+    for sponsor_name, video in RACE_SPONSOR_VIDEOS.items():
+        if sponsor_name_matches_text(sponsor_name, str(mention or "").lower()):
+            return video
+    return ""
 
 
 def find_brand_graphic_for_name(name):

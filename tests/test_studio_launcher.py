@@ -24,6 +24,7 @@ from studio_launcher import (
     generate_remote_session_code,
     has_running_broadcast,
     install_overlay_brand_graphics,
+    install_overlay_commercial_video,
     is_newer_version,
     is_process_running,
     league_csv_paths_for_profile,
@@ -40,6 +41,7 @@ from studio_launcher import (
     ensure_empty_driver_profile_csv,
     save_profile,
     sanitize_asset_name,
+    sanitize_video_asset_name,
     sanitize_profile_name,
     sim_racer_hub_import_command,
     stop_broadcast_processes,
@@ -118,6 +120,7 @@ def test_broadcast_settings_have_friendly_labels_and_sections():
     saved_keys = [key for key, _default in LAUNCHER_FIELDS]
     assert "RACE_SPONSOR_5_VIDEO" in saved_keys
     assert "DISCORD_RACE_REPORT_RESULTS_URL" in saved_keys
+    assert "OVERLAY_BRAND_GRAPHICS" not in saved_keys
     assert "DISCORD_RACE_REPORT_CHAMPIONSHIP_URL" in saved_keys
 
 
@@ -295,7 +298,8 @@ def test_first_time_setup_checklist_reports_ready_release_basics(tmp_path):
             "PIT_VOICE_ID": "sarah",
             "OVERLAY_EVENT_TITLE": "WFO Truck Series",
             "OVERLAY_RACE_SPONSOR": "RGC Motorsports",
-            "OVERLAY_BRAND_GRAPHICS": "/assets/rgc_motorsports.png",
+            "RACE_SPONSOR_1_NAME": "RGC Motorsports",
+            "RACE_SPONSOR_1_LOGO": "/assets/rgc_motorsports.png",
         }
     )
 
@@ -518,6 +522,7 @@ def test_launcher_can_select_multiple_anthem_audio_files():
 
 def test_launcher_sanitizes_overlay_asset_names():
     assert sanitize_asset_name("D:/Editor/decals/RGC Motorsports Logo.PNG") == "rgc_motorsports_logo.png"
+    assert sanitize_video_asset_name("D:/Commercials/RGC Motorsports Spot.MP4") == "rgc_motorsports_spot.mp4"
 
 
 def test_launcher_installs_overlay_brand_graphics(tmp_path):
@@ -529,6 +534,17 @@ def test_launcher_installs_overlay_brand_graphics(tmp_path):
 
     assert assets == ["/assets/rgc_motorsports_logo.png"]
     assert (static_dir / "rgc_motorsports_logo.png").read_bytes() == b"fake image"
+
+
+def test_launcher_installs_overlay_commercial_video(tmp_path):
+    source = tmp_path / "RGC Motorsports Spot.MP4"
+    source.write_bytes(b"fake video")
+    static_dir = tmp_path / "static"
+
+    asset = install_overlay_commercial_video(source, static_dir=static_dir)
+
+    assert asset == "/assets/rgc_motorsports_spot.mp4"
+    assert (static_dir / "rgc_motorsports_spot.mp4").read_bytes() == b"fake video"
 
 
 def test_launcher_builds_default_broadcast_command():

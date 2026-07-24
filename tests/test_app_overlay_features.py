@@ -15,6 +15,7 @@ from app import (
     log_race_event_for_item,
     split_sponsor_names,
     should_show_movers_graphic,
+    show_sponsor_commercial_if_available,
     show_overlay_feature,
     sponsor_graphics_for_mentions,
     sponsor_mentions_for_message,
@@ -567,6 +568,24 @@ def test_sponsor_mention_graphic_pops_for_rgc_and_autism():
     assert "Autism Awareness" in presentation["title"]
     assert "/assets/rgc_motorsports.png" in presentation["graphics"]
     assert "/assets/autism_awareness.png" in presentation["graphics"]
+
+
+def test_sponsor_commercial_plays_after_sponsor_read(monkeypatch):
+    import app
+
+    overlay = OverlaySpy()
+    monkeypatch.setattr(app, "RACE_SPONSOR_VIDEOS", {"RGC Motorsports": "/assets/rgc_ad.mp4"})
+
+    shown = show_sponsor_commercial_if_available(
+        item(category="sponsor_read", target=None, message="Presented by RGC Motorsports."),
+        overlay,
+    )
+
+    assert shown is True
+    presentation = overlay.special_presentations[0]
+    assert presentation["kind"] == "sponsor_commercial"
+    assert presentation["video_url"] == "/assets/rgc_ad.mp4"
+    assert presentation["duration"] == 60.0
 
 
 def test_producer_command_can_switch_leaderboard_style():

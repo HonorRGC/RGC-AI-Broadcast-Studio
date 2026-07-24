@@ -263,7 +263,7 @@ Sponsor 4 Name / Logo / Spoken Read / Commercial Video
 Sponsor 5 Name / Logo / Spoken Read / Commercial Video
 ```
 
-Sponsor names are used in order for spoken reads during pre-race, caution breaks, and race updates. Sponsor logos rotate in the title overlay and are shown when a sponsor is mentioned. If a sponsor read is blank, the AI writes a natural sponsor mention. If a cause/awareness read is set, it is added to sponsor calls. Commercial video paths are saved for a future commercial-break feature.
+Sponsor names are used in order for spoken reads during pre-race, caution breaks, and race updates. Choose one logo per sponsor; those logos rotate in the title overlay in sponsor order and are shown when a sponsor is mentioned. If a sponsor read is blank, the AI writes a natural sponsor mention. If a cause/awareness read is set, it is added to sponsor calls. If a sponsor commercial video is set, the broadcaster will make the sponsor read and then the overlay can play that video full-screen.
 
 The **Streamlabs / OBS Link** and **Producer Assist Link** are in this same section so the overlay setup stays near the event branding.
 

@@ -166,6 +166,7 @@ class SpecialPresentation:
     title: str = ""
     subtitle: str = ""
     graphics: list[str] = field(default_factory=list)
+    video_url: str = ""
     expires_at: float = 0.0
 
     def to_dict(self):
@@ -174,6 +175,7 @@ class SpecialPresentation:
             "title": self.title,
             "subtitle": self.subtitle,
             "graphics": list(self.graphics),
+            "video_url": self.video_url,
         }
 
 
@@ -1097,6 +1099,7 @@ class OverlayServer:
         subtitle="",
         duration=90.0,
         graphics=None,
+        video_url="",
     ):
         with self.lock:
             self.special_presentation = SpecialPresentation(
@@ -1104,6 +1107,7 @@ class OverlayServer:
                 title=str(title or ""),
                 subtitle=str(subtitle or ""),
                 graphics=list(graphics or self.state_builder.event_config.graphics),
+                video_url=str(video_url or ""),
                 expires_at=time.monotonic() + float(duration),
             )
             self.state.special_presentation = self.special_presentation
@@ -4104,6 +4108,16 @@ OVERLAY_HTML = r"""<!doctype html>
       top: 224px;
     }
 
+    .special-presentation.sponsor_commercial {
+      inset: 0;
+      width: auto;
+      height: auto;
+      z-index: 80;
+      background: #000;
+      justify-content: center;
+      animation: none;
+    }
+
     .special-presentation.hidden {
       display: none;
     }
@@ -4144,6 +4158,20 @@ OVERLAY_HTML = r"""<!doctype html>
       background: linear-gradient(90deg, rgba(7, 9, 13, 0.92), rgba(24, 30, 42, 0.82));
     }
 
+    .special-presentation.sponsor_commercial .ceremony-card {
+      position: absolute;
+      left: 50%;
+      bottom: 34px;
+      transform: translateX(-50%);
+      grid-template-columns: 82px 1fr;
+      gap: 14px;
+      width: min(520px, calc(100% - 80px));
+      padding: 10px 16px;
+      background: linear-gradient(90deg, rgba(7, 9, 13, 0.76), rgba(24, 30, 42, 0.62));
+      border-left-width: 4px;
+      z-index: 2;
+    }
+
     .ceremony-logo {
       width: 210px;
       height: 116px;
@@ -4161,6 +4189,11 @@ OVERLAY_HTML = r"""<!doctype html>
       height: 62px;
     }
 
+    .special-presentation.sponsor_commercial .ceremony-logo {
+      width: 76px;
+      height: 46px;
+    }
+
     .ceremony-title {
       font-size: 40px;
       font-weight: 950;
@@ -4175,6 +4208,11 @@ OVERLAY_HTML = r"""<!doctype html>
     .special-presentation.sponsor_bug .ceremony-title {
       font-size: 18px;
       letter-spacing: 0.035em;
+    }
+
+    .special-presentation.sponsor_commercial .ceremony-title {
+      font-size: 20px;
+      letter-spacing: 0.04em;
     }
 
     .ceremony-subtitle {
@@ -4196,6 +4234,26 @@ OVERLAY_HTML = r"""<!doctype html>
       margin-top: 4px;
       font-size: 11px;
       letter-spacing: 0.05em;
+    }
+
+    .special-presentation.sponsor_commercial .ceremony-subtitle {
+      margin-top: 3px;
+      font-size: 11px;
+      letter-spacing: 0.05em;
+    }
+
+    .commercial-video {
+      display: none;
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background: #000;
+    }
+
+    .special-presentation.sponsor_commercial .commercial-video {
+      display: block;
     }
 
     @keyframes sponsorBugPop {
@@ -4380,6 +4438,7 @@ OVERLAY_HTML = r"""<!doctype html>
 
   <section id="special-presentation" class="special-presentation hidden">
     <div class="crank-speaker crank-speaker-left"></div>
+    <video id="commercial-video" class="commercial-video" playsinline></video>
     <div class="ceremony-card">
       <img id="ceremony-logo" class="ceremony-logo" alt="" />
       <div>
@@ -4499,9 +4558,11 @@ OVERLAY_HTML = r"""<!doctype html>
       layer.classList.toggle("crank_it_up", active && presentation.kind === "crank_it_up");
       layer.classList.toggle("race_sponsors", active && presentation.kind === "race_sponsors");
       layer.classList.toggle("sponsor_bug", active && presentation.kind === "sponsor_bug");
+      layer.classList.toggle("sponsor_commercial", active && presentation.kind === "sponsor_commercial");
       if (!active) {
         setCrankSideGraphic("crank-speaker-left", "");
         setCrankSideGraphic("crank-speaker-right", "");
+        setCommercialVideo("");
         return;
       }
       setText("ceremony-title", presentation.title || "Please Rise");
@@ -4509,12 +4570,36 @@ OVERLAY_HTML = r"""<!doctype html>
       const logo = document.getElementById("ceremony-logo");
       const graphics = presentation.graphics || [];
       const isCrank = presentation.kind === "crank_it_up";
-      const src = isCrank ? String(graphics[0] || "") : pickRotatingGraphic(graphics, 3.5);
+      const isCommercial = presentation.kind === "sponsor_commercial";
+      const src = isCrank ? String(graphics[0] || "") : pickRotatingGraphic(graphics, isCommercial ? 999 : 3.5);
       const sideSrc = isCrank ? (graphics[1] || graphics[0] || "") : "";
       setCrankSideGraphic("crank-speaker-left", sideSrc);
       setCrankSideGraphic("crank-speaker-right", sideSrc);
+      setCommercialVideo(isCommercial ? presentation.video_url : "");
       logo.classList.toggle("hidden", !src);
       logo.src = src || "";
+    }
+
+    function setCommercialVideo(src) {
+      const video = document.getElementById("commercial-video");
+      if (!video) return;
+      const nextSrc = String(src || "");
+      if (!nextSrc) {
+        if (video.getAttribute("src")) {
+          video.pause();
+          video.removeAttribute("src");
+          video.load();
+        }
+        return;
+      }
+      if (video.getAttribute("src") !== nextSrc) {
+        video.setAttribute("src", nextSrc);
+        video.currentTime = 0;
+        const playPromise = video.play();
+        if (playPromise && typeof playPromise.catch === "function") {
+          playPromise.catch((error) => console.warn("Commercial video autoplay failed", error));
+        }
+      }
     }
 
     function setCrankSideGraphic(className, src) {
