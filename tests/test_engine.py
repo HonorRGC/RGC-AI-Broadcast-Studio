@@ -2029,7 +2029,8 @@ def test_meatball_flag_waits_when_caution_replay_is_pending():
     )
 
     item = next(item for item in engine.broadcast_queue.items if item.category == "penalty")
-    assert "meatball flag" in item.message
+    assert "required damage repairs" in item.message
+    assert "meatball flag" not in item.message.lower()
     assert item.delay_seconds >= 35
     assert item.protected is False
 
@@ -2078,10 +2079,11 @@ def test_multiple_meatball_flags_are_grouped_into_one_story():
         item for item in engine.broadcast_queue.items if item.category == "penalty"
     ]
     assert len(penalty_items) == 1
-    assert "Meatball flags are out for" in penalty_items[0].message
+    assert "required damage repairs" in penalty_items[0].message
+    assert "Meatball flags" not in penalty_items[0].message
     assert "Damaged Driver" in penalty_items[0].message
     assert "Second Damaged" in penalty_items[0].message
-    assert "extensive work" in penalty_items[0].message
+    assert "ending early" in penalty_items[0].message
     assert penalty_items[0].participant_car_indices == (4, 7)
 
 

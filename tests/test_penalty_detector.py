@@ -69,7 +69,8 @@ def test_meatball_flag_is_broadcast():
 
     assert len(events) == 1
     assert events[0].event_type == "meatball"
-    assert "required repairs" in events[0].message
+    assert "damage repairs" in events[0].message
+    assert "meatball flag" not in events[0].message.lower()
 
 
 def test_penalty_is_not_repeated_while_flag_stays_on():

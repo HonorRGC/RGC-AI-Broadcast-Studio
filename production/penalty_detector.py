@@ -112,9 +112,9 @@ class PenaltyDetector:
             event_type="meatball",
             reason="required repairs",
             message=(
-                f"The meatball flag is out for {name} in the number {number}. "
-                "That means race control is calling them in for required repairs, "
-                "and this could effectively end their day."
+                f"Race control is calling {name} in the number {number} "
+                "to pit road for required damage repairs. Hopefully the crew "
+                "can get that car fixed up and keep their race from ending early."
             ),
             priority=10,
         )

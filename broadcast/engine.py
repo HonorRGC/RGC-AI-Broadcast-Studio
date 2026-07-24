@@ -1405,10 +1405,9 @@ class BroadcastEngine:
         names = self.format_penalty_driver_list(events)
         plural = len(events) != 1
         message = (
-            f"Meatball flags are out for {names}. "
-            f"Race control is calling {'those drivers' if plural else 'that driver'} "
-            "to pit road for required repairs, so there may be too much damage "
-            "to continue without extensive work."
+            f"Race control is calling {names} to pit road for required "
+            f"damage repairs. Hopefully {'those crews' if plural else 'that crew'} "
+            "can get the cars patched up and keep the night from ending early."
         )
         self.broadcast_queue.add(
             message,
