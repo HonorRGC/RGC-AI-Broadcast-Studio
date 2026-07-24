@@ -201,6 +201,81 @@ BROADCAST_FIELD_SECTIONS = {
     "USE_LEAGUE_DRIVER_NOTES": "League Data",
 }
 
+BROADCAST_FIELD_HELP = {
+    "USE_OPENAI": "Required for the full AI broadcast. Turn this off when a human broadcaster only wants prompts, cameras, and overlays.",
+    "OPENAI_API_KEY": "Required when OpenAI commentary is on. Keep this private and never show it on stream.",
+    "OPENAI_MODEL": "Model used to write broadcast lines and Discord recaps. Leave the default unless you are testing another model.",
+    "USE_ELEVENLABS": "Required for spoken AI broadcasters. Turn this off for silent producer prompts or a human-only broadcast.",
+    "ELEVENLABS_API_KEY": "Required when ElevenLabs voices are on. Keep this private.",
+    "LEAD_VOICE_ID": "Mike / lead play-by-play voice.",
+    "COLOR_VOICE_ID": "Jeff / analyst voice.",
+    "PIT_VOICE_ID": "Sarah / pit road and strategy voice.",
+    "OVERLAY_EVENT_TITLE": "Required for a polished overlay and Discord report title. Example: Autism Awareness 100.",
+    "OVERLAY_RACE_SPONSOR": "Main race sponsor shown on the overlay and used in sponsor reads.",
+    "OVERLAY_SERIES_NAME": "League or series name. Example: WFO Wicked Wednesday Truck Series.",
+    "OVERLAY_LEADERBOARD_STYLE": "side keeps the NASCAR-style left leaderboard. ticker scrolls across the top under the title.",
+    "OVERLAY_HOST": "Use 127.0.0.1 for this PC only. Use 0.0.0.0 when trusted helpers connect through Tailscale.",
+    "OVERLAY_BRAND_GRAPHICS": "Sponsor/brand logos used in the title rotation, anthem/practice presentation, and sponsor popups.",
+    "USE_SPONSOR_READS": "Lets the AI work sponsor mentions into pre-race, caution, and race-update moments.",
+    "SPONSOR_READ_NAME": "First spoken sponsor. This is the main sponsor read.",
+    "SPONSOR_READ_NAME_2": "Optional second spoken sponsor.",
+    "SPONSOR_READ_NAME_3": "Optional third spoken sponsor.",
+    "SPONSOR_READ_CAUSE": "Optional cause or awareness message paired with sponsor reads, such as Autism Awareness.",
+    "SPONSOR_READ_MESSAGE": "Optional exact sponsor script. Use {sponsor} and {cause}; leave blank for a natural AI-written read.",
+    "USE_NATIONAL_ANTHEM": "Plays the configured RGC Anthem audio once during qualifying.",
+    "NATIONAL_ANTHEM_AUDIO": "Audio file(s) for the RGC Anthem moment. MP3 or WAV is recommended.",
+    "NATIONAL_ANTHEM_GRAPHICS": "Graphics shown during the anthem/qualifying presentation.",
+    "PRACTICE_MUSIC_PLAYLIST": "Practice music playlist. Multiple songs are separated with semicolons and loop during practice.",
+    "CAUTION_REPLAY_AUDIO": "Music bed used during caution replay/presentation segments.",
+    "CAUTION_PRESENTATION_GRAPHICS": "Sponsor/cause graphics shown during caution periods.",
+    "POST_RACE_INTERVIEWS_ENABLED": "Changes the post-race ending to hand off to admin interviews instead of a full signoff.",
+    "RACE_ADMIN_MODE": "Enables hosted-race admin commands in Producer Assist. Keep off unless this PC has race admin rights.",
+    "RACE_ADMIN_SEND_MODE": "clipboard is safest for stream. open_chat is faster but may show iRacing chat. ui_paste is testing-only.",
+    "DISCORD_BOT_ENABLED": "Prepared for future Discord interview movement. Leave off for now unless we are testing the bot.",
+    "DISCORD_RACE_REPORT_ENABLED": "Posts an automatic post-race recap to a Discord webhook after the finish order stabilizes.",
+    "DISCORD_RACE_REPORT_WEBHOOK_URL": "Required when Discord Race Report is true. Create this webhook in the Discord results channel.",
+    "DISCORD_RACE_REPORT_USE_OPENAI": "Uses OpenAI for a more natural race recap. If off, the Studio posts a simpler generated recap.",
+    "DISCORD_RACE_REPORT_RESULTS_URL": "Optional official race-results link, such as a Sim Racer Hub race page for that event.",
+    "DISCORD_RACE_REPORT_CHAMPIONSHIP_URL": "Optional points/championship standings link for the Discord report.",
+    "USE_LEAGUE_DRIVER_NOTES": "Turns on league driver notes, season stats, career stats, teams, sponsors, hometowns, and driving styles.",
+    "LEAGUE_DRIVERS_CSV": "Driver profile CSV used for manual notes and league-specific info.",
+    "LEAGUE_SEASON_STATS_CSV": "Current-season stats CSV imported from Sim Racer Hub.",
+    "LEAGUE_CAREER_STATS_CSV": "Career/all-season stats CSV imported from Sim Racer Hub.",
+    "STAGE_END_LAPS": "Optional comma-separated stage end laps. Example: 30,60.",
+}
+
+IMPORTANT_SETUP_FIELDS = {
+    "OPENAI_API_KEY",
+    "ELEVENLABS_API_KEY",
+    "LEAD_VOICE_ID",
+    "COLOR_VOICE_ID",
+    "PIT_VOICE_ID",
+    "OVERLAY_EVENT_TITLE",
+    "OVERLAY_BRAND_GRAPHICS",
+    "DISCORD_RACE_REPORT_WEBHOOK_URL",
+    "LEAGUE_DRIVERS_CSV",
+    "LEAGUE_SEASON_STATS_CSV",
+    "LEAGUE_CAREER_STATS_CSV",
+}
+
+INLINE_HELP_FIELDS = {
+    "USE_OPENAI",
+    "OPENAI_API_KEY",
+    "USE_ELEVENLABS",
+    "ELEVENLABS_API_KEY",
+    "OVERLAY_EVENT_TITLE",
+    "OVERLAY_BRAND_GRAPHICS",
+    "USE_SPONSOR_READS",
+    "USE_NATIONAL_ANTHEM",
+    "PRACTICE_MUSIC_PLAYLIST",
+    "DISCORD_BOT_ENABLED",
+    "DISCORD_RACE_REPORT_ENABLED",
+    "DISCORD_RACE_REPORT_WEBHOOK_URL",
+    "DISCORD_RACE_REPORT_RESULTS_URL",
+    "USE_LEAGUE_DRIVER_NOTES",
+    "STAGE_END_LAPS",
+}
+
 
 def load_env_file(path=ENV_PATH):
     values = {}
@@ -553,6 +628,24 @@ def build_health_status(values, root=ROOT, broadcast_running=False):
     else:
         rows.append(("Practice Music", "Off", "No practice playlist selected.", "off"))
 
+    if setting_enabled(values, "DISCORD_RACE_REPORT_ENABLED", "false"):
+        if values.get("DISCORD_RACE_REPORT_WEBHOOK_URL"):
+            detail = "Automatic post-race Discord recap is ready."
+            if values.get("DISCORD_RACE_REPORT_RESULTS_URL") or values.get("DISCORD_RACE_REPORT_CHAMPIONSHIP_URL"):
+                detail += " Official links will be included."
+            rows.append(("Discord Race Report", "Ready", detail, "ok"))
+        else:
+            rows.append(
+                (
+                    "Discord Race Report",
+                    "Needs webhook",
+                    "Add a Discord webhook URL or turn Discord Race Report off.",
+                    "warn",
+                )
+            )
+    else:
+        rows.append(("Discord Race Report", "Off", "No post-race Discord recap will be posted.", "off"))
+
     if broadcast_running:
         rows.append(("Broadcast", "Running", "Use Stop Broadcast before closing.", "ok"))
     else:
@@ -592,7 +685,7 @@ def build_first_time_setup_checklist(
         )
 
     health = {name: (state, detail, level) for name, state, detail, level in build_health_status(values, root, broadcast_running)}
-    for name in ("OpenAI", "ElevenLabs", "League Notes", "Practice Music", "Tailscale helper"):
+    for name in ("OpenAI", "ElevenLabs", "League Notes", "Practice Music", "Discord Race Report", "Tailscale helper"):
         state, detail, level = health.get(name, ("Unknown", "Refresh Broadcast Health.", "warn"))
         rows.append((name, state, detail, level))
 
@@ -1296,6 +1389,30 @@ def run_gui():
     league_content = league_tab
     help_content = help_tab
 
+    settings_intro = frame(settings_content, bg="#0b1520")
+    settings_intro.pack(fill="x", padx=14, pady=(12, 0))
+    label(
+        settings_intro,
+        text="Broadcast Setup",
+        bg="#0b1520",
+        fg=TEXT_FG,
+        font=("Segoe UI", 13, "bold"),
+        anchor="w",
+    ).pack(fill="x", padx=12, pady=(10, 2))
+    label(
+        settings_intro,
+        text=(
+            "Fill in the required services first, then add branding, league data, Discord reports, "
+            "and race-control options. Fields marked with * are important for a full league broadcast. "
+            "Save Settings before starting."
+        ),
+        bg="#0b1520",
+        fg=MUTED_FG,
+        anchor="w",
+        justify="left",
+        wraplength=900,
+    ).pack(fill="x", padx=12, pady=(0, 10))
+
     settings_frame = frame(settings_content, bg=PANEL_BG)
     settings_frame.pack(fill="both", expand=True, padx=14, pady=12)
 
@@ -1350,9 +1467,12 @@ def run_gui():
         if key in BROADCAST_FIELD_SECTIONS:
             add_settings_section(BROADCAST_FIELD_SECTIONS[key])
         settings_rows_by_key[key] = settings_grid_row
+        label_text = BROADCAST_FIELD_LABELS.get(key, key.replace("_", " ").title())
+        if key in IMPORTANT_SETUP_FIELDS:
+            label_text = f"{label_text}  *"
         label(
             settings_frame,
-            text=BROADCAST_FIELD_LABELS.get(key, key.replace("_", " ").title()),
+            text=label_text,
             anchor="w",
             width=24,
             bg=PANEL_BG,
@@ -1414,6 +1534,9 @@ def run_gui():
         entry_widget.grid(row=settings_grid_row, column=1, sticky="ew", pady=3)
         entries[key] = entry_widget
         settings_grid_row += 1
+
+        if key in INLINE_HELP_FIELDS and key in BROADCAST_FIELD_HELP:
+            add_settings_hint(BROADCAST_FIELD_HELP[key])
 
         if key == "SPONSOR_READ_MESSAGE":
             add_settings_hint(

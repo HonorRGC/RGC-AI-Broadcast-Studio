@@ -3,10 +3,12 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from studio_launcher import (
+    BROADCAST_FIELD_HELP,
     BROADCAST_FIELD_LABELS,
     BROADCAST_FIELD_SECTIONS,
     DEFAULT_OVERLAY_URL,
     DEFAULT_PRODUCER_URL,
+    IMPORTANT_SETUP_FIELDS,
     LAUNCHER_FIELDS,
     RGC_DISCORD_URL,
     RGC_WEBSITE_URL,
@@ -95,6 +97,9 @@ def test_broadcast_settings_have_friendly_labels_and_sections():
     assert BROADCAST_FIELD_LABELS["DISCORD_RACE_REPORT_USE_OPENAI"] == "Use OpenAI Race Recap"
     assert BROADCAST_FIELD_LABELS["DISCORD_RACE_REPORT_RESULTS_URL"] == "Race Results Link"
     assert BROADCAST_FIELD_LABELS["DISCORD_RACE_REPORT_CHAMPIONSHIP_URL"] == "Championship Standings Link"
+    assert "webhook" in BROADCAST_FIELD_HELP["DISCORD_RACE_REPORT_WEBHOOK_URL"].lower()
+    assert "Sim Racer Hub" in BROADCAST_FIELD_HELP["DISCORD_RACE_REPORT_RESULTS_URL"]
+    assert "OPENAI_API_KEY" in IMPORTANT_SETUP_FIELDS
     assert "STUDIO_VOLUME" not in BROADCAST_FIELD_LABELS
     assert BROADCAST_FIELD_SECTIONS["USE_OPENAI"] == "AI Commentary"
     assert BROADCAST_FIELD_SECTIONS["OVERLAY_EVENT_TITLE"] == "Overlay Branding"
@@ -217,8 +222,26 @@ def test_launcher_health_reports_missing_ai_keys():
 
     assert row_map["OpenAI"][0] == "Needs key"
     assert row_map["ElevenLabs"][0] == "Needs setup"
+    assert row_map["Discord Race Report"][0] == "Off"
     assert row_map["Tailscale helper"][0] == "Local only"
     assert row_map["Broadcast"][0] == "Stopped"
+
+
+def test_launcher_health_reports_discord_race_report_setup():
+    values = launcher_defaults({"DISCORD_RACE_REPORT_ENABLED": "true"})
+
+    rows = build_health_status(values, root=Path("C:/RGC"), broadcast_running=False)
+    row_map = {name: (state, detail, level) for name, state, detail, level in rows}
+
+    assert row_map["Discord Race Report"][0] == "Needs webhook"
+
+    values["DISCORD_RACE_REPORT_WEBHOOK_URL"] = "https://discord.example/webhook"
+    values["DISCORD_RACE_REPORT_RESULTS_URL"] = "https://simracerhub.com/scoring/season_race.php?schedule_id=1"
+    rows = build_health_status(values, root=Path("C:/RGC"), broadcast_running=False)
+    row_map = {name: (state, detail, level) for name, state, detail, level in rows}
+
+    assert row_map["Discord Race Report"][0] == "Ready"
+    assert "Official links" in row_map["Discord Race Report"][1]
 
 
 def test_launcher_health_reports_tailscale_helper_access(monkeypatch):
@@ -247,6 +270,7 @@ def test_first_time_setup_checklist_flags_missing_profile_and_keys(tmp_path):
 
     assert row_map["OpenAI"][0] == "Needs key"
     assert row_map["ElevenLabs"][0] == "Needs setup"
+    assert row_map["Discord Race Report"][0] == "Off"
     assert row_map["Profiles"][0] == "Recommended"
     assert row_map["Broadcast process"][0] == "Stopped"
 
