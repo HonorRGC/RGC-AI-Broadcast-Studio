@@ -296,6 +296,9 @@ class EditorialProducer:
             "lead_change",
             "side_by_side",
             "three_car_battle",
+            "live_side_by_side",
+            "live_three_wide",
+            "live_pass_clear",
         ]:
             return 0
 
@@ -331,6 +334,9 @@ class EditorialProducer:
             "race_leader",
             "side_by_side",
             "three_car_battle",
+            "live_side_by_side",
+            "live_three_wide",
+            "live_pass_clear",
         }
         if item.story_type in leader_story_types:
             return False

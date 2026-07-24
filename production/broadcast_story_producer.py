@@ -47,10 +47,19 @@ class BroadcastStoryProducer:
                 "Mention possible handling, tire falloff, traffic, or rhythm only as possibilities."
             )
 
-        if story_type in {"battle_for_lead", "lead_change"}:
+        if story_type in {"battle_for_lead", "lead_change", "live_pass_clear"}:
             notes.append(
                 "Make the leader story feel important. Discuss pressure, gap, "
                 "clean air, lap traffic, or what the challenger must do next."
+            )
+
+        if story_type in {"live_side_by_side", "live_three_wide", "live_pass_clear"}:
+            notes.append(
+                "This is a live on-track battle read. Use confident but careful "
+                "language. If the summary says the spot is not settled, do not "
+                "declare the pass complete. If the summary says the pass looks "
+                "clear, say it looks complete on track without mentioning "
+                "telemetry, confidence, or official scoring delay."
             )
 
         if story_type.startswith("formation_"):
@@ -122,8 +131,10 @@ class BroadcastStoryProducer:
             return "car or run trend is going the wrong direction"
         if story_type in {"battle_for_lead", "lead_change"}:
             return "fight for control of the race"
-        if story_type in {"battle_for_top_five", "battle_for_top_ten", "side_by_side", "three_car_battle"}:
+        if story_type in {"battle_for_top_five", "battle_for_top_ten", "side_by_side", "three_car_battle", "live_side_by_side", "live_pass_clear"}:
             return "localized battle with consequences"
+        if story_type == "live_three_wide":
+            return "three-wide live battle building"
         if story_type == "formation_three_wide":
             return "three-wide pressure in the draft"
         if story_type == "formation_two_wide":

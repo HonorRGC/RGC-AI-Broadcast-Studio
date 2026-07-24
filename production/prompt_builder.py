@@ -70,10 +70,14 @@ class PromptBuilder:
         if getattr(assignment, "story_type", "") in (
             "side_by_side",
             "three_car_battle",
+            "live_side_by_side",
+            "live_three_wide",
+            "live_pass_clear",
         ):
             lines.append(
                 "Accuracy: Use only the stated relationship. Do not invent an inside "
-                "or outside lane, three-wide formation, contact, or a completed pass."
+                "or outside lane, three-wide formation, contact, or a completed pass "
+                "unless the assignment explicitly says the pass looks clear."
             )
         lines.append("")
 
