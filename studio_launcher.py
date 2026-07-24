@@ -34,6 +34,12 @@ RGC_WEBSITE_URL = "https://www.realisticgamingcrew.com"
 TAILSCALE_WINDOWS_DOWNLOAD_URL = "https://tailscale.com/download/windows"
 DEFAULT_OVERLAY_URL = "http://127.0.0.1:8765/overlay"
 DEFAULT_PRODUCER_URL = "http://127.0.0.1:8765/producer"
+CLOSE_RUNNING_BROADCAST_TITLE = "Broadcast process detected"
+CLOSE_RUNNING_BROADCAST_MESSAGE = (
+    "RGC AI Broadcast Studio still sees a broadcast-related process that was started from this launcher.\n\n"
+    "If you are done broadcasting, choose Yes to stop it before closing. "
+    "If you are only closing the setup window and want the broadcast/Producer Assist to keep running, choose No."
+)
 WINDOWS_APP_USER_MODEL_ID = "RGC.AIBroadcastStudio.Studio"
 WINDOW_ICON_PATH = ROOT / "assets" / "rgc_ai_broadcast_studio.ico"
 WINDOW_ICON_IMAGE_PATH = ROOT / "assets" / "rgc_ai_broadcast_studio_icon.png"
@@ -2170,11 +2176,8 @@ def run_gui():
     def on_close():
         if has_running_broadcast():
             should_stop = messagebox.askyesno(
-                "Broadcast still running",
-                (
-                    "A broadcast appears to still be running.\n\n"
-                    "Do you want to stop the broadcast before closing RGC AI Broadcast Studio?"
-                ),
+                CLOSE_RUNNING_BROADCAST_TITLE,
+                CLOSE_RUNNING_BROADCAST_MESSAGE,
             )
             if should_stop:
                 stop_broadcast()

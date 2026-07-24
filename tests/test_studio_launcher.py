@@ -6,6 +6,8 @@ from studio_launcher import (
     BROADCAST_FIELD_HELP,
     BROADCAST_FIELD_LABELS,
     BROADCAST_FIELD_SECTIONS,
+    CLOSE_RUNNING_BROADCAST_MESSAGE,
+    CLOSE_RUNNING_BROADCAST_TITLE,
     DEFAULT_OVERLAY_URL,
     DEFAULT_PRODUCER_URL,
     IMPORTANT_SETUP_FIELDS,
@@ -79,6 +81,12 @@ def test_launcher_includes_rgc_links():
     assert TAILSCALE_WINDOWS_DOWNLOAD_URL == "https://tailscale.com/download/windows"
     assert DEFAULT_OVERLAY_URL == "http://127.0.0.1:8765/overlay"
     assert DEFAULT_PRODUCER_URL == "http://127.0.0.1:8765/producer"
+
+
+def test_close_warning_explains_broadcast_related_process():
+    assert CLOSE_RUNNING_BROADCAST_TITLE == "Broadcast process detected"
+    assert "broadcast-related process" in CLOSE_RUNNING_BROADCAST_MESSAGE
+    assert "broadcast/Producer Assist to keep running" in CLOSE_RUNNING_BROADCAST_MESSAGE
 
 
 def test_broadcast_settings_have_friendly_labels_and_sections():
