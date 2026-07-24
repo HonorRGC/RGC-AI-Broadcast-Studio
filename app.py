@@ -1470,7 +1470,7 @@ def show_overlay_feature(item, overlay_server, source=None, engine=None):
             )
         return
 
-    if category == "post_race":
+    if category in ("post_race_story", "post_race"):
         rows = build_race_end_cap_rows(source, engine)
         if rows:
             overlay_server.show_stat_panel(
@@ -1478,7 +1478,7 @@ def show_overlay_feature(item, overlay_server, source=None, engine=None):
                 title="Race Recap",
                 subtitle="Unofficial finish and key race notes",
                 rows=rows,
-                duration=34.0,
+                duration=60.0,
                 dedupe_key="race_end_cap:post_race",
                 minimum_interval=9999.0,
             )
@@ -2156,6 +2156,11 @@ def race_end_lead_lap_row(results):
         return None
 
     starters = len([car for car in results or [] if car.get("CarIdx") is not None])
+    laps_behind_available = any(
+        key in car
+        for car in ordered
+        for key in ("LapsBehind", "ClassLapsBehind")
+    )
     leader_laps = max(
         safe_int(ordered[0].get("LapsComplete", 0), 0),
         safe_int(ordered[0].get("Lap", 0), 0),
@@ -2180,8 +2185,11 @@ def race_end_lead_lap_row(results):
             for key in ("LapsBehind", "ClassLapsBehind")
             if key in car
         ]
-        on_lead_lap_by_gap = bool(laps_behind_values) and max(laps_behind_values) == 0
-        if (leader_laps > 0 and car_laps >= leader_laps) or on_lead_lap_by_gap:
+        if laps_behind_available:
+            if laps_behind_values and max(laps_behind_values) == 0:
+                lead_lap_finishers += 1
+            continue
+        if leader_laps > 0 and car_laps >= leader_laps:
             lead_lap_finishers += 1
 
     if starters <= 0:

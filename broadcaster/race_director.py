@@ -31,6 +31,9 @@ class RaceDirector:
     START_GO = 0x80000000
     SESSION_STATE_CHECKERED = 5
     SESSION_STATE_COOL_DOWN = 6
+    POST_RACE_MIN_STABILIZATION_TICKS = 12
+    POST_RACE_STABLE_ORDER_TICKS = 6
+    POST_RACE_STABLE_ORDER_CARS = 20
 
     def __init__(
         self,
@@ -359,14 +362,32 @@ class RaceDirector:
         if not self.finish_distance_complete(results, total_laps, current_lap):
             return
 
-        self.checkered_stabilization_ticks += 1
-        if self.checkered_stabilization_ticks < 6:
+        if not self.finish_top_group_complete(results, total_laps):
             return
 
-        if not self.finish_order_is_stable(results):
+        self.checkered_stabilization_ticks += 1
+        if self.checkered_stabilization_ticks < self.POST_RACE_MIN_STABILIZATION_TICKS:
+            return
+
+        if not self.finish_order_is_stable(
+            results,
+            required_ticks=self.POST_RACE_STABLE_ORDER_TICKS,
+            max_cars=self.POST_RACE_STABLE_ORDER_CARS,
+        ):
             return
 
         track_name = self.get_track_name(track_info)
+
+        scheduler.add(
+            self.build_winner_story(results, driver_lookup, track_name),
+            priority=10,
+            category="post_race_story",
+            protected=True,
+            speaker="lead",
+            delay_seconds=1.0,
+            expires_after=180,
+            dedupe_key="post_race:winner_story",
+        )
 
         scheduler.add(
             self.build_finish_rundown(results, driver_lookup, max_cars=10),
@@ -374,7 +395,7 @@ class RaceDirector:
             category="post_race",
             protected=True,
             speaker="lead",
-            delay_seconds=1.0,
+            delay_seconds=8.0,
             expires_after=180,
             dedupe_key="post_race:finish_rundown",
         )
@@ -386,7 +407,7 @@ class RaceDirector:
                 category="post_race_interviews",
                 protected=True,
                 speaker="lead",
-                delay_seconds=8.0,
+                delay_seconds=18.0,
                 expires_after=240,
                 dedupe_key="post_race:interview_handoff",
             )
@@ -397,7 +418,7 @@ class RaceDirector:
                 category="post_race_signoff",
                 protected=True,
                 speaker="lead",
-                delay_seconds=8.0,
+                delay_seconds=18.0,
                 expires_after=240,
                 dedupe_key="post_race:signoff",
             )
@@ -420,6 +441,47 @@ class RaceDirector:
                 observed_lap = max(observed_lap, self.safe_int(leader.get(key)))
 
         return observed_lap >= total_laps
+
+    def finish_top_group_complete(self, results, total_laps=0, max_cars=10):
+        if self.finish_confirmed_by_session_state:
+            return True
+
+        total_laps = self.safe_int(total_laps)
+        if total_laps <= 0:
+            return True
+
+        ordered = self.sort_results(results or [])[:max_cars]
+        if not ordered:
+            return False
+
+        # Older replay/test snapshots may not include lap-complete fields.
+        # In that case, fall back to the stabilization/signature gate.
+        has_lap_data = any(
+            ("Lap" in car or "LapsComplete" in car)
+            for car in ordered
+        )
+        if not has_lap_data:
+            return True
+
+        for car in ordered:
+            laps = max(
+                self.safe_int(car.get("Lap", 0)),
+                self.safe_int(car.get("LapsComplete", 0)),
+            )
+            laps_behind = max(
+                [
+                    self.safe_int(car.get(key), -1)
+                    for key in ("LapsBehind", "ClassLapsBehind")
+                    if key in car
+                ]
+                or [-1]
+            )
+            if laps >= total_laps:
+                continue
+            if laps_behind > 0 and laps >= total_laps - laps_behind:
+                continue
+            return False
+        return True
 
     def finish_order_is_stable(self, results, required_ticks=3, max_cars=10):
         ordered = self.sort_results(results or [])[:max_cars]
@@ -622,6 +684,41 @@ class RaceDirector:
 
         return " ".join(lines)
 
+    def build_winner_story(self, results, driver_lookup, track_name):
+        ordered = self.sort_results(results or [])
+        if not ordered:
+            return (
+                f"The race is complete at {track_name}. We will let timing "
+                "and scoring settle before we run through the finishing order."
+            )
+
+        winner = ordered[0]
+        car_idx = winner.get("CarIdx")
+        driver_info = driver_lookup.get(car_idx, {})
+        name = driver_info.get("name", f"Car {car_idx}")
+        number = driver_info.get("number", "?")
+        start = self.best_starting_position(winner)
+        laps_led = self.best_laps_led(winner)
+
+        story_parts = [
+            f"{name} wins at {track_name} in the number {number}.",
+        ]
+        if start > 0 and start != 1:
+            story_parts.append(
+                f"That was a climb from {PositionFormatter.ordinal(start)} on the grid."
+            )
+        elif start == 1:
+            story_parts.append("The pole sitter converted track position into the race win.")
+        if laps_led > 0:
+            lap_word = "lap" if laps_led == 1 else "laps"
+            story_parts.append(
+                f"The winning run included {laps_led} {lap_word} led."
+            )
+        story_parts.append(
+            "We will let the rest of the field get across the line, then we will run through the top ten."
+        )
+        return " ".join(story_parts)
+
     def build_signoff(self, track_name):
         return (
             f"That will do it tonight from {track_name}. "
@@ -650,6 +747,20 @@ class RaceDirector:
             driver_info = driver_lookup.get(car_idx, {})
             names.append(driver_info.get("name", f"Car {car_idx}"))
         return names
+
+    def best_starting_position(self, car):
+        return max(
+            self.safe_int(car.get("StartingPosition", 0)),
+            self.safe_int(car.get("StartPosition", 0)),
+            self.safe_int(car.get("GridPosition", 0)),
+        )
+
+    def best_laps_led(self, car):
+        return max(
+            self.safe_int(car.get("LapsLed", 0)),
+            self.safe_int(car.get("LedLaps", 0)),
+            self.safe_int(car.get("LeaderLaps", 0)),
+        )
 
     def format_driver_position(self, car, driver_lookup, zero_based_positions=False):
         car_idx = car.get("CarIdx")

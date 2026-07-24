@@ -2158,7 +2158,7 @@ def test_cool_down_state_airs_checkered_and_suppresses_false_incident():
     assert "incident" not in categories
     assert "post_race" not in categories
 
-    for _ in range(8):
+    for _ in range(20):
         engine.tick(source)
 
     categories = [item.category for item in engine.broadcast_queue.items]

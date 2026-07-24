@@ -365,7 +365,7 @@ def test_post_race_overlay_shows_end_cap_summary():
     assert panel["kind"] == "race_end_cap"
     assert panel["title"] == "Race Recap"
     assert panel["subtitle"] == "Unofficial finish and key race notes"
-    assert panel["duration"] == 34.0
+    assert panel["duration"] == 60.0
     labels = [row["label"] for row in panel["rows"]]
     assert labels == [
         "Winner",

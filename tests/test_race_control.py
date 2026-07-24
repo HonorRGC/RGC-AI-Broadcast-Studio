@@ -441,7 +441,7 @@ def test_checkered_queues_finish_rundown_then_signoff():
         queue,
         {"track_name": "Homestead Miami Speedway"},
     )
-    for _ in range(8):
+    for _ in range(20):
         director.handle_post_race_results(
             results,
             drivers,
@@ -452,14 +452,17 @@ def test_checkered_queues_finish_rundown_then_signoff():
     categories = [item.category for item in queue.items]
     assert categories == [
         "race_control",
+        "post_race_story",
         "post_race",
         "post_race_signoff",
     ]
     assert queue.items[0].camera_sequence_steps == ((0, "TV Mixed", 0),)
     assert queue.items[1].priority > queue.items[2].priority
-    assert "Thank you for watching" in queue.items[2].message
-    assert "Homestead Miami Speedway" in queue.items[2].message
-    assert "Jeff and Sarah" in queue.items[2].message
+    assert queue.items[2].priority > queue.items[3].priority
+    assert "top ten" in queue.items[1].message.lower()
+    assert "Thank you for watching" in queue.items[3].message
+    assert "Homestead Miami Speedway" in queue.items[3].message
+    assert "Jeff and Sarah" in queue.items[3].message
 
 
 def test_checkered_with_interviews_queues_handoff_instead_of_signoff():
@@ -480,7 +483,7 @@ def test_checkered_with_interviews_queues_handoff_instead_of_signoff():
         queue,
         {"track_name": "Homestead Miami Speedway"},
     )
-    for _ in range(8):
+    for _ in range(20):
         director.handle_post_race_results(
             results,
             drivers,
@@ -491,15 +494,16 @@ def test_checkered_with_interviews_queues_handoff_instead_of_signoff():
     categories = [item.category for item in queue.items]
     assert categories == [
         "race_control",
+        "post_race_story",
         "post_race",
         "post_race_interviews",
     ]
     assert queue.items[0].camera_sequence_steps == ((0, "TV Mixed", 0),)
-    assert "top three are headed to post-race interviews" in queue.items[2].message
-    assert "Third Place first" in queue.items[2].message
-    assert "Second Place" in queue.items[2].message
-    assert "Winner Driver" in queue.items[2].message
-    assert "Thank you for watching" not in queue.items[2].message
+    assert "top three are headed to post-race interviews" in queue.items[3].message
+    assert "Third Place first" in queue.items[3].message
+    assert "Second Place" in queue.items[3].message
+    assert "Winner Driver" in queue.items[3].message
+    assert "Thank you for watching" not in queue.items[3].message
 
 
 def test_checkered_finish_rundown_waits_for_stable_order():
@@ -527,14 +531,14 @@ def test_checkered_finish_rundown_waits_for_stable_order():
         queue,
         {"track_name": "Homestead Miami Speedway"},
     )
-    for _ in range(6):
+    for _ in range(8):
         director.handle_post_race_results(
             early_results,
             drivers,
             queue,
             {"track_name": "Homestead Miami Speedway"},
         )
-    for _ in range(2):
+    for _ in range(8):
         director.handle_post_race_results(
             final_results,
             drivers,
@@ -592,7 +596,7 @@ def test_checkered_finish_rundown_waits_until_leader_crosses_finish():
 
     assert not any(item.category == "post_race" for item in queue.items)
 
-    for _ in range(8):
+    for _ in range(20):
         director.handle_post_race_results(
             finished,
             drivers,
