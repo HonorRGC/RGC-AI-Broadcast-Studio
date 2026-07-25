@@ -424,6 +424,54 @@ def test_finish_rundown_is_limited_to_top_ten():
     assert "Driver 12" not in rundown
 
 
+def test_post_race_recap_includes_key_race_summary_details():
+    director = RaceDirector()
+    results = [
+        {
+            "CarIdx": 0,
+            "Position": 1,
+            "StartingPosition": 4,
+            "LapsLed": 12,
+            "FastestLapTime": 31.884,
+            "LapsBehind": 0,
+        },
+        {
+            "CarIdx": 1,
+            "Position": 2,
+            "StartingPosition": 10,
+            "LapsLed": 18,
+            "FastestLapTime": 31.221,
+            "LapsBehind": 0,
+        },
+        {
+            "CarIdx": 2,
+            "Position": 3,
+            "StartingPosition": 3,
+            "LapsBehind": 1,
+        },
+    ]
+    drivers = {
+        0: {"name": "Winner Driver", "number": "10"},
+        1: {"name": "Big Mover", "number": "2"},
+        2: {"name": "Third Driver", "number": "3"},
+    }
+
+    recap = director.build_post_race_recap(
+        results,
+        drivers,
+        "Homestead Miami Speedway",
+    )
+
+    assert "Final race recap from Homestead Miami Speedway" in recap
+    assert "the 10 of Winner Driver gets the win" in recap
+    assert "most laps led belonged to the 2 of Big Mover" in recap
+    assert "18 laps" in recap
+    assert "biggest mover was the 2 of Big Mover" in recap
+    assert "up 8 spots" in recap
+    assert "Fastest lap went to the 2 of Big Mover at 31.221 seconds" in recap
+    assert "2 of the 3 starters finished on the lead lap" in recap
+
+
 def test_checkered_queues_finish_rundown_then_signoff():
     director = RaceDirector()
     queue = BroadcastQueue()
@@ -454,15 +502,18 @@ def test_checkered_queues_finish_rundown_then_signoff():
         "race_control",
         "post_race_story",
         "post_race",
+        "post_race_recap",
         "post_race_signoff",
     ]
     assert queue.items[0].camera_sequence_steps == ((0, "TV Mixed", 0),)
     assert queue.items[1].priority > queue.items[2].priority
     assert queue.items[2].priority > queue.items[3].priority
+    assert queue.items[3].priority > queue.items[4].priority
     assert "top ten" in queue.items[1].message.lower()
-    assert "Thank you for watching" in queue.items[3].message
-    assert "Homestead Miami Speedway" in queue.items[3].message
-    assert "Jeff and Sarah" in queue.items[3].message
+    assert "Final race recap from Homestead Miami Speedway" in queue.items[3].message
+    assert "Thank you for watching" in queue.items[4].message
+    assert "Homestead Miami Speedway" in queue.items[4].message
+    assert "Jeff and Sarah" in queue.items[4].message
 
 
 def test_checkered_with_interviews_queues_handoff_instead_of_signoff():
@@ -496,14 +547,16 @@ def test_checkered_with_interviews_queues_handoff_instead_of_signoff():
         "race_control",
         "post_race_story",
         "post_race",
+        "post_race_recap",
         "post_race_interviews",
     ]
     assert queue.items[0].camera_sequence_steps == ((0, "TV Mixed", 0),)
-    assert "top three are headed to post-race interviews" in queue.items[3].message
-    assert "Third Place first" in queue.items[3].message
-    assert "Second Place" in queue.items[3].message
-    assert "Winner Driver" in queue.items[3].message
-    assert "Thank you for watching" not in queue.items[3].message
+    assert "Final race recap" in queue.items[3].message
+    assert "top three are headed to post-race interviews" in queue.items[4].message
+    assert "Third Place first" in queue.items[4].message
+    assert "Second Place" in queue.items[4].message
+    assert "Winner Driver" in queue.items[4].message
+    assert "Thank you for watching" not in queue.items[4].message
 
 
 def test_checkered_finish_rundown_waits_for_stable_order():

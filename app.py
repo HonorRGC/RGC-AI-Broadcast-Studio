@@ -1549,7 +1549,7 @@ def show_overlay_feature(item, overlay_server, source=None, engine=None):
             )
         return
 
-    if category in ("post_race_story", "post_race"):
+    if category in ("post_race_story", "post_race", "post_race_recap"):
         rows = build_race_end_cap_rows(source, engine)
         if rows:
             overlay_server.show_stat_panel(
@@ -1701,7 +1701,13 @@ def race_event_log_details(item):
             "message": message,
             "status": "logged",
         }
-    if category in ("race_recap", "post_race", "post_race_interviews", "post_race_signoff"):
+    if category in (
+        "race_recap",
+        "post_race",
+        "post_race_recap",
+        "post_race_interviews",
+        "post_race_signoff",
+    ):
         return {
             "kind": "race_event",
             "title": "Race Recap",

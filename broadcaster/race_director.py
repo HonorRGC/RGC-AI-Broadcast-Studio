@@ -400,6 +400,17 @@ class RaceDirector:
             dedupe_key="post_race:finish_rundown",
         )
 
+        scheduler.add(
+            self.build_post_race_recap(results, driver_lookup, track_name),
+            priority=8,
+            category="post_race_recap",
+            protected=True,
+            speaker="lead",
+            delay_seconds=18.0,
+            expires_after=240,
+            dedupe_key="post_race:recap",
+        )
+
         if self.post_race_interviews_enabled:
             scheduler.add(
                 self.build_interview_handoff(results, driver_lookup),
@@ -407,7 +418,7 @@ class RaceDirector:
                 category="post_race_interviews",
                 protected=True,
                 speaker="lead",
-                delay_seconds=18.0,
+                delay_seconds=32.0,
                 expires_after=240,
                 dedupe_key="post_race:interview_handoff",
             )
@@ -418,7 +429,7 @@ class RaceDirector:
                 category="post_race_signoff",
                 protected=True,
                 speaker="lead",
-                delay_seconds=18.0,
+                delay_seconds=32.0,
                 expires_after=240,
                 dedupe_key="post_race:signoff",
             )
@@ -719,6 +730,53 @@ class RaceDirector:
         )
         return " ".join(story_parts)
 
+    def build_post_race_recap(self, results, driver_lookup, track_name):
+        ordered = self.sort_results(results or [])
+        if not ordered:
+            return (
+                f"Final recap from {track_name}: timing and scoring did not provide "
+                "enough finishing data for a full race summary."
+            )
+
+        winner = ordered[0]
+        winner_text = self.driver_label(winner, driver_lookup)
+        parts = [f"Final race recap from {track_name}: {winner_text} gets the win."]
+
+        most_led = self.most_laps_led_result(ordered)
+        if most_led:
+            car, laps_led = most_led
+            lap_word = "lap" if laps_led == 1 else "laps"
+            parts.append(
+                f"The most laps led belonged to {self.driver_label(car, driver_lookup)}, "
+                f"who paced the field for {laps_led} {lap_word}."
+            )
+
+        biggest_mover = self.biggest_mover_result(ordered)
+        if biggest_mover:
+            car, gained = biggest_mover
+            spot_word = "spot" if gained == 1 else "spots"
+            parts.append(
+                f"The biggest mover was {self.driver_label(car, driver_lookup)}, "
+                f"up {gained} {spot_word} from the starting grid."
+            )
+
+        fastest = self.fastest_lap_result(ordered)
+        if fastest:
+            car, lap_time = fastest
+            parts.append(
+                f"Fastest lap went to {self.driver_label(car, driver_lookup)} "
+                f"at {self.format_lap_time(lap_time)}."
+            )
+
+        lead_lap = self.lead_lap_finishers_text(ordered)
+        if lead_lap:
+            parts.append(lead_lap)
+
+        parts.append(
+            "That gives us the story of the night after the finish order has settled."
+        )
+        return " ".join(parts)
+
     def build_signoff(self, track_name):
         return (
             f"That will do it tonight from {track_name}. "
@@ -753,6 +811,125 @@ class RaceDirector:
             self.safe_int(car.get("StartingPosition", 0)),
             self.safe_int(car.get("StartPosition", 0)),
             self.safe_int(car.get("GridPosition", 0)),
+        )
+
+    def driver_label(self, car, driver_lookup):
+        car_idx = car.get("CarIdx")
+        driver_info = driver_lookup.get(car_idx, {})
+        number = driver_info.get("number", "?")
+        name = driver_info.get("name", f"Car {car_idx}")
+        return f"the {number} of {name}"
+
+    def most_laps_led_result(self, ordered_results):
+        best_car = None
+        best_laps = 0
+        for car in ordered_results:
+            laps_led = self.best_laps_led(car)
+            if laps_led > best_laps:
+                best_laps = laps_led
+                best_car = car
+        if best_car is None or best_laps <= 0:
+            return None
+        return best_car, best_laps
+
+    def biggest_mover_result(self, ordered_results):
+        best_car = None
+        best_gain = 0
+        zero_based_positions = self.results_are_zero_based(ordered_results)
+        for car in ordered_results:
+            start = self.best_starting_position(car)
+            finish = self.get_display_position(car, zero_based_positions)
+            if start <= 0 or finish <= 0:
+                continue
+            gain = start - finish
+            if gain > best_gain:
+                best_gain = gain
+                best_car = car
+        if best_car is None or best_gain <= 0:
+            return None
+        return best_car, best_gain
+
+    def fastest_lap_result(self, ordered_results):
+        best_car = None
+        best_time = 0.0
+        for car in ordered_results:
+            lap_time = self.best_fastest_lap_time(car)
+            if lap_time <= 0:
+                continue
+            if best_time <= 0 or lap_time < best_time:
+                best_time = lap_time
+                best_car = car
+        if best_car is None or best_time <= 0:
+            return None
+        return best_car, best_time
+
+    def best_fastest_lap_time(self, car):
+        for key in (
+            "FastestTime",
+            "FastestLapTime",
+            "BestLapTime",
+            "fastest_lap_time",
+        ):
+            value = car.get(key)
+            try:
+                parsed = float(value)
+            except (TypeError, ValueError):
+                continue
+            if parsed > 0:
+                return parsed
+        return 0.0
+
+    def format_lap_time(self, lap_time):
+        try:
+            value = float(lap_time)
+        except (TypeError, ValueError):
+            return str(lap_time)
+        minutes = int(value // 60)
+        seconds = value - (minutes * 60)
+        if minutes > 0:
+            return f"{minutes}:{seconds:06.3f}"
+        return f"{seconds:.3f} seconds"
+
+    def lead_lap_finishers_text(self, ordered_results):
+        if not ordered_results:
+            return ""
+        starters = len([car for car in ordered_results if car.get("CarIdx") is not None])
+        if starters <= 0:
+            return ""
+
+        laps_behind_available = any(
+            key in car
+            for car in ordered_results
+            for key in ("LapsBehind", "ClassLapsBehind")
+        )
+        if laps_behind_available:
+            lead_lap_finishers = 0
+            for car in ordered_results:
+                laps_behind_values = [
+                    self.safe_int(car.get(key), 0)
+                    for key in ("LapsBehind", "ClassLapsBehind")
+                    if key in car
+                ]
+                if laps_behind_values and max(laps_behind_values) == 0:
+                    lead_lap_finishers += 1
+        else:
+            leader_laps = max(
+                self.safe_int(ordered_results[0].get("LapsComplete", 0), 0),
+                self.safe_int(ordered_results[0].get("Lap", 0), 0),
+            )
+            if leader_laps <= 0:
+                return ""
+            lead_lap_finishers = 0
+            for car in ordered_results:
+                car_laps = max(
+                    self.safe_int(car.get("LapsComplete", 0), 0),
+                    self.safe_int(car.get("Lap", 0), 0),
+                )
+                if car_laps >= leader_laps:
+                    lead_lap_finishers += 1
+
+        return (
+            f"{lead_lap_finishers} of the {starters} starters finished on the lead lap."
         )
 
     def best_laps_led(self, car):
