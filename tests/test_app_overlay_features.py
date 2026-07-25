@@ -1238,7 +1238,7 @@ def test_opening_field_rundown_driver_card_updates_when_camera_step_fails():
     assert overlay.featured[0]["car_image_url"] == ""
 
 
-def test_opening_field_rundown_allows_live_paint_specific_car_image(monkeypatch):
+def test_opening_field_rundown_forces_number_only_card_even_with_live_car_image(monkeypatch):
     import app
 
     monkeypatch.setattr(
@@ -1277,7 +1277,7 @@ def test_opening_field_rundown_allows_live_paint_specific_car_image(monkeypatch)
         opening_intro=True,
     )
 
-    assert "carCustPaint" in overlay.featured[0]["car_image_url"]
+    assert overlay.featured[0]["car_image_url"] == ""
     assert overlay.featured[0]["number_style"] == {
         "color": "#ffffff",
         "background": "#111111",
