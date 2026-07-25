@@ -20,6 +20,7 @@ from studio_launcher import (
     build_health_status,
     broadcast_command,
     clear_broadcast_pid,
+    delete_profile,
     format_playlist_paths,
     generate_remote_session_code,
     has_running_broadcast,
@@ -128,6 +129,16 @@ def test_broadcast_settings_have_friendly_labels_and_sections():
     assert "DISCORD_RACE_REPORT_RESULTS_URL" in saved_keys
     assert "OVERLAY_BRAND_GRAPHICS" not in saved_keys
     assert "DISCORD_RACE_REPORT_CHAMPIONSHIP_URL" in saved_keys
+
+
+def test_studio_profile_buttons_use_clear_create_delete_language():
+    source = Path("studio_launcher.py").read_text(encoding="utf-8")
+
+    assert 'text="New Profile Name"' in source
+    assert 'text="Create Profile"' in source
+    assert 'text="Save Profile Changes"' in source
+    assert 'text="Delete Profile"' in source
+    assert "New / Save As" not in source
 
 
 def test_launcher_version_comparison_helpers():
@@ -466,6 +477,16 @@ def test_launcher_saves_lists_and_loads_profiles(tmp_path):
     assert profiles == ["WFO Truck"]
     assert loaded["USE_OPENAI"] == "false"
     assert loaded["OVERLAY_EVENT_TITLE"] == "WFO Truck Night"
+
+
+def test_launcher_can_delete_saved_profile(tmp_path):
+    values = launcher_defaults({"OVERLAY_EVENT_TITLE": "Delete Me"})
+    saved_path = save_profile("Delete Me", values, profile_dir=tmp_path)
+
+    deleted_path = delete_profile("Delete Me", profile_dir=tmp_path)
+
+    assert deleted_path == saved_path
+    assert list_profiles(profile_dir=tmp_path) == []
 
 
 def test_launcher_profile_path_rejects_blank_name(tmp_path):

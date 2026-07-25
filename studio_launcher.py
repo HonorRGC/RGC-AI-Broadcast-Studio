@@ -467,6 +467,14 @@ def load_profile(profile_name, profile_dir=PROFILE_DIR):
     return launcher_defaults(load_env_file(path))
 
 
+def delete_profile(profile_name, profile_dir=PROFILE_DIR):
+    path = profile_path(profile_name, profile_dir)
+    if not path.exists():
+        raise FileNotFoundError(f"Profile not found: {profile_name}")
+    path.unlink()
+    return path
+
+
 def launcher_defaults(existing=None):
     existing = existing or {}
     defaults = {key: existing.get(key, default) for key, default in SAVED_FIELDS}
@@ -1451,7 +1459,7 @@ def run_gui():
     profile_combo.pack(side="left", padx=4, pady=8)
     label(
         profile_bar,
-        text="New / Save As",
+        text="New Profile Name",
         bg=PANEL_BG,
         fg=MUTED_FG,
     ).pack(side="left", padx=(14, 6), pady=8)
@@ -2021,16 +2029,33 @@ def run_gui():
         status.set(f"Saved settings to {ENV_PATH}")
         refresh_health()
 
-    def save_current_profile():
-        name = profile_name_var.get().strip() or profile_var.get().strip()
+    def create_profile_from_name():
+        name = profile_name_var.get().strip()
         if not name:
-            messagebox.showerror("Missing profile name", "Enter a profile name first.")
+            messagebox.showerror(
+                "Missing profile name",
+                "Type a name in New Profile Name, then click Create Profile.",
+            )
             return
         path = save_profile(name, collect_values())
         profile_var.set(sanitize_profile_name(name))
         profile_name_var.set("")
         refresh_profile_list()
-        status.set(f"Saved profile: {path.name}")
+        status.set(f"Created profile: {path.name}")
+
+    def save_current_profile():
+        name = profile_var.get().strip() or profile_name_var.get().strip()
+        if not name:
+            messagebox.showerror(
+                "Missing profile",
+                "Choose an existing profile or type a new profile name first.",
+            )
+            return
+        path = save_profile(name, collect_values())
+        profile_var.set(sanitize_profile_name(name))
+        profile_name_var.set("")
+        refresh_profile_list()
+        status.set(f"Saved changes to profile: {path.name}")
 
     def load_selected_profile():
         name = profile_var.get().strip()
@@ -2045,6 +2070,26 @@ def run_gui():
         apply_values_to_form(values)
         save_env_file(collect_values())
         status.set(f"Loaded profile '{name}' and saved it as the active broadcast settings.")
+
+    def delete_selected_profile():
+        name = profile_var.get().strip()
+        if not name:
+            messagebox.showerror("Missing profile", "Choose a profile to delete first.")
+            return
+        if not messagebox.askyesno(
+            "Delete profile",
+            f"Delete the saved profile '{name}'? This only removes that profile file.",
+        ):
+            return
+        try:
+            path = delete_profile(name)
+        except Exception as error:
+            messagebox.showerror("Profile delete failed", str(error))
+            return
+        profile_var.set("")
+        profile_name_var.set("")
+        refresh_profile_list()
+        status.set(f"Deleted profile: {path.name}")
 
     def refresh_health():
         for widget in health_rows_frame.winfo_children():
@@ -2185,12 +2230,22 @@ def run_gui():
         padx=6,
         pady=8,
     )
-    button(profile_action_bar, text="Save Profile", command=save_current_profile, color="#334b64").pack(
+    button(profile_action_bar, text="Create Profile", command=create_profile_from_name, color="#3d7a46").pack(
+        side="left",
+        padx=6,
+        pady=8,
+    )
+    button(profile_action_bar, text="Save Profile Changes", command=save_current_profile, color="#334b64").pack(
         side="left",
         padx=6,
         pady=8,
     )
     button(profile_action_bar, text="Load Profile", command=load_selected_profile, color="#334b64").pack(
+        side="left",
+        padx=6,
+        pady=8,
+    )
+    button(profile_action_bar, text="Delete Profile", command=delete_selected_profile, color=STOP_RED).pack(
         side="left",
         padx=6,
         pady=8,
@@ -2988,8 +3043,10 @@ def build_help_tab(
     section(
         "7. Profiles",
         """
-        Click Save Settings, then save a profile. Profiles let you keep separate setups for league races,
-        official testing, AI broadcast defaults, or human-broadcaster defaults. Before race night, load the correct profile and refresh Broadcast Health.
+        Profiles let you keep separate setups for league races, official testing, AI broadcast defaults, or human-broadcaster defaults.
+        To make one, type a name in New Profile Name and click Create Profile. Later, choose it from the Profile list and click Load Profile.
+        Use Save Profile Changes when you edit an existing profile. Use Delete Profile to remove old test profiles you no longer need.
+        Before race night, load the correct profile and refresh Broadcast Health.
         """,
     )
     section(
