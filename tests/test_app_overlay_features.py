@@ -1359,3 +1359,53 @@ def test_opening_field_rundown_forces_number_only_card_even_with_live_car_image(
         "color": "#ffffff",
         "background": "#111111",
     }
+
+
+def test_long_green_rundown_forces_number_only_card_even_with_live_car_image(monkeypatch):
+    import app
+
+    monkeypatch.setattr(
+        app,
+        "build_featured_driver_render_info",
+        lambda driver, require_live_render_match=False: {
+            "image_url": (
+                "http://127.0.0.1/SIMRacingApps/iRacing/pk_car.png?"
+                "carPath=stockcars%5Cfordmustang2022&carCustPaint=car_num_371788.tga"
+            ),
+            "number_style": {"color": "#ffee00", "background": "#222222"},
+        },
+    )
+    overlay = FeaturedDriverOverlaySpy()
+    camera_decision = SimpleNamespace(
+        status="switched",
+        car_idx=34,
+        car_number="34",
+    )
+    source = SimpleNamespace(
+        get_driver_lookup=lambda: {
+            34: {
+                "name": "T.J. Lee",
+                "number": "34",
+                "country": "United States",
+            }
+        },
+        get_results=lambda: [
+            {"CarIdx": 34, "Position": 4, "StartingPosition": 9, "Time": 4.2},
+        ],
+        get_starting_grid=lambda: [{"CarIdx": 34, "Position": 8}],
+    )
+
+    update_overlay_featured_driver(
+        overlay,
+        item(category="long_green_field_rundown_5", target=34),
+        source,
+        camera_decision,
+    )
+
+    assert overlay.featured[0]["position"] == 4
+    assert overlay.featured[0]["starting_position"] == 9
+    assert overlay.featured[0]["car_image_url"] == ""
+    assert overlay.featured[0]["number_style"] == {
+        "color": "#ffee00",
+        "background": "#222222",
+    }

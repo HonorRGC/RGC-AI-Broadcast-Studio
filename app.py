@@ -2553,13 +2553,23 @@ def update_overlay_featured_driver(overlay_server, item, source, camera_decision
     if car_idx is None or car_idx != camera_decision.car_idx:
         return
 
+    category = str(getattr(item, "category", "") or "")
+    opening_intro = category.startswith("opening_field_rundown")
+    rundown_number_only = category.startswith(
+        (
+            "opening_field_rundown",
+            "quarter_field_rundown",
+            "three_quarter_field_rundown",
+            "long_green_field_rundown",
+        )
+    )
+
     update_overlay_focused_driver(
         overlay_server,
         source,
         camera_decision,
-        opening_intro=str(getattr(item, "category", "")).startswith(
-            "opening_field_rundown"
-        ),
+        opening_intro=opening_intro,
+        number_only_card=rundown_number_only,
     )
 
 
@@ -2573,6 +2583,7 @@ def update_overlay_focused_driver(
     camera_decision,
     duration=12.0,
     opening_intro=False,
+    number_only_card=False,
 ):
     if camera_decision is None:
         return
@@ -2600,7 +2611,7 @@ def update_overlay_focused_driver(
         require_live_render_match=opening_intro,
     )
     car_image_url = car_render_info.get("image_url", "")
-    if opening_intro:
+    if opening_intro or number_only_card:
         car_image_url = ""
     results = featured_driver_results(source, opening_intro=opening_intro)
     position_info = featured_driver_position_info(
