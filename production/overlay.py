@@ -3664,20 +3664,24 @@ OVERLAY_HTML = r"""<!doctype html>
 
     .lap-history {
       display: flex;
-      gap: 2px;
-      padding: 7px 8px 8px;
+      gap: 0;
+      height: 11px;
+      margin: 7px 8px 8px;
+      padding: 0;
       background: rgba(0, 0, 0, 0.28);
+      border: 1px solid rgba(255, 255, 255, 0.12);
       border-bottom: 1px solid rgba(255, 255, 255, 0.08);
       max-width: 100%;
       box-sizing: border-box;
       overflow: hidden;
+      border-radius: 999px;
     }
 
     .lap-history-segment {
-      height: 8px;
-      flex: 1 1 0;
+      height: 100%;
+      flex: 0 1 auto;
       min-width: 0;
-      border-radius: 3px;
+      border-radius: 0;
       background: rgba(255, 255, 255, 0.18);
     }
 
@@ -4659,25 +4663,33 @@ OVERLAY_HTML = r"""<!doctype html>
       const active = !!(history && history.length);
       bar.classList.toggle("hidden", !active);
       if (!active) return;
-      const maxSegments = 54;
-      const step = Math.max(1, Math.ceil(history.length / maxSegments));
-      const compacted = [];
-      for (let index = 0; index < history.length; index += step) {
-        const chunk = history.slice(index, index + step);
-        const status = chunk.some((lap) => lap.status === "caution")
-          ? "caution"
-          : chunk.some((lap) => lap.status === "green")
-            ? "green"
-            : "pending";
-        compacted.push({ lap: chunk[0].lap, status });
-      }
+      const compacted = compactLapHistoryRuns(history);
       bar.innerHTML = "";
       for (const lap of compacted) {
         const segment = document.createElement("span");
         segment.className = `lap-history-segment ${lap.status || "pending"}`;
-        segment.title = `Lap ${lap.lap}: ${lap.status || "pending"}`;
+        segment.style.flexGrow = String(lap.count || 1);
+        segment.title = lap.start === lap.end
+          ? `Lap ${lap.start}: ${lap.status || "pending"}`
+          : `Laps ${lap.start}-${lap.end}: ${lap.status || "pending"}`;
         bar.appendChild(segment);
       }
+    }
+
+    function compactLapHistoryRuns(history) {
+      const runs = [];
+      for (const lap of history || []) {
+        const status = lap.status || "pending";
+        const currentLap = Number(lap.lap || 0);
+        const last = runs[runs.length - 1];
+        if (last && last.status === status && currentLap === last.end + 1) {
+          last.end = currentLap;
+          last.count += 1;
+        } else {
+          runs.push({ start: currentLap, end: currentLap, status, count: 1 });
+        }
+      }
+      return runs;
     }
 
     function renderBrandGraphic(graphics, sessionType) {
