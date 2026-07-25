@@ -2435,12 +2435,21 @@ class BroadcastEngine:
             category=item.category,
             protected=False,
             speaker=item.speaker,
-            expires_after=45,
+            expires_after=self.editorial_queue_expiry_seconds(item),
             dedupe_key=self.editorial_producer.build_story_id(item),
             camera_target_car_idx=item.camera_target_car_idx,
             participant_car_indices=item.participant_car_indices,
         )
         self._queue_booth_follow_up(item, race_state)
+
+    @staticmethod
+    def editorial_queue_expiry_seconds(item):
+        story_type = str(getattr(item, "story_type", "") or "")
+        if story_type in {"live_side_by_side", "live_three_wide", "live_pass_clear"}:
+            return 8
+        if story_type in {"side_by_side", "three_car_battle"}:
+            return 12
+        return 45
 
     def _queue_booth_follow_up(self, item, race_state):
         follow_up = self.booth_followup_director.follow_up_for(

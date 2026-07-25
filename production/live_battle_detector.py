@@ -30,9 +30,14 @@ class LiveBattleDetector:
 
     def __init__(self):
         self.pending_clears = {}
+        self.pending_side_by_side = {}
+        self.pending_three_wide = {}
         self.last_story_at = {}
         self.story_cooldown_seconds = 24.0
         self.high_priority_cooldown_seconds = 9.0
+        self.side_by_side_required_ticks = 2
+        self.three_wide_required_ticks = 2
+        self.clear_required_ticks = 3
 
     def analyze(
         self,
@@ -75,8 +80,15 @@ class LiveBattleDetector:
             if group[0]["position"] > self.PACK_MAX_POSITION:
                 continue
             if self.progress_spread(group) > self.THREE_WIDE_DELTA:
+                self.pending_three_wide.pop(tuple(car["car_idx"] for car in group), None)
                 continue
             key = ("three_wide", tuple(car["car_idx"] for car in group))
+            if not self.stable_for_ticks(
+                self.pending_three_wide,
+                key,
+                self.three_wide_required_ticks,
+            ):
+                continue
             if not self.cooldown_ready(key, current_lap, total_laps):
                 continue
             names = [self.driver_label(driver_lookup, car["car_idx"]) for car in group]
@@ -112,9 +124,16 @@ class LiveBattleDetector:
                 best_position = position
 
         if not best_pair:
+            self.pending_side_by_side = {}
             return None
         first, second = best_pair
         key = ("side_by_side", tuple(sorted([first["car_idx"], second["car_idx"]])))
+        if not self.stable_for_ticks(
+            self.pending_side_by_side,
+            key,
+            self.side_by_side_required_ticks,
+        ):
+            return None
         if not self.cooldown_ready(key, current_lap, total_laps):
             return None
 
@@ -153,7 +172,7 @@ class LiveBattleDetector:
             else:
                 self.pending_clears.pop(key, None)
                 continue
-            if self.pending_clears[key] < 2:
+            if self.pending_clears[key] < self.clear_required_ticks:
                 continue
             if not self.cooldown_ready(key, current_lap, total_laps):
                 continue
@@ -176,6 +195,14 @@ class LiveBattleDetector:
             )
             break
         return best_story
+
+    @staticmethod
+    def stable_for_ticks(bucket, active_key, required_ticks):
+        for key in list(bucket):
+            if key != active_key:
+                bucket.pop(key, None)
+        bucket[active_key] = bucket.get(active_key, 0) + 1
+        return bucket[active_key] >= required_ticks
 
     def build_cars(self, results, distances, pit_status):
         pit_status = pit_status or []

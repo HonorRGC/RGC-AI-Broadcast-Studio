@@ -33,6 +33,18 @@ class StubSponsorReads:
         return f"Caution sponsor read on lap {current_lap}."
 
 
+def test_live_battle_editorial_items_expire_quickly():
+    assert BroadcastEngine.editorial_queue_expiry_seconds(
+        SimpleNamespace(story_type="live_side_by_side")
+    ) == 8
+    assert BroadcastEngine.editorial_queue_expiry_seconds(
+        SimpleNamespace(story_type="live_pass_clear")
+    ) == 8
+    assert BroadcastEngine.editorial_queue_expiry_seconds(
+        SimpleNamespace(story_type="biggest_mover")
+    ) == 45
+
+
 class SnapshotSource:
     def __init__(self, snapshot):
         self.snapshot = snapshot
