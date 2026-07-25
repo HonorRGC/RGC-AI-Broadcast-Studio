@@ -1238,14 +1238,17 @@ def test_opening_field_rundown_driver_card_updates_when_camera_step_fails():
     assert overlay.featured[0]["car_image_url"] == ""
 
 
-def test_opening_field_rundown_forces_number_only_card_even_with_car_image(monkeypatch):
+def test_opening_field_rundown_allows_live_paint_specific_car_image(monkeypatch):
     import app
 
     monkeypatch.setattr(
         app,
         "build_featured_driver_render_info",
         lambda driver, require_live_render_match=False: {
-            "image_url": "http://127.0.0.1/rendered-car.png",
+            "image_url": (
+                "http://127.0.0.1/SIMRacingApps/iRacing/pk_car.png?"
+                "carPath=stockcars%5Cfordmustang2022&carCustPaint=car_num_371788.tga"
+            ),
             "number_style": {"color": "#ffffff", "background": "#111111"},
         },
     )
@@ -1274,7 +1277,7 @@ def test_opening_field_rundown_forces_number_only_card_even_with_car_image(monke
         opening_intro=True,
     )
 
-    assert overlay.featured[0]["car_image_url"] == ""
+    assert "carCustPaint" in overlay.featured[0]["car_image_url"]
     assert overlay.featured[0]["number_style"] == {
         "color": "#ffffff",
         "background": "#111111",
