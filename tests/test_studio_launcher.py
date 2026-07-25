@@ -35,6 +35,7 @@ from studio_launcher import (
     load_profile,
     load_env_file,
     profile_path,
+    producer_assist_launch_url,
     read_broadcast_pid,
     remote_producer_link,
     running_broadcast_pids,
@@ -84,6 +85,7 @@ def test_launcher_includes_rgc_links():
     assert TAILSCALE_WINDOWS_DOWNLOAD_URL == "https://tailscale.com/download/windows"
     assert DEFAULT_OVERLAY_URL == "http://127.0.0.1:8765/overlay"
     assert DEFAULT_PRODUCER_URL == "http://127.0.0.1:8765/producer"
+    assert producer_assist_launch_url() == DEFAULT_PRODUCER_URL
 
 
 def test_close_warning_explains_broadcast_related_process():
@@ -142,6 +144,13 @@ def test_studio_profile_buttons_use_clear_create_delete_language():
     assert "Save Settings updates both the active settings file and that selected profile" in source
     assert "New / Save As" not in source
     assert "Save Profile Changes" not in source
+
+
+def test_start_broadcast_auto_opens_producer_assist():
+    source = Path("studio_launcher.py").read_text(encoding="utf-8")
+
+    assert "root.after(1500, open_producer_assist_after_start)" in source
+    assert "Producer Assist opens automatically after Start Broadcast" in source
 
 
 def test_launcher_version_comparison_helpers():

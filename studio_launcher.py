@@ -978,6 +978,10 @@ def open_external_link(url):
     webbrowser.open(url)
 
 
+def producer_assist_launch_url():
+    return DEFAULT_PRODUCER_URL
+
+
 def local_lan_ip():
     try:
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
@@ -2177,7 +2181,17 @@ def run_gui():
                 "Started broadcast with overlay, Producer Assist, cameras, and incident replay. "
                 "Use Producer Assist to toggle OpenAI, ElevenLabs, and auto cameras."
             )
+            root.after(1500, open_producer_assist_after_start)
         refresh_health()
+
+    def open_producer_assist_after_start():
+        try:
+            open_external_link(producer_assist_launch_url())
+        except Exception as error:
+            status.set(
+                "Broadcast started, but Producer Assist did not open automatically: "
+                f"{error}"
+            )
 
     def stop_running_broadcast():
         stopped_count = stop_broadcast()
@@ -3045,7 +3059,8 @@ def build_help_tab(
         "8. Start Broadcast and Producer Assist",
         """
         Start Broadcast runs the broadcast engine, overlay, Producer Assist control room, cameras, replay controls, and race control.
-        Open Producer Assist to turn OpenAI, ElevenLabs, and auto cameras on or off during the same running broadcast.
+        Producer Assist opens automatically after Start Broadcast. If you close it, use the Producer Assist link to open it again.
+        Use Producer Assist to turn OpenAI, ElevenLabs, and auto cameras on or off during the same running broadcast.
         Stop Broadcast stops a broadcast launched by the studio.
 
         Race Admin Send Mode controls how admin commands are handled. clipboard is broadcast-safe and copies the command for manual send.
