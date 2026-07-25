@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 import json
+import os
 import time
 from urllib.error import URLError
 from urllib.parse import urljoin
 from urllib.request import urlopen
 
 
-DEFAULT_BASE_URL = "http://127.0.0.1/SIMRacingApps/"
+DEFAULT_BASE_URL = os.getenv("SIM_RACING_APPS_BASE_URL", "http://127.0.0.1/SIMRacingApps/")
 CACHE_TTL_SECONDS = 3.0
 ROSTER_CACHE_TTL_SECONDS = 15.0
 REQUEST_TIMEOUT_SECONDS = 0.35
