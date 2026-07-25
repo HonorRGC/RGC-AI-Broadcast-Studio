@@ -20,6 +20,7 @@ from app import (
     show_overlay_feature,
     sponsor_graphics_for_mentions,
     sponsor_mentions_for_message,
+    should_update_overlay_for_camera_update,
 )
 
 
@@ -42,6 +43,13 @@ class FeaturedDriverOverlaySpy:
 
     def show_featured_driver(self, **kwargs):
         self.featured.append(kwargs)
+
+
+def test_camera_update_overlay_refresh_only_for_lineup():
+    assert should_update_overlay_for_camera_update(SimpleNamespace(role="lineup"))
+    assert not should_update_overlay_for_camera_update(SimpleNamespace(role="story"))
+    assert not should_update_overlay_for_camera_update(SimpleNamespace(role="home"))
+    assert not should_update_overlay_for_camera_update(SimpleNamespace(role=""))
 
 
 class ProducerOverlaySpy:

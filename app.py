@@ -304,7 +304,9 @@ def run_source(
         report_replay_decision(replay_director.update(source, camera_director), overlay_server)
         camera_update_decision = camera_director.update(source)
         report_camera_decision(camera_update_decision, overlay_server)
-        if overlay_server:
+        if overlay_server and should_update_overlay_for_camera_update(
+            camera_update_decision
+        ):
             update_overlay_focused_driver(
                 overlay_server,
                 source,
@@ -2467,6 +2469,10 @@ def update_overlay_featured_driver(overlay_server, item, source, camera_decision
             "opening_field_rundown"
         ),
     )
+
+
+def should_update_overlay_for_camera_update(camera_decision):
+    return getattr(camera_decision, "role", "") == "lineup"
 
 
 def update_overlay_focused_driver(
