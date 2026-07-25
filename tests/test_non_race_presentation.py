@@ -36,6 +36,7 @@ def test_practice_presentation_shows_race_sponsors_and_clears_after_practice():
     director = PracticePresentationDirector(
         sponsor_name="RGC Motorsports",
         sponsor_cause="Autism Awareness",
+        graphics=["/assets/rgc.png", "/assets/cause.png"],
     )
 
     director.update("Practice", overlay)
@@ -44,6 +45,7 @@ def test_practice_presentation_shows_race_sponsors_and_clears_after_practice():
     assert overlay.presentations[0]["kind"] == "race_sponsors"
     assert overlay.presentations[0]["title"] == "Today's Race Sponsors"
     assert "RGC Motorsports" in overlay.presentations[0]["subtitle"]
+    assert overlay.presentations[0]["graphics"] == ["/assets/rgc.png", "/assets/cause.png"]
     assert overlay.cleared == 1
 
 

@@ -31,6 +31,13 @@ def env_list(name, default="", separators=(";", "|", ",")):
     return [item.strip() for item in text.split("||") if item.strip()]
 
 
+def env_list_or_default(name, default_items, separators=(";", "|", ",")):
+    values = env_list(name, "", separators=separators)
+    if values:
+        return values
+    return list(default_items or [])
+
+
 def unique_list(values):
     seen = set()
     cleaned = []
@@ -230,16 +237,18 @@ _SPONSOR_BRAND_GRAPHICS = unique_list(
     + [SPONSOR_READ_CAUSE_LOGO]
 )
 OVERLAY_BRAND_GRAPHICS = _SPONSOR_BRAND_GRAPHICS or _DEFAULT_BRAND_GRAPHICS
-NATIONAL_ANTHEM_GRAPHICS = [
-    item.strip()
-    for item in os.getenv("NATIONAL_ANTHEM_GRAPHICS", ",".join(OVERLAY_BRAND_GRAPHICS)).split(",")
-    if item.strip()
-]
-CAUTION_PRESENTATION_GRAPHICS = [
-    item.strip()
-    for item in os.getenv("CAUTION_PRESENTATION_GRAPHICS", ",".join(OVERLAY_BRAND_GRAPHICS)).split(",")
-    if item.strip()
-]
+NATIONAL_ANTHEM_GRAPHICS = env_list_or_default(
+    "NATIONAL_ANTHEM_GRAPHICS",
+    OVERLAY_BRAND_GRAPHICS,
+)
+CAUTION_PRESENTATION_GRAPHICS = env_list_or_default(
+    "CAUTION_PRESENTATION_GRAPHICS",
+    OVERLAY_BRAND_GRAPHICS,
+)
+PRACTICE_PRESENTATION_GRAPHICS = env_list_or_default(
+    "PRACTICE_PRESENTATION_GRAPHICS",
+    OVERLAY_BRAND_GRAPHICS,
+)
 
 
 # Optional post-race interviews.

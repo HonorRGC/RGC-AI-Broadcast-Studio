@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from config import (
+    PRACTICE_PRESENTATION_GRAPHICS,
     PRACTICE_MUSIC_PLAYLIST,
     RACE_SPONSOR_NAMES,
     STUDIO_VOLUME,
@@ -19,6 +20,7 @@ class PracticePresentationDirector:
         sponsor_name=SPONSOR_READ_NAME,
         sponsor_cause=SPONSOR_READ_CAUSE,
         music_volume=STUDIO_VOLUME,
+        graphics=None,
     ):
         self.playlist = list(playlist if playlist is not None else PRACTICE_MUSIC_PLAYLIST)
         self.music_volume = max(0, min(100, int(music_volume or 0)))
@@ -28,6 +30,9 @@ class PracticePresentationDirector:
         self.sponsor_name = sponsor_name
         self.sponsor_names = list(RACE_SPONSOR_NAMES or ([sponsor_name] if sponsor_name else []))
         self.sponsor_cause = sponsor_cause
+        self.graphics = list(
+            graphics if graphics is not None else PRACTICE_PRESENTATION_GRAPHICS
+        )
         self.session_tracker = SessionTracker()
         self.presentation_shown = False
         self.music_started = False
@@ -49,6 +54,7 @@ class PracticePresentationDirector:
                 title="Today's Race Sponsors",
                 subtitle=self.subtitle(),
                 duration=3600,
+                graphics=self.graphics,
             )
             self.presentation_shown = True
 
