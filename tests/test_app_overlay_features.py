@@ -1191,6 +1191,7 @@ def test_opening_field_rundown_driver_card_uses_starting_grid_and_country():
     assert overlay.featured[0]["country"] == "United States"
     assert overlay.featured[0]["story"] == ""
     assert overlay.featured[0]["speed"] == ""
+    assert overlay.featured[0]["car_image_url"] == ""
 
 
 def test_opening_field_rundown_driver_card_updates_when_camera_step_fails():
@@ -1226,3 +1227,47 @@ def test_opening_field_rundown_driver_card_updates_when_camera_step_fails():
     assert overlay.featured[0]["driver_name"] == "T.J. Lee"
     assert overlay.featured[0]["position"] == 2
     assert overlay.featured[0]["country"] == "United States"
+    assert overlay.featured[0]["car_image_url"] == ""
+
+
+def test_opening_field_rundown_forces_number_only_card_even_with_car_image(monkeypatch):
+    import app
+
+    monkeypatch.setattr(
+        app,
+        "build_featured_driver_render_info",
+        lambda driver, require_live_render_match=False: {
+            "image_url": "http://127.0.0.1/rendered-car.png",
+            "number_style": {"color": "#ffffff", "background": "#111111"},
+        },
+    )
+    overlay = FeaturedDriverOverlaySpy()
+    camera_decision = SimpleNamespace(
+        status="switched",
+        car_idx=34,
+        car_number="34",
+    )
+    source = SimpleNamespace(
+        get_driver_lookup=lambda: {
+            34: {
+                "name": "T.J. Lee",
+                "number": "34",
+                "country": "United States",
+            }
+        },
+        get_results=lambda: [],
+        get_starting_grid=lambda: [{"CarIdx": 34, "Position": 0}],
+    )
+
+    update_overlay_focused_driver(
+        overlay,
+        source,
+        camera_decision,
+        opening_intro=True,
+    )
+
+    assert overlay.featured[0]["car_image_url"] == ""
+    assert overlay.featured[0]["number_style"] == {
+        "color": "#ffffff",
+        "background": "#111111",
+    }

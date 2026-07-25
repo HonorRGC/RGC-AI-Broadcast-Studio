@@ -2502,6 +2502,8 @@ def update_overlay_focused_driver(
         require_live_render_match=opening_intro,
     )
     car_image_url = car_render_info.get("image_url", "")
+    if opening_intro:
+        car_image_url = ""
     results = featured_driver_results(source, opening_intro=opening_intro)
     position_info = featured_driver_position_info(
         car_idx,
