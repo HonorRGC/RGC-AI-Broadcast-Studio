@@ -4,7 +4,10 @@ from pathlib import Path
 from config import (
     NATIONAL_ANTHEM_GRAPHICS,
     NATIONAL_ANTHEM_AUDIO,
+    RACE_SPONSOR_NAMES,
     STUDIO_VOLUME,
+    SPONSOR_READ_CAUSE,
+    SPONSOR_READ_NAME,
     USE_NATIONAL_ANTHEM,
 )
 from production.audio_bed import (
@@ -30,14 +33,19 @@ class NationalAnthemDirector:
         player=None,
         studio_volume=STUDIO_VOLUME,
         graphics=None,
+        sponsor_name=SPONSOR_READ_NAME,
+        sponsor_cause=SPONSOR_READ_CAUSE,
     ):
         self.enabled = bool(enabled)
         self.audio_path = str(audio_path or "").strip()
         self.player = player or PlaylistAudioPlayer(
             normal_volume=percent_to_mci_volume(studio_volume),
-            alias="rgc_anthem_audio",
+            alias="rgc_qualifying_music",
         )
         self.graphics = list(graphics if graphics is not None else NATIONAL_ANTHEM_GRAPHICS)
+        self.sponsor_name = sponsor_name
+        self.sponsor_names = list(RACE_SPONSOR_NAMES or ([sponsor_name] if sponsor_name else []))
+        self.sponsor_cause = sponsor_cause
         self.session_tracker = SessionTracker()
         self.played = False
         self.active = False
@@ -45,36 +53,41 @@ class NationalAnthemDirector:
     def update(self, session_type, overlay_server=None):
         session = self.session_tracker.normalize(session_type)
         if not self.enabled:
-            return AnthemDecision("ignored", "National anthem is disabled.")
+            return AnthemDecision("ignored", "Qualifying music is disabled.")
 
         if session == WeekendSession.QUALIFYING and not self.played:
             self.played = True
             self.active = True
             if overlay_server:
                 overlay_server.show_special_presentation(
-                    kind="rgc_anthem",
-                    title="RGC Anthem",
-                    subtitle="Presented by RGC Motorsports",
+                    kind="race_sponsors",
+                    title="Today's Race Sponsors",
+                    subtitle=self.subtitle(),
                     duration=24 * 60 * 60,
                     graphics=self.graphics,
                 )
             return self.play_audio()
 
-        if self.active and session == WeekendSession.RACE:
+        if self.active and session != WeekendSession.QUALIFYING:
             self.active = False
             self.stop_audio()
             if overlay_server:
                 overlay_server.clear_special_presentation()
-            return AnthemDecision("ended", "RGC Anthem presentation ended.")
+            return AnthemDecision("ended", "Qualifying music presentation ended.")
 
         return AnthemDecision("ignored", "No anthem action is due.")
+
+    def subtitle(self):
+        parts = [", ".join(self.sponsor_names[:5]) or self.sponsor_name, self.sponsor_cause]
+        parts = [part for part in parts if part]
+        return " • ".join(parts) if parts else "RGC AI Broadcast Studio"
 
     def play_audio(self):
         playlist = self.audio_playlist()
         if not playlist:
             return AnthemDecision(
                 "shown",
-                "RGC Anthem overlay shown; no audio file is configured.",
+                "Qualifying sponsor overlay shown; no music file is configured.",
             )
 
         existing_paths = existing_hidden_audio_paths(playlist)
@@ -87,27 +100,27 @@ class NationalAnthemDirector:
             if unsupported_paths:
                 return AnthemDecision(
                     "unsupported_audio",
-                    "RGC Anthem audio uses an unsupported file type. Convert it to MP3 or WAV: "
+                    "Qualifying music uses an unsupported file type. Convert it to MP3 or WAV: "
                     f"{unsupported_paths[0]}",
                 )
             return AnthemDecision(
                 "missing_audio",
-                f"RGC Anthem audio file was not found: {playlist[0]}",
+                f"Qualifying music file was not found: {playlist[0]}",
             )
 
         try:
             if self.play_with_player([str(path) for path in existing_paths]) is False:
                 return AnthemDecision(
                     "audio_failed",
-                    "RGC Anthem audio could not be played by the hidden audio player.",
+                    "Qualifying music could not be played by the hidden audio player.",
                 )
         except Exception as error:
             return AnthemDecision(
                 "audio_failed",
-                f"RGC Anthem audio could not be played: {error}",
+                f"Qualifying music could not be played: {error}",
             )
 
-        return AnthemDecision("played", "RGC Anthem presentation started.")
+        return AnthemDecision("played", "Qualifying music loop started.")
 
     def audio_playlist(self):
         return [
@@ -117,10 +130,10 @@ class NationalAnthemDirector:
         ]
 
     def play_with_player(self, paths):
-        if hasattr(self.player, "play_playlist_once"):
-            return self.player.play_playlist_once(paths)
         if hasattr(self.player, "play_playlist"):
             return self.player.play_playlist(paths)
+        if hasattr(self.player, "play_playlist_once"):
+            return self.player.play_playlist_once(paths)
         if hasattr(self.player, "play"):
             return self.player.play(paths[0])
         return self.player(paths[0])

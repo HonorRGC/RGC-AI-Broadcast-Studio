@@ -102,7 +102,8 @@ def test_broadcast_settings_have_friendly_labels_and_sections():
     assert BROADCAST_FIELD_LABELS["SPONSOR_READ_CAUSE_LOGO"] == "Cause / Awareness Logo"
     assert BROADCAST_FIELD_LABELS["RACE_ADMIN_MODE"] == "Race Admin Mode"
     assert BROADCAST_FIELD_LABELS["RACE_ADMIN_SEND_MODE"] == "Race Admin Send Mode"
-    assert BROADCAST_FIELD_LABELS["DISCORD_BOT_ENABLED"] == "Discord Bot Integration"
+    assert BROADCAST_FIELD_LABELS["QUALIFYING_MUSIC_PLAYLIST"] == "Qualifying Music Playlist"
+    assert "loop during qualifying" in BROADCAST_FIELD_HELP["QUALIFYING_MUSIC_PLAYLIST"]
     assert BROADCAST_FIELD_LABELS["DISCORD_RACE_REPORT_ENABLED"] == "Discord Race Report"
     assert BROADCAST_FIELD_LABELS["DISCORD_RACE_REPORT_WEBHOOK_URL"] == "Race Report Webhook URL"
     assert BROADCAST_FIELD_LABELS["DISCORD_RACE_REPORT_USE_OPENAI"] == "Use OpenAI Race Recap"
@@ -114,11 +115,16 @@ def test_broadcast_settings_have_friendly_labels_and_sections():
     assert "STUDIO_VOLUME" not in BROADCAST_FIELD_LABELS
     assert BROADCAST_FIELD_SECTIONS["USE_OPENAI"] == "AI Commentary"
     assert BROADCAST_FIELD_SECTIONS["OVERLAY_EVENT_TITLE"] == "Event Sponsors / Overlay Links"
+    assert BROADCAST_FIELD_SECTIONS["PRACTICE_MUSIC_PLAYLIST"] == "Practice / Qualifying / Caution Music"
     assert BROADCAST_FIELD_SECTIONS["RACE_ADMIN_MODE"] == "Race Control"
-    assert BROADCAST_FIELD_SECTIONS["DISCORD_BOT_ENABLED"] == "Discord Interviews - Prepared for Later"
     assert BROADCAST_FIELD_SECTIONS["DISCORD_RACE_REPORT_ENABLED"] == "Discord Race Report"
     saved_keys = [key for key, _default in LAUNCHER_FIELDS]
     assert "RACE_SPONSOR_5_VIDEO" in saved_keys
+    assert "QUALIFYING_MUSIC_PLAYLIST" in saved_keys
+    assert "USE_NATIONAL_ANTHEM" not in saved_keys
+    assert "NATIONAL_ANTHEM_GRAPHICS" not in saved_keys
+    assert "CAUTION_PRESENTATION_GRAPHICS" not in saved_keys
+    assert "DISCORD_BOT_ENABLED" not in saved_keys
     assert "DISCORD_RACE_REPORT_RESULTS_URL" in saved_keys
     assert "OVERLAY_BRAND_GRAPHICS" not in saved_keys
     assert "DISCORD_RACE_REPORT_CHAMPIONSHIP_URL" in saved_keys
@@ -175,6 +181,7 @@ def test_launcher_defaults_include_split_league_stats_csvs():
     assert defaults["RACE_SPONSOR_1_READ"] == ""
     assert "/assets/rgc_motorsports.png" in defaults["OVERLAY_BRAND_GRAPHICS"]
     assert defaults["PRACTICE_MUSIC_PLAYLIST"] == ""
+    assert defaults["QUALIFYING_MUSIC_PLAYLIST"] == ""
     assert defaults["STUDIO_VOLUME"] == "65"
     assert defaults["CAUTION_REPLAY_AUDIO"] == ""
     assert defaults["NATIONAL_ANTHEM_AUDIO"] == ""
@@ -193,6 +200,12 @@ def test_launcher_defaults_include_split_league_stats_csvs():
     assert defaults["SIMRACERHUB_LEAGUE_ID"] == ""
     assert defaults["SIMRACERHUB_SERIES_ID"] == ""
     assert defaults["SIMRACERHUB_SEASON_ID"] == ""
+
+
+def test_launcher_defaults_migrate_old_anthem_audio_to_qualifying_music():
+    defaults = launcher_defaults({"NATIONAL_ANTHEM_AUDIO": "D:/Music/old_anthem.mp3"})
+
+    assert defaults["QUALIFYING_MUSIC_PLAYLIST"] == "D:/Music/old_anthem.mp3"
 
 
 def test_race_admin_send_mode_includes_open_chat_option():
@@ -471,10 +484,9 @@ def test_launcher_saves_music_settings(tmp_path):
         {
             "STUDIO_VOLUME": "45",
             "PRACTICE_MUSIC_PLAYLIST": "D:/Music/practice1.mp3;D:/Music/practice2.mp3",
+            "QUALIFYING_MUSIC_PLAYLIST": "D:/Music/qualifying1.mp3;D:/Music/qualifying2.mp3",
             "CAUTION_REPLAY_AUDIO": "D:/Music/caution.mp3",
-            "CAUTION_PRESENTATION_GRAPHICS": "/assets/caution.png",
-            "NATIONAL_ANTHEM_AUDIO": "D:/Music/anthem.mp3",
-            "NATIONAL_ANTHEM_GRAPHICS": "/assets/anthem.png",
+            "NATIONAL_ANTHEM_AUDIO": "D:/Music/qualifying1.mp3;D:/Music/qualifying2.mp3",
         },
         env_path,
     )
@@ -482,11 +494,11 @@ def test_launcher_saves_music_settings(tmp_path):
     saved = env_path.read_text(encoding="utf-8")
     assert "STUDIO_VOLUME=45" in saved
     assert "PRACTICE_MUSIC_PLAYLIST=D:/Music/practice1.mp3;D:/Music/practice2.mp3" in saved
+    assert "QUALIFYING_MUSIC_PLAYLIST=D:/Music/qualifying1.mp3;D:/Music/qualifying2.mp3" in saved
     assert "PRACTICE_MUSIC_VOLUME" not in saved
     assert "CAUTION_REPLAY_AUDIO=D:/Music/caution.mp3" in saved
-    assert "CAUTION_PRESENTATION_GRAPHICS=/assets/caution.png" in saved
-    assert "NATIONAL_ANTHEM_AUDIO=D:/Music/anthem.mp3" in saved
-    assert "NATIONAL_ANTHEM_GRAPHICS=/assets/anthem.png" in saved
+    assert "CAUTION_PRESENTATION_GRAPHICS" in saved
+    assert "NATIONAL_ANTHEM_AUDIO=D:/Music/qualifying1.mp3;D:/Music/qualifying2.mp3" in saved
 
 
 def test_launcher_formats_practice_music_playlist():
@@ -495,28 +507,26 @@ def test_launcher_formats_practice_music_playlist():
     assert playlist.split(";") == [str(Path("D:/Music/one.mp3")), str(Path("D:/Music/two.mp3"))]
 
 
-def test_launcher_turns_on_anthem_when_audio_is_selected():
+def test_launcher_sets_qualifying_music_when_audio_is_selected():
     values = apply_audio_file_selection(
-        {"USE_NATIONAL_ANTHEM": "false"},
-        "NATIONAL_ANTHEM_AUDIO",
-        "D:/Music/anthem.mp3",
+        {},
+        "QUALIFYING_MUSIC_PLAYLIST",
+        "D:/Music/qualifying.mp3",
     )
 
-    assert values["USE_NATIONAL_ANTHEM"] == "true"
-    assert values["NATIONAL_ANTHEM_AUDIO"] == str(Path("D:/Music/anthem.mp3"))
+    assert values["QUALIFYING_MUSIC_PLAYLIST"] == str(Path("D:/Music/qualifying.mp3"))
 
 
-def test_launcher_can_select_multiple_anthem_audio_files():
+def test_launcher_can_select_multiple_qualifying_music_files():
     values = apply_audio_file_selection(
-        {"USE_NATIONAL_ANTHEM": "false"},
-        "NATIONAL_ANTHEM_AUDIO",
-        ["D:/Music/anthem_one.mp3", "D:/Music/anthem_two.mp3"],
+        {},
+        "QUALIFYING_MUSIC_PLAYLIST",
+        ["D:/Music/qualifying_one.mp3", "D:/Music/qualifying_two.mp3"],
     )
 
-    assert values["USE_NATIONAL_ANTHEM"] == "true"
-    assert values["NATIONAL_ANTHEM_AUDIO"].split(";") == [
-        str(Path("D:/Music/anthem_one.mp3")),
-        str(Path("D:/Music/anthem_two.mp3")),
+    assert values["QUALIFYING_MUSIC_PLAYLIST"].split(";") == [
+        str(Path("D:/Music/qualifying_one.mp3")),
+        str(Path("D:/Music/qualifying_two.mp3")),
     ]
 
 

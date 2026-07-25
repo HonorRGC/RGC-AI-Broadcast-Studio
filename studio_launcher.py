@@ -107,26 +107,13 @@ LAUNCHER_FIELDS = [
     ("RACE_SPONSOR_5_LOGO", ""),
     ("RACE_SPONSOR_5_READ", ""),
     ("RACE_SPONSOR_5_VIDEO", ""),
-    ("REMOTE_PRODUCER_ENABLED", "false"),
-    ("REMOTE_PRODUCER_RELAY_URL", ""),
-    ("REMOTE_PRODUCER_SESSION_CODE", ""),
-    ("REMOTE_PRODUCER_PIN", ""),
-    ("USE_NATIONAL_ANTHEM", "false"),
-    ("NATIONAL_ANTHEM_AUDIO", ""),
-    ("NATIONAL_ANTHEM_GRAPHICS", ""),
     ("PRACTICE_MUSIC_PLAYLIST", ""),
+    ("QUALIFYING_MUSIC_PLAYLIST", ""),
     ("STUDIO_VOLUME", "65"),
     ("CAUTION_REPLAY_AUDIO", ""),
-    ("CAUTION_PRESENTATION_GRAPHICS", ""),
     ("POST_RACE_INTERVIEWS_ENABLED", "false"),
     ("RACE_ADMIN_MODE", "false"),
     ("RACE_ADMIN_SEND_MODE", "clipboard"),
-    ("DISCORD_BOT_ENABLED", "false"),
-    ("DISCORD_BOT_TOKEN", ""),
-    ("DISCORD_GUILD_ID", ""),
-    ("DISCORD_BOOTH_CHANNEL_ID", ""),
-    ("DISCORD_WAITING_CHANNEL_ID", ""),
-    ("DISCORD_INTERVIEW_CHANNEL_ID", ""),
     ("DISCORD_RACE_REPORT_ENABLED", "false"),
     ("DISCORD_RACE_REPORT_WEBHOOK_URL", ""),
     ("DISCORD_RACE_REPORT_USE_OPENAI", "true"),
@@ -137,6 +124,10 @@ LAUNCHER_FIELDS = [
     ("LEAGUE_SEASON_STATS_CSV", "league/season.csv"),
     ("LEAGUE_CAREER_STATS_CSV", "league/career.csv"),
     ("STAGE_END_LAPS", ""),
+    ("REMOTE_PRODUCER_ENABLED", "false"),
+    ("REMOTE_PRODUCER_RELAY_URL", ""),
+    ("REMOTE_PRODUCER_SESSION_CODE", ""),
+    ("REMOTE_PRODUCER_PIN", ""),
 ]
 
 SIM_RACER_HUB_FIELDS = [
@@ -162,6 +153,16 @@ LEGACY_SPONSOR_FIELDS = [
     ("SPONSOR_READ_NAME_2", ""),
     ("SPONSOR_READ_NAME_3", ""),
     ("SPONSOR_READ_MESSAGE", ""),
+    ("USE_NATIONAL_ANTHEM", "false"),
+    ("NATIONAL_ANTHEM_AUDIO", ""),
+    ("NATIONAL_ANTHEM_GRAPHICS", ""),
+    ("CAUTION_PRESENTATION_GRAPHICS", ""),
+    ("DISCORD_BOT_ENABLED", "false"),
+    ("DISCORD_BOT_TOKEN", ""),
+    ("DISCORD_GUILD_ID", ""),
+    ("DISCORD_BOOTH_CHANNEL_ID", ""),
+    ("DISCORD_WAITING_CHANNEL_ID", ""),
+    ("DISCORD_INTERVIEW_CHANNEL_ID", ""),
 ]
 
 SAVED_FIELDS = LAUNCHER_FIELDS + LEGACY_SPONSOR_FIELDS + SIM_RACER_HUB_FIELDS
@@ -207,21 +208,12 @@ BROADCAST_FIELD_LABELS = {
     "RACE_SPONSOR_5_LOGO": "Sponsor 5 Logo",
     "RACE_SPONSOR_5_READ": "Sponsor 5 Spoken Read",
     "RACE_SPONSOR_5_VIDEO": "Sponsor 5 Commercial Video",
-    "USE_NATIONAL_ANTHEM": "Use RGC Anthem",
-    "NATIONAL_ANTHEM_AUDIO": "RGC Anthem Audio",
-    "NATIONAL_ANTHEM_GRAPHICS": "RGC Anthem Graphics",
     "PRACTICE_MUSIC_PLAYLIST": "Practice Music Playlist",
+    "QUALIFYING_MUSIC_PLAYLIST": "Qualifying Music Playlist",
     "CAUTION_REPLAY_AUDIO": "Caution Replay Music",
-    "CAUTION_PRESENTATION_GRAPHICS": "Caution Sponsor Graphics",
     "POST_RACE_INTERVIEWS_ENABLED": "Post-Race Interviews",
     "RACE_ADMIN_MODE": "Race Admin Mode",
     "RACE_ADMIN_SEND_MODE": "Race Admin Send Mode",
-    "DISCORD_BOT_ENABLED": "Discord Bot Integration",
-    "DISCORD_BOT_TOKEN": "Discord Bot Token",
-    "DISCORD_GUILD_ID": "Discord Server ID",
-    "DISCORD_BOOTH_CHANNEL_ID": "Booth Voice Channel ID",
-    "DISCORD_WAITING_CHANNEL_ID": "Driver Waiting Channel ID",
-    "DISCORD_INTERVIEW_CHANNEL_ID": "Interview Voice Channel ID",
     "DISCORD_RACE_REPORT_ENABLED": "Discord Race Report",
     "DISCORD_RACE_REPORT_WEBHOOK_URL": "Race Report Webhook URL",
     "DISCORD_RACE_REPORT_USE_OPENAI": "Use OpenAI Race Recap",
@@ -239,10 +231,9 @@ BROADCAST_FIELD_SECTIONS = {
     "USE_ELEVENLABS": "Broadcaster Voices",
     "OVERLAY_EVENT_TITLE": "Event Sponsors / Overlay Links",
     "REMOTE_PRODUCER_ENABLED": "Future Remote Relay",
-    "USE_NATIONAL_ANTHEM": "Practice / Qualifying / Caution Media",
+    "PRACTICE_MUSIC_PLAYLIST": "Practice / Qualifying / Caution Music",
     "POST_RACE_INTERVIEWS_ENABLED": "Race Flow",
     "RACE_ADMIN_MODE": "Race Control",
-    "DISCORD_BOT_ENABLED": "Discord Interviews - Prepared for Later",
     "DISCORD_RACE_REPORT_ENABLED": "Discord Race Report",
     "USE_LEAGUE_DRIVER_NOTES": "League Data",
 }
@@ -284,16 +275,12 @@ BROADCAST_FIELD_HELP = {
     "RACE_SPONSOR_5_LOGO": "Logo for Sponsor 5.",
     "RACE_SPONSOR_5_READ": "Optional exact spoken read for Sponsor 5.",
     "RACE_SPONSOR_5_VIDEO": "Optional commercial video path for Sponsor 5.",
-    "USE_NATIONAL_ANTHEM": "Plays the configured RGC Anthem audio once during qualifying.",
-    "NATIONAL_ANTHEM_AUDIO": "Audio file(s) for the RGC Anthem moment. MP3 or WAV is recommended.",
-    "NATIONAL_ANTHEM_GRAPHICS": "Graphics shown during the anthem/qualifying presentation.",
     "PRACTICE_MUSIC_PLAYLIST": "Practice music playlist. Multiple songs are separated with semicolons and loop during practice.",
+    "QUALIFYING_MUSIC_PLAYLIST": "Qualifying music playlist. Multiple songs are separated with semicolons and loop during qualifying. Sponsor graphics come from Sponsor 1-5 logos.",
     "CAUTION_REPLAY_AUDIO": "Music bed used during caution replay/presentation segments.",
-    "CAUTION_PRESENTATION_GRAPHICS": "Sponsor/cause graphics shown during caution periods.",
-    "POST_RACE_INTERVIEWS_ENABLED": "Changes the post-race ending to hand off to admin interviews instead of a full signoff.",
+    "POST_RACE_INTERVIEWS_ENABLED": "If true, the AI finishes the race recap/top 10 and then hands off to human post-race interviews for the top three. If false, it does the normal signoff.",
     "RACE_ADMIN_MODE": "Enables hosted-race admin commands in Producer Assist. Keep off unless this PC has race admin rights.",
     "RACE_ADMIN_SEND_MODE": "clipboard is safest for stream. open_chat is faster but may show iRacing chat. ui_paste is testing-only.",
-    "DISCORD_BOT_ENABLED": "Prepared for future Discord interview movement. Leave off for now unless we are testing the bot.",
     "DISCORD_RACE_REPORT_ENABLED": "Posts an automatic post-race recap to a Discord webhook after the finish order stabilizes.",
     "DISCORD_RACE_REPORT_WEBHOOK_URL": "Required when Discord Race Report is true. Create this webhook in the Discord results channel.",
     "DISCORD_RACE_REPORT_USE_OPENAI": "Uses OpenAI for a more natural race recap. If off, the Studio posts a simpler generated recap.",
@@ -339,9 +326,9 @@ INLINE_HELP_FIELDS = {
     "RACE_SPONSOR_2_LOGO",
     "RACE_SPONSOR_2_READ",
     "RACE_SPONSOR_2_VIDEO",
-    "USE_NATIONAL_ANTHEM",
     "PRACTICE_MUSIC_PLAYLIST",
-    "DISCORD_BOT_ENABLED",
+    "QUALIFYING_MUSIC_PLAYLIST",
+    "POST_RACE_INTERVIEWS_ENABLED",
     "DISCORD_RACE_REPORT_ENABLED",
     "DISCORD_RACE_REPORT_WEBHOOK_URL",
     "DISCORD_RACE_REPORT_RESULTS_URL",
@@ -505,6 +492,8 @@ def launcher_defaults(existing=None):
         defaults["SPONSOR_READ_NAME_3"] = defaults.get("RACE_SPONSOR_3_NAME", "")
     if not defaults.get("SPONSOR_READ_MESSAGE"):
         defaults["SPONSOR_READ_MESSAGE"] = defaults.get("RACE_SPONSOR_1_READ", "")
+    if not defaults.get("QUALIFYING_MUSIC_PLAYLIST"):
+        defaults["QUALIFYING_MUSIC_PLAYLIST"] = existing.get("NATIONAL_ANTHEM_AUDIO", "")
     if "STUDIO_VOLUME" not in existing and "PRACTICE_MUSIC_VOLUME" in existing:
         defaults["STUDIO_VOLUME"] = existing["PRACTICE_MUSIC_VOLUME"]
     return defaults
@@ -974,8 +963,6 @@ def apply_audio_file_selection(values, field_name, path):
         values[field_name] = format_playlist_paths(path)
     else:
         values[field_name] = str(Path(path))
-    if field_name == "NATIONAL_ANTHEM_AUDIO":
-        values["USE_NATIONAL_ANTHEM"] = "true"
     return values
 
 
@@ -1634,7 +1621,6 @@ def run_gui():
             entry_widget.set(existing.get(key, "127.0.0.1") or "127.0.0.1")
         elif key in (
             "REMOTE_PRODUCER_ENABLED",
-            "DISCORD_BOT_ENABLED",
             "DISCORD_RACE_REPORT_ENABLED",
             "DISCORD_RACE_REPORT_USE_OPENAI",
         ):
@@ -1704,13 +1690,7 @@ def run_gui():
                 "ui_paste is testing-only and may show iRacing chat/window on the stream."
             )
 
-        if key == "DISCORD_INTERVIEW_CHANNEL_ID":
-            add_settings_hint(
-                "Prepared for a future Discord interview bot. Leave these blank for now. "
-                "Later, each league can add its own bot token, server ID, booth channel, waiting room, and interview channel."
-            )
-
-        if key == "SPONSOR_READ_CAUSE_LOGO":
+        if key == "OVERLAY_HOST":
             label(
                 settings_frame,
                 text="Streamlabs / OBS Link",
@@ -1847,9 +1827,9 @@ def run_gui():
         field.insert(0, asset_path)
         status.set(f"Set commercial video for {status_label}. It will play full-screen when that sponsor read is used.")
 
-    def choose_practice_music():
+    def choose_music_playlist(field_name, title, status_label):
         paths = filedialog.askopenfilenames(
-            title="Choose practice music files",
+            title=title,
             filetypes=[
                 ("Audio files", "*.mp3 *.wav *.m4a *.aac *.flac *.wma"),
                 ("All files", "*.*"),
@@ -1857,13 +1837,13 @@ def run_gui():
         )
         if not paths:
             return
-        field = entries["PRACTICE_MUSIC_PLAYLIST"]
+        field = entries[field_name]
         field.delete(0, "end")
         field.insert(0, format_playlist_paths(paths))
-        status.set(f"Added {len(paths)} practice music file(s). Save settings before starting.")
+        status.set(f"Added {len(paths)} {status_label} music file(s). Save settings before starting.")
 
     def choose_single_audio(field_name, title):
-        if field_name == "NATIONAL_ANTHEM_AUDIO":
+        if field_name in ("NATIONAL_ANTHEM_AUDIO", "QUALIFYING_MUSIC_PLAYLIST"):
             selected = filedialog.askopenfilenames(
                 title=title,
                 filetypes=[
@@ -1892,10 +1872,10 @@ def run_gui():
             field = entries[key]
             field.delete(0, "end")
             field.insert(0, value)
-        if field_name == "NATIONAL_ANTHEM_AUDIO":
+        if field_name == "QUALIFYING_MUSIC_PLAYLIST":
             count = len(selected) if isinstance(selected, tuple) else 1
             status.set(
-                f"Set {count} RGC Anthem audio file(s) and turned USE_NATIONAL_ANTHEM on. Save settings before starting."
+                f"Set {count} qualifying music file(s). Save settings before starting."
             )
             return
         status.set(f"Set {field_name}. Save settings before starting.")
@@ -1959,42 +1939,30 @@ def run_gui():
     ).grid(row=settings_rows_by_key["REMOTE_PRODUCER_SESSION_CODE"], column=2, padx=(8, 0), sticky="w")
     button(
         settings_frame,
-        text="Choose Anthem Audio",
-        command=lambda: choose_single_audio("NATIONAL_ANTHEM_AUDIO", "Choose RGC Anthem audio"),
-        color="#334b64",
-    ).grid(row=settings_rows_by_key["NATIONAL_ANTHEM_AUDIO"], column=2, padx=(8, 0), sticky="w")
-    button(
-        settings_frame,
-        text="Choose Anthem Graphics",
-        command=lambda: choose_graphics_for_field(
-            "NATIONAL_ANTHEM_GRAPHICS",
-            "Choose RGC Anthem overlay graphics",
-            "the RGC Anthem presentation",
+        text="Choose Practice Music",
+        command=lambda: choose_music_playlist(
+            "PRACTICE_MUSIC_PLAYLIST",
+            "Choose practice music files",
+            "practice",
         ),
         color="#334b64",
-    ).grid(row=settings_rows_by_key["NATIONAL_ANTHEM_GRAPHICS"], column=2, padx=(8, 0), sticky="w")
+    ).grid(row=settings_rows_by_key["PRACTICE_MUSIC_PLAYLIST"], column=2, padx=(8, 0), sticky="w")
     button(
         settings_frame,
-        text="Choose Practice Music",
-        command=choose_practice_music,
+        text="Choose Qualifying Music",
+        command=lambda: choose_music_playlist(
+            "QUALIFYING_MUSIC_PLAYLIST",
+            "Choose qualifying music files",
+            "qualifying",
+        ),
         color="#334b64",
-    ).grid(row=settings_rows_by_key["PRACTICE_MUSIC_PLAYLIST"], column=2, padx=(8, 0), sticky="w")
+    ).grid(row=settings_rows_by_key["QUALIFYING_MUSIC_PLAYLIST"], column=2, padx=(8, 0), sticky="w")
     button(
         settings_frame,
         text="Choose Caution Audio",
         command=lambda: choose_single_audio("CAUTION_REPLAY_AUDIO", "Choose caution replay audio"),
         color="#334b64",
     ).grid(row=settings_rows_by_key["CAUTION_REPLAY_AUDIO"], column=2, padx=(8, 0), sticky="w")
-    button(
-        settings_frame,
-        text="Choose Caution Graphics",
-        command=lambda: choose_graphics_for_field(
-            "CAUTION_PRESENTATION_GRAPHICS",
-            "Choose caution overlay graphics",
-            "the caution presentation",
-        ),
-        color="#334b64",
-    ).grid(row=settings_rows_by_key["CAUTION_PRESENTATION_GRAPHICS"], column=2, padx=(8, 0), sticky="w")
 
     settings_frame.columnconfigure(1, weight=1)
 
@@ -2012,6 +1980,10 @@ def run_gui():
         values["SPONSOR_READ_NAME_2"] = values.get("RACE_SPONSOR_2_NAME", "")
         values["SPONSOR_READ_NAME_3"] = values.get("RACE_SPONSOR_3_NAME", "")
         values["SPONSOR_READ_MESSAGE"] = values.get("RACE_SPONSOR_1_READ", "")
+        values["NATIONAL_ANTHEM_AUDIO"] = values.get("QUALIFYING_MUSIC_PLAYLIST", "")
+        values["USE_NATIONAL_ANTHEM"] = (
+            "true" if values.get("QUALIFYING_MUSIC_PLAYLIST", "") else "false"
+        )
         for key, widget in sim_racer_hub_state["entries"].items():
             values[key] = widget.get().strip()
         career_mode = sim_racer_hub_state.get("career_mode")
@@ -2996,11 +2968,12 @@ def build_help_tab(
         """,
     )
     section(
-        "5. Music, anthem, caution, and sponsor graphics",
+        "5. Practice, qualifying, and caution music",
         """
-        Practice music loops during practice. RGC Anthem audio plays once during qualifying when enabled.
+        Practice music loops during practice. Qualifying music loops during qualifying when files are selected.
         MP3 or WAV files are recommended. OGA/OGG files are not supported by the hidden Windows audio player.
-        Caution audio and caution presentation graphics are used during caution periods.
+        Sponsor graphics for practice, qualifying, cautions, and the title overlay come from the Sponsor 1-5 logos and cause logo.
+        Caution audio is used during caution replay/presentation segments.
         The Studio Volume slider controls program audio, including music beds and ElevenLabs voice playback.
         """,
     )

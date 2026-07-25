@@ -257,9 +257,16 @@ POST_RACE_INTERVIEWS_ENABLED = (
 )
 
 
-# Optional pre-race ceremony
-USE_NATIONAL_ANTHEM = os.getenv("USE_NATIONAL_ANTHEM", "false").lower() == "true"
-NATIONAL_ANTHEM_AUDIO = os.getenv("NATIONAL_ANTHEM_AUDIO", "")
+# Optional qualifying music. NATIONAL_ANTHEM_AUDIO is kept as a legacy alias for older profiles.
+QUALIFYING_MUSIC_PLAYLIST = os.getenv(
+    "QUALIFYING_MUSIC_PLAYLIST",
+    os.getenv("NATIONAL_ANTHEM_AUDIO", ""),
+)
+USE_QUALIFYING_MUSIC = (
+    os.getenv("USE_QUALIFYING_MUSIC", "true").lower() == "true"
+)
+USE_NATIONAL_ANTHEM = USE_QUALIFYING_MUSIC
+NATIONAL_ANTHEM_AUDIO = QUALIFYING_MUSIC_PLAYLIST
 
 
 # Optional practice/replay music beds.

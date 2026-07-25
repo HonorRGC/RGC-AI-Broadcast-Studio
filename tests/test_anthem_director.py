@@ -33,8 +33,8 @@ class HiddenPlayerSpy:
         self.stops += 1
 
 
-def test_rgc_anthem_starts_once_during_qualifying(tmp_path):
-    audio = tmp_path / "anthem.mp3"
+def test_qualifying_music_starts_once_during_qualifying(tmp_path):
+    audio = tmp_path / "qualifying.mp3"
     audio.write_bytes(b"audio")
     played = []
     overlay = OverlaySpy()
@@ -50,13 +50,13 @@ def test_rgc_anthem_starts_once_during_qualifying(tmp_path):
     assert first.status == "played"
     assert repeated.status == "ignored"
     assert played == [str(audio.resolve())]
-    assert overlay.presentations[0]["kind"] == "rgc_anthem"
-    assert overlay.presentations[0]["title"] == "RGC Anthem"
+    assert overlay.presentations[0]["kind"] == "race_sponsors"
+    assert overlay.presentations[0]["title"] == "Today's Race Sponsors"
     assert overlay.presentations[0]["duration"] == 24 * 60 * 60
 
 
-def test_rgc_anthem_uses_configured_graphics(tmp_path):
-    audio = tmp_path / "anthem.mp3"
+def test_qualifying_music_uses_configured_graphics(tmp_path):
+    audio = tmp_path / "qualifying.mp3"
     audio.write_bytes(b"audio")
     overlay = OverlaySpy()
     director = NationalAnthemDirector(
@@ -74,8 +74,8 @@ def test_rgc_anthem_uses_configured_graphics(tmp_path):
     ]
 
 
-def test_rgc_anthem_uses_hidden_player_without_overlay_duration(tmp_path):
-    audio = tmp_path / "anthem.mp3"
+def test_qualifying_music_uses_hidden_player_without_overlay_duration(tmp_path):
+    audio = tmp_path / "qualifying.mp3"
     audio.write_bytes(b"audio")
     player = HiddenPlayerSpy()
     director = NationalAnthemDirector(
@@ -90,9 +90,9 @@ def test_rgc_anthem_uses_hidden_player_without_overlay_duration(tmp_path):
     assert player.playlists == [[str(audio.resolve())]]
 
 
-def test_rgc_anthem_can_play_multiple_audio_files_once(tmp_path):
-    first_audio = tmp_path / "anthem_one.mp3"
-    second_audio = tmp_path / "anthem_two.mp3"
+def test_qualifying_music_can_play_multiple_audio_files_as_loop(tmp_path):
+    first_audio = tmp_path / "qualifying_one.mp3"
+    second_audio = tmp_path / "qualifying_two.mp3"
     first_audio.write_bytes(b"audio")
     second_audio.write_bytes(b"audio")
     player = HiddenPlayerSpy()
@@ -110,8 +110,8 @@ def test_rgc_anthem_can_play_multiple_audio_files_once(tmp_path):
     ]
 
 
-def test_rgc_anthem_reports_unsupported_audio_type(tmp_path):
-    unsupported = tmp_path / "anthem.oga"
+def test_qualifying_music_reports_unsupported_audio_type(tmp_path):
+    unsupported = tmp_path / "qualifying.oga"
     unsupported.write_bytes(b"audio")
     player = HiddenPlayerSpy()
     director = NationalAnthemDirector(
@@ -127,7 +127,7 @@ def test_rgc_anthem_reports_unsupported_audio_type(tmp_path):
     assert player.playlists == []
 
 
-def test_rgc_anthem_can_show_without_audio_file():
+def test_qualifying_music_can_show_without_audio_file():
     overlay = OverlaySpy()
     director = NationalAnthemDirector(enabled=True, audio_path="")
 
@@ -137,8 +137,8 @@ def test_rgc_anthem_can_show_without_audio_file():
     assert overlay.presentations
 
 
-def test_rgc_anthem_clears_when_race_starts(tmp_path):
-    audio = tmp_path / "anthem.mp3"
+def test_qualifying_music_clears_when_race_starts(tmp_path):
+    audio = tmp_path / "qualifying.mp3"
     audio.write_bytes(b"audio")
     overlay = OverlaySpy()
     player = HiddenPlayerSpy()
@@ -156,7 +156,7 @@ def test_rgc_anthem_clears_when_race_starts(tmp_path):
     assert player.stops == 1
 
 
-def test_rgc_anthem_reports_missing_audio(tmp_path):
+def test_qualifying_music_reports_missing_audio(tmp_path):
     missing = Path(tmp_path) / "missing.mp3"
     director = NationalAnthemDirector(enabled=True, audio_path=str(missing))
 

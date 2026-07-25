@@ -1398,9 +1398,9 @@ def next_replay_speed(source, direction):
 def report_anthem_decision(decision, overlay_server=None):
     if decision.status == "ignored":
         return
-    message = f"CEREMONY: {decision.reason}"
+    message = f"QUALIFYING: {decision.reason}"
     print(message)
-    publish_producer_event(overlay_server, "info", "Ceremony", decision.reason)
+    publish_producer_event(overlay_server, "info", "Qualifying Music", decision.reason)
 
 
 def report_practice_presentation(message, overlay_server=None):
