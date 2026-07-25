@@ -102,6 +102,8 @@ def test_broadcast_settings_have_friendly_labels_and_sections():
     assert BROADCAST_FIELD_LABELS["RACE_SPONSOR_1_LOGO"] == "Sponsor 1 Logo"
     assert BROADCAST_FIELD_LABELS["RACE_SPONSOR_1_READ"] == "Sponsor 1 Spoken Read"
     assert BROADCAST_FIELD_LABELS["RACE_SPONSOR_1_VIDEO"] == "Sponsor 1 Commercial Video"
+    assert BROADCAST_FIELD_LABELS["CRANK_IT_UP_SPONSOR_NAME"] == "Crank It Up Sponsor"
+    assert "Sponsor 1" in BROADCAST_FIELD_HELP["CRANK_IT_UP_SPONSOR_NAME"]
     assert BROADCAST_FIELD_LABELS["SPONSOR_READ_CAUSE_LOGO"] == "Cause / Awareness Logo"
     assert BROADCAST_FIELD_LABELS["RACE_ADMIN_MODE"] == "Race Admin Mode"
     assert BROADCAST_FIELD_LABELS["RACE_ADMIN_SEND_MODE"] == "Race Admin Send Mode"
@@ -123,6 +125,7 @@ def test_broadcast_settings_have_friendly_labels_and_sections():
     assert BROADCAST_FIELD_SECTIONS["DISCORD_RACE_REPORT_ENABLED"] == "Discord Race Report"
     saved_keys = [key for key, _default in LAUNCHER_FIELDS]
     assert "RACE_SPONSOR_5_VIDEO" in saved_keys
+    assert "CRANK_IT_UP_SPONSOR_NAME" in saved_keys
     assert "QUALIFYING_MUSIC_PLAYLIST" in saved_keys
     assert "USE_NATIONAL_ANTHEM" not in saved_keys
     assert "NATIONAL_ANTHEM_GRAPHICS" not in saved_keys
@@ -407,6 +410,7 @@ def test_launcher_migrates_old_sponsor_fields_to_new_slots():
     assert defaults["RACE_SPONSOR_1_NAME"] == "RGC Motorsports"
     assert defaults["RACE_SPONSOR_2_NAME"] == "Autism Awareness"
     assert defaults["RACE_SPONSOR_1_READ"] == "Presented by {sponsor}."
+    assert defaults["CRANK_IT_UP_SPONSOR_NAME"] == "RGC Motorsports"
 
 
 def test_launcher_saves_known_settings(tmp_path):
@@ -419,6 +423,7 @@ def test_launcher_saves_known_settings(tmp_path):
             "LEAGUE_SEASON_STATS_CSV": "league/season.csv",
             "RACE_SPONSOR_2_NAME": "Second Sponsor",
             "RACE_SPONSOR_1_READ": "Presented by {sponsor}.",
+            "CRANK_IT_UP_SPONSOR_NAME": "Second Sponsor",
         },
         env_path,
     )
@@ -429,6 +434,7 @@ def test_launcher_saves_known_settings(tmp_path):
     assert "LEAGUE_SEASON_STATS_CSV=league/season.csv" in saved
     assert "RACE_SPONSOR_2_NAME=Second Sponsor" in saved
     assert "RACE_SPONSOR_1_READ=Presented by {sponsor}." in saved
+    assert "CRANK_IT_UP_SPONSOR_NAME=Second Sponsor" in saved
 
 
 def test_launcher_saves_sim_racer_hub_settings(tmp_path):

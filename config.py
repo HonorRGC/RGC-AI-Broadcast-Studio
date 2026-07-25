@@ -110,7 +110,7 @@ REMOTE_PRODUCER_PIN = os.getenv("REMOTE_PRODUCER_PIN", "").strip()
 OVERLAY_LEADERBOARD_STYLE = os.getenv("OVERLAY_LEADERBOARD_STYLE", "side").strip().lower()
 CRANK_IT_UP_SPONSOR_GRAPHIC = os.getenv(
     "CRANK_IT_UP_SPONSOR_GRAPHIC",
-    "/assets/rgc_motorsports.png",
+    "",
 )
 CRANK_IT_UP_ICON_GRAPHIC = os.getenv(
     "CRANK_IT_UP_ICON_GRAPHIC",
@@ -158,6 +158,10 @@ RACE_SPONSOR_NAMES = unique_list(
         RACE_SPONSOR_5_NAME,
     ]
 )
+CRANK_IT_UP_SPONSOR_NAME = os.getenv(
+    "CRANK_IT_UP_SPONSOR_NAME",
+    RACE_SPONSOR_1_NAME or SPONSOR_READ_NAME or OVERLAY_RACE_SPONSOR or "RGC Motorsports",
+).strip()
 RACE_SPONSOR_LOGOS = unique_list(
     [
         RACE_SPONSOR_1_LOGO,

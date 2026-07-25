@@ -107,6 +107,7 @@ LAUNCHER_FIELDS = [
     ("RACE_SPONSOR_5_LOGO", ""),
     ("RACE_SPONSOR_5_READ", ""),
     ("RACE_SPONSOR_5_VIDEO", ""),
+    ("CRANK_IT_UP_SPONSOR_NAME", ""),
     ("PRACTICE_MUSIC_PLAYLIST", ""),
     ("QUALIFYING_MUSIC_PLAYLIST", ""),
     ("STUDIO_VOLUME", "65"),
@@ -208,6 +209,7 @@ BROADCAST_FIELD_LABELS = {
     "RACE_SPONSOR_5_LOGO": "Sponsor 5 Logo",
     "RACE_SPONSOR_5_READ": "Sponsor 5 Spoken Read",
     "RACE_SPONSOR_5_VIDEO": "Sponsor 5 Commercial Video",
+    "CRANK_IT_UP_SPONSOR_NAME": "Crank It Up Sponsor",
     "PRACTICE_MUSIC_PLAYLIST": "Practice Music Playlist",
     "QUALIFYING_MUSIC_PLAYLIST": "Qualifying Music Playlist",
     "CAUTION_REPLAY_AUDIO": "Caution Replay Music",
@@ -275,6 +277,7 @@ BROADCAST_FIELD_HELP = {
     "RACE_SPONSOR_5_LOGO": "Logo for Sponsor 5.",
     "RACE_SPONSOR_5_READ": "Optional exact spoken read for Sponsor 5.",
     "RACE_SPONSOR_5_VIDEO": "Optional commercial video path for Sponsor 5.",
+    "CRANK_IT_UP_SPONSOR_NAME": "Sponsor name used when the Producer or AI fires Crank It Up. Leave blank to use Sponsor 1.",
     "PRACTICE_MUSIC_PLAYLIST": "Practice music playlist. Multiple songs are separated with semicolons and loop during practice.",
     "QUALIFYING_MUSIC_PLAYLIST": "Qualifying music playlist. Multiple songs are separated with semicolons and loop during qualifying. Sponsor graphics come from Sponsor 1-5 logos.",
     "CAUTION_REPLAY_AUDIO": "Music bed used during caution replay/presentation segments.",
@@ -326,6 +329,7 @@ INLINE_HELP_FIELDS = {
     "RACE_SPONSOR_2_LOGO",
     "RACE_SPONSOR_2_READ",
     "RACE_SPONSOR_2_VIDEO",
+    "CRANK_IT_UP_SPONSOR_NAME",
     "PRACTICE_MUSIC_PLAYLIST",
     "QUALIFYING_MUSIC_PLAYLIST",
     "POST_RACE_INTERVIEWS_ENABLED",
@@ -500,6 +504,8 @@ def launcher_defaults(existing=None):
         defaults["SPONSOR_READ_NAME_3"] = defaults.get("RACE_SPONSOR_3_NAME", "")
     if not defaults.get("SPONSOR_READ_MESSAGE"):
         defaults["SPONSOR_READ_MESSAGE"] = defaults.get("RACE_SPONSOR_1_READ", "")
+    if not defaults.get("CRANK_IT_UP_SPONSOR_NAME"):
+        defaults["CRANK_IT_UP_SPONSOR_NAME"] = defaults.get("RACE_SPONSOR_1_NAME", "")
     if not defaults.get("QUALIFYING_MUSIC_PLAYLIST"):
         defaults["QUALIFYING_MUSIC_PLAYLIST"] = existing.get("NATIONAL_ANTHEM_AUDIO", "")
     if "STUDIO_VOLUME" not in existing and "PRACTICE_MUSIC_VOLUME" in existing:

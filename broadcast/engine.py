@@ -3,7 +3,7 @@ import time
 from broadcast.broadcast_queue import BroadcastQueue
 from broadcaster.race_brain import RaceBrain
 from broadcaster.race_director import RaceDirector, RacePhase
-from config import STAGE_END_LAPS
+from config import CRANK_IT_UP_SPONSOR_NAME, STAGE_END_LAPS
 from production.commentary_cleaner import CommentaryCleaner
 from production.caution_pit_reporter import CautionPitReporter
 from production.action_detector import ActionDetector
@@ -1613,8 +1613,9 @@ class BroadcastEngine:
             return False
 
         self.crank_it_up_sent_this_green_run = True
+        sponsor_name = str(CRANK_IT_UP_SPONSOR_NAME or "").strip() or "RGC Motorsports"
         self.broadcast_queue.add(
-            "It is time to Crank It Up. Crank It Up is presented by RGC Motorsports.",
+            f"It is time to Crank It Up. Crank It Up is presented by {sponsor_name}.",
             priority=10,
             category="crank_it_up_intro",
             protected=True,

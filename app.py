@@ -4,6 +4,7 @@ from pathlib import Path
 
 from config import (
     CRANK_IT_UP_ICON_GRAPHIC,
+    CRANK_IT_UP_SPONSOR_NAME,
     CRANK_IT_UP_SPONSOR_GRAPHIC,
     OVERLAY_BRAND_GRAPHICS,
     OVERLAY_HOST,
@@ -964,7 +965,7 @@ def handle_producer_command(
         results = source.get_results() if source else []
         sponsor_name = str(payload.get("sponsor_name", "") or "").strip()
         if not sponsor_name:
-            sponsor_name = first_configured_sponsor_name()
+            sponsor_name = configured_crank_it_up_sponsor_name()
         queued = engine.queue_manual_crank_it_up(results, sponsor_name=sponsor_name)
         publish_producer_event(
             overlay_server,
@@ -1509,7 +1510,7 @@ def show_overlay_feature(item, overlay_server, source=None, engine=None):
         overlay_server.show_special_presentation(
             kind="crank_it_up",
             title="Crank It Up",
-            subtitle="No booth. Just race cars.",
+            subtitle=f"Presented by {configured_crank_it_up_sponsor_name()}",
             duration=(
                 getattr(item, "feature_duration_seconds", DEFAULT_CRANK_IT_UP_SECONDS)
                 or DEFAULT_CRANK_IT_UP_SECONDS
@@ -1844,6 +1845,10 @@ def first_configured_sponsor_name():
     return names[0] if names else "RGC Motorsports"
 
 
+def configured_crank_it_up_sponsor_name():
+    return str(CRANK_IT_UP_SPONSOR_NAME or "").strip() or first_configured_sponsor_name()
+
+
 def next_manual_sponsor_name():
     global MANUAL_SPONSOR_INDEX
     names = configured_sponsor_names()
@@ -1974,14 +1979,15 @@ def normalize_sponsor_text(value):
 
 
 def run_crank_it_up_test(booth, overlay_server, duration_seconds=DEFAULT_CRANK_IT_UP_SECONDS):
-    intro = "It is time to Crank It Up. Crank It Up is presented by RGC Motorsports."
+    sponsor_name = configured_crank_it_up_sponsor_name()
+    intro = f"It is time to Crank It Up. Crank It Up is presented by {sponsor_name}."
     feature_seconds = max(1.0, float(duration_seconds or DEFAULT_CRANK_IT_UP_SECONDS))
 
     if overlay_server:
         overlay_server.show_special_presentation(
             kind="crank_it_up",
             title="Crank It Up",
-            subtitle="Presented by RGC Motorsports",
+            subtitle=f"Presented by {sponsor_name}",
             duration=feature_seconds,
             graphics=crank_it_up_graphics(),
         )
@@ -1996,9 +2002,13 @@ def run_crank_it_up_test(booth, overlay_server, duration_seconds=DEFAULT_CRANK_I
 
 
 def crank_it_up_graphics():
+    sponsor_graphic = (
+        CRANK_IT_UP_SPONSOR_GRAPHIC
+        or sponsor_graphic_for_mention(configured_crank_it_up_sponsor_name())
+    )
     return [
         graphic
-        for graphic in (CRANK_IT_UP_SPONSOR_GRAPHIC, CRANK_IT_UP_ICON_GRAPHIC)
+        for graphic in (sponsor_graphic, CRANK_IT_UP_ICON_GRAPHIC)
         if graphic
     ]
 

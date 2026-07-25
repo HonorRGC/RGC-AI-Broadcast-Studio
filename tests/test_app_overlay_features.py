@@ -1040,6 +1040,19 @@ def test_sponsor_graphic_matching_uses_configured_brand_graphics(monkeypatch):
     assert find_brand_graphic_for_name("Bob's Auto Parts") == "/assets/bobs_auto_parts.png"
 
 
+def test_crank_it_up_graphics_use_configured_sponsor_logo(monkeypatch):
+    import app
+
+    monkeypatch.setattr(app, "CRANK_IT_UP_SPONSOR_NAME", "Sponsor Two")
+    monkeypatch.setattr(app, "CRANK_IT_UP_SPONSOR_GRAPHIC", "")
+    monkeypatch.setattr(app, "RACE_SPONSOR_GRAPHICS", {"Sponsor Two": "/assets/sponsor_two.png"})
+
+    assert app.crank_it_up_graphics() == [
+        "/assets/sponsor_two.png",
+        "/assets/crank_it_up.png",
+    ]
+
+
 def test_featured_driver_image_uses_manual_league_image_only():
     assert build_featured_driver_image({"car_image": "/assets/custom_driver.png"}) == "/assets/custom_driver.png"
 
