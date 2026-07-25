@@ -1025,6 +1025,8 @@ class OverlayServer:
                 and self.special_presentation.expires_at > time.monotonic()
             ):
                 state.special_presentation = self.special_presentation
+                if self.special_presentation.kind == "crank_it_up":
+                    state.featured_driver = None
             else:
                 self.special_presentation = None
             if self.stat_panel and self.stat_panel.expires_at > time.monotonic():
@@ -1075,6 +1077,14 @@ class OverlayServer:
         number_style=None,
     ):
         with self.lock:
+            if (
+                self.special_presentation
+                and self.special_presentation.kind == "crank_it_up"
+                and self.special_presentation.expires_at > time.monotonic()
+            ):
+                self.featured_driver = None
+                self.state.featured_driver = None
+                return
             self.featured_driver = FeaturedDriver(
                 car_idx=self.state_builder.safe_int(car_idx, -1),
                 car_number=str(car_number or ""),
@@ -1102,6 +1112,9 @@ class OverlayServer:
         video_url="",
     ):
         with self.lock:
+            if str(kind or "") == "crank_it_up":
+                self.featured_driver = None
+                self.state.featured_driver = None
             self.special_presentation = SpecialPresentation(
                 kind=str(kind or ""),
                 title=str(title or ""),
@@ -4508,8 +4521,8 @@ OVERLAY_HTML = r"""<!doctype html>
       renderBrandGraphic(event.graphics || [], state.session_type);
       renderLapHistory(state.lap_history || []);
       renderTickerLeaderboard(state.leaderboard || [], leaderboardStyle);
-      renderDriverCard(state.featured_driver);
       renderSpecialPresentation(state.special_presentation);
+      renderDriverCard(shouldHideDriverCardForPresentation(state.special_presentation) ? null : state.featured_driver);
       renderStatPanel(state.stat_panel);
 
       const rows = document.getElementById("leaderboard-rows");
@@ -4606,6 +4619,10 @@ OVERLAY_HTML = r"""<!doctype html>
       setCommercialVideo(isCommercial ? presentation.video_url : "");
       logo.classList.toggle("hidden", !src);
       logo.src = src || "";
+    }
+
+    function shouldHideDriverCardForPresentation(presentation) {
+      return !!(presentation && presentation.kind === "crank_it_up");
     }
 
     function setCommercialVideo(src) {

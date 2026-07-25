@@ -505,6 +505,39 @@ def test_overlay_special_presentation_updates_state_immediately():
     assert state["special_presentation"]["video_url"] == "/assets/rgc_ad.mp4"
 
 
+def test_crank_it_up_presentation_hides_featured_driver_card():
+    from production.overlay import OverlayServer
+
+    server = OverlayServer()
+    server.show_featured_driver(
+        car_number="34",
+        driver_name="T.J. Lee",
+        car_idx=34,
+        duration=30,
+    )
+    assert server.current_state_dict()["featured_driver"]["driver_name"] == "T.J. Lee"
+
+    server.show_special_presentation(
+        kind="crank_it_up",
+        title="Crank It Up",
+        subtitle="Presented by RGC Motorsports",
+        graphics=["/assets/rgc_motorsports.png", "/assets/crank_it_up.png"],
+        duration=28,
+    )
+
+    state = server.current_state_dict()
+    assert state["special_presentation"]["kind"] == "crank_it_up"
+    assert state["featured_driver"] is None
+
+    server.show_featured_driver(
+        car_number="24",
+        driver_name="Another Driver",
+        car_idx=24,
+        duration=30,
+    )
+    assert server.current_state_dict()["featured_driver"] is None
+
+
 def test_overlay_can_clear_special_presentation_immediately():
     from production.overlay import OverlayServer
 
@@ -526,6 +559,8 @@ def test_commercial_video_clears_overlay_when_playback_ends():
     assert "/overlay/clear-special-presentation" in OVERLAY_HTML
     assert 'video.addEventListener("ended", clearCommercialPresentationFromVideo)' in OVERLAY_HTML
     assert "installCommercialVideoHandlers();" in OVERLAY_HTML
+    assert "shouldHideDriverCardForPresentation" in OVERLAY_HTML
+    assert "presentation.kind === \"crank_it_up\"" in OVERLAY_HTML
 
 
 def test_overlay_preserves_stat_panel():
