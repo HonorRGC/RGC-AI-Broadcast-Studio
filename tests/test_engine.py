@@ -489,9 +489,9 @@ def test_engine_queues_long_green_field_rundown_under_green():
     assert "20-lap green flag run" in rundown.message
 
 
-def test_engine_blocks_long_green_field_rundown_with_less_than_ten_to_go():
+def test_engine_blocks_long_green_field_rundown_with_less_than_thirteen_to_go():
     results = [
-        {"CarIdx": index, "Position": index, "LapsComplete": 51}
+        {"CarIdx": index, "Position": index, "LapsComplete": 48}
         for index in range(12)
     ]
     drivers = {
@@ -499,7 +499,7 @@ def test_engine_blocks_long_green_field_rundown_with_less_than_ten_to_go():
         for index in range(12)
     }
     snapshot = TelemetrySnapshot(
-        lap=51,
+        lap=48,
         total_laps=60,
         session_flags=RaceFlags.GREEN,
         results=results,
@@ -522,6 +522,40 @@ def test_engine_blocks_long_green_field_rundown_with_less_than_ten_to_go():
 
     assert item is None or item.category != "long_green_field_rundown_1"
     assert engine.field_rundown_director.active_milestone is None
+
+
+def test_engine_allows_long_green_field_rundown_at_thirteen_to_go():
+    results = [
+        {"CarIdx": index, "Position": index, "LapsComplete": 47}
+        for index in range(12)
+    ]
+    drivers = {
+        index: {"name": f"Driver {index + 1}", "number": str(index + 1)}
+        for index in range(12)
+    }
+    snapshot = TelemetrySnapshot(
+        lap=47,
+        total_laps=60,
+        session_flags=RaceFlags.GREEN,
+        results=results,
+        driver_lookup=drivers,
+        pit_road_status=[False] * 12,
+        track_surface=[3] * 12,
+        track_surface_material=[0] * 12,
+        lap_dist_pct=[0.1] * 12,
+        est_time=[10.0] * 12,
+    )
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    engine.session_tracker.update("Race")
+    engine.race_director.race_started = True
+    engine.race_director.phase = RacePhase.GREEN
+    engine.race_intelligence.race_state_tracker.initialized = True
+    engine.race_intelligence.race_state_tracker.state.green_lap_count = 20
+
+    item = engine.tick(SnapshotSource(snapshot))
+
+    assert item.category == "long_green_field_rundown_1"
+    assert item.protected is True
 
 
 def test_engine_queues_silent_crank_it_up_after_ten_green_laps():

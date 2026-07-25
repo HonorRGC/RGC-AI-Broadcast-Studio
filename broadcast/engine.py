@@ -1561,7 +1561,7 @@ class BroadcastEngine:
         current_lap = self.safe_int(current_lap)
         if total_laps <= 0 or current_lap <= 0:
             return False
-        return max(total_laps - current_lap, 0) < 10
+        return max(total_laps - current_lap, 0) < 13
 
     def clear_closing_lap_features(self):
         blocked_prefixes = (
