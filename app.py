@@ -41,6 +41,7 @@ from production.replay_director import ReplayDirector
 from production.race_control import RaceControlService
 
 DEFAULT_CRANK_IT_UP_SECONDS = 50.0
+MANUAL_SPONSOR_INDEX = 0
 
 COUNTRY_ALIASES = {
     "arg": "Argentina",
@@ -951,6 +952,72 @@ def handle_producer_command(
         )
         return
 
+    if command == "producer_crank_it_up":
+        if not engine:
+            publish_producer_event(
+                overlay_server,
+                "warning",
+                "Crank It Up",
+                "Broadcast engine is not available.",
+            )
+            return
+        results = source.get_results() if source else []
+        sponsor_name = str(payload.get("sponsor_name", "") or "").strip()
+        if not sponsor_name:
+            sponsor_name = first_configured_sponsor_name()
+        queued = engine.queue_manual_crank_it_up(results, sponsor_name=sponsor_name)
+        publish_producer_event(
+            overlay_server,
+            "info" if queued else "warning",
+            "Crank It Up",
+            (
+                f"Queued Crank It Up presented by {sponsor_name}."
+                if queued
+                else "Could not queue Crank It Up because no running cars were available."
+            ),
+        )
+        return
+
+    if command == "producer_sponsor_commercial":
+        if not engine:
+            publish_producer_event(
+                overlay_server,
+                "warning",
+                "Sponsor",
+                "Broadcast engine is not available.",
+            )
+            return
+        sponsor_name = next_manual_sponsor_name()
+        if not sponsor_name:
+            publish_producer_event(
+                overlay_server,
+                "warning",
+                "Sponsor",
+                "No race sponsors are configured yet.",
+            )
+            return
+        engine.broadcast_queue.add(
+            f"Let's step aside for a quick word from {sponsor_name}.",
+            priority=11,
+            category="sponsor_read",
+            protected=False,
+            speaker="lead",
+            expires_after=30,
+            dedupe_key=f"sponsor:manual:{time.time()}",
+        )
+        has_video = bool(sponsor_video_for_mention(sponsor_name))
+        publish_producer_event(
+            overlay_server,
+            "info",
+            "Sponsor",
+            (
+                f"Queued sponsor commercial for {sponsor_name}."
+                if has_video
+                else f"Queued sponsor read and logo pop for {sponsor_name}."
+            ),
+        )
+        return
+
     if command == "producer_note_add":
         message = str(payload.get("message", "") or "").strip()
         if message and hasattr(overlay_server, "add_producer_note"):
@@ -1770,6 +1837,21 @@ def configured_sponsor_names():
             if name and name not in names:
                 names.append(name)
     return names
+
+
+def first_configured_sponsor_name():
+    names = configured_sponsor_names()
+    return names[0] if names else "RGC Motorsports"
+
+
+def next_manual_sponsor_name():
+    global MANUAL_SPONSOR_INDEX
+    names = configured_sponsor_names()
+    if not names:
+        return ""
+    sponsor_name = names[MANUAL_SPONSOR_INDEX % len(names)]
+    MANUAL_SPONSOR_INDEX += 1
+    return sponsor_name
 
 
 def split_sponsor_names(value):

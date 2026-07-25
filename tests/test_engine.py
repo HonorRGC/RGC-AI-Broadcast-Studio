@@ -663,6 +663,22 @@ def test_crank_it_up_runs_once_per_green_run_until_caution_reset():
     assert engine._queue_crank_it_up(results, green_lap_count=10) is True
 
 
+def test_manual_crank_it_up_bypasses_green_run_trigger():
+    results = [
+        {"CarIdx": index, "Position": index + 1, "LapsComplete": 2}
+        for index in range(4)
+    ]
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+
+    queued = engine.queue_manual_crank_it_up(results, sponsor_name="Test Sponsor")
+
+    assert queued is True
+    categories = [item.category for item in engine.broadcast_queue.items]
+    assert categories == ["crank_it_up_intro", "crank_it_up"]
+    assert "Test Sponsor" in engine.broadcast_queue.items[0].message
+    assert engine.broadcast_queue.items[1].feature_duration_seconds == 50.0
+
+
 def test_green_flag_pit_cycle_update_starts_when_multiple_cars_pit():
     engine = BroadcastEngine(openai_director=SilentOpenAI())
     engine.race_director.phase = RacePhase.GREEN
@@ -2073,6 +2089,7 @@ def test_meatball_flag_waits_when_caution_replay_is_pending():
         results=snapshot.results,
         driver_lookup=drivers,
         current_lap=10,
+        total_laps=40,
     )
 
     item = next(item for item in engine.broadcast_queue.items if item.category == "penalty")
@@ -2120,6 +2137,7 @@ def test_multiple_meatball_flags_are_grouped_into_one_story():
         results=snapshot.results,
         driver_lookup=drivers,
         current_lap=12,
+        total_laps=40,
     )
 
     penalty_items = [
@@ -2132,6 +2150,35 @@ def test_multiple_meatball_flags_are_grouped_into_one_story():
     assert "Second Damaged" in penalty_items[0].message
     assert "ending early" in penalty_items[0].message
     assert penalty_items[0].participant_car_indices == (4, 7)
+
+
+def test_penalty_stories_do_not_air_with_two_or_less_to_go():
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    drivers = {4: {"name": "Damaged Driver", "number": "44"}}
+    snapshot = TelemetrySnapshot(
+        lap=38,
+        total_laps=40,
+        session_flags=RaceFlags.GREEN,
+        results=[{"CarIdx": 4, "Position": 1, "LapsComplete": 38}],
+        driver_lookup=drivers,
+        pit_road_status=[False] * 5,
+        track_surface=[3] * 5,
+        track_surface_material=[0] * 5,
+        lap_dist_pct=[0.0] * 5,
+        est_time=[0.0] * 5,
+        car_idx_session_flags=[0, 0, 0, 0, PenaltyDetector.REPAIR_FLAG],
+        car_idx_penalty_reasons=[""] * 5,
+    )
+
+    engine._collect_penalty_stories(
+        telemetry=SnapshotSource(snapshot),
+        results=snapshot.results,
+        driver_lookup=drivers,
+        current_lap=38,
+        total_laps=40,
+    )
+
+    assert [item for item in engine.broadcast_queue.items if item.category == "penalty"] == []
 
 
 def test_final_laps_battle_prioritizes_closest_top_five_gap():

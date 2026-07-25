@@ -45,6 +45,24 @@ class FeaturedDriverOverlaySpy:
         self.featured.append(kwargs)
 
 
+class QueueSpy:
+    def __init__(self):
+        self.items = []
+
+    def add(self, message, **kwargs):
+        kwargs["message"] = message
+        self.items.append(SimpleNamespace(**kwargs))
+
+
+class ManualCrankEngineSpy:
+    def __init__(self):
+        self.calls = []
+
+    def queue_manual_crank_it_up(self, results, sponsor_name=""):
+        self.calls.append((results, sponsor_name))
+        return True
+
+
 def test_camera_update_overlay_refresh_only_for_lineup():
     assert should_update_overlay_for_camera_update(SimpleNamespace(role="lineup"))
     assert not should_update_overlay_for_camera_update(SimpleNamespace(role="story"))
@@ -595,6 +613,52 @@ def test_sponsor_commercial_plays_after_sponsor_read(monkeypatch):
     assert presentation["kind"] == "sponsor_commercial"
     assert presentation["video_url"] == "/assets/rgc_ad.mp4"
     assert presentation["duration"] == 60.0
+
+
+def test_producer_command_can_queue_manual_crank_it_up():
+    overlay = ProducerOverlaySpy()
+    engine = ManualCrankEngineSpy()
+    source = SimpleNamespace(get_results=lambda: [{"CarIdx": 1, "Position": 1}])
+
+    handle_producer_command(
+        "producer_crank_it_up",
+        {"sponsor_name": "RGC Motorsports"},
+        overlay,
+        source=source,
+        engine=engine,
+        booth=None,
+        camera_director=None,
+    )
+
+    assert engine.calls == [([{"CarIdx": 1, "Position": 1}], "RGC Motorsports")]
+    assert overlay.events[0]["title"] == "Crank It Up"
+    assert "Queued" in overlay.events[0]["message"]
+
+
+def test_producer_command_queues_manual_sponsor_read(monkeypatch):
+    import app
+
+    overlay = ProducerOverlaySpy()
+    queue = QueueSpy()
+    engine = SimpleNamespace(broadcast_queue=queue)
+    monkeypatch.setattr(app, "MANUAL_SPONSOR_INDEX", 0)
+    monkeypatch.setattr(app, "configured_sponsor_names", lambda: ["RGC Motorsports"])
+    monkeypatch.setattr(app, "RACE_SPONSOR_VIDEOS", {"RGC Motorsports": "/assets/rgc_ad.mp4"})
+
+    handle_producer_command(
+        "producer_sponsor_commercial",
+        {},
+        overlay,
+        source=None,
+        engine=engine,
+        booth=None,
+        camera_director=None,
+    )
+
+    assert queue.items[0].category == "sponsor_read"
+    assert "RGC Motorsports" in queue.items[0].message
+    assert overlay.events[0]["title"] == "Sponsor"
+    assert "commercial" in overlay.events[0]["message"].lower()
 
 
 def test_producer_command_can_switch_leaderboard_style():

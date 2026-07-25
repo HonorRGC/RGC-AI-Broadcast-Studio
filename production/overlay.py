@@ -2497,6 +2497,15 @@ PRODUCER_HTML = r"""<!doctype html>
         </div>
 
         <div class="panel full">
+          <h3>Manual Show Features</h3>
+          <div class="small">Use these when the race needs energy, a sponsor hit, or a manual commercial break.</div>
+          <div class="button-row control-grid" style="margin-top: 10px;">
+            <button class="control-button warn" id="manual-crank-it-up-button">Play Crank It Up</button>
+            <button class="control-button" id="manual-sponsor-button">Play Sponsor / Commercial</button>
+          </div>
+        </div>
+
+        <div class="panel full">
           <h3>Control Room Toggles</h3>
           <div class="button-row control-grid">
             <button class="control-button" id="auto-camera-button">Auto Camera</button>
@@ -3267,6 +3276,12 @@ PRODUCER_HTML = r"""<!doctype html>
     }
     document.getElementById("leader-camera-button").addEventListener("click", () => {
       sendProducerCommand("camera_follow_leader");
+    });
+    document.getElementById("manual-crank-it-up-button").addEventListener("click", () => {
+      sendProducerCommand("producer_crank_it_up");
+    });
+    document.getElementById("manual-sponsor-button").addEventListener("click", () => {
+      sendProducerCommand("producer_sponsor_commercial");
     });
     document.getElementById("auto-camera-button").addEventListener("click", () => {
       const on = controlEnabled(lastState || {}, "auto_camera");

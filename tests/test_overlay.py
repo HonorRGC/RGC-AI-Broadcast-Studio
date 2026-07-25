@@ -791,6 +791,11 @@ def test_producer_assist_html_reads_overlay_state():
     assert 'sendProducerCommand("replay_fast_play")' in PRODUCER_HTML
     assert 'id="jump-forward-button"' not in PRODUCER_HTML
     assert 'sendProducerCommand("replay_fast_forward", { seconds: 10 })' not in PRODUCER_HTML
+    assert "Manual Show Features" in PRODUCER_HTML
+    assert 'id="manual-crank-it-up-button"' in PRODUCER_HTML
+    assert 'id="manual-sponsor-button"' in PRODUCER_HTML
+    assert 'sendProducerCommand("producer_crank_it_up")' in PRODUCER_HTML
+    assert 'sendProducerCommand("producer_sponsor_commercial")' in PRODUCER_HTML
     assert 'id="leaderboard-style-button"' in PRODUCER_HTML
     assert 'id="broadcaster-volume-slider"' in PRODUCER_HTML
     assert 'id="music-volume-slider"' in PRODUCER_HTML

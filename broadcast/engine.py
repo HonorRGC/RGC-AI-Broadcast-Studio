@@ -205,6 +205,7 @@ class BroadcastEngine:
                 results,
                 driver_lookup,
                 current_lap,
+                total_laps,
             )
 
         if self.race_director.phase == RacePhase.GREEN:
@@ -1353,7 +1354,16 @@ class BroadcastEngine:
         self.green_pit_cycle_update_count += 1
         return True
 
-    def _collect_penalty_stories(self, telemetry, results, driver_lookup, current_lap):
+    def _collect_penalty_stories(
+        self,
+        telemetry,
+        results,
+        driver_lookup,
+        current_lap,
+        total_laps=0,
+    ):
+        if self.closing_penalty_story_blocked(current_lap, total_laps):
+            return
         events = self.penalty_detector.analyze(
             results=results,
             driver_lookup=driver_lookup,
@@ -1442,6 +1452,13 @@ class BroadcastEngine:
         if self.race_director.phase in (RacePhase.CAUTION, RacePhase.ONE_TO_GREEN):
             return True
         return any(item.category == "incident" for item in self.broadcast_queue.items)
+
+    def closing_penalty_story_blocked(self, current_lap, total_laps):
+        total_laps = self.safe_int(total_laps)
+        current_lap = self.safe_int(current_lap)
+        if total_laps <= 0 or current_lap <= 0:
+            return False
+        return max(total_laps - current_lap, 0) <= 2
 
     def _queue_long_green_insight(self, race_state, current_lap):
         if self.broadcast_queue.items:
@@ -1572,6 +1589,7 @@ class BroadcastEngine:
         blocked_categories = {
             "crank_it_up_intro",
             "crank_it_up",
+            "penalty",
         }
         self.broadcast_queue.items = [
             item for item in self.broadcast_queue.items
@@ -1612,6 +1630,38 @@ class BroadcastEngine:
             speaker="lead",
             expires_after=90,
             dedupe_key=f"crank_it_up:{green_lap_count}",
+            camera_sequence_steps=steps,
+            camera_return_home_after_sequence=True,
+            silent=True,
+            feature_duration_seconds=50.0,
+        )
+        return True
+
+    def queue_manual_crank_it_up(self, results, sponsor_name="RGC Motorsports"):
+        steps = self.build_crank_it_up_camera_steps(results)
+        if not steps:
+            return False
+
+        sponsor_name = str(sponsor_name or "").strip() or "RGC Motorsports"
+        dedupe_seed = time.time()
+        self.crank_it_up_sent_this_green_run = True
+        self.broadcast_queue.add(
+            f"It is time to Crank It Up. Crank It Up is presented by {sponsor_name}.",
+            priority=13,
+            category="crank_it_up_intro",
+            protected=True,
+            speaker="lead",
+            expires_after=30,
+            dedupe_key=f"crank_it_up:manual:intro:{dedupe_seed}",
+        )
+        self.broadcast_queue.add(
+            "Crank It Up",
+            priority=12,
+            category="crank_it_up",
+            protected=True,
+            speaker="lead",
+            expires_after=90,
+            dedupe_key=f"crank_it_up:manual:{dedupe_seed}",
             camera_sequence_steps=steps,
             camera_return_home_after_sequence=True,
             silent=True,
