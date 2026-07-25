@@ -498,6 +498,29 @@ def test_overlay_special_presentation_updates_state_immediately():
     assert state["special_presentation"]["video_url"] == "/assets/rgc_ad.mp4"
 
 
+def test_overlay_can_clear_special_presentation_immediately():
+    from production.overlay import OverlayServer
+
+    server = OverlayServer()
+    server.show_special_presentation(
+        kind="sponsor_commercial",
+        title="RGC Motorsports",
+        subtitle="Commercial Break",
+        video_url="/assets/rgc_ad.mp4",
+        duration=60,
+    )
+
+    server.clear_special_presentation()
+
+    assert server.current_state_dict()["special_presentation"] is None
+
+
+def test_commercial_video_clears_overlay_when_playback_ends():
+    assert "/overlay/clear-special-presentation" in OVERLAY_HTML
+    assert 'video.addEventListener("ended", clearCommercialPresentationFromVideo)' in OVERLAY_HTML
+    assert "installCommercialVideoHandlers();" in OVERLAY_HTML
+
+
 def test_overlay_preserves_stat_panel():
     from production.overlay import OverlayServer
 

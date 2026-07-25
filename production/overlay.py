@@ -1510,6 +1510,11 @@ class OverlayServer:
                 self.send_error(404)
 
             def do_POST(self):
+                if self.path == "/overlay/clear-special-presentation":
+                    server.clear_special_presentation()
+                    self.send_json({"ok": True})
+                    return
+
                 if self.path == "/producer/command":
                     try:
                         length = int(self.headers.get("Content-Length", "0") or 0)
@@ -4553,6 +4558,8 @@ OVERLAY_HTML = r"""<!doctype html>
       return pieces.join(";");
     }
 
+    let commercialClearRequested = false;
+
     function renderSpecialPresentation(presentation) {
       const layer = document.getElementById("special-presentation");
       const active = !!(presentation && presentation.kind);
@@ -4592,16 +4599,32 @@ OVERLAY_HTML = r"""<!doctype html>
           video.removeAttribute("src");
           video.load();
         }
+        commercialClearRequested = false;
         return;
       }
       if (video.getAttribute("src") !== nextSrc) {
         video.setAttribute("src", nextSrc);
         video.currentTime = 0;
+        commercialClearRequested = false;
         const playPromise = video.play();
         if (playPromise && typeof playPromise.catch === "function") {
           playPromise.catch((error) => console.warn("Commercial video autoplay failed", error));
         }
       }
+    }
+
+    function clearCommercialPresentationFromVideo() {
+      if (commercialClearRequested) return;
+      commercialClearRequested = true;
+      fetch("/overlay/clear-special-presentation", { method: "POST" })
+        .catch((error) => console.warn("Could not clear commercial presentation", error));
+    }
+
+    function installCommercialVideoHandlers() {
+      const video = document.getElementById("commercial-video");
+      if (!video || video.dataset.handlersInstalled === "1") return;
+      video.dataset.handlersInstalled = "1";
+      video.addEventListener("ended", clearCommercialPresentationFromVideo);
     }
 
     function setCrankSideGraphic(className, src) {
@@ -4868,6 +4891,7 @@ OVERLAY_HTML = r"""<!doctype html>
       return graphics[index];
     }
 
+    installCommercialVideoHandlers();
     refreshOverlay();
     setInterval(refreshOverlay, 1000);
   </script>
