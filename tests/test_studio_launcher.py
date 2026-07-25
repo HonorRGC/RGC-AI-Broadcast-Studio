@@ -136,9 +136,12 @@ def test_studio_profile_buttons_use_clear_create_delete_language():
 
     assert 'text="New Profile Name"' in source
     assert 'text="Create Profile"' in source
-    assert 'text="Save Profile Changes"' in source
-    assert 'text="Delete Profile"' in source
+    assert 'text="Load"' in source
+    assert 'text="Delete"' in source
+    assert 'text="Save Settings"' in source
+    assert "Save Settings updates both the active settings file and that selected profile" in source
     assert "New / Save As" not in source
+    assert "Save Profile Changes" not in source
 
 
 def test_launcher_version_comparison_helpers():

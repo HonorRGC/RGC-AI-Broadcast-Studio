@@ -1457,6 +1457,18 @@ def run_gui():
         width=28,
     )
     profile_combo.pack(side="left", padx=4, pady=8)
+    button(
+        profile_bar,
+        text="Load",
+        command=lambda: load_selected_profile(),
+        color="#334b64",
+    ).pack(side="left", padx=4, pady=8)
+    button(
+        profile_bar,
+        text="Delete",
+        command=lambda: delete_selected_profile(),
+        color=STOP_RED,
+    ).pack(side="left", padx=4, pady=8)
     label(
         profile_bar,
         text="New Profile Name",
@@ -1466,6 +1478,12 @@ def run_gui():
     profile_name_var = tk.StringVar(value="")
     profile_name_entry = entry(profile_bar, textvariable=profile_name_var, width=24)
     profile_name_entry.pack(side="left", padx=4, pady=8)
+    button(
+        profile_bar,
+        text="Create Profile",
+        command=lambda: create_profile_from_name(),
+        color="#3d7a46",
+    ).pack(side="left", padx=4, pady=8)
 
     broadcast_bar = frame(main_page, bg=PANEL_BG)
     broadcast_bar.pack(fill="x", padx=18, pady=(4, 6))
@@ -2025,8 +2043,15 @@ def run_gui():
         status.set("Profile list refreshed.")
 
     def save_settings():
-        save_env_file(collect_values())
-        status.set(f"Saved settings to {ENV_PATH}")
+        values = collect_values()
+        save_env_file(values)
+        profile_name = profile_var.get().strip()
+        if profile_name:
+            path = save_profile(profile_name, values)
+            refresh_profile_list()
+            status.set(f"Saved settings and updated profile: {path.name}")
+        else:
+            status.set(f"Saved settings to {ENV_PATH}")
         refresh_health()
 
     def create_profile_from_name():
@@ -2042,20 +2067,6 @@ def run_gui():
         profile_name_var.set("")
         refresh_profile_list()
         status.set(f"Created profile: {path.name}")
-
-    def save_current_profile():
-        name = profile_var.get().strip() or profile_name_var.get().strip()
-        if not name:
-            messagebox.showerror(
-                "Missing profile",
-                "Choose an existing profile or type a new profile name first.",
-            )
-            return
-        path = save_profile(name, collect_values())
-        profile_var.set(sanitize_profile_name(name))
-        profile_name_var.set("")
-        refresh_profile_list()
-        status.set(f"Saved changes to profile: {path.name}")
 
     def load_selected_profile():
         name = profile_var.get().strip()
@@ -2226,26 +2237,6 @@ def run_gui():
         pady=8,
     )
     button(profile_action_bar, text="Save Settings", command=save_settings, color="#334b64").pack(
-        side="left",
-        padx=6,
-        pady=8,
-    )
-    button(profile_action_bar, text="Create Profile", command=create_profile_from_name, color="#3d7a46").pack(
-        side="left",
-        padx=6,
-        pady=8,
-    )
-    button(profile_action_bar, text="Save Profile Changes", command=save_current_profile, color="#334b64").pack(
-        side="left",
-        padx=6,
-        pady=8,
-    )
-    button(profile_action_bar, text="Load Profile", command=load_selected_profile, color="#334b64").pack(
-        side="left",
-        padx=6,
-        pady=8,
-    )
-    button(profile_action_bar, text="Delete Profile", command=delete_selected_profile, color=STOP_RED).pack(
         side="left",
         padx=6,
         pady=8,
@@ -3045,7 +3036,8 @@ def build_help_tab(
         """
         Profiles let you keep separate setups for league races, official testing, AI broadcast defaults, or human-broadcaster defaults.
         To make one, type a name in New Profile Name and click Create Profile. Later, choose it from the Profile list and click Load Profile.
-        Use Save Profile Changes when you edit an existing profile. Use Delete Profile to remove old test profiles you no longer need.
+        If a profile is selected, Save Settings updates both the active settings file and that selected profile.
+        Use Delete beside the profile list to remove old test profiles you no longer need.
         Before race night, load the correct profile and refresh Broadcast Health.
         """,
     )
