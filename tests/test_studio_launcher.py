@@ -336,6 +336,34 @@ def test_launcher_health_reports_tailscale_helper_access(monkeypatch):
     assert "http://100.90.80.70:8765/producer" in row_map["Remote Producer Assist"][1]
 
 
+def test_launcher_health_reports_sim_racing_apps_optional_when_not_running(monkeypatch):
+    import studio_launcher
+
+    monkeypatch.setattr(studio_launcher, "sim_racing_apps_is_running", lambda: False)
+    values = launcher_defaults({})
+
+    rows = build_health_status(values, root=Path("C:/RGC"), broadcast_running=False)
+    row_map = {name: (state, detail, level) for name, state, detail, level in rows}
+
+    assert row_map["SIMRacingApps"][0] == "Optional setup"
+    assert "Start SIMRacingAppsServer" in row_map["SIMRacingApps"][1]
+    assert row_map["SIMRacingApps"][2] == "warn"
+
+
+def test_launcher_health_reports_sim_racing_apps_running(monkeypatch):
+    import studio_launcher
+
+    monkeypatch.setattr(studio_launcher, "sim_racing_apps_is_running", lambda: True)
+    values = launcher_defaults({})
+
+    rows = build_health_status(values, root=Path("C:/RGC"), broadcast_running=False)
+    row_map = {name: (state, detail, level) for name, state, detail, level in rows}
+
+    assert row_map["SIMRacingApps"][0] == "Running"
+    assert "Live car renders" in row_map["SIMRacingApps"][1]
+    assert row_map["SIMRacingApps"][2] == "ok"
+
+
 def test_first_time_setup_checklist_flags_missing_profile_and_keys(tmp_path):
     values = launcher_defaults({})
 

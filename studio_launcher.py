@@ -32,6 +32,12 @@ BROADCAST_PROCESS = None
 RGC_DISCORD_URL = "https://discord.gg/Axwwa8CUqt"
 RGC_WEBSITE_URL = "https://www.realisticgamingcrew.com"
 TAILSCALE_WINDOWS_DOWNLOAD_URL = "https://tailscale.com/download/windows"
+SIM_RACING_APPS_HOME_URL = "https://simracingapps.com/"
+SIM_RACING_APPS_PATCH_URL = (
+    "https://github.com/ZoneXV/SIMRacingAppsServer/releases/tag/"
+    "v1.22-paceCar-pitspeed-fix"
+)
+SIM_RACING_APPS_HEALTH_URL = "http://127.0.0.1/SIMRacingApps/Data/Session/Cars"
 DEFAULT_OVERLAY_URL = "http://127.0.0.1:8765/overlay"
 DEFAULT_PRODUCER_URL = "http://127.0.0.1:8765/producer"
 CLOSE_RUNNING_BROADCAST_TITLE = "Broadcast process detected"
@@ -604,6 +610,14 @@ def ensure_empty_race_schedule_csv(csv_path):
     return path
 
 
+def sim_racing_apps_is_running(url=SIM_RACING_APPS_HEALTH_URL, timeout=0.35):
+    try:
+        with urllib.request.urlopen(url, timeout=timeout) as response:
+            return 200 <= int(getattr(response, "status", 200)) < 500
+    except Exception:
+        return False
+
+
 def build_health_status(values, root=ROOT, broadcast_running=False):
     """Return launcher health rows as (name, state, detail, level)."""
 
@@ -643,6 +657,24 @@ def build_health_status(values, root=ROOT, broadcast_running=False):
 
     rows.append(("Overlay", "Ready", DEFAULT_OVERLAY_URL, "ok"))
     rows.append(("Producer Assist", "Ready", DEFAULT_PRODUCER_URL, "ok"))
+    if sim_racing_apps_is_running():
+        rows.append(
+            (
+                "SIMRacingApps",
+                "Running",
+                "Live car renders and styled car numbers should be available.",
+                "ok",
+            )
+        )
+    else:
+        rows.append(
+            (
+                "SIMRacingApps",
+                "Optional setup",
+                "Start SIMRacingAppsServer before the broadcast for live car images and styled numbers.",
+                "warn",
+            )
+        )
     if str(values.get("OVERLAY_HOST", "127.0.0.1") or "").strip() == "0.0.0.0":
         rows.append(
             (
@@ -765,7 +797,15 @@ def build_first_time_setup_checklist(
         )
 
     health = {name: (state, detail, level) for name, state, detail, level in build_health_status(values, root, broadcast_running)}
-    for name in ("OpenAI", "ElevenLabs", "League Notes", "Practice Music", "Discord Race Report", "Remote Producer Assist"):
+    for name in (
+        "OpenAI",
+        "ElevenLabs",
+        "SIMRacingApps",
+        "League Notes",
+        "Practice Music",
+        "Discord Race Report",
+        "Remote Producer Assist",
+    ):
         state, detail, level = health.get(name, ("Unknown", "Refresh Broadcast Health.", "warn"))
         rows.append((name, state, detail, level))
 
@@ -2904,6 +2944,18 @@ def build_help_tab(
     ).pack(side="left", padx=(0, 8))
     button(
         link_row,
+        text="Open SIMRacingApps",
+        command=lambda: open_external_link(SIM_RACING_APPS_HOME_URL),
+        color="#334b64",
+    ).pack(side="left", padx=(0, 8))
+    button(
+        link_row,
+        text="Open SIMRacingApps Patch",
+        command=lambda: open_external_link(SIM_RACING_APPS_PATCH_URL),
+        color="#334b64",
+    ).pack(side="left", padx=(0, 8))
+    button(
+        link_row,
         text="Open GitHub Releases",
         command=lambda: open_external_link(GITHUB_RELEASES_URL),
         color="#334b64",
@@ -3055,7 +3107,22 @@ def build_help_tab(
         """,
     )
     section(
-        "5. Practice, qualifying, and caution music",
+        "5. Optional SIMRacingApps car graphics setup",
+        f"""
+        RGC AI Broadcast Studio can run without SIMRacingApps, but live 3D car renders and styled car numbers work best when SIMRacingAppsServer is running in the background.
+
+        Recommended setup:
+        1. Download the original SIMRacingAppsServer from {SIM_RACING_APPS_HOME_URL}
+        2. Download the patched build from {SIM_RACING_APPS_PATCH_URL}
+        3. Run SIMRacingAppsServer before starting the broadcast.
+        4. Leave the SIMRacingAppsServer window open or minimized while iRacing is running.
+        5. Refresh Broadcast Health. SIMRacingApps should show as Running.
+
+        If SIMRacingApps is not running, the broadcast still works. The overlay will fall back to numbers/manual graphics where possible, but car renders may be missing or less accurate.
+        """,
+    )
+    section(
+        "6. Practice, qualifying, and caution music",
         """
         Practice music loops during practice. Qualifying music loops during qualifying when files are selected.
         MP3 or WAV files are recommended. OGA/OGG files are not supported by the hidden Windows audio player.
@@ -3065,7 +3132,7 @@ def build_help_tab(
         """,
     )
     section(
-        "6. League and Sim Racer Hub data",
+        "7. League and Sim Racer Hub data",
         """
         For official race testing, league files are optional. For league races, use the League / Sim Racer Hub tab.
         A clean Sim Racer Hub URL can be https://simracerhub.com, then fill in League ID, Series ID, and Season ID.
@@ -3076,7 +3143,7 @@ def build_help_tab(
         """,
     )
     section(
-        "7. Profiles",
+        "8. Profiles",
         """
         Profiles let you keep separate setups for league races, official testing, AI broadcast defaults, or human-broadcaster defaults.
         To make one, type a name in New Profile Name and click Create Profile. Later, choose it from the Profile list and click Load Profile.
@@ -3086,7 +3153,7 @@ def build_help_tab(
         """,
     )
     section(
-        "8. Start Broadcast and Producer Assist",
+        "9. Start Broadcast and Producer Assist",
         """
         Start Broadcast runs the broadcast engine, overlay, Producer Assist control room, cameras, replay controls, and race control.
         Producer Assist opens automatically after Start Broadcast. If you close it, use the Producer Assist link to open it again.
@@ -3100,7 +3167,7 @@ def build_help_tab(
         """,
     )
     section(
-        "9. Remote helper setup with Tailscale",
+        "10. Remote helper setup with Tailscale",
         f"""
         Recommended for trusted league admins in different locations: use Tailscale.
         Download Tailscale for Windows here: {TAILSCALE_WINDOWS_DOWNLOAD_URL}
@@ -3117,14 +3184,14 @@ def build_help_tab(
         """,
     )
     section(
-        "10. Updates",
+        "11. Updates",
         """
         Use Check for Updates to compare this installed version against the latest GitHub Release.
         Early versions open the release/download page instead of auto-installing. This is safer while the app is still moving quickly.
         """,
     )
     section(
-        "11. Race-night checklist",
+        "12. Race-night checklist",
         """
         Open iRacing, open Streamlabs/OBS, confirm the browser overlay is visible, load your profile,
         refresh Broadcast Health, then start during practice. Run a short smoke test before league night:

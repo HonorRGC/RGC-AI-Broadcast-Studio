@@ -104,6 +104,18 @@ Keep the OBS/Streamlabs overlay link on `127.0.0.1`; Tailscale is only for the p
 
 Race-control warning: sending iRacing admin commands from the broadcast PC can show the chat box or iRacing window on stream. For league races, the cleanest setup is a trusted remote admin using Producer Assist/Tailscale from another PC so race-control commands do not interrupt the broadcast capture.
 
+## Optional SIMRacingApps car graphics
+
+The broadcast works without SIMRacingApps, but live 3D car renders and styled car numbers require SIMRacingAppsServer to be running in the background.
+
+1. Download SIMRacingAppsServer from <https://simracingapps.com/>.
+2. Download the patched build from <https://github.com/ZoneXV/SIMRacingAppsServer/releases/tag/v1.22-paceCar-pitspeed-fix>.
+3. Start SIMRacingAppsServer before starting the broadcast.
+4. Leave SIMRacingAppsServer open or minimized while iRacing is running.
+5. Refresh Broadcast Health. It should show `SIMRacingApps: Running`.
+
+If SIMRacingApps is not running, car cards and leaderboards may fall back to plain numbers/manual graphics.
+
 ## Streamlabs / OBS overlay
 
 In **Broadcast Settings**, the browser-source link is shown right after the overlay title, sponsor, series, and brand graphics fields. Click **Copy Overlay Link** and paste it into Streamlabs or OBS:

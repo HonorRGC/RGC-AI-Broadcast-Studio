@@ -36,6 +36,14 @@ Use this checklist before sending a new installer to a league admin or calling a
 - Driver card appears when a driver is focused.
 - Crank It Up graphic appears during a test or live trigger.
 
+## Optional SIMRacingApps car graphics smoke test
+
+- SIMRacingAppsServer is running before the broadcast starts.
+- Broadcast Health shows `SIMRacingApps: Running`.
+- Driver cards can show live car renders when SIMRacingApps has that car available.
+- Leaderboard/driver-card numbers can use the styled number data from SIMRacingApps when available.
+- If SIMRacingApps is closed, the broadcast still runs and falls back to plain numbers/manual graphics.
+
 ## Live iRacing smoke test
 
 Use a short AI or hosted test session when possible.
@@ -54,6 +62,7 @@ Use a short AI or hosted test session when possible.
 
 - The admin has Python 3.11 or newer installed.
 - The admin has their own OpenAI and ElevenLabs accounts if using AI voices.
+- The admin knows SIMRacingAppsServer is optional, but recommended for live car renders and styled numbers.
 - The admin knows the overlay link is local to the broadcast PC.
 - The admin knows Tailscale is only needed for a trusted remote Producer Assist helper.
 - Race Admin Mode stays off unless the broadcaster PC is an iRacing admin in the hosted session.

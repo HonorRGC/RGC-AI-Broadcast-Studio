@@ -308,7 +308,35 @@ Profiles are useful because you can keep separate setups, such as:
 
 Before race night, load the correct profile and check the Broadcast Health panel.
 
-## 12. Start the broadcast
+## 12. Optional SIMRacingApps car graphics setup
+
+RGC AI Broadcast Studio can run without SIMRacingApps. However, live 3D car renders and styled car numbers work best when SIMRacingAppsServer is running in the background.
+
+Official SIMRacingApps site:
+
+<https://simracingapps.com/>
+
+Patched build currently used for this project:
+
+<https://github.com/ZoneXV/SIMRacingAppsServer/releases/tag/v1.22-paceCar-pitspeed-fix>
+
+Recommended setup:
+
+1. Download the original SIMRacingAppsServer from the official SIMRacingApps site.
+2. Download the patched build from the GitHub release above.
+3. Run SIMRacingAppsServer before starting the broadcast.
+4. Leave the SIMRacingAppsServer window open or minimized while iRacing is running.
+5. Refresh Broadcast Health in RGC AI Broadcast Studio.
+
+If SIMRacingApps is reachable, Broadcast Health will show:
+
+```text
+SIMRacingApps: Running
+```
+
+If it is not running, the broadcast still works. The overlay will fall back to numbers/manual graphics where possible, but live car renders may be missing or less accurate.
+
+## 13. Start the broadcast
 
 Start Broadcast launches:
 
@@ -346,7 +374,7 @@ Optional Discord race report:
 
 After the race, the Studio waits for the finishing order to stabilize, then posts a Discord recap with a short race breakdown, the top ten, biggest movers, available race stats, and Sim Racer Hub results/championship links. Those links come from the Season ID and imported Race Schedule CSV, so admins should not need to paste race links every week. The Discord interview bot fields are separate and can stay blank for now.
 
-## 12. Remote Producer Assist with Tailscale
+## 14. Remote Producer Assist with Tailscale
 
 Use Tailscale when a trusted admin in another location needs to help with Producer Assist, cameras, notes, incident review, or race control.
 
@@ -377,7 +405,7 @@ Important:
 - Do not use normal router port forwarding unless you have a separate security plan.
 - Camera control still uses the take/release button so only one producer moves cameras at a time.
 
-## 13. Recommended race-night flow
+## 15. Recommended race-night flow
 
 1. Open iRacing.
 2. Join the session as a spectator, admin, or driver depending on your workflow.
@@ -390,7 +418,7 @@ Important:
 9. Let the studio detect practice, qualifying, and race.
 10. Stop the broadcast after the race or after post-race coverage.
 
-## 14. Updating to a newer build
+## 16. Updating to a newer build
 
 For now, updates are handled by receiving a newer ZIP.
 
@@ -408,7 +436,7 @@ Recommended update method:
 
 Later versions may add a true installer/updater.
 
-## 15. Troubleshooting
+## 17. Troubleshooting
 
 ### The program will not install
 
@@ -471,7 +499,7 @@ Check `Race Admin Send Mode`.
 
 Until a true hidden iRacing admin-command method is confirmed, use clipboard mode for live broadcasts. If you need fast live race-control decisions without risking the broadcast screen, use a trusted remote admin through Producer Assist/Tailscale on a separate PC.
 
-## 16. Safety notes
+## 18. Safety notes
 
 - Never share API keys publicly.
 - Do not stream your launcher while keys are visible.

@@ -41,6 +41,7 @@ dist\
 - Their own OpenAI API key if testing full AI mode
 - Their own ElevenLabs API key and voice IDs if testing spoken broadcast audio
 - Streamlabs, OBS, or another program that supports browser sources
+- Optional but recommended for live car renders/styled numbers: SIMRacingAppsServer
 
 ## First setup
 
@@ -63,6 +64,26 @@ http://127.0.0.1:8765/overlay
 ```
 
 Add it as a browser source at `1920 x 1080`.
+
+## Optional SIMRacingApps car graphics
+
+Live 3D car renders and styled car numbers require SIMRacingAppsServer running in the background. The broadcast still works without it, but driver cards/leaderboard numbers may fall back to plain numbers or manual graphics.
+
+1. Download SIMRacingAppsServer from:
+
+   ```text
+   https://simracingapps.com/
+   ```
+
+2. Download the patched build currently used for this project:
+
+   ```text
+   https://github.com/ZoneXV/SIMRacingAppsServer/releases/tag/v1.22-paceCar-pitspeed-fix
+   ```
+
+3. Start SIMRacingAppsServer before starting the broadcast.
+4. Leave it open or minimized while iRacing is running.
+5. Refresh Broadcast Health and confirm `SIMRacingApps: Running`.
 
 ## Remote helper setup
 
