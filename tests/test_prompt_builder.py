@@ -120,3 +120,28 @@ def test_prompt_forbids_script_style_broadcaster_name_prefixes():
     assert "what the booth just framed" in prompt["user"]
     assert "ask another broadcaster a question" in prompt["user"]
     assert "refer to the booth in third person" in prompt["user"]
+
+
+def test_prompt_includes_road_course_discipline():
+    assignment = EditorialItem(
+        story_type="battle",
+        headline="Battle for fifth",
+        summary="Two cars are close through the middle sector.",
+    )
+
+    prompt = PromptBuilder().build_prompt(
+        "jeff",
+        assignment,
+        race_knowledge={
+            "track_profile": {
+                "style": "road_course",
+                "label": "road course",
+                "notes": "Emphasize braking zones and corner exits.",
+            }
+        },
+    )
+
+    assert "Track Profile: road course" in prompt["user"]
+    assert "Road-course discipline" in prompt["user"]
+    assert "freight-train" in prompt["user"]
+    assert "braking zone" in prompt["user"]

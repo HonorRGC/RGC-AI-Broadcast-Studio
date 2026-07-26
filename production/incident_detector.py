@@ -85,6 +85,7 @@ class IncidentDetector:
         pit_road_status=None,
         session_time=None,
         suppress_soft_events=False,
+        road_course_mode=False,
     ) -> List[IncidentEvent]:
         events = []
         pack_candidates = []
@@ -176,6 +177,7 @@ class IncidentDetector:
                 track_surface_material=track_surface_material,
                 current_lap=current_lap,
                 suppress_soft_events=suppress_soft_events,
+                road_course_mode=road_course_mode,
             )
             pack_candidate = self.build_pack_trouble_candidate(
                 state=state,
@@ -464,6 +466,7 @@ class IncidentDetector:
         track_surface_material,
         current_lap,
         suppress_soft_events=False,
+        road_course_mode=False,
     ):
         incident_delta = incident_count - state.last_incident_count
         position_loss = position - state.last_position
@@ -495,7 +498,7 @@ class IncidentDetector:
                 incident_count,
             )
 
-        if suppress_soft_events:
+        if suppress_soft_events or road_course_mode:
             return self.detect_serious_soft_trouble(
                 state=state,
                 position_loss=position_loss,
@@ -504,6 +507,7 @@ class IncidentDetector:
                 track_surface=track_surface,
                 current_lap=current_lap,
                 incident_count=incident_count,
+                road_course_mode=road_course_mode,
             )
 
         if position_loss >= self.position_loss_threshold:
@@ -561,14 +565,24 @@ class IncidentDetector:
         track_surface,
         current_lap,
         incident_count,
+        road_course_mode=False,
     ):
         abnormal_surface = self.is_abnormal_surface(track_surface)
         reasons = []
-        if abnormal_surface and est_time_loss >= 1.5:
+        time_loss_threshold = 1.0 if road_course_mode else 1.5
+        lap_loss_threshold = 0.008 if road_course_mode else 0.012
+        combined_lap_loss_threshold = 0.018 if road_course_mode else 0.025
+        combined_time_loss_threshold = 2.0 if road_course_mode else 3.0
+        score_threshold = 6.0 if road_course_mode else 7.5
+
+        if abnormal_surface and est_time_loss >= time_loss_threshold:
             reasons.append("left the racing surface and lost time")
-        if abnormal_surface and lap_distance_loss >= 0.012:
+        if abnormal_surface and lap_distance_loss >= lap_loss_threshold:
             reasons.append("left the racing surface and lost ground")
-        if lap_distance_loss >= 0.025 and est_time_loss >= 3.0:
+        if (
+            lap_distance_loss >= combined_lap_loss_threshold
+            and est_time_loss >= combined_time_loss_threshold
+        ):
             reasons.append("lost control-level track position and time")
 
         if not reasons:
@@ -579,18 +593,28 @@ class IncidentDetector:
             + max(0.0, est_time_loss)
             + (3.0 if abnormal_surface else 0.0)
         )
-        if score < 7.5:
+        if score < score_threshold:
             return None
 
-        return self.build_event(
-            state,
-            "possible trouble",
-            (
+        if road_course_mode:
+            message = (
+                f"{state.driver_name} in the number {state.car_number} may have "
+                "had a road-course moment. They lost time after getting away "
+                "from the racing line, and that could be an off-track, a spin, "
+                "or damage without a full-course yellow."
+            )
+        else:
+            message = (
                 f"{state.driver_name} in the number {state.car_number} may have "
                 "had a moment a bit ago. They lost time after getting away from "
                 "the ideal racing line, and now the question is whether that hurt "
                 "the car or just overheated the tires."
-            ),
+            )
+
+        return self.build_event(
+            state,
+            "possible trouble",
+            message,
             5,
             current_lap,
             0,

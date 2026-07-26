@@ -101,6 +101,36 @@ def test_serious_single_car_moment_breaks_through_soft_suppression():
     assert events[0].car_idx == 0
 
 
+def test_road_course_mode_calls_serious_local_trouble():
+    detector = IncidentDetector()
+    drivers = {0: {"name": "Road Racer", "number": "12"}}
+
+    detector.analyze(
+        results=[{"CarIdx": 0, "Position": 3, "Incidents": 0}],
+        driver_lookup=drivers,
+        current_lap=18,
+        lap_dist_pct_status=[0.70],
+        est_time_status=[20.0],
+        track_surface_status=[3],
+        pit_road_status=[False],
+        road_course_mode=True,
+    )
+    events = detector.analyze(
+        results=[{"CarIdx": 0, "Position": 3, "Incidents": 0}],
+        driver_lookup=drivers,
+        current_lap=18,
+        lap_dist_pct_status=[0.69],
+        est_time_status=[22.0],
+        track_surface_status=[0],
+        pit_road_status=[False],
+        road_course_mode=True,
+    )
+
+    assert len(events) == 1
+    assert events[0].trouble_type == "possible trouble"
+    assert "road-course moment" in events[0].message
+
+
 def test_green_flag_pit_exit_does_not_create_pack_wreck():
     detector = IncidentDetector()
     drivers = {

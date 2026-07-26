@@ -2,6 +2,7 @@ from dataclasses import dataclass
 
 from production.track_style import (
     is_long_straight_draft_assist_track,
+    is_road_course,
     is_true_pack_drafting_track,
 )
 
@@ -150,7 +151,7 @@ class OpeningDirector:
                 "Short-track nights are built on rhythm, patience, and surviving "
                 "the restart stack-ups."
             )
-        if "road" in track_type:
+        if is_road_course(track_info):
             return (
                 "This is a rhythm race, where braking zones, exits, and avoiding "
                 "the big mistake can decide the night."
@@ -214,7 +215,7 @@ class OpeningDirector:
                 "is still about braking, corner exit, and keeping the car "
                 "balanced through the slower corners."
             )
-        elif "road" in track_type:
+        elif is_road_course(track_info):
             message = (
                 "Rhythm and braking zones decide this one. Clean exits and "
                 "mistake-free laps should pay off over a full run."
@@ -243,6 +244,12 @@ class OpeningDirector:
             message = (
                 "Pit road timing could be a big swing tonight. If fuel strategy "
                 "comes into play, the cleanest group stop can win track position."
+            )
+        elif is_road_course(track_info):
+            message = (
+                "Down here on pit road, road-course strategy is all about the "
+                "window. A clean in-lap, a clean out-lap, and avoiding pit-road "
+                "speeding can make the undercut or overcut work."
             )
         else:
             message = (

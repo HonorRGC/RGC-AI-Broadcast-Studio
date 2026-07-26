@@ -113,6 +113,15 @@ class PromptBuilder:
             if top_story:
                 lines.append(f"Top Story: {getattr(top_story, 'summary', '')}")
 
+            track_profile = race_knowledge.get("track_profile") or {}
+            if track_profile:
+                label = track_profile.get("label") or track_profile.get("style") or ""
+                notes = track_profile.get("notes") or ""
+                if label:
+                    lines.append(f"Track Profile: {label}")
+                if notes:
+                    lines.append(f"Track Guidance: {notes}")
+
             league_driver_context = race_knowledge.get("league_driver_context") or []
             if league_driver_context:
                 lines.append("Verified League Driver Notes:")
@@ -136,6 +145,14 @@ class PromptBuilder:
             "refer to the booth in third person, or use script-style labels. "
             "Keep any handoff short and conversational."
         )
+        track_profile = (race_knowledge or {}).get("track_profile") or {}
+        if track_profile.get("style") == "road_course":
+            lines.append(
+                "Road-course discipline: avoid oval pack-draft, freight-train, "
+                "and lane-train language unless the assignment explicitly supports it. "
+                "Use road-racing terms like braking zone, apex, corner exit, curbs, "
+                "traffic, undercut, overcut, and track limits when they fit."
+            )
 
         return "\n".join(lines)
 

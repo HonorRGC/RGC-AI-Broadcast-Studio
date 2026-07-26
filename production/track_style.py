@@ -23,6 +23,9 @@ SHORT_TRACKS = (
 
 ROAD_COURSE_MARKERS = (
     "road",
+    "road course",
+    "circuit",
+    "grand prix",
     "glen",
     "sonoma",
     "spa",
@@ -30,6 +33,24 @@ ROAD_COURSE_MARKERS = (
     "virginia",
     "watkins",
     "roval",
+    "sebring",
+    "silverstone",
+    "monza",
+    "imola",
+    "suzuka",
+    "interlagos",
+    "mount panorama",
+    "bathurst",
+    "laguna",
+    "lime rock",
+    "mid-ohio",
+    "mid ohio",
+    "barber",
+    "zandvoort",
+    "zolder",
+    "le mans",
+    "nurburgring",
+    "nürburgring",
 )
 
 
@@ -42,6 +63,7 @@ def track_text(track_info):
             "track_display_name",
             "track_config",
             "track_type",
+            "category",
         )
     )
 
@@ -100,8 +122,10 @@ def racecraft_profile(track_info):
             "style": "road_course",
             "label": "road course",
             "notes": (
-                "Emphasize rhythm, braking zones, exits, mistakes, and tire "
-                "management. Do not use oval pack-drafting language."
+                "Emphasize rhythm, braking zones, corner exits, curbs, traffic, "
+                "off-track moments, undercut/overcut strategy, and tire "
+                "management. Do not use oval pack-drafting or freight-train "
+                "language."
             ),
         }
     return {

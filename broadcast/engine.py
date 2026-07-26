@@ -27,6 +27,7 @@ from production.race_intelligence import RaceIntelligence
 from production.session_tracker import SessionTracker
 from production.sponsor_reads import SponsorReadDirector
 from production.storyline_director import StorylineDirector
+from production.track_style import is_road_course, racecraft_profile
 
 
 class BroadcastEngine:
@@ -120,6 +121,7 @@ class BroadcastEngine:
         total_laps = telemetry.get_total_laps()
         current_lap = self.best_race_lap(telemetry.get_lap(), results)
         session_flags = telemetry.get_session_flags()
+        track_info = telemetry.get_track_info()
         pit_road_status = telemetry.get_car_idx_on_pit_road()
         track_surface_status = telemetry.get_car_idx_track_surface()
         self._detect_mid_race_start(
@@ -144,6 +146,7 @@ class BroadcastEngine:
             session_flags=session_flags,
             pit_road_status=pit_road_status,
         )
+        race_knowledge["track_profile"] = racecraft_profile(track_info)
         race_state = self.race_intelligence.get_race_state()
 
         grid_reader = getattr(telemetry, "get_starting_grid", None)
@@ -173,7 +176,7 @@ class BroadcastEngine:
             results=results,
             driver_lookup=driver_lookup,
         )
-        self._queue_mid_race_join_note(current_lap, total_laps, telemetry.get_track_info())
+        self._queue_mid_race_join_note(current_lap, total_laps, track_info)
 
         if self.race_director.phase == RacePhase.CAUTION:
             self._queue_late_caution_note(current_lap, total_laps)
@@ -189,7 +192,7 @@ class BroadcastEngine:
                 current_lap,
                 session_time=getattr(telemetry, "get_session_time", lambda: 0.0)(),
                 lap_dist_pct=getattr(telemetry, "get_car_idx_lap_dist_pct", lambda: [])(),
-                track_info=telemetry.get_track_info(),
+                track_info=track_info,
             )
             self._collect_incidents(
                 telemetry,
@@ -267,7 +270,7 @@ class BroadcastEngine:
                 race_state,
                 current_lap,
                 total_laps,
-                telemetry.get_track_info(),
+                track_info,
             )
             if queued_recap:
                 return self.broadcast_queue.next_item()
@@ -302,7 +305,7 @@ class BroadcastEngine:
             queued_booth_conversation = self._queue_booth_conversation(
                 story_results,
                 driver_lookup,
-                telemetry.get_track_info(),
+                track_info,
                 race_state,
                 current_lap,
                 total_laps,
@@ -2105,6 +2108,8 @@ class BroadcastEngine:
         green_lap_count=0,
         total_laps=0,
     ):
+        track_info = telemetry.get_track_info()
+        road_course_mode = is_road_course(track_info)
         caution_just_started = (
             self.race_director.phase == RacePhase.CAUTION
             and self.race_director.phase_changed
@@ -2138,6 +2143,7 @@ class BroadcastEngine:
             pit_road_status=pit_road_status,
             session_time=getattr(telemetry, "get_session_time", lambda: 0.0)(),
             suppress_soft_events=self.should_suppress_soft_incidents(),
+            road_course_mode=road_course_mode,
         )
         if caution_just_started:
             events = [
@@ -2220,6 +2226,7 @@ class BroadcastEngine:
                 event.trouble_type == "possible trouble"
                 and not caution_just_started
             )
+            road_soft_incident = soft_green_incident and road_course_mode
             replay_message = self.incident_broadcast_message(
                 event,
                 current_lap=current_lap,
@@ -2229,12 +2236,16 @@ class BroadcastEngine:
             )
             self.broadcast_queue.add(
                 self.commentary_cleaner.clean(replay_message),
-                priority=event.importance if not soft_green_incident else 4,
+                priority=(
+                    event.importance
+                    if not soft_green_incident
+                    else 5 if road_soft_incident else 4
+                ),
                 category="incident",
                 protected=not soft_green_incident,
                 speaker="lead",
-                delay_seconds=2.0 if soft_green_incident else 0.0,
-                expires_after=18 if soft_green_incident else 25,
+                delay_seconds=1.0 if road_soft_incident else 2.0 if soft_green_incident else 0.0,
+                expires_after=25 if road_soft_incident else 18 if soft_green_incident else 25,
                 dedupe_key=(
                     f"incident:{event.car_idx}:{event.trouble_type}:"
                     f"{event.lap}:{event.total_incidents}"

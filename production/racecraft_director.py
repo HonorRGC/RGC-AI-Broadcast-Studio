@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from production.track_style import is_true_pack_drafting_track
+from production.track_style import is_road_course, is_true_pack_drafting_track
 
 
 @dataclass(frozen=True)
@@ -223,6 +223,12 @@ class RacecraftDirector:
                 "track, stretching the run can mean less fuel needed on the final "
                 "stop, and that can open the door for a shorter stop or a two-tire "
                 "track-position play."
+            )
+        elif is_road_course(track_info):
+            message = (
+                "This is where the road-course pit window starts to get interesting. "
+                "A strong in-lap and out-lap can make the undercut work, but if "
+                "traffic is heavy, staying out for clean air can be just as valuable."
             )
         else:
             message = (

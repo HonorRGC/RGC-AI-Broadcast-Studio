@@ -18,7 +18,7 @@ class BroadcastStoryProducer:
             return item
 
         notes = []
-        notes.extend(self.phase_notes(race_state))
+        notes.extend(self.phase_notes(race_state, race_knowledge))
 
         story_type = str(getattr(item, "story_type", "") or "")
         driver_key = self.driver_key(item)
@@ -92,30 +92,41 @@ class BroadcastStoryProducer:
         setattr(item, "producer_notes", notes)
         return item
 
-    def phase_notes(self, race_state):
+    def phase_notes(self, race_state, race_knowledge=None):
+        notes = []
+        track_profile = (race_knowledge or {}).get("track_profile") or {}
+        if track_profile.get("style") == "road_course":
+            notes.append(
+                "Track style: road course. Prefer braking zones, apexes, exits, "
+                "curbs, traffic, pit windows, undercut/overcut, and local mistakes. "
+                "Avoid oval pack-draft or freight-train wording."
+            )
         if not race_state:
-            return []
+            return notes
         moment = getattr(getattr(race_state, "moment", None), "value", "")
         laps_remaining = self.safe_int(getattr(race_state, "laps_remaining", 0))
         green_lap_count = self.safe_int(getattr(race_state, "green_lap_count", 0))
 
         if moment == "LONG_GREEN_RUN":
-            return [
+            notes.extend([
                 "Race phase: long green-flag run. Connect the story to tire wear, rhythm, traffic, or strategy if it fits."
-            ]
+            ])
+            return notes
         if moment in {"CLOSING_LAPS", "WHITE_FLAG", "OVERTIME"}:
-            return [
+            notes.extend([
                 f"Race phase: closing laps with {laps_remaining} to go. Prioritize urgency, leaders, and realistic winning chances."
-            ]
+            ])
+            return notes
         if moment == "CAUTION":
-            return [
+            notes.extend([
                 "Race phase: caution. Focus on reset, pit decisions, damage, restart order, and who benefits."
-            ]
+            ])
+            return notes
         if moment == "GREEN" and green_lap_count <= 3:
-            return [
+            notes.extend([
                 "Race phase: early green or restart. Focus on launch, lanes, aggression, and settling into rhythm."
-            ]
-        return []
+            ])
+        return notes
 
     def choose_angle(self, item, race_state, race_knowledge):
         story_type = str(getattr(item, "story_type", "") or "")

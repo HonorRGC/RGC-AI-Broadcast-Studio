@@ -219,3 +219,28 @@ def test_indianapolis_outlook_uses_long_straight_not_pack_draft_language():
     assert "long straightaways" in segment.message
     assert "draft should shape" not in segment.message.lower()
     assert "lane changes" not in segment.message.lower()
+
+
+def test_road_course_opening_uses_road_racing_language():
+    director = OpeningDirector()
+
+    outlook = director.build_race_outlook(
+        {
+            "track_name": "Road America",
+            "track_type": "road course",
+            "category": "Road",
+            "track_length": "4.048 mi",
+        }
+    )
+    pit_report = director.build_pit_report(
+        {
+            "track_name": "Road America",
+            "track_type": "road course",
+            "category": "Road",
+            "track_length": "4.048 mi",
+        }
+    )
+
+    assert "braking zones" in outlook.message
+    assert "undercut" in pit_report.message
+    assert "overcut" in pit_report.message

@@ -106,6 +106,25 @@ def test_detects_pit_window_on_draft_track():
     assert pit_window.speaker == "sarah"
 
 
+def test_detects_road_course_pit_window_context():
+    director = RacecraftDirector()
+
+    events = director.analyze(
+        results=[{"CarIdx": 1, "Position": 1, "LapsComplete": 25}],
+        driver_lookup={1: {"name": "Leader Driver", "number": "1"}},
+        track_info={"track_name": "Watkins Glen International", "category": "Road"},
+        race_state=race_state(green_lap_count=16, laps_remaining=35),
+        current_lap=25,
+        total_laps=60,
+        lap_dist_pct_status=[0, 0.5],
+    )
+
+    pit_window = next(event for event in events if event.story_type == "pit_window")
+    assert "undercut" in pit_window.summary
+    assert "out-lap" in pit_window.summary
+    assert pit_window.speaker == "sarah"
+
+
 def test_detects_short_green_flag_pit_stop_strategy():
     director = RacecraftDirector()
     pit_state = SimpleNamespace(

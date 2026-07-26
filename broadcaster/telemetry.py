@@ -492,6 +492,7 @@ class IRacingTelemetry:
             "track_length": weekend_info.get("TrackLengthOfficial")
             or weekend_info.get("TrackLength", ""),
             "track_type": weekend_info.get("TrackType", ""),
+            "category": weekend_info.get("Category", ""),
             "track_direction": weekend_info.get("TrackDirection", ""),
             "weather": weekend_info.get("TrackWeatherType", "unknown"),
             "skies": weekend_info.get("TrackSkies", "unknown"),
