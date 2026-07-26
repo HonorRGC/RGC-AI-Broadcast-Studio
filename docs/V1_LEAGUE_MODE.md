@@ -103,7 +103,7 @@ The first league-stats workflow now exists in the launcher under `League / Sim R
 - paste a Sim Racer Hub URL
 - enter league and series IDs
 - choose season mode or career mode
-- add the upcoming track name for track-history stats
+- import season/career stats without choosing the next track manually
 - preview the import
 - write season stats into `league/season.csv` or career stats into `league/career.csv`
 

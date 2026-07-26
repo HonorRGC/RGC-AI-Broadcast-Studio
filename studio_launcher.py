@@ -2312,7 +2312,6 @@ def build_league_tab(
     intro = (
         "Import league stats from Sim Racer Hub. You can use the clean URL "
         "https://simracerhub.com with League, Series, and Season IDs. "
-        "Track history is optional and only helps pre-load driver stats for an upcoming track. "
         "Race Schedule CSV maps each track to its Sim Racer Hub race ID so Discord post-race reports can add the correct results link automatically."
     )
     label(parent, text=intro, anchor="w", justify="left", wraplength=900, bg=PANEL_BG, fg=MUTED_FG).pack(
@@ -2329,7 +2328,7 @@ def build_league_tab(
         "SIMRACERHUB_LEAGUE_ID": existing.get("SIMRACERHUB_LEAGUE_ID", ""),
         "SIMRACERHUB_SERIES_ID": existing.get("SIMRACERHUB_SERIES_ID", ""),
         "SIMRACERHUB_SEASON_ID": existing.get("SIMRACERHUB_SEASON_ID", ""),
-        "SIMRACERHUB_TRACK_NAME": existing.get("SIMRACERHUB_TRACK_NAME", ""),
+        "SIMRACERHUB_TRACK_NAME": "",
         "SIMRACERHUB_MIN_STARTS": existing.get("SIMRACERHUB_MIN_STARTS", "2"),
         "SIMRACERHUB_RACE_SCHEDULE_CSV": existing.get(
             "SIMRACERHUB_RACE_SCHEDULE_CSV",
@@ -2351,7 +2350,6 @@ def build_league_tab(
         ("League ID", "SIMRACERHUB_LEAGUE_ID"),
         ("Series ID", "SIMRACERHUB_SERIES_ID"),
         ("Season ID", "SIMRACERHUB_SEASON_ID"),
-        ("Track History Filter", "SIMRACERHUB_TRACK_NAME"),
         ("Minimum Starts", "SIMRACERHUB_MIN_STARTS"),
         ("Race Schedule CSV", "SIMRACERHUB_RACE_SCHEDULE_CSV"),
         ("Season Stats CSV", "SIMRACERHUB_SEASON_STATS_OUTPUT"),
@@ -2426,7 +2424,7 @@ def build_league_tab(
             league_id=data["SIMRACERHUB_LEAGUE_ID"],
             series_id=data["SIMRACERHUB_SERIES_ID"],
             season_id=data["SIMRACERHUB_SEASON_ID"],
-            track_name=data["SIMRACERHUB_TRACK_NAME"],
+            track_name=data.get("SIMRACERHUB_TRACK_NAME", ""),
             min_starts=data["SIMRACERHUB_MIN_STARTS"],
             output=stats_output,
             drivers_output=data["SIMRACERHUB_DRIVERS_OUTPUT"],
@@ -2485,7 +2483,7 @@ def build_league_tab(
     )
     label(
         buttons,
-        text="Tip: leave Track History blank for general stats; use Career Mode for all seasons.",
+        text="Tip: import the schedule once per season; use Career Mode for all-season driver stats.",
         anchor="w",
         bg=PANEL_BG,
         fg=MUTED_FG,

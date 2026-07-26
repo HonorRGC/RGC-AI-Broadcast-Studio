@@ -480,6 +480,13 @@ def test_launcher_saves_sim_racer_hub_settings(tmp_path):
     assert loaded["SIMRACERHUB_CAREER_MODE"] == "true"
 
 
+def test_track_history_filter_is_hidden_from_visible_studio_setup():
+    source = Path("studio_launcher.py").read_text(encoding="utf-8")
+
+    assert "Track History Filter" not in source
+    assert 'track_name=data.get("SIMRACERHUB_TRACK_NAME", "")' in source
+
+
 def test_launcher_sanitizes_profile_names():
     assert sanitize_profile_name(" WFO / Truck: League! ") == "WFO Truck League"
     assert sanitize_profile_name("") == ""

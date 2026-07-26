@@ -55,11 +55,11 @@ Turn on `POST_RACE_INTERVIEWS_ENABLED` when the league admin plans to interview 
 
 After the checkered flag, the camera stays with the winner/leader shot for the celebration and post-race handoff.
 
-The launcher also includes a `League / Sim Racer Hub` tab. Paste a Sim Racer Hub series or stats URL, choose season mode or career mode, optionally enter the upcoming track name, preview the import, and then write season results to `league\season.csv` or career results to `league\career.csv`.
+The launcher also includes a `League / Sim Racer Hub` tab. Paste a Sim Racer Hub series or stats URL, choose season mode or career mode, preview the import, and then write season results to `league\season.csv` or career results to `league\career.csv`.
 
 The same tab can import a driver roster into `league\drivers.csv`. Roster import is safe for manual edits: it adds missing drivers and fills empty basics, but keeps your hometown, sponsor, driving-style, and notes fields.
 
-For a cleaner Sim Racer Hub setup, the URL can simply be `https://simracerhub.com`; the launcher uses the Series ID and optional Season ID to open the correct stats page. The Track History field is optional. It does not tell the live broadcast what track iRacing is at; it only pre-loads stats like prior starts, wins, and best finish at a specific track.
+For a cleaner Sim Racer Hub setup, the URL can simply be `https://simracerhub.com`; the launcher uses the Series ID and optional Season ID to open the correct stats page. The live broadcast reads the current track from iRacing, so admins do not need to set a separate upcoming-track field before every race.
 
 For post-race Discord reports, league profiles can also use `league\race_schedule.csv` to map each track to its Sim Racer Hub race ID. Add one row per race with `track_name` and `schedule_id`; if the manual Discord Race Results Link is blank, the Studio will match the current iRacing track and add the right Sim Racer Hub results link automatically.
 
@@ -125,11 +125,7 @@ For career stats across every season in a series, leave off `--season-id`:
 python tools\sim_racer_hub_import.py "https://simracerhub.com/series_seasons.php?series_id=YOUR_SERIES_ID&reset_series=y" --bulk --league-id YOUR_LEAGUE_ID --series-id YOUR_SERIES_ID --min-starts 10 --output league\career.csv
 ```
 
-To include prior history at the upcoming track:
-
-```powershell
-python tools\sim_racer_hub_import.py "https://simracerhub.com/league_stats.php?series_id=YOUR_SERIES_ID" --bulk --league-id YOUR_LEAGUE_ID --series-id YOUR_SERIES_ID --track-name Nashville --min-starts 10 --output league\career.csv
-```
+The live broadcast reads the current track from iRacing and can use imported season, career, and race-schedule context automatically. You do not need to set a separate upcoming-track filter before every race.
 
 ## Run a live broadcast
 
