@@ -265,7 +265,7 @@ Sponsor 5 Name / Logo / Spoken Read / Commercial Video
 
 Sponsor names are used in order for spoken reads during pre-race, caution breaks, and race updates. Choose one logo per sponsor; those logos rotate in the title overlay in sponsor order and are shown when a sponsor is mentioned. If a sponsor read is blank, the AI writes a natural sponsor mention. If a cause/awareness read is set, it is added to sponsor calls. If a sponsor commercial video is set, the broadcaster will make the sponsor read and then the overlay can play that video full-screen.
 
-The **Streamlabs / OBS Link** and **Producer Assist Link** are in this same section so the overlay setup stays near the event branding.
+The **Streamlabs / OBS Link** and **Remote Helper Link** are in this same area so overlay setup and remote producer setup stay easy to find.
 
 ## 11. Save settings and create a profile
 
@@ -350,7 +350,7 @@ Setup:
 
 5. Click **Save Settings**.
 6. Start the broadcast.
-7. Copy the **Producer Assist Link** from the launcher or Producer Assist page.
+7. Copy the **Remote Helper Link** from the launcher.
 8. Send that link only to trusted helpers on your Tailscale network.
 
 Important:

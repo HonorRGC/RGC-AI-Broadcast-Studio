@@ -227,7 +227,8 @@ BROADCAST_FIELD_LABELS = {
 BROADCAST_FIELD_SECTIONS = {
     "USE_OPENAI": "AI Commentary",
     "USE_ELEVENLABS": "Broadcaster Voices",
-    "OVERLAY_EVENT_TITLE": "Event Sponsors / Overlay Links",
+    "OVERLAY_EVENT_TITLE": "Event Sponsors / Overlay",
+    "OVERLAY_HOST": "Remote Producer Assist (Tailscale)",
     "PRACTICE_MUSIC_PLAYLIST": "Practice / Qualifying / Caution Music",
     "POST_RACE_INTERVIEWS_ENABLED": "Race Flow",
     "RACE_ADMIN_MODE": "Race Control",
@@ -248,7 +249,7 @@ BROADCAST_FIELD_HELP = {
     "OVERLAY_SERIES_NAME": "League or series name. Example: WFO Wicked Wednesday Truck Series.",
     "OVERLAY_SERIES_LOGO": "Logo for the series. It can rotate in the title with sponsor and cause logos.",
     "OVERLAY_LEADERBOARD_STYLE": "side keeps the NASCAR-style left leaderboard. ticker scrolls across the top under the title.",
-    "OVERLAY_HOST": "Use 127.0.0.1 for this PC only. Use 0.0.0.0 when trusted helpers connect through Tailscale. Start Broadcast, copy the Producer Assist Link, and send it only to trusted admins on your Tailscale network.",
+    "OVERLAY_HOST": "Use 127.0.0.1 for this PC only. Use 0.0.0.0 when trusted helpers connect through Tailscale. Start Broadcast, copy the Remote Helper Link, and send it only to trusted admins on your Tailscale network.",
     "USE_SPONSOR_READS": "Lets the AI work sponsor mentions into pre-race, caution, and race-update moments.",
     "SPONSOR_READ_CAUSE": "Cause or awareness message added to the end of sponsor reads, such as Autism Awareness.",
     "SPONSOR_READ_CAUSE_LOGO": "Logo for the cause/awareness message. It can rotate in the title and appear on sponsor popups.",
@@ -1725,7 +1726,7 @@ def run_gui():
 
             label(
                 settings_frame,
-                text="Producer Assist Link",
+                text="Remote Helper Link",
                 anchor="w",
                 width=24,
                 bg=PANEL_BG,
@@ -1753,14 +1754,18 @@ def run_gui():
 
             button(
                 settings_frame,
-                text="Copy Producer Link",
+                text="Copy Helper Link",
                 command=lambda: (
                     copy_to_clipboard(root, producer_url_var.get()),
-                    status.set("Copied Producer Assist control-room link."),
+                    status.set("Copied Producer Assist link for a trusted Tailscale helper."),
                 ),
                 color="#334b64",
             ).grid(row=settings_grid_row, column=2, padx=(8, 0), sticky="w")
             settings_grid_row += 1
+            add_settings_hint(
+                "Send the Remote Helper Link only to trusted admins on your Tailscale network. "
+                "Keep the Streamlabs / OBS Link local on the broadcast PC."
+            )
 
     def choose_graphics_for_field(field_name, title, status_label):
         paths = filedialog.askopenfilenames(
@@ -3026,7 +3031,7 @@ def build_help_tab(
         3. Sign both PCs into the same Tailscale network.
         4. In Broadcast Settings, set Remote Producer Assist Access to 0.0.0.0 and save settings.
         5. Start Broadcast.
-        6. Copy the Producer Assist Link and send it only to trusted helpers on your Tailscale network.
+        6. Copy the Remote Helper Link and send it only to trusted helpers on your Tailscale network.
 
         The stream overlay link should still use http://127.0.0.1:8765/overlay inside OBS/Streamlabs on the broadcast PC.
         Tailscale is only for the private Producer Assist control-room page.
