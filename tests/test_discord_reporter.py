@@ -85,6 +85,68 @@ def test_discord_race_report_auto_uses_sim_racer_hub_schedule_csv(tmp_path, monk
     assert "schedule_id=356761" in links
 
 
+def test_discord_race_report_auto_builds_championship_link(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    schedule = tmp_path / "league" / "race_schedule.csv"
+    schedule.parent.mkdir()
+    schedule.write_text(
+        "track_name,schedule_id,results_url,notes\n"
+        "Daytona International Speedway,356762,,Jul 29 2026\n",
+        encoding="utf-8",
+    )
+    reporter = DiscordRaceReporter(
+        enabled=True,
+        webhook_url="https://discord.example/webhook",
+        use_openai=False,
+        results_url="",
+        championship_url="",
+        sim_racer_hub_source="https://www.simracerhub.com",
+        sim_racer_hub_season_id="29247",
+        race_schedule_csv="league/race_schedule.csv",
+    )
+
+    payload = reporter.build_payload(
+        [{"CarIdx": 1, "Position": 0}],
+        {1: {"name": "Winner Driver", "number": "34"}},
+        track_info={"track_name": "Daytona International Speedway"},
+    )
+
+    links = payload["embeds"][0]["fields"][-1]["value"]
+    assert "Race results" in links
+    assert "scoring/season_race.php?schedule_id=356762" in links
+    assert "Championship standings" in links
+    assert "season_standings.php?season_id=29247&schedule_id=356762" in links
+
+
+def test_discord_race_report_uses_standings_source_for_auto_championship(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    schedule = tmp_path / "race_schedule.csv"
+    schedule.write_text(
+        "track_name,schedule_id,results_url,notes\n"
+        "Daytona,356762,,Jul 29 2026\n",
+        encoding="utf-8",
+    )
+    reporter = DiscordRaceReporter(
+        enabled=True,
+        webhook_url="https://discord.example/webhook",
+        use_openai=False,
+        results_url="",
+        championship_url="",
+        sim_racer_hub_source="https://www.simracerhub.com/season_standings.php?season_id=29079&schedule_id=364601",
+        race_schedule_csv=str(schedule),
+    )
+
+    payload = reporter.build_payload(
+        [{"CarIdx": 1, "Position": 0}],
+        {1: {"name": "Winner Driver", "number": "34"}},
+        track_info={"track_name": "Daytona International Speedway"},
+    )
+
+    links = payload["embeds"][0]["fields"][-1]["value"]
+    assert "https://www.simracerhub.com/scoring/season_race.php?schedule_id=356762" in links
+    assert "https://www.simracerhub.com/season_standings.php?season_id=29079&schedule_id=356762" in links
+
+
 def test_discord_race_report_manual_results_url_overrides_schedule(tmp_path):
     schedule = tmp_path / "race_schedule.csv"
     schedule.write_text(

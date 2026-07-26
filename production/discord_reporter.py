@@ -2,6 +2,7 @@ import csv
 import json
 import re
 import urllib.error
+import urllib.parse
 import urllib.request
 from pathlib import Path
 
@@ -14,6 +15,7 @@ from config import (
     OVERLAY_EVENT_TITLE,
     OVERLAY_SERIES_NAME,
     SIMRACERHUB_RACE_SCHEDULE_CSV,
+    SIMRACERHUB_SEASON_ID,
     SIMRACERHUB_SOURCE,
 )
 
@@ -29,6 +31,7 @@ class DiscordRaceReporter:
         results_url=DISCORD_RACE_REPORT_RESULTS_URL,
         championship_url=DISCORD_RACE_REPORT_CHAMPIONSHIP_URL,
         sim_racer_hub_source=SIMRACERHUB_SOURCE,
+        sim_racer_hub_season_id=SIMRACERHUB_SEASON_ID,
         race_schedule_csv=SIMRACERHUB_RACE_SCHEDULE_CSV,
         event_title=OVERLAY_EVENT_TITLE,
         series_name=OVERLAY_SERIES_NAME,
@@ -40,6 +43,7 @@ class DiscordRaceReporter:
         self.results_url = str(results_url or "").strip()
         self.championship_url = str(championship_url or "").strip()
         self.sim_racer_hub_source = str(sim_racer_hub_source or "https://simracerhub.com").strip()
+        self.sim_racer_hub_season_id = str(sim_racer_hub_season_id or "").strip()
         self.race_schedule_csv = str(race_schedule_csv or "").strip()
         self.event_title = str(event_title or "RGC AI Broadcast").strip()
         self.series_name = str(series_name or "").strip()
@@ -139,15 +143,17 @@ class DiscordRaceReporter:
 
     def format_result_links(self, track_name=""):
         links = []
-        results_url = self.results_url or self.resolve_scheduled_results_url(track_name)
+        schedule_match = self.scheduled_race_for_track(track_name)
+        results_url = self.results_url or self.resolve_scheduled_results_url(track_name, schedule_match=schedule_match)
         if results_url:
             links.append(f"[Race results]({results_url})")
-        if self.championship_url:
-            links.append(f"[Championship standings]({self.championship_url})")
+        championship_url = self.championship_url or self.resolve_scheduled_championship_url(schedule_match)
+        if championship_url:
+            links.append(f"[Championship standings]({championship_url})")
         return "\n".join(links)
 
-    def resolve_scheduled_results_url(self, track_name=""):
-        match = self.scheduled_race_for_track(track_name)
+    def resolve_scheduled_results_url(self, track_name="", schedule_match=None):
+        match = schedule_match or self.scheduled_race_for_track(track_name)
         if not match:
             return ""
         if match.get("results_url"):
@@ -156,6 +162,18 @@ class DiscordRaceReporter:
         if not schedule_id:
             return ""
         return self.sim_racer_hub_race_url(schedule_id)
+
+    def resolve_scheduled_championship_url(self, schedule_match=None):
+        season_id = self.sim_racer_hub_season_id or self.sim_racer_hub_query_value("season_id")
+        if not season_id:
+            return ""
+        schedule_id = ""
+        if schedule_match:
+            schedule_id = schedule_match.get("schedule_id") or schedule_match.get("race_id") or ""
+        schedule_id = schedule_id or self.sim_racer_hub_query_value("schedule_id")
+        if not schedule_id:
+            return ""
+        return self.sim_racer_hub_standings_url(season_id, schedule_id)
 
     def scheduled_race_for_track(self, track_name=""):
         path = self.resolve_schedule_path(self.race_schedule_csv)
@@ -185,8 +203,22 @@ class DiscordRaceReporter:
         return {}
 
     def sim_racer_hub_race_url(self, schedule_id):
-        base = (self.sim_racer_hub_source or "https://simracerhub.com").rstrip("/")
+        base = self.sim_racer_hub_base_url()
         return f"{base}/scoring/season_race.php?schedule_id={schedule_id}"
+
+    def sim_racer_hub_standings_url(self, season_id, schedule_id):
+        base = self.sim_racer_hub_base_url()
+        return f"{base}/season_standings.php?season_id={season_id}&schedule_id={schedule_id}"
+
+    def sim_racer_hub_base_url(self):
+        parsed = urllib.parse.urlparse(self.sim_racer_hub_source or "https://simracerhub.com")
+        scheme = parsed.scheme or "https"
+        netloc = parsed.netloc or "simracerhub.com"
+        return f"{scheme}://{netloc}".rstrip("/")
+
+    def sim_racer_hub_query_value(self, key):
+        parsed = urllib.parse.urlparse(self.sim_racer_hub_source or "")
+        return urllib.parse.parse_qs(parsed.query).get(key, [""])[0]
 
     @staticmethod
     def resolve_schedule_path(path):

@@ -343,10 +343,10 @@ Optional Discord race report:
    Race Report Webhook URL = your Discord webhook URL
    Use OpenAI Race Recap = true
    Race Results Link = optional manual Sim Racer Hub race-results URL
-   Championship Standings Link = optional league standings URL
+   Championship Standings Link = optional manual league standings URL
    ```
 
-After the race, the Studio waits for the finishing order to stabilize, then posts a Discord recap with a short race breakdown, the top ten, biggest movers, available race stats, and any official results/championship links you added. If the manual Race Results Link is blank, the Studio can use the Race Schedule CSV to find the matching Sim Racer Hub race link automatically. The Discord interview bot fields are separate and can stay blank for now.
+After the race, the Studio waits for the finishing order to stabilize, then posts a Discord recap with a short race breakdown, the top ten, biggest movers, available race stats, and official results/championship links. If the manual Race Results Link is blank, the Studio can use the Race Schedule CSV to find the matching Sim Racer Hub race link automatically. If the manual Championship Standings Link is blank, the Studio can build the Sim Racer Hub standings link from the Season ID and that race's schedule ID. The Discord interview bot fields are separate and can stay blank for now.
 
 ## 12. Remote Producer Assist with Tailscale
 

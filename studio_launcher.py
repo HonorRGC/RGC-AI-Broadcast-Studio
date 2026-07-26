@@ -292,7 +292,7 @@ BROADCAST_FIELD_HELP = {
     "DISCORD_RACE_REPORT_WEBHOOK_URL": "Required when Discord Race Report is true. Create this webhook in the Discord results channel.",
     "DISCORD_RACE_REPORT_USE_OPENAI": "Uses OpenAI for a more natural race recap. If off, the Studio posts a simpler generated recap.",
     "DISCORD_RACE_REPORT_RESULTS_URL": "Optional official race-results link, such as a Sim Racer Hub race page for that event.",
-    "DISCORD_RACE_REPORT_CHAMPIONSHIP_URL": "Optional points/championship standings link for the Discord report.",
+    "DISCORD_RACE_REPORT_CHAMPIONSHIP_URL": "Optional manual points/championship standings link. If blank, Sim Racer Hub standings can be built from Season ID and the race schedule ID.",
     "USE_LEAGUE_DRIVER_NOTES": "Turns on league driver notes, season stats, career stats, teams, sponsors, hometowns, and driving styles.",
     "LEAGUE_DRIVERS_CSV": "Driver profile CSV used for manual notes and league-specific info.",
     "LEAGUE_SEASON_STATS_CSV": "Current-season stats CSV imported from Sim Racer Hub.",

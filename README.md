@@ -61,7 +61,7 @@ The same tab can import a driver roster into `league\drivers.csv`. Roster import
 
 For a cleaner Sim Racer Hub setup, the URL can simply be `https://simracerhub.com`; the launcher uses the Series ID and optional Season ID to open the correct stats page. The live broadcast reads the current track from iRacing, so admins do not need to set a separate upcoming-track field before every race.
 
-For post-race Discord reports, league profiles can also use `league\race_schedule.csv` to map each track to its Sim Racer Hub race ID. Add one row per race with `track_name` and `schedule_id`; if the manual Discord Race Results Link is blank, the Studio will match the current iRacing track and add the right Sim Racer Hub results link automatically. If Sim Racer Hub does not expose the schedule cleanly, enter the first race `schedule_id` in the Studio and the importer can build the rest sequentially.
+For post-race Discord reports, league profiles can also use `league\race_schedule.csv` to map each track to its Sim Racer Hub race ID. Add one row per race with `track_name` and `schedule_id`; if the manual Discord Race Results Link is blank, the Studio will match the current iRacing track and add the right Sim Racer Hub results link automatically. If the manual Championship Standings Link is blank, the Studio can also build the Sim Racer Hub standings link from the Season ID and race `schedule_id`. If Sim Racer Hub does not expose the schedule cleanly, enter the first race `schedule_id` in the Studio and the importer can build the rest sequentially.
 
 ## Optional league driver notes and stats
 
