@@ -3994,6 +3994,23 @@ OVERLAY_HTML = r"""<!doctype html>
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .driver-card-flag {
+      width: 21px;
+      height: 14px;
+      object-fit: cover;
+      border-radius: 2px;
+      box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.24), 0 2px 6px rgba(0, 0, 0, 0.42);
+      flex: 0 0 auto;
+    }
+
+    .driver-card-country-text {
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .driver-card-position {
@@ -4739,7 +4756,7 @@ OVERLAY_HTML = r"""<!doctype html>
       setText("driver-card-number", driver.car_number || "?");
       applyDriverCardNumberStyle(driver.number_style || {});
       setText("driver-card-name", driver.driver_name || "Unknown Driver");
-      setText("driver-card-country", formatDriverCountry(driver));
+      renderDriverCardCountry(driver);
       setText("driver-card-position-rank", buildDriverCardRankLine(driver));
       setText("driver-card-position", buildDriverCardPositionLine(driver));
       setText("driver-card-story", cleanDriverCardStory(driver));
@@ -4776,11 +4793,27 @@ OVERLAY_HTML = r"""<!doctype html>
       return flag ? `${flag} ${country}` : country;
     }
 
-    function countryFlagFromNameOrCode(country) {
+    function renderDriverCardCountry(driver) {
+      const element = document.getElementById("driver-card-country");
+      const country = String(driver.country || "").trim();
+      if (!country) {
+        element.innerHTML = "";
+        element.classList.add("hidden");
+        return;
+      }
+      const code = countryCodeFromNameOrCode(country);
+      const flagHtml = code
+        ? `<img class="driver-card-flag" src="https://flagcdn.com/w40/${code.toLowerCase()}.png" alt="${escapeHtml(code)} flag" onerror="this.remove()">`
+        : "";
+      element.innerHTML = `${flagHtml}<span class="driver-card-country-text">${escapeHtml(country)}</span>`;
+      element.classList.remove("hidden");
+    }
+
+    function countryCodeFromNameOrCode(country) {
       const normalized = String(country || "").toLowerCase().replace(/\./g, "").trim();
       if (!normalized) return "";
       const compactCode = normalized.replace(/[^a-z]/g, "").toUpperCase();
-      if (/^[A-Z]{2}$/.test(compactCode)) return flagEmojiFromCode(compactCode);
+      if (/^[A-Z]{2}$/.test(compactCode)) return compactCode;
       const byName = {
         "argentina": "AR",
         "australia": "AU",
@@ -4823,7 +4856,7 @@ OVERLAY_HTML = r"""<!doctype html>
         "us": "US",
       };
       const code = byName[normalized];
-      return code ? flagEmojiFromCode(code) : "";
+      return code || "";
     }
 
     function flagEmojiFromCode(code) {
@@ -4838,8 +4871,8 @@ OVERLAY_HTML = r"""<!doctype html>
     function countryFlag(country) {
       const normalized = String(country || "").toLowerCase().replace(/\./g, "").trim();
       if (!normalized) return "";
-      const mappedFlag = countryFlagFromNameOrCode(normalized);
-      if (mappedFlag) return mappedFlag;
+      const mappedCode = countryCodeFromNameOrCode(normalized);
+      if (mappedCode) return flagEmojiFromCode(mappedCode);
       if (normalized.includes("united states") || /\busa?\b/.test(normalized)) return "🇺🇸";
       if (normalized.includes("canada")) return "🇨🇦";
       if (normalized.includes("united kingdom") || normalized.includes("england") || normalized.includes("scotland") || normalized.includes("wales")) return "🇬🇧";

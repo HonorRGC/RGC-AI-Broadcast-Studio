@@ -691,9 +691,14 @@ def test_featured_driver_card_includes_position_line():
     assert 'id="driver-card-position"' in OVERLAY_HTML
     assert 'id="driver-card-country"' in OVERLAY_HTML
     assert ".driver-card-country" in OVERLAY_HTML
+    assert ".driver-card-flag" in OVERLAY_HTML
+    assert ".driver-card-country-text" in OVERLAY_HTML
+    assert "renderDriverCardCountry" in OVERLAY_HTML
+    assert "https://flagcdn.com/w40/" in OVERLAY_HTML
+    assert "onerror=\"this.remove()\"" in OVERLAY_HTML
     assert "formatDriverCountry" in OVERLAY_HTML
     assert "countryFlag" in OVERLAY_HTML
-    assert "countryFlagFromNameOrCode" in OVERLAY_HTML
+    assert "countryCodeFromNameOrCode" in OVERLAY_HTML
     assert "flagEmojiFromCode" in OVERLAY_HTML
     assert '"united states": "US"' in OVERLAY_HTML
     assert '"brazil": "BR"' in OVERLAY_HTML
