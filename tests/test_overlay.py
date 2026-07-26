@@ -188,6 +188,34 @@ def test_overlay_leaderboard_includes_producer_driver_stats():
     assert entry["producer_note"].startswith("Big mover:")
 
 
+def test_overlay_leaderboard_includes_multiclass_position():
+    class MulticlassTelemetry(OverlayTelemetry):
+        def get_results(self):
+            return [
+                {"CarIdx": 1, "Position": 0, "LapsComplete": 12},
+                {"CarIdx": 2, "Position": 1, "LapsComplete": 12},
+                {"CarIdx": 3, "Position": 2, "LapsComplete": 12},
+                {"CarIdx": 4, "Position": 3, "LapsComplete": 12},
+            ]
+
+        def get_driver_lookup(self):
+            return {
+                1: {"name": "Prototype Leader", "number": "1", "car_class_id": "p2", "car_class_short_name": "LMP2"},
+                2: {"name": "GT Leader", "number": "21", "car_class_id": "gt3", "car_class_short_name": "GT3"},
+                3: {"name": "Prototype Two", "number": "2", "car_class_id": "p2", "car_class_short_name": "LMP2"},
+                4: {"name": "GT Two", "number": "22", "car_class_id": "gt3", "car_class_short_name": "GT3"},
+            }
+
+    state = OverlayStateBuilder().build_from_telemetry(MulticlassTelemetry()).to_dict()
+
+    assert state["leaderboard"][0]["class_name"] == "LMP2"
+    assert state["leaderboard"][0]["class_position"] == 1
+    assert state["leaderboard"][1]["class_name"] == "GT3"
+    assert state["leaderboard"][1]["class_position"] == 1
+    assert state["leaderboard"][3]["class_position"] == 2
+    assert "entry.class_position" in OVERLAY_HTML
+
+
 def test_overlay_remembers_starting_grid_for_producer_stats():
     class GridTelemetry(OverlayTelemetry):
         def __init__(self):

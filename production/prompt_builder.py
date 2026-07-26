@@ -122,6 +122,10 @@ class PromptBuilder:
                 if notes:
                     lines.append(f"Track Guidance: {notes}")
 
+            multiclass = race_knowledge.get("multiclass")
+            if getattr(multiclass, "active", False):
+                lines.extend(multiclass.to_prompt_lines())
+
             league_driver_context = race_knowledge.get("league_driver_context") or []
             if league_driver_context:
                 lines.append("Verified League Driver Notes:")
@@ -152,6 +156,14 @@ class PromptBuilder:
                 "and lane-train language unless the assignment explicitly supports it. "
                 "Use road-racing terms like braking zone, apex, corner exit, curbs, "
                 "traffic, undercut, overcut, and track limits when they fit."
+            )
+        multiclass = (race_knowledge or {}).get("multiclass")
+        if getattr(multiclass, "active", False):
+            lines.append(
+                "Multiclass discipline: do not call every overall-position move "
+                "as a same-class battle. When possible, identify whether the "
+                "story is for the overall lead, an in-class position, or faster "
+                "class traffic working through slower class traffic."
             )
 
         return "\n".join(lines)

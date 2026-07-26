@@ -323,6 +323,10 @@ class IRacingTelemetry:
                 "car_path": driver.get("CarPath", ""),
                 "car_id": driver.get("CarID", ""),
                 "car_class_id": driver.get("CarClassID", ""),
+                "car_class_name": driver.get("CarClassName", "")
+                or driver.get("CarClass", ""),
+                "car_class_short_name": driver.get("CarClassShortName", "")
+                or driver.get("CarClassShortNameOverride", ""),
                 "car_screen_name": driver.get("CarScreenName", ""),
                 "car_screen_name_short": driver.get("CarScreenNameShort", ""),
                 "country": driver.get("Country", ""),

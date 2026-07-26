@@ -6,6 +6,7 @@ from production.story_manager import StoryManager, ManagedStory
 from production.battle_detector import BattleDetector, BattleStory
 from production.driver_memory import DriverMemory
 from production.momentum_tracker import MomentumTracker, MomentumProfile
+from production.multiclass import build_multiclass_context
 from production.race_state_tracker import RaceStateTracker, RaceState
 
 
@@ -45,6 +46,7 @@ class RaceIntelligence:
         self.active_battles: List[BattleStory] = []
 
         self.race_state: RaceState = self.race_state_tracker.get_state()
+        self.multiclass_context = build_multiclass_context([], {})
 
         self.current_lap = 0
 
@@ -87,6 +89,7 @@ class RaceIntelligence:
             results=results,
             driver_lookup=driver_lookup,
         )
+        self.multiclass_context = build_multiclass_context(results, driver_lookup)
 
         race_stories = self.story_engine.update(
             results=results,
@@ -196,6 +199,7 @@ class RaceIntelligence:
             "hottest_drivers": self.get_hottest_drivers(),
             "coldest_drivers": self.get_coldest_drivers(),
             "top_five": self.get_top_five(),
+            "multiclass": self.multiclass_context,
         }
 
     def get_race_state(self):

@@ -24,6 +24,7 @@ from production.sim_racing_apps import (
     build_sim_racing_apps_car_render_info,
     sim_racing_apps_session_car_count,
 )
+from production.multiclass import build_multiclass_context
 
 
 MAX_IRACING_RENDER_BYTES = 5 * 1024 * 1024
@@ -95,6 +96,10 @@ class LeaderboardEntry:
     laps_complete: int = 0
     interval: str = ""
     fastest_lap: str = ""
+    class_id: str = ""
+    class_name: str = ""
+    class_position: int = 0
+    class_size: int = 0
     starting_position: int = 0
     position_delta: int = 0
     laps_led: int = 0
@@ -115,6 +120,10 @@ class LeaderboardEntry:
             "laps_complete": self.laps_complete,
             "interval": self.interval,
             "fastest_lap": self.fastest_lap,
+            "class_id": self.class_id,
+            "class_name": self.class_name,
+            "class_position": self.class_position,
+            "class_size": self.class_size,
             "starting_position": self.starting_position,
             "position_delta": self.position_delta,
             "laps_led": self.laps_led,
@@ -137,6 +146,9 @@ class FeaturedDriver:
     car_image_url: str = ""
     number_style: dict[str, str] = field(default_factory=dict)
     position: int = 0
+    class_name: str = ""
+    class_position: int = 0
+    class_size: int = 0
     starting_position: int = 0
     position_delta: int = 0
     interval: str = ""
@@ -153,6 +165,9 @@ class FeaturedDriver:
             "car_image_url": self.car_image_url,
             "number_style": dict(self.number_style or {}),
             "position": self.position,
+            "class_name": self.class_name,
+            "class_position": self.class_position,
+            "class_size": self.class_size,
             "starting_position": self.starting_position,
             "position_delta": self.position_delta,
             "interval": self.interval,
@@ -437,6 +452,7 @@ class OverlayStateBuilder:
         )
         leader_car = valid_results[0] if valid_results else {}
         sim_racing_apps_available = sim_racing_apps_session_car_count() > 0
+        multiclass = build_multiclass_context(valid_results, driver_lookup)
 
         leaderboard = []
         for car in valid_results:
@@ -458,6 +474,7 @@ class OverlayStateBuilder:
             last_pit_lane_seconds = self.last_pit_lane_seconds(car)
             fastest_lap = self.format_lap_time(self.best_lap_value(car))
             on_pit_road = self.on_pit_road(car)
+            class_position = multiclass.positions.get(car_idx)
             leaderboard.append(
                 LeaderboardEntry(
                     position=display_position,
@@ -474,6 +491,10 @@ class OverlayStateBuilder:
                     laps_complete=self.safe_int(
                         car.get("LapsComplete", car.get("Lap", 0))
                     ),
+                    class_id=getattr(class_position, "class_id", ""),
+                    class_name=getattr(class_position, "class_name", ""),
+                    class_position=getattr(class_position, "class_position", 0),
+                    class_size=getattr(class_position, "class_size", 0),
                     interval=self.format_entry_metric(
                         car,
                         display_position,
@@ -1070,6 +1091,9 @@ class OverlayServer:
         duration=10.0,
         car_image_url="",
         position=0,
+        class_name="",
+        class_position=0,
+        class_size=0,
         starting_position=0,
         position_delta=0,
         interval="",
@@ -1094,6 +1118,9 @@ class OverlayServer:
                 car_image_url=proxied_iracing_render_url(car_image_url),
                 number_style=sanitize_driver_number_style(number_style),
                 position=self.state_builder.safe_int(position),
+                class_name=str(class_name or ""),
+                class_position=self.state_builder.safe_int(class_position),
+                class_size=self.state_builder.safe_int(class_size),
                 starting_position=self.state_builder.safe_int(starting_position),
                 position_delta=self.state_builder.safe_int(position_delta),
                 interval=str(interval or ""),
@@ -2766,7 +2793,7 @@ PRODUCER_HTML = r"""<!doctype html>
           <div class="pos">${ordinal(driver.position)}</div>
           <div class="num">#${driver.car_number || "--"}</div>
           <div class="name">${driver.driver_name || "Unknown Driver"}</div>
-          <div class="small">${formatDelta(driver.position_delta)}</div>
+          <div class="small">${driver.class_position ? `${escapeHtml(driver.class_name || "Class")} ${ordinal(driver.class_position)}` : formatDelta(driver.position_delta)}</div>
           <div class="small">${driver.interval || "--"}</div>
           <div class="small">${driver.fastest_lap || "--"}</div>
         `;
@@ -2788,7 +2815,8 @@ PRODUCER_HTML = r"""<!doctype html>
       if (!driver) return;
       text("detail-number", `#${driver.car_number || "--"}`);
       text("detail-name", driver.driver_name || "Unknown Driver");
-      text("detail-subtitle", `${state.session_type || "Session"} at ${state.track_name || "the track"}`);
+      const classLine = driver.class_position ? `${driver.class_name || "Class"} ${ordinal(driver.class_position)} of ${driver.class_size || "--"}` : "";
+      text("detail-subtitle", [state.session_type || "Session", state.track_name || "the track", classLine].filter(Boolean).join(" • "));
       text("detail-position", ordinal(driver.position));
       text("detail-start", driver.starting_position ? ordinal(driver.starting_position) : "--");
       text("detail-delta", driver.starting_position ? formatPositionDelta(driver.position_delta) : "--");
@@ -2809,6 +2837,7 @@ PRODUCER_HTML = r"""<!doctype html>
         driver.laps_led ? `Laps led: ${driver.laps_led}.` : "",
         driver.interval ? `Interval shown: ${driver.interval}.` : "",
         driver.fastest_lap ? `Fastest lap: ${driver.fastest_lap}.` : "",
+        driver.class_position ? `Class position: ${ordinal(driver.class_position)} in ${driver.class_name || "class"}.` : "",
         `Race status: ${state.caution ? "under caution" : state.green ? "green flag" : "not green yet"} on lap ${lap}.`
       ].filter(Boolean).join(" ");
       text("story-box", note);
@@ -4552,7 +4581,7 @@ OVERLAY_HTML = r"""<!doctype html>
           <span class="pos">${entry.position}</span>
           <span class="num" style="${numberStyleAttribute(entry.number_style || {})}">${escapeHtml(entry.car_number || "?")}</span>
           <span class="name">${escapeHtml(entry.driver_name || "Unknown")}</span>
-          <span class="gap">${escapeHtml(entry.interval || "")}</span>
+          <span class="gap">${escapeHtml(entry.class_position ? `${entry.class_name || "CLS"} ${ordinal(entry.class_position)}` : entry.interval || "")}</span>
         `;
         rows.appendChild(row);
       }
@@ -4587,7 +4616,7 @@ OVERLAY_HTML = r"""<!doctype html>
           <span class="ticker-pos">P${escapeHtml(entry.position || "")}</span>
           <span class="ticker-num" style="${numberStyleAttribute(entry.number_style || {})}">${escapeHtml(entry.car_number || "?")}</span>
           <span>${escapeHtml(entry.driver_name || "Unknown")}</span>
-          <span class="ticker-gap">${escapeHtml(entry.interval || "")}</span>
+          <span class="ticker-gap">${escapeHtml(entry.class_position ? `${entry.class_name || "CLS"} ${ordinal(entry.class_position)}` : entry.interval || "")}</span>
         </span>
       `).join("");
       track.innerHTML = items + items;
@@ -4941,6 +4970,10 @@ OVERLAY_HTML = r"""<!doctype html>
       const pieces = [];
       const start = Number(driver.starting_position || 0);
       const delta = Number(driver.position_delta || 0);
+      const classPosition = Number(driver.class_position || 0);
+      if (classPosition > 0) {
+        pieces.push(`${driver.class_name || "Class"} ${ordinal(classPosition)}${driver.class_size ? ` of ${driver.class_size}` : ""}`);
+      }
       if (start > 0) pieces.push(`Started ${ordinal(start)}`);
       if (start > 0 && delta !== 0) {
         const sign = delta > 0 ? "+" : "";
@@ -5021,6 +5054,15 @@ OVERLAY_HTML = r"""<!doctype html>
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#039;");
+    }
+
+    function ordinal(n) {
+      const value = Number(n || 0);
+      if (!value) return "--";
+      const mod100 = value % 100;
+      if (mod100 >= 11 && mod100 <= 13) return `${value}th`;
+      const suffix = value % 10 === 1 ? "st" : value % 10 === 2 ? "nd" : value % 10 === 3 ? "rd" : "th";
+      return `${value}${suffix}`;
     }
 
     function pickRotatingGraphic(graphics, seconds) {

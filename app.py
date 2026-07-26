@@ -35,6 +35,7 @@ from production.non_race_presentation import (
 )
 from production.live_broadcast_validator import LiveBroadcastValidator
 from production.overlay import OverlayServer
+from production.multiclass import build_multiclass_context
 from production.car_paint_preview import ensure_preview_file
 from production.iracing_render_cache import build_iracing_render_image_url
 from production.sim_racing_apps import build_sim_racing_apps_car_render_info
@@ -2623,6 +2624,7 @@ def update_overlay_focused_driver(
     position_info = featured_driver_position_info(
         car_idx,
         results,
+        driver_lookup=source.get_driver_lookup(),
         use_position_as_start=opening_intro,
         include_interval=not opening_intro,
     )
@@ -2636,6 +2638,9 @@ def update_overlay_focused_driver(
         car_image_url=car_image_url,
         number_style=car_render_info.get("number_style", {}),
         position=position_info["position"],
+        class_name=position_info["class_name"],
+        class_position=position_info["class_position"],
+        class_size=position_info["class_size"],
         starting_position=position_info["starting_position"],
         position_delta=position_info["position_delta"],
         interval=position_info["interval"],
@@ -2659,14 +2664,17 @@ def featured_driver_results(source, opening_intro=False):
 def featured_driver_position_info(
     car_idx,
     results,
+    driver_lookup=None,
     use_position_as_start=False,
     include_interval=True,
 ):
     ordered_results = sorted_results_by_position(results)
+    multiclass = build_multiclass_context(results, driver_lookup or {})
     for car in ordered_results:
         if car.get("CarIdx") != car_idx:
             continue
         position = normalized_result_position(car, results)
+        class_position = multiclass.positions.get(car_idx)
         starting_position = safe_int(
             car.get("StartingPosition")
             or car.get("StartPosition")
@@ -2677,6 +2685,9 @@ def featured_driver_position_info(
             starting_position = position
         return {
             "position": position,
+            "class_name": getattr(class_position, "class_name", ""),
+            "class_position": getattr(class_position, "class_position", 0),
+            "class_size": getattr(class_position, "class_size", 0),
             "starting_position": starting_position,
             "position_delta": (
                 starting_position - position
@@ -2692,6 +2703,9 @@ def featured_driver_position_info(
         }
     return {
         "position": 0,
+        "class_name": "",
+        "class_position": 0,
+        "class_size": 0,
         "starting_position": 0,
         "position_delta": 0,
         "interval": "",

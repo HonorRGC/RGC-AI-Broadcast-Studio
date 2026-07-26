@@ -1,4 +1,5 @@
 from production.editorial_producer import EditorialItem
+from production.multiclass import build_multiclass_context
 from production.prompt_builder import PromptBuilder
 
 
@@ -145,3 +146,30 @@ def test_prompt_includes_road_course_discipline():
     assert "Road-course discipline" in prompt["user"]
     assert "freight-train" in prompt["user"]
     assert "braking zone" in prompt["user"]
+
+
+def test_prompt_includes_multiclass_discipline():
+    assignment = EditorialItem(
+        story_type="battle",
+        headline="Class traffic developing",
+        summary="A faster car is closing on slower traffic.",
+    )
+    multiclass = build_multiclass_context(
+        [{"CarIdx": 1, "Position": 1}, {"CarIdx": 2, "Position": 2}],
+        {
+            1: {"name": "Prototype Leader", "number": "1", "car_class_id": "p2", "car_class_short_name": "LMP2"},
+            2: {"name": "GT Leader", "number": "21", "car_class_id": "gt3", "car_class_short_name": "GT3"},
+        },
+    )
+
+    prompt = PromptBuilder().build_prompt(
+        "jeff",
+        assignment,
+        race_knowledge={"multiclass": multiclass},
+    )
+
+    assert "Multiclass Race: YES" in prompt["user"]
+    assert "LMP2" in prompt["user"]
+    assert "GT3" in prompt["user"]
+    assert "Multiclass discipline" in prompt["user"]
+    assert "overall lead" in prompt["user"]

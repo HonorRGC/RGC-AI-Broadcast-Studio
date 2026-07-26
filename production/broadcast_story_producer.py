@@ -101,6 +101,13 @@ class BroadcastStoryProducer:
                 "curbs, traffic, pit windows, undercut/overcut, and local mistakes. "
                 "Avoid oval pack-draft or freight-train wording."
             )
+        multiclass = (race_knowledge or {}).get("multiclass")
+        if getattr(multiclass, "active", False):
+            notes.append(
+                "Race format: multiclass. Be clear whether this is overall, "
+                "in-class, or faster-class traffic. Do not make a slower-class "
+                "car sound like it is racing the overall leader for position."
+            )
         if not race_state:
             return notes
         moment = getattr(getattr(race_state, "moment", None), "value", "")

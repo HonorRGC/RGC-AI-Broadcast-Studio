@@ -1227,6 +1227,27 @@ def test_featured_driver_position_info_includes_gap_to_next_without_speed():
     assert info["speed"] == ""
 
 
+def test_featured_driver_position_info_includes_multiclass_position():
+    info = featured_driver_position_info(
+        34,
+        [
+            {"CarIdx": 7, "Position": 1, "Time": 0.0},
+            {"CarIdx": 34, "Position": 2, "Time": 0.5},
+            {"CarIdx": 12, "Position": 3, "Time": 1.0},
+        ],
+        driver_lookup={
+            7: {"name": "Prototype Leader", "number": "7", "car_class_id": "p2", "car_class_short_name": "LMP2"},
+            34: {"name": "GT Leader", "number": "34", "car_class_id": "gt3", "car_class_short_name": "GT3"},
+            12: {"name": "GT Two", "number": "12", "car_class_id": "gt3", "car_class_short_name": "GT3"},
+        },
+    )
+
+    assert info["position"] == 2
+    assert info["class_name"] == "GT3"
+    assert info["class_position"] == 1
+    assert info["class_size"] == 2
+
+
 def test_featured_driver_position_info_can_use_grid_position_as_start_for_intro():
     info = featured_driver_position_info(
         34,

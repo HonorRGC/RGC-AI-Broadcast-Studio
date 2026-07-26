@@ -251,6 +251,8 @@ def test_live_driver_lookup_exposes_paint_matching_fields():
                     "CarPath": "stockcars/truck",
                     "CarID": 123,
                     "CarClassID": 456,
+                    "CarClassName": "GT3",
+                    "CarClassShortName": "GT3",
                     "CarScreenName": "NASCAR Truck",
                     "CarScreenNameShort": "Truck",
                     "Country": "USA",
@@ -275,6 +277,8 @@ def test_live_driver_lookup_exposes_paint_matching_fields():
     assert driver["car_path"] == "stockcars/truck"
     assert driver["car_id"] == 123
     assert driver["car_class_id"] == 456
+    assert driver["car_class_name"] == "GT3"
+    assert driver["car_class_short_name"] == "GT3"
     assert driver["country"] == "USA"
     assert driver["country_code"] == "US"
     assert driver["country_name"] == "United States"
