@@ -1257,7 +1257,6 @@ def test_opening_field_rundown_driver_card_uses_starting_grid_and_country():
                 "name": "T.J. Lee",
                 "number": "34",
                 "country": "United States",
-                "flair_id": 223,
             }
         },
         get_results=lambda: [],
@@ -1277,7 +1276,6 @@ def test_opening_field_rundown_driver_card_uses_starting_grid_and_country():
     assert overlay.featured[0]["position"] == 2
     assert overlay.featured[0]["starting_position"] == 2
     assert overlay.featured[0]["country"] == "United States"
-    assert overlay.featured[0]["flair_id"] == 223
     assert overlay.featured[0]["story"] == ""
     assert overlay.featured[0]["speed"] == ""
     assert overlay.featured[0]["car_image_url"] == ""

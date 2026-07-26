@@ -2632,7 +2632,6 @@ def update_overlay_focused_driver(
         car_idx=car_idx,
         story=story,
         country=country,
-        flair_id=driver.get("flair_id") or driver.get("FlairID") or "",
         duration=duration,
         car_image_url=car_image_url,
         number_style=car_render_info.get("number_style", {}),

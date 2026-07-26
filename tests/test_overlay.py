@@ -655,7 +655,6 @@ def test_featured_driver_card_includes_position_line():
         driver_name="T.J. Lee",
         story="RGC Motorsports",
         country="United States",
-        flair_id="223",
         position=4,
         starting_position=12,
         position_delta=8,
@@ -675,7 +674,6 @@ def test_featured_driver_card_includes_position_line():
 
     assert featured["position"] == 4
     assert featured["country"] == "United States"
-    assert featured["flair_id"] == "223"
     assert featured["starting_position"] == 12
     assert featured["position_delta"] == 8
     assert featured["interval"] == "+0.45 to next"
