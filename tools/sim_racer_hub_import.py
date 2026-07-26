@@ -387,16 +387,12 @@ def summarize_race_schedule(
     rows_by_key = {}
 
     for race in schedule_records_from_json(page_html):
-        if league_id and str(race.get("league_id")) != str(league_id):
-            continue
-        if series_id and str(race.get("series_id")) != str(series_id):
-            continue
-        if season_id and str(race.get("season_id")) != str(season_id):
+        if not schedule_record_matches_filters(race, league_id, series_id, season_id):
             continue
         row = schedule_row_from_record(race, configs, source_url)
         add_schedule_row(rows_by_key, row)
 
-    for row in schedule_rows_from_links(page_html, source_url):
+    for row in schedule_rows_from_links(page_html, source_url, season_id=season_id):
         add_schedule_row(rows_by_key, row)
 
     if first_schedule_id and not rows_by_key:
@@ -434,6 +430,21 @@ def schedule_records_from_json(page_html):
     return [record for record in records if isinstance(record, dict)]
 
 
+def schedule_record_matches_filters(record, league_id="", series_id="", season_id=""):
+    checks = (
+        ("league_id", league_id),
+        ("series_id", series_id),
+        ("season_id", season_id),
+    )
+    for key, wanted in checks:
+        if not wanted:
+            continue
+        value = str((record or {}).get(key) or "").strip()
+        if value and value != str(wanted):
+            return False
+    return True
+
+
 def schedule_row_from_record(record, configs, source_url):
     schedule_id = schedule_id_from_record(record)
     track_name = track_name_from_record(record, configs)
@@ -460,19 +471,25 @@ def schedule_row_from_record(record, configs, source_url):
     }
 
 
-def schedule_rows_from_links(page_html, source_url):
+def schedule_rows_from_links(page_html, source_url, season_id=""):
     rows = []
     pattern = re.compile(
-        r"<a[^>]+href=[\"'](?P<href>[^\"']*season_race\.php\?schedule_id=(?P<id>\d+)[^\"']*)[\"'][^>]*>(?P<label>.*?)</a>",
+        r"<a[^>]+href=[\"'](?P<href>[^\"']*[^\"']*schedule_id=(?P<id>\d+)[^\"']*)[\"'][^>]*>(?P<label>.*?)</a>",
         re.IGNORECASE | re.DOTALL,
     )
     for match in pattern.finditer(page_html or ""):
+        href = html.unescape(match.group("href")).strip()
+        parsed = urlparse(href)
+        query = parse_qs(parsed.query)
+        link_season_id = query.get("season_id", [""])[0]
+        if season_id and link_season_id and str(link_season_id) != str(season_id):
+            continue
         label = html.unescape(strip_tags(match.group("label"))).strip()
         rows.append(
             {
                 "track_name": label,
                 "schedule_id": match.group("id"),
-                "results_url": absolute_sim_racer_hub_url(source_url, match.group("href")),
+                "results_url": absolute_sim_racer_hub_url(source_url, href),
                 "notes": "",
             }
         )
@@ -598,6 +615,8 @@ def absolute_sim_racer_hub_url(source_url, href):
     base = sim_racer_hub_base_url(source_url)
     if href.startswith("/"):
         return f"{base}{href}"
+    if href.endswith(".php") or ".php?" in href:
+        return f"{base}/{href.lstrip('/')}"
     return f"{base}/scoring/{href}"
 
 

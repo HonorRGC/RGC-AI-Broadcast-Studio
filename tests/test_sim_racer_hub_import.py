@@ -136,6 +136,35 @@ React.createElement(SeriesSeasons,{series_id: 3872, seasons: {}, schedules: [
 """
 
 
+FUTURE_SCHEDULE_LINKS_HTML = """
+<html>
+<body>
+<a href="season_standings.php?season_id=29247&schedule_id=356745">Race 1 - Michigan International Speedway</a>
+<a href="season_standings.php?season_id=29247&schedule_id=356746">Race 2 - Nashville Superspeedway</a>
+<a href="season_standings.php?season_id=99999&schedule_id=999999">Wrong Season</a>
+</body>
+</html>
+"""
+
+
+UPCOMING_SCHEDULE_RECORDS_HTML = """
+<html>
+<body>
+<script>
+ReactDOM.createRoot(document.getElementById('series_seasons')).render(
+React.createElement(SeriesSeasons,{series_id: 3872, seasons: {}, schedules: [
+{"schedule_id":"356745","season_id":"29247","track_config_id":"257","race_date":"2026-08-01","race_name":"Race 1"},
+{"schedule_id":"356746","season_id":"29247","track_config_id":"328","race_date":"2026-08-08","race_name":"Race 2"}
+], configs: {
+"257":{"track_config_id":"257","track_config_short":"Michigan","track_id":"105","track_name":"Michigan International Speedway","type_name":"Speedway"},
+"328":{"track_config_id":"328","track_config_short":"Nashville SS","track_id":"129","track_name":"Nashville Superspeedway","type_name":"Speedway"}
+}}));
+</script>
+</body>
+</html>
+"""
+
+
 def test_summarizes_sim_racer_hub_driver_stats_for_filtered_season():
     row = summarize_driver_stats(
         SAMPLE_HTML,
@@ -459,6 +488,45 @@ def test_summarizes_sim_racer_hub_race_schedule_from_array_data():
     )
 
     assert [row["schedule_id"] for row in rows] == ["356761", "356762"]
+    assert [row["track_name"] for row in rows] == [
+        "Michigan International Speedway",
+        "Nashville Superspeedway",
+    ]
+
+
+def test_summarizes_future_schedule_links_from_season_standings():
+    rows = summarize_race_schedule(
+        FUTURE_SCHEDULE_LINKS_HTML,
+        season_id="29247",
+        source_url="https://www.simracerhub.com/season_standings.php?season_id=29247",
+    )
+
+    assert rows == [
+        {
+            "track_name": "Race 1 - Michigan International Speedway",
+            "schedule_id": "356745",
+            "results_url": "https://www.simracerhub.com/season_standings.php?season_id=29247&schedule_id=356745",
+            "notes": "",
+        },
+        {
+            "track_name": "Race 2 - Nashville Superspeedway",
+            "schedule_id": "356746",
+            "results_url": "https://www.simracerhub.com/season_standings.php?season_id=29247&schedule_id=356746",
+            "notes": "",
+        },
+    ]
+
+
+def test_summarizes_upcoming_schedule_records_without_completed_results():
+    rows = summarize_race_schedule(
+        UPCOMING_SCHEDULE_RECORDS_HTML,
+        league_id="1598",
+        series_id="3872",
+        season_id="29247",
+        source_url="https://simracerhub.com",
+    )
+
+    assert [row["schedule_id"] for row in rows] == ["356745", "356746"]
     assert [row["track_name"] for row in rows] == [
         "Michigan International Speedway",
         "Nashville Superspeedway",
