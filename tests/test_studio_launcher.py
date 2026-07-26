@@ -754,11 +754,15 @@ def test_launcher_builds_sim_racer_hub_schedule_command():
         league_id="1598",
         series_id="3872",
         season_id="29247",
+        first_schedule_id="356761",
         schedule_output="league/race_schedule.csv",
         schedule_only=True,
     )
 
     assert "--schedule-only" in command
+    assert ["--first-schedule-id", "356761"] == command[
+        command.index("--first-schedule-id") : command.index("--first-schedule-id") + 2
+    ]
     assert ["--schedule-output", "league/race_schedule.csv"] == command[
         command.index("--schedule-output") : command.index("--schedule-output") + 2
     ]

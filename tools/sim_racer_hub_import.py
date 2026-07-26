@@ -347,6 +347,7 @@ def summarize_race_schedule(
     series_id="",
     season_id="",
     source_url="https://simracerhub.com",
+    first_schedule_id="",
 ):
     configs = extract_json_object(page_html, "configs")
     rows_by_key = {}
@@ -363,6 +364,18 @@ def summarize_race_schedule(
 
     for row in schedule_rows_from_links(page_html, source_url):
         add_schedule_row(rows_by_key, row)
+
+    if first_schedule_id and not rows_by_key:
+        for row in schedule_rows_from_race_participants(
+            page_html,
+            configs,
+            source_url,
+            league_id=league_id,
+            series_id=series_id,
+            season_id=season_id,
+            first_schedule_id=first_schedule_id,
+        ):
+            add_schedule_row(rows_by_key, row)
 
     rows = list(rows_by_key.values())
     rows.sort(key=schedule_sort_key)
@@ -433,6 +446,58 @@ def schedule_rows_from_links(page_html, source_url):
             }
         )
     return rows
+
+
+def schedule_rows_from_race_participants(
+    page_html,
+    configs,
+    source_url,
+    league_id="",
+    series_id="",
+    season_id="",
+    first_schedule_id="",
+):
+    first_id = int_or_none(first_schedule_id)
+    if first_id is None:
+        return []
+
+    race_participants = extract_json_object(page_html, "rps")
+    if not race_participants:
+        return []
+
+    grouped = {}
+    for race in filter_races(race_participants.values(), league_id, series_id, season_id):
+        key = schedule_fallback_group_key(race)
+        if not key:
+            continue
+        grouped.setdefault(key, race)
+
+    records = sorted(grouped.values(), key=lambda record: (race_sort_key(record), track_name_from_record(record, configs)))
+    rows = []
+    for index, record in enumerate(records):
+        schedule_id = str(first_id + index)
+        row = schedule_row_from_record(record, configs, source_url)
+        row["schedule_id"] = schedule_id
+        row["results_url"] = sim_racer_hub_race_url(source_url, schedule_id)
+        if not row["notes"]:
+            race_number = index + 1
+            date_text = str(record.get("race_date") or "")[:10]
+            row["notes"] = f"Race {race_number}" + (f" - {date_text}" if date_text else "")
+        rows.append(row)
+    return rows
+
+
+def schedule_fallback_group_key(record):
+    schedule_id = schedule_id_from_record(record)
+    if schedule_id:
+        return ("schedule", schedule_id)
+    race_date = str((record or {}).get("race_date") or "").strip()
+    race_timestamp = str((record or {}).get("race_timestamp") or "").strip()
+    track_config_id = str((record or {}).get("track_config_id") or "").strip()
+    race_name = str((record or {}).get("race_name") or "").strip()
+    if race_date or race_timestamp or track_config_id:
+        return (race_date, race_timestamp, track_config_id, race_name)
+    return None
 
 
 def add_schedule_row(rows_by_key, row):
@@ -860,6 +925,11 @@ def build_parser():
         help="Race schedule CSV to write when --schedule-only is used.",
     )
     parser.add_argument(
+        "--first-schedule-id",
+        default="",
+        help="Optional first Sim Racer Hub schedule_id. If the schedule page does not expose IDs, IDs are assigned sequentially from this value.",
+    )
+    parser.add_argument(
         "--drivers-output",
         default="league/drivers.csv",
         help="Driver roster CSV to update when --drivers-only is used.",
@@ -892,7 +962,23 @@ def main(argv=None):
                 series_id=args.series_id,
                 season_id=args.season_id,
             ),
+            first_schedule_id=args.first_schedule_id,
         )
+        if not rows and args.first_schedule_id and args.source.startswith(("http://", "https://")):
+            fallback_source = normalize_sim_racer_hub_source(
+                args.source,
+                series_id=args.series_id,
+                season_id=args.season_id,
+            )
+            fallback_html = fetch_url(fallback_source)
+            rows = summarize_race_schedule(
+                fallback_html,
+                league_id=args.league_id,
+                series_id=args.series_id,
+                season_id=args.season_id,
+                source_url=fallback_source,
+                first_schedule_id=args.first_schedule_id,
+            )
         if args.dry_run:
             writer = csv.DictWriter(sys.stdout, fieldnames=SCHEDULE_FIELDS)
             writer.writeheader()

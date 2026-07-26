@@ -241,8 +241,11 @@ Use:
 - **Import Drivers** to create or update `league\drivers.csv`.
 - **Import Stats** with Career Mode off to create or update `league\season.csv`.
 - **Import Stats** with Career Mode on to create or update `league\career.csv`.
+- **Import Schedule** to create or update `league\race_schedule.csv`.
 
 The driver import is designed to preserve manual notes. That means you can add hometown, sponsor, team, driving style, or other notes later without the import wiping them out.
+
+If schedule import cannot find any rows, paste the first race's Sim Racer Hub `schedule_id` into **First Race Schedule ID** and run **Import Schedule** again. Sim Racer Hub usually numbers the next races one at a time, so the Studio can build the remaining IDs automatically from the season race order.
 
 For automatic post-race Discord results links, fill out the **Race Schedule CSV** for the profile. The default file is:
 

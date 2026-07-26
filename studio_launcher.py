@@ -141,6 +141,7 @@ SIM_RACER_HUB_FIELDS = [
     ("SIMRACERHUB_SEASON_ID", ""),
     ("SIMRACERHUB_TRACK_NAME", ""),
     ("SIMRACERHUB_MIN_STARTS", "2"),
+    ("SIMRACERHUB_FIRST_SCHEDULE_ID", ""),
     ("SIMRACERHUB_RACE_SCHEDULE_CSV", "league/race_schedule.csv"),
     ("SIMRACERHUB_SEASON_STATS_OUTPUT", "league/season.csv"),
     ("SIMRACERHUB_CAREER_STATS_OUTPUT", "league/career.csv"),
@@ -1139,6 +1140,7 @@ def sim_racer_hub_import_command(
     season_id="",
     track_name="",
     min_starts="1",
+    first_schedule_id="",
     output="league/season.csv",
     drivers_output="league/drivers.csv",
     schedule_output="league/race_schedule.csv",
@@ -1163,6 +1165,8 @@ def sim_racer_hub_import_command(
         command.extend(["--track-name", str(track_name)])
     if min_starts:
         command.extend(["--min-starts", str(min_starts)])
+    if first_schedule_id and schedule_only:
+        command.extend(["--first-schedule-id", str(first_schedule_id)])
     if output:
         command.extend(["--output", str(output)])
     if drivers_only:
@@ -1183,6 +1187,7 @@ def run_sim_racer_hub_import(
     season_id="",
     track_name="",
     min_starts="1",
+    first_schedule_id="",
     output="league/season.csv",
     drivers_output="league/drivers.csv",
     schedule_output="league/race_schedule.csv",
@@ -1198,6 +1203,7 @@ def run_sim_racer_hub_import(
         season_id=season_id,
         track_name=track_name,
         min_starts=min_starts,
+        first_schedule_id=first_schedule_id,
         output=output,
         drivers_output=drivers_output,
         schedule_output=schedule_output,
@@ -2330,6 +2336,7 @@ def build_league_tab(
         "SIMRACERHUB_SEASON_ID": existing.get("SIMRACERHUB_SEASON_ID", ""),
         "SIMRACERHUB_TRACK_NAME": "",
         "SIMRACERHUB_MIN_STARTS": existing.get("SIMRACERHUB_MIN_STARTS", "2"),
+        "SIMRACERHUB_FIRST_SCHEDULE_ID": existing.get("SIMRACERHUB_FIRST_SCHEDULE_ID", ""),
         "SIMRACERHUB_RACE_SCHEDULE_CSV": existing.get(
             "SIMRACERHUB_RACE_SCHEDULE_CSV",
             "league/race_schedule.csv",
@@ -2351,6 +2358,7 @@ def build_league_tab(
         ("Series ID", "SIMRACERHUB_SERIES_ID"),
         ("Season ID", "SIMRACERHUB_SEASON_ID"),
         ("Minimum Starts", "SIMRACERHUB_MIN_STARTS"),
+        ("First Race Schedule ID", "SIMRACERHUB_FIRST_SCHEDULE_ID"),
         ("Race Schedule CSV", "SIMRACERHUB_RACE_SCHEDULE_CSV"),
         ("Season Stats CSV", "SIMRACERHUB_SEASON_STATS_OUTPUT"),
         ("Career Stats CSV", "SIMRACERHUB_CAREER_STATS_OUTPUT"),
@@ -2426,6 +2434,7 @@ def build_league_tab(
             season_id=data["SIMRACERHUB_SEASON_ID"],
             track_name=data.get("SIMRACERHUB_TRACK_NAME", ""),
             min_starts=data["SIMRACERHUB_MIN_STARTS"],
+            first_schedule_id=data.get("SIMRACERHUB_FIRST_SCHEDULE_ID", ""),
             output=stats_output,
             drivers_output=data["SIMRACERHUB_DRIVERS_OUTPUT"],
             schedule_output=data["SIMRACERHUB_RACE_SCHEDULE_CSV"],
@@ -3055,6 +3064,7 @@ def build_help_tab(
         For official race testing, league files are optional. For league races, use the League / Sim Racer Hub tab.
         A clean Sim Racer Hub URL can be https://simracerhub.com, then fill in League ID, Series ID, and Season ID.
         Preview imports first. Driver imports preserve manual notes like hometown, sponsor, team, and driving style.
+        If schedule import finds no rows, add the first race schedule_id in First Race Schedule ID and import again.
         Race Schedule CSV can map track_name to schedule_id for every race in the season. If Discord Race Results Link is blank,
         the post-race Discord report uses the current iRacing track to pick the matching Sim Racer Hub race link automatically.
         """,

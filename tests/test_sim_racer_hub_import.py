@@ -96,6 +96,26 @@ React.createElement(SeriesSeasons,{series_id: 3872, seasons: {}, schedules: {
 """
 
 
+SCHEDULE_FROM_RPS_HTML = """
+<html>
+<body>
+<script>
+ReactDOM.createRoot(document.getElementById('league_stats')).render(
+React.createElement(LeagueStats,{series_id: 3872, season_id: 29247, rps: {
+"100":{"driver_id":"1","series_id":"3872","season_id":"29247","league_id":"1598","track_config_id":"257","race_date":"2026-07-01","race_name":"Race 1"},
+"101":{"driver_id":"2","series_id":"3872","season_id":"29247","league_id":"1598","track_config_id":"257","race_date":"2026-07-01","race_name":"Race 1"},
+"102":{"driver_id":"1","series_id":"3872","season_id":"29247","league_id":"1598","track_config_id":"328","race_date":"2026-07-08","race_name":"Race 2"},
+"103":{"driver_id":"2","series_id":"3872","season_id":"29248","league_id":"1598","track_config_id":"257","race_date":"2026-08-01","race_name":"Wrong season"}
+}, configs: {
+"257":{"track_config_id":"257","track_config_short":"Michigan","track_id":"105","track_name":"Michigan International Speedway","type_name":"Speedway"},
+"328":{"track_config_id":"328","track_config_short":"Nashville SS","track_id":"129","track_name":"Nashville Superspeedway","type_name":"Speedway"}
+}}));
+</script>
+</body>
+</html>
+"""
+
+
 def test_summarizes_sim_racer_hub_driver_stats_for_filtered_season():
     row = summarize_driver_stats(
         SAMPLE_HTML,
@@ -397,6 +417,32 @@ def test_summarizes_sim_racer_hub_race_schedule_for_season():
             "track_name": "Nashville Superspeedway",
             "schedule_id": "356762",
             "results_url": "",
+            "notes": "Race 2",
+        },
+    ]
+
+
+def test_summarizes_race_schedule_from_participants_with_first_schedule_id():
+    rows = summarize_race_schedule(
+        SCHEDULE_FROM_RPS_HTML,
+        league_id="1598",
+        series_id="3872",
+        season_id="29247",
+        source_url="https://simracerhub.com",
+        first_schedule_id="356761",
+    )
+
+    assert rows == [
+        {
+            "track_name": "Michigan International Speedway",
+            "schedule_id": "356761",
+            "results_url": "https://simracerhub.com/scoring/season_race.php?schedule_id=356761",
+            "notes": "Race 1",
+        },
+        {
+            "track_name": "Nashville Superspeedway",
+            "schedule_id": "356762",
+            "results_url": "https://simracerhub.com/scoring/season_race.php?schedule_id=356762",
             "notes": "Race 2",
         },
     ]
