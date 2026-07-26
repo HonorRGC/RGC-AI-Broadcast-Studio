@@ -121,8 +121,8 @@ def test_broadcast_settings_have_friendly_labels_and_sections():
     assert "OPENAI_API_KEY" in IMPORTANT_SETUP_FIELDS
     assert "STUDIO_VOLUME" not in BROADCAST_FIELD_LABELS
     assert BROADCAST_FIELD_SECTIONS["USE_OPENAI"] == "AI Commentary"
-    assert BROADCAST_FIELD_SECTIONS["OVERLAY_EVENT_TITLE"] == "Event Sponsors / Overlay"
-    assert BROADCAST_FIELD_SECTIONS["OVERLAY_HOST"] == "Remote Producer Assist (Tailscale)"
+    assert BROADCAST_FIELD_SECTIONS["OVERLAY_EVENT_TITLE"] == "Event Sponsors / Overlay Links"
+    assert "OVERLAY_HOST" not in BROADCAST_FIELD_SECTIONS
     assert BROADCAST_FIELD_SECTIONS["PRACTICE_MUSIC_PLAYLIST"] == "Practice / Qualifying / Caution Music"
     assert BROADCAST_FIELD_SECTIONS["RACE_ADMIN_MODE"] == "Race Control"
     assert BROADCAST_FIELD_SECTIONS["DISCORD_RACE_REPORT_ENABLED"] == "Discord Race Report"
@@ -158,8 +158,9 @@ def test_start_broadcast_auto_opens_producer_assist():
 
     assert "root.after(1500, open_producer_assist_after_start)" in source
     assert "Producer Assist opens automatically after Start Broadcast" in source
-    assert 'text="Remote Helper Link"' in source
-    assert 'text="Copy Helper Link"' in source
+    assert 'text="Producer Assist / Remote Admin Link"' in source
+    assert 'text="Copy Admin Link"' in source
+    assert "This is the same Producer Assist control-room page" in source
     assert "trusted admins on your Tailscale network" in source
 
 
