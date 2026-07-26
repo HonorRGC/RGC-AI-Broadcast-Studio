@@ -256,12 +256,12 @@ league/race_schedule.csv
 Use one row per race:
 
 ```csv
-track_name,schedule_id,results_url,notes
-Michigan International Speedway,356761,,Race 1
-Homestead Miami Speedway,356762,,Race 2
+track_name,schedule_id,notes
+Michigan International Speedway,356761,Race 1
+Homestead Miami Speedway,356762,Race 2
 ```
 
-If `results_url` is blank, the Studio builds the Sim Racer Hub race-results link from `schedule_id`. If `Race Results Link` is filled in under Discord Race Report, that manual link wins for that event.
+The Studio builds the Sim Racer Hub race-results link from `schedule_id`. It also builds the championship standings link from the profile's Season ID and that race's `schedule_id`.
 
 ## 10. Set up event sponsors
 
@@ -342,11 +342,9 @@ Optional Discord race report:
    Discord Race Report = true
    Race Report Webhook URL = your Discord webhook URL
    Use OpenAI Race Recap = true
-   Race Results Link = optional manual Sim Racer Hub race-results URL
-   Championship Standings Link = optional manual league standings URL
    ```
 
-After the race, the Studio waits for the finishing order to stabilize, then posts a Discord recap with a short race breakdown, the top ten, biggest movers, available race stats, and official results/championship links. If the manual Race Results Link is blank, the Studio can use the Race Schedule CSV to find the matching Sim Racer Hub race link automatically. If the manual Championship Standings Link is blank, the Studio can build the Sim Racer Hub standings link from the Season ID and that race's schedule ID. The Discord interview bot fields are separate and can stay blank for now.
+After the race, the Studio waits for the finishing order to stabilize, then posts a Discord recap with a short race breakdown, the top ten, biggest movers, available race stats, and Sim Racer Hub results/championship links. Those links come from the Season ID and imported Race Schedule CSV, so admins should not need to paste race links every week. The Discord interview bot fields are separate and can stay blank for now.
 
 ## 12. Remote Producer Assist with Tailscale
 

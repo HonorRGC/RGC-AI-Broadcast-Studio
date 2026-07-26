@@ -14,15 +14,23 @@ class FakeResponse:
         return False
 
 
-def test_discord_race_report_builds_payload_with_top_ten_and_movers():
+def test_discord_race_report_builds_payload_with_top_ten_and_movers(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    schedule = tmp_path / "race_schedule.csv"
+    schedule.write_text(
+        "track_name,schedule_id,notes\n"
+        "Homestead Miami Speedway,356761,Race 1\n",
+        encoding="utf-8",
+    )
     reporter = DiscordRaceReporter(
         enabled=True,
         webhook_url="https://discord.example/webhook",
         event_title="Autism Awareness 100",
         series_name="WFO Trucks",
         use_openai=False,
-        results_url="https://www.simracerhub.com/scoring/season_race.php?schedule_id=356761",
-        championship_url="https://www.simracerhub.com/series_seasons.php?series_id=3872",
+        sim_racer_hub_source="https://www.simracerhub.com",
+        sim_racer_hub_season_id="29247",
+        race_schedule_csv=str(schedule),
     )
     results = [
         {"CarIdx": 1, "Position": 0, "StartingPosition": 5, "LapsLed": 10},
@@ -61,15 +69,14 @@ def test_discord_race_report_auto_uses_sim_racer_hub_schedule_csv(tmp_path, monk
     schedule = tmp_path / "league" / "race_schedule.csv"
     schedule.parent.mkdir()
     schedule.write_text(
-        "track_name,schedule_id,results_url,notes\n"
-        "Michigan International Speedway,356761,,WFO race 1\n",
+        "track_name,schedule_id,notes\n"
+        "Michigan International Speedway,356761,WFO race 1\n",
         encoding="utf-8",
     )
     reporter = DiscordRaceReporter(
         enabled=True,
         webhook_url="https://discord.example/webhook",
         use_openai=False,
-        results_url="",
         sim_racer_hub_source="https://simracerhub.com",
         race_schedule_csv="league/race_schedule.csv",
     )
@@ -90,16 +97,14 @@ def test_discord_race_report_auto_builds_championship_link(tmp_path, monkeypatch
     schedule = tmp_path / "league" / "race_schedule.csv"
     schedule.parent.mkdir()
     schedule.write_text(
-        "track_name,schedule_id,results_url,notes\n"
-        "Daytona International Speedway,356762,,Jul 29 2026\n",
+        "track_name,schedule_id,notes\n"
+        "Daytona International Speedway,356762,Jul 29 2026\n",
         encoding="utf-8",
     )
     reporter = DiscordRaceReporter(
         enabled=True,
         webhook_url="https://discord.example/webhook",
         use_openai=False,
-        results_url="",
-        championship_url="",
         sim_racer_hub_source="https://www.simracerhub.com",
         sim_racer_hub_season_id="29247",
         race_schedule_csv="league/race_schedule.csv",
@@ -122,16 +127,14 @@ def test_discord_race_report_uses_standings_source_for_auto_championship(tmp_pat
     monkeypatch.chdir(tmp_path)
     schedule = tmp_path / "race_schedule.csv"
     schedule.write_text(
-        "track_name,schedule_id,results_url,notes\n"
-        "Daytona,356762,,Jul 29 2026\n",
+        "track_name,schedule_id,notes\n"
+        "Daytona,356762,Jul 29 2026\n",
         encoding="utf-8",
     )
     reporter = DiscordRaceReporter(
         enabled=True,
         webhook_url="https://discord.example/webhook",
         use_openai=False,
-        results_url="",
-        championship_url="",
         sim_racer_hub_source="https://www.simracerhub.com/season_standings.php?season_id=29079&schedule_id=364601",
         race_schedule_csv=str(schedule),
     )
@@ -145,33 +148,6 @@ def test_discord_race_report_uses_standings_source_for_auto_championship(tmp_pat
     links = payload["embeds"][0]["fields"][-1]["value"]
     assert "https://www.simracerhub.com/scoring/season_race.php?schedule_id=356762" in links
     assert "https://www.simracerhub.com/season_standings.php?season_id=29079&schedule_id=356762" in links
-
-
-def test_discord_race_report_manual_results_url_overrides_schedule(tmp_path):
-    schedule = tmp_path / "race_schedule.csv"
-    schedule.write_text(
-        "track_name,schedule_id,results_url,notes\n"
-        "Michigan,356761,,WFO race 1\n",
-        encoding="utf-8",
-    )
-    reporter = DiscordRaceReporter(
-        enabled=True,
-        webhook_url="https://discord.example/webhook",
-        use_openai=False,
-        results_url="https://example.com/manual-results",
-        race_schedule_csv=str(schedule),
-    )
-
-    payload = reporter.build_payload(
-        [{"CarIdx": 1, "Position": 0}],
-        {1: {"name": "Winner Driver", "number": "34"}},
-        track_info={"track_name": "Michigan International Speedway"},
-    )
-
-    links = payload["embeds"][0]["fields"][-1]["value"]
-    assert "https://example.com/manual-results" in links
-    assert "schedule_id=356761" not in links
-
 
 def test_discord_race_report_uses_true_green_laps_only():
     reporter = DiscordRaceReporter(enabled=True, webhook_url="https://discord.example/webhook")

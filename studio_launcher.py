@@ -73,7 +73,6 @@ DRIVER_PROFILE_FIELDS = [
 RACE_SCHEDULE_FIELDS = [
     "track_name",
     "schedule_id",
-    "results_url",
     "notes",
 ]
 
@@ -125,8 +124,6 @@ LAUNCHER_FIELDS = [
     ("DISCORD_RACE_REPORT_ENABLED", "false"),
     ("DISCORD_RACE_REPORT_WEBHOOK_URL", ""),
     ("DISCORD_RACE_REPORT_USE_OPENAI", "true"),
-    ("DISCORD_RACE_REPORT_RESULTS_URL", ""),
-    ("DISCORD_RACE_REPORT_CHAMPIONSHIP_URL", ""),
     ("USE_LEAGUE_DRIVER_NOTES", "false"),
     ("LEAGUE_DRIVERS_CSV", "league/drivers.csv"),
     ("LEAGUE_SEASON_STATS_CSV", "league/season.csv"),
@@ -224,8 +221,6 @@ BROADCAST_FIELD_LABELS = {
     "DISCORD_RACE_REPORT_ENABLED": "Discord Race Report",
     "DISCORD_RACE_REPORT_WEBHOOK_URL": "Race Report Webhook URL",
     "DISCORD_RACE_REPORT_USE_OPENAI": "Use OpenAI Race Recap",
-    "DISCORD_RACE_REPORT_RESULTS_URL": "Race Results Link",
-    "DISCORD_RACE_REPORT_CHAMPIONSHIP_URL": "Championship Standings Link",
     "USE_LEAGUE_DRIVER_NOTES": "Use League Driver Notes",
     "LEAGUE_DRIVERS_CSV": "Driver Notes CSV",
     "LEAGUE_SEASON_STATS_CSV": "Season Stats CSV",
@@ -291,8 +286,6 @@ BROADCAST_FIELD_HELP = {
     "DISCORD_RACE_REPORT_ENABLED": "Posts an automatic post-race recap to a Discord webhook after the finish order stabilizes.",
     "DISCORD_RACE_REPORT_WEBHOOK_URL": "Required when Discord Race Report is true. Create this webhook in the Discord results channel.",
     "DISCORD_RACE_REPORT_USE_OPENAI": "Uses OpenAI for a more natural race recap. If off, the Studio posts a simpler generated recap.",
-    "DISCORD_RACE_REPORT_RESULTS_URL": "Optional official race-results link, such as a Sim Racer Hub race page for that event.",
-    "DISCORD_RACE_REPORT_CHAMPIONSHIP_URL": "Optional manual points/championship standings link. If blank, Sim Racer Hub standings can be built from Season ID and the race schedule ID.",
     "USE_LEAGUE_DRIVER_NOTES": "Turns on league driver notes, season stats, career stats, teams, sponsors, hometowns, and driving styles.",
     "LEAGUE_DRIVERS_CSV": "Driver profile CSV used for manual notes and league-specific info.",
     "LEAGUE_SEASON_STATS_CSV": "Current-season stats CSV imported from Sim Racer Hub.",
@@ -339,7 +332,6 @@ INLINE_HELP_FIELDS = {
     "POST_RACE_INTERVIEWS_ENABLED",
     "DISCORD_RACE_REPORT_ENABLED",
     "DISCORD_RACE_REPORT_WEBHOOK_URL",
-    "DISCORD_RACE_REPORT_RESULTS_URL",
     "USE_LEAGUE_DRIVER_NOTES",
     "STAGE_END_LAPS",
 }
@@ -720,9 +712,7 @@ def build_health_status(values, root=ROOT, broadcast_running=False):
 
     if setting_enabled(values, "DISCORD_RACE_REPORT_ENABLED", "false"):
         if values.get("DISCORD_RACE_REPORT_WEBHOOK_URL"):
-            detail = "Automatic post-race Discord recap is ready."
-            if values.get("DISCORD_RACE_REPORT_RESULTS_URL") or values.get("DISCORD_RACE_REPORT_CHAMPIONSHIP_URL"):
-                detail += " Official links will be included."
+            detail = "Automatic post-race Discord recap is ready. Sim Racer Hub links come from Season ID and the imported schedule."
             rows.append(("Discord Race Report", "Ready", detail, "ok"))
         else:
             rows.append(
@@ -3073,8 +3063,8 @@ def build_help_tab(
         A clean Sim Racer Hub URL can be https://simracerhub.com, then fill in League ID, Series ID, and Season ID.
         Preview imports first. Driver imports preserve manual notes like hometown, sponsor, team, and driving style.
         If schedule import finds no rows, add the first race schedule_id in First Race Schedule ID and import again.
-        Race Schedule CSV can map track_name to schedule_id for every race in the season. If Discord Race Results Link is blank,
-        the post-race Discord report uses the current iRacing track to pick the matching Sim Racer Hub race link automatically.
+        Race Schedule CSV maps track_name to schedule_id for every race in the season. The post-race Discord report uses the
+        current iRacing track, Season ID, and imported schedule to add Sim Racer Hub race results and standings automatically.
         """,
     )
     section(

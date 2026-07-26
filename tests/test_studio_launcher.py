@@ -115,10 +115,7 @@ def test_broadcast_settings_have_friendly_labels_and_sections():
     assert BROADCAST_FIELD_LABELS["DISCORD_RACE_REPORT_ENABLED"] == "Discord Race Report"
     assert BROADCAST_FIELD_LABELS["DISCORD_RACE_REPORT_WEBHOOK_URL"] == "Race Report Webhook URL"
     assert BROADCAST_FIELD_LABELS["DISCORD_RACE_REPORT_USE_OPENAI"] == "Use OpenAI Race Recap"
-    assert BROADCAST_FIELD_LABELS["DISCORD_RACE_REPORT_RESULTS_URL"] == "Race Results Link"
-    assert BROADCAST_FIELD_LABELS["DISCORD_RACE_REPORT_CHAMPIONSHIP_URL"] == "Championship Standings Link"
     assert "webhook" in BROADCAST_FIELD_HELP["DISCORD_RACE_REPORT_WEBHOOK_URL"].lower()
-    assert "Sim Racer Hub" in BROADCAST_FIELD_HELP["DISCORD_RACE_REPORT_RESULTS_URL"]
     assert "OPENAI_API_KEY" in IMPORTANT_SETUP_FIELDS
     assert "STUDIO_VOLUME" not in BROADCAST_FIELD_LABELS
     assert BROADCAST_FIELD_SECTIONS["USE_OPENAI"] == "AI Commentary"
@@ -135,9 +132,9 @@ def test_broadcast_settings_have_friendly_labels_and_sections():
     assert "NATIONAL_ANTHEM_GRAPHICS" not in saved_keys
     assert "CAUTION_PRESENTATION_GRAPHICS" not in saved_keys
     assert "DISCORD_BOT_ENABLED" not in saved_keys
-    assert "DISCORD_RACE_REPORT_RESULTS_URL" in saved_keys
+    assert "DISCORD_RACE_REPORT_RESULTS_URL" not in saved_keys
     assert "OVERLAY_BRAND_GRAPHICS" not in saved_keys
-    assert "DISCORD_RACE_REPORT_CHAMPIONSHIP_URL" in saved_keys
+    assert "DISCORD_RACE_REPORT_CHAMPIONSHIP_URL" not in saved_keys
     assert "REMOTE_PRODUCER_ENABLED" not in saved_keys
 
 
@@ -308,12 +305,11 @@ def test_launcher_health_reports_discord_race_report_setup():
     assert row_map["Discord Race Report"][0] == "Needs webhook"
 
     values["DISCORD_RACE_REPORT_WEBHOOK_URL"] = "https://discord.example/webhook"
-    values["DISCORD_RACE_REPORT_RESULTS_URL"] = "https://simracerhub.com/scoring/season_race.php?schedule_id=1"
     rows = build_health_status(values, root=Path("C:/RGC"), broadcast_running=False)
     row_map = {name: (state, detail, level) for name, state, detail, level in rows}
 
     assert row_map["Discord Race Report"][0] == "Ready"
-    assert "Official links" in row_map["Discord Race Report"][1]
+    assert "Season ID" in row_map["Discord Race Report"][1]
 
 
 def test_launcher_health_reports_tailscale_helper_access(monkeypatch):
@@ -822,7 +818,7 @@ def test_studio_can_create_empty_race_schedule_csv(tmp_path):
     ensure_empty_race_schedule_csv(path)
 
     assert path.exists()
-    assert path.read_text(encoding="utf-8").splitlines()[0] == "track_name,schedule_id,results_url,notes"
+    assert path.read_text(encoding="utf-8").splitlines()[0] == "track_name,schedule_id,notes"
 
 
 def test_tester_zip_excludes_private_local_files():

@@ -44,7 +44,6 @@ DRIVER_FIELDS = [
 SCHEDULE_FIELDS = [
     "track_name",
     "schedule_id",
-    "results_url",
     "notes",
 ]
 
@@ -486,14 +485,6 @@ def schedule_row_from_record(record, configs, source_url):
     track_name = track_name_from_record(record, configs)
     if not track_name and str(record.get("chase") or "").upper() == "Y":
         track_name = "Championship"
-    results_url = str(
-        record.get("results_url")
-        or record.get("race_url")
-        or record.get("url")
-        or ""
-    ).strip()
-    if results_url and results_url.startswith("/"):
-        results_url = sim_racer_hub_race_url(source_url, schedule_id) if schedule_id else ""
     notes = str(
         record.get("race_name")
         or record.get("event_name")
@@ -505,7 +496,6 @@ def schedule_row_from_record(record, configs, source_url):
     return {
         "track_name": track_name,
         "schedule_id": schedule_id,
-        "results_url": results_url,
         "notes": notes,
     }
 
@@ -528,7 +518,6 @@ def schedule_rows_from_links(page_html, source_url, season_id=""):
             {
                 "track_name": label,
                 "schedule_id": match.group("id"),
-                "results_url": absolute_sim_racer_hub_url(source_url, href),
                 "notes": "",
             }
         )
@@ -565,7 +554,6 @@ def schedule_rows_from_race_participants(
         schedule_id = str(first_id + index)
         row = schedule_row_from_record(record, configs, source_url)
         row["schedule_id"] = schedule_id
-        row["results_url"] = sim_racer_hub_race_url(source_url, schedule_id)
         if not row["notes"]:
             race_number = index + 1
             date_text = str(record.get("race_date") or "")[:10]
@@ -589,11 +577,11 @@ def schedule_fallback_group_key(record):
 
 def add_schedule_row(rows_by_key, row):
     row = {field: str((row or {}).get(field, "") or "").strip() for field in SCHEDULE_FIELDS}
-    if not row["schedule_id"] and not row["results_url"]:
+    if not row["schedule_id"]:
         return
     if not row["track_name"]:
         row["track_name"] = row["notes"] or f"Race {len(rows_by_key) + 1}"
-    key = row["schedule_id"] or row["results_url"]
+    key = row["schedule_id"]
     existing = rows_by_key.get(key)
     if existing:
         for field in SCHEDULE_FIELDS:

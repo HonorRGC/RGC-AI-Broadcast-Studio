@@ -8,8 +8,6 @@ from pathlib import Path
 
 from config import (
     DISCORD_RACE_REPORT_ENABLED,
-    DISCORD_RACE_REPORT_CHAMPIONSHIP_URL,
-    DISCORD_RACE_REPORT_RESULTS_URL,
     DISCORD_RACE_REPORT_USE_OPENAI,
     DISCORD_RACE_REPORT_WEBHOOK_URL,
     OVERLAY_EVENT_TITLE,
@@ -28,8 +26,6 @@ class DiscordRaceReporter:
         enabled=DISCORD_RACE_REPORT_ENABLED,
         webhook_url=DISCORD_RACE_REPORT_WEBHOOK_URL,
         use_openai=DISCORD_RACE_REPORT_USE_OPENAI,
-        results_url=DISCORD_RACE_REPORT_RESULTS_URL,
-        championship_url=DISCORD_RACE_REPORT_CHAMPIONSHIP_URL,
         sim_racer_hub_source=SIMRACERHUB_SOURCE,
         sim_racer_hub_season_id=SIMRACERHUB_SEASON_ID,
         race_schedule_csv=SIMRACERHUB_RACE_SCHEDULE_CSV,
@@ -40,8 +36,6 @@ class DiscordRaceReporter:
         self.enabled = bool(enabled)
         self.webhook_url = str(webhook_url or "").strip()
         self.use_openai = bool(use_openai)
-        self.results_url = str(results_url or "").strip()
-        self.championship_url = str(championship_url or "").strip()
         self.sim_racer_hub_source = str(sim_racer_hub_source or "https://simracerhub.com").strip()
         self.sim_racer_hub_season_id = str(sim_racer_hub_season_id or "").strip()
         self.race_schedule_csv = str(race_schedule_csv or "").strip()
@@ -144,10 +138,10 @@ class DiscordRaceReporter:
     def format_result_links(self, track_name=""):
         links = []
         schedule_match = self.scheduled_race_for_track(track_name)
-        results_url = self.results_url or self.resolve_scheduled_results_url(track_name, schedule_match=schedule_match)
+        results_url = self.resolve_scheduled_results_url(track_name, schedule_match=schedule_match)
         if results_url:
             links.append(f"[Race results]({results_url})")
-        championship_url = self.championship_url or self.resolve_scheduled_championship_url(schedule_match)
+        championship_url = self.resolve_scheduled_championship_url(schedule_match)
         if championship_url:
             links.append(f"[Championship standings]({championship_url})")
         return "\n".join(links)
@@ -156,8 +150,6 @@ class DiscordRaceReporter:
         match = schedule_match or self.scheduled_race_for_track(track_name)
         if not match:
             return ""
-        if match.get("results_url"):
-            return match["results_url"]
         schedule_id = match.get("schedule_id") or match.get("race_id")
         if not schedule_id:
             return ""
@@ -196,7 +188,6 @@ class DiscordRaceReporter:
                             "track_name": row_track,
                             "schedule_id": str(row.get("schedule_id") or "").strip(),
                             "race_id": str(row.get("race_id") or "").strip(),
-                            "results_url": str(row.get("results_url") or "").strip(),
                         }
         except Exception:
             return {}

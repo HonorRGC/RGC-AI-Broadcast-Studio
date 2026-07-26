@@ -482,13 +482,11 @@ def test_summarizes_sim_racer_hub_race_schedule_for_season():
         {
             "track_name": "Michigan International Speedway",
             "schedule_id": "356761",
-            "results_url": "",
             "notes": "Race 1",
         },
         {
             "track_name": "Nashville Superspeedway",
             "schedule_id": "356762",
-            "results_url": "",
             "notes": "Race 2",
         },
     ]
@@ -521,13 +519,11 @@ def test_summarizes_future_schedule_links_from_season_standings():
         {
             "track_name": "Race 1 - Michigan International Speedway",
             "schedule_id": "356745",
-            "results_url": "https://www.simracerhub.com/season_standings.php?season_id=29247&schedule_id=356745",
             "notes": "",
         },
         {
             "track_name": "Race 2 - Nashville Superspeedway",
             "schedule_id": "356746",
-            "results_url": "https://www.simracerhub.com/season_standings.php?season_id=29247&schedule_id=356746",
             "notes": "",
         },
     ]
@@ -560,19 +556,16 @@ def test_summarizes_standings_page_json_style_future_schedule_rows():
         {
             "track_name": "Daytona International Speedway",
             "schedule_id": "356745",
-            "results_url": "",
             "notes": "Apr 8, 2026",
         },
         {
             "track_name": "Championship",
             "schedule_id": "365459",
-            "results_url": "",
             "notes": "Jun 23, 2026",
         },
         {
             "track_name": "Daytona International Speedway",
             "schedule_id": "356762",
-            "results_url": "",
             "notes": "Jul 29, 2026",
         },
     ]
@@ -592,13 +585,11 @@ def test_summarizes_race_schedule_from_participants_with_first_schedule_id():
         {
             "track_name": "Michigan International Speedway",
             "schedule_id": "356761",
-            "results_url": "https://simracerhub.com/scoring/season_race.php?schedule_id=356761",
             "notes": "Race 1",
         },
         {
             "track_name": "Nashville Superspeedway",
             "schedule_id": "356762",
-            "results_url": "https://simracerhub.com/scoring/season_race.php?schedule_id=356762",
             "notes": "Race 2",
         },
     ]
