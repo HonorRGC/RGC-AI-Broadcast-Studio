@@ -131,6 +131,27 @@ def normalize_sim_racer_hub_schedule_source(source, series_id="", season_id=""):
     )
 
 
+def normalize_sim_racer_hub_standings_source(source, season_id="", schedule_id=""):
+    parsed = urlparse(source)
+    if not parsed.netloc.endswith("simracerhub.com"):
+        return source
+
+    query = parse_qs(parsed.query)
+    selected_season_id = query.get("season_id", [season_id])[0]
+    selected_schedule_id = query.get("schedule_id", [schedule_id])[0]
+    replacement_query = {}
+    if selected_season_id:
+        replacement_query["season_id"] = selected_season_id
+    if selected_schedule_id:
+        replacement_query["schedule_id"] = selected_schedule_id
+    return urlunparse(
+        parsed._replace(
+            path="/season_standings.php",
+            query=urlencode(replacement_query),
+        )
+    )
+
+
 def sim_racer_hub_query_value(source, key):
     parsed = urlparse(str(source or ""))
     if not parsed.netloc.endswith("simracerhub.com"):
@@ -412,6 +433,16 @@ def summarize_race_schedule(
         ):
             add_schedule_row(rows_by_key, row)
 
+    rows = list(rows_by_key.values())
+    rows.sort(key=schedule_sort_key)
+    return rows
+
+
+def merge_schedule_rows(*row_groups):
+    rows_by_key = {}
+    for rows in row_groups:
+        for row in rows or []:
+            add_schedule_row(rows_by_key, row)
     rows = list(rows_by_key.values())
     rows.sort(key=schedule_sort_key)
     return rows
@@ -1020,26 +1051,39 @@ def main(argv=None):
         args.first_schedule_id
         or sim_racer_hub_query_value(args.source, "schedule_id")
     )
-    page_html = load_source(
-        args.source,
-        series_id=args.series_id,
-        season_id=effective_season_id,
-        schedule_mode=args.schedule_only,
-    )
 
     if args.schedule_only:
+        schedule_source = normalize_sim_racer_hub_schedule_source(
+            args.source,
+            series_id=args.series_id,
+            season_id=effective_season_id,
+        )
+        page_html = fetch_url(schedule_source) if args.source.startswith(("http://", "https://")) else load_source(args.source)
         rows = summarize_race_schedule(
             page_html,
             league_id=args.league_id,
             series_id=args.series_id,
             season_id=effective_season_id,
-            source_url=normalize_sim_racer_hub_schedule_source(
-                args.source,
-                series_id=args.series_id,
-                season_id=effective_season_id,
-            ),
+            source_url=schedule_source,
             first_schedule_id=effective_first_schedule_id,
         )
+        if effective_first_schedule_id and args.source.startswith(("http://", "https://")):
+            standings_source = normalize_sim_racer_hub_standings_source(
+                args.source,
+                season_id=effective_season_id,
+                schedule_id=effective_first_schedule_id,
+            )
+            if standings_source != schedule_source:
+                standings_html = fetch_url(standings_source)
+                standings_rows = summarize_race_schedule(
+                    standings_html,
+                    league_id=args.league_id,
+                    series_id=args.series_id,
+                    season_id=effective_season_id,
+                    source_url=standings_source,
+                    first_schedule_id=effective_first_schedule_id,
+                )
+                rows = merge_schedule_rows(rows, standings_rows)
         if not rows and effective_first_schedule_id and args.source.startswith(("http://", "https://")):
             fallback_source = normalize_sim_racer_hub_source(
                 args.source,
@@ -1063,6 +1107,13 @@ def main(argv=None):
         write_race_schedule(args.schedule_output, rows)
         print(f"Imported {len(rows)} race schedule rows -> {args.schedule_output}")
         return 0
+
+    page_html = load_source(
+        args.source,
+        series_id=args.series_id,
+        season_id=effective_season_id,
+        schedule_mode=False,
+    )
 
     if args.bulk:
         if args.drivers_only:
