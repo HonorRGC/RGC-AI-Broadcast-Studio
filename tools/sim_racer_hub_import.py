@@ -139,20 +139,45 @@ def extract_driver_name(page_html):
 
 
 def extract_json_object(page_html, key):
+    value = extract_json_value(page_html, key)
+    return value if isinstance(value, dict) else {}
+
+
+def extract_json_collection(page_html, key):
+    value = extract_json_value(page_html, key)
+    if isinstance(value, dict):
+        return value.values()
+    if isinstance(value, list):
+        return value
+    return []
+
+
+def extract_json_value(page_html, key):
     marker = f"{key}:"
     start = page_html.find(marker)
     if start < 0:
         return {}
 
-    brace_start = page_html.find("{", start)
-    if brace_start < 0:
+    value_start = -1
+    opener = ""
+    closer = ""
+    for index in range(start + len(marker), len(page_html)):
+        char = page_html[index]
+        if char in "{[":
+            value_start = index
+            opener = char
+            closer = "}" if char == "{" else "]"
+            break
+        if char not in " \r\n\t":
+            return {}
+    if value_start < 0:
         return {}
 
-    depth = 0
+    stack = []
     in_string = False
     escape = False
 
-    for index in range(brace_start, len(page_html)):
+    for index in range(value_start, len(page_html)):
         char = page_html[index]
         if in_string:
             if escape:
@@ -165,12 +190,14 @@ def extract_json_object(page_html, key):
 
         if char == '"':
             in_string = True
-        elif char == "{":
-            depth += 1
-        elif char == "}":
-            depth -= 1
-            if depth == 0:
-                return json.loads(page_html[brace_start : index + 1])
+        elif char in "{[":
+            stack.append("}" if char == "{" else "]")
+        elif char in "}]":
+            if not stack or char != stack[-1]:
+                return {}
+            stack.pop()
+            if not stack:
+                return json.loads(page_html[value_start : index + 1])
 
     return {}
 
@@ -385,10 +412,7 @@ def summarize_race_schedule(
 def schedule_records_from_json(page_html):
     records = []
     for key in ("schedules", "schedule", "races", "race_schedule", "events"):
-        value = extract_json_object(page_html, key)
-        if not value:
-            continue
-        records.extend(value.values() if isinstance(value, dict) else value)
+        records.extend(extract_json_collection(page_html, key))
 
     race_participants = extract_json_object(page_html, "rps")
     if race_participants:
