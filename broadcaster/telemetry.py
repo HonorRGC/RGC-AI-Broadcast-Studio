@@ -328,6 +328,8 @@ class IRacingTelemetry:
                 "country": driver.get("Country", ""),
                 "country_code": driver.get("CountryCode", ""),
                 "country_name": driver.get("CountryName", ""),
+                "flair_id": driver.get("FlairID", ""),
+                "flair_name": driver.get("FlairName", ""),
                 "club_id": driver.get("ClubID", ""),
                 "club_name": driver.get("ClubName", ""),
                 "club": driver.get("ClubName", ""),

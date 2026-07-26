@@ -1182,6 +1182,8 @@ def test_featured_driver_story_for_official_races_uses_country_only():
 
 def test_featured_driver_country_normalizes_codes_and_iracing_clubs():
     assert build_featured_driver_country({"country": "USA"}) == "United States"
+    assert build_featured_driver_country({"flair_name": "United States"}) == "United States"
+    assert build_featured_driver_country({"FlairName": "Brazil"}) == "Brazil"
     assert build_featured_driver_country({"flair_country_code": "US"}) == "United States"
     assert build_featured_driver_country({"ClubName": "Ohio"}) == "Ohio, United States"
     assert build_featured_driver_country({"club": "Ontario"}) == "Ontario, Canada"

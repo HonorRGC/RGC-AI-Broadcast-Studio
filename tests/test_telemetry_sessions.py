@@ -256,6 +256,8 @@ def test_live_driver_lookup_exposes_paint_matching_fields():
                     "Country": "USA",
                     "CountryCode": "US",
                     "CountryName": "United States",
+                    "FlairID": 223,
+                    "FlairName": "United States",
                     "ClubID": 34,
                     "ClubName": "Ohio",
                     "DivisionName": "Division 2",
@@ -276,6 +278,8 @@ def test_live_driver_lookup_exposes_paint_matching_fields():
     assert driver["country"] == "USA"
     assert driver["country_code"] == "US"
     assert driver["country_name"] == "United States"
+    assert driver["flair_id"] == 223
+    assert driver["flair_name"] == "United States"
     assert driver["club_id"] == 34
     assert driver["club_name"] == "Ohio"
     assert driver["club"] == "Ohio"

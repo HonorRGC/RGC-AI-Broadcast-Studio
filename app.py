@@ -2751,8 +2751,12 @@ def build_featured_driver_country(driver):
         "CountryName",
         "country_code",
         "CountryCode",
+        "flair_name",
+        "FlairName",
         "flair_country_code",
         "flairCountryCode",
+        "flair",
+        "Flair",
         "club_country",
         "ClubCountry",
     ):
