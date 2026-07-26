@@ -23,7 +23,7 @@ For the full step-by-step install, OpenAI, ElevenLabs, overlay, and profile setu
 If the broadcaster sends you a file named like this, use it first:
 
 ```text
-RGC-AI-Broadcast-Studio-Setup-0.19.0.exe
+RGC-AI-Broadcast-Studio-Setup-1.0.0.exe
 ```
 
 Run the setup file, then open `RGC AI Broadcast Studio` from the desktop shortcut.

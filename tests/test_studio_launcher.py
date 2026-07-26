@@ -872,6 +872,9 @@ def test_windows_installer_excludes_development_files():
     assert not should_include_for_installer("tests/test_overlay.py")
     assert not should_include_for_installer(".github/workflows/tests.yml")
     assert not should_include_for_installer("league/drivers.csv")
+    assert not should_include_for_installer("IDEAS.md")
+    assert not should_include_for_installer("ROADMAP.md")
+    assert not should_include_for_installer("docs/REMOTE_PRODUCER_RELAY.md")
 
 
 def test_project_version_reads_pyproject():

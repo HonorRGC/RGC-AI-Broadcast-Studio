@@ -1,6 +1,6 @@
 # Project State
 
-Current version: **v0.19.0 - v1.0 Release Prep**
+Current version: **v1.0.0 - First Public Release Candidate**
 
 ## Working foundation
 

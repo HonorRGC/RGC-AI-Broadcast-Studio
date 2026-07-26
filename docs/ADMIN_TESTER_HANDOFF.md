@@ -13,7 +13,7 @@ docs\INSTALL_AND_SETUP_GUIDE.md
 Preferred: send the Windows Setup.exe from the `dist` folder after building the installer:
 
 ```text
-dist\RGC-AI-Broadcast-Studio-Setup-0.19.0.exe
+dist\RGC-AI-Broadcast-Studio-Setup-1.0.0.exe
 ```
 
 Fallback: send the clean tester ZIP built from this repo.

@@ -27,6 +27,14 @@ INSTALLER_DEV_PARTS = {
     "tests",
 }
 
+INSTALLER_DEV_FILES = {
+    "IDEAS.md",
+    "ROADMAP.md",
+    "docs/ARCHITECTURE.md",
+    "docs/DEVELOPMENT_GUIDE.md",
+    "docs/REMOTE_PRODUCER_RELAY.md",
+}
+
 
 DEFAULT_INNO_PATHS = [
     Path("C:/Program Files (x86)/Inno Setup 7/ISCC.exe"),
@@ -69,6 +77,9 @@ def should_include_for_installer(path: str) -> bool:
     """Return whether a tracked file belongs in the Windows installer payload."""
 
     if not should_include(path):
+        return False
+    normalized = path.replace("\\", "/")
+    if normalized in INSTALLER_DEV_FILES:
         return False
     parts = Path(path).parts
     if any(part in INSTALLER_DEV_PARTS for part in parts):

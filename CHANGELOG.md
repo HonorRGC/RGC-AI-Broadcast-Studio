@@ -2,16 +2,18 @@
 
 ## Unreleased
 
-## Version 0.19.0 - v1.0 Release Prep
+## Version 1.0.0 - First Public Release Candidate
 
 ### Added
 - v1.0 readiness checklist for final release smoke testing and packaging
 - Release documentation now points testers toward the Windows Setup.exe path first
 - Cleaner race-control debug probe output with short duplicate-event cooldowns
+- Studio launcher, Producer Assist, overlay graphics, camera controls, replay controls, sponsor reads, music beds, Sim Racer Hub imports, race recaps, and Windows installer packaging
 
 ### Changed
 - Refreshed project-state notes to match the current Studio, overlay, camera, replay, music, Producer Assist, race-control, and league-profile features
 - Clarified the role of the tester ZIP versus the Windows installer for outside admins
+- Versioned the app as 1.0.0 for the first release candidate build
 
 ## Version 0.18.2 - Producer Assist Release Candidate
 

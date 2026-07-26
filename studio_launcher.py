@@ -1718,7 +1718,7 @@ def run_gui():
 
         if key == "REMOTE_PRODUCER_PIN":
             add_settings_hint(
-                "Future/advanced feature: a hosted relay could later create a normal browser link for distant admins. "
+                "Optional helper PIN label for trusted remote Producer Assist sessions. "
                 "For v1.0, use Tailscale with Remote Producer Assist Access set to 0.0.0.0."
             )
 
