@@ -134,6 +134,7 @@ class FeaturedDriver:
     driver_name: str = ""
     story: str = ""
     country: str = ""
+    flair_id: str = ""
     car_image_url: str = ""
     number_style: dict[str, str] = field(default_factory=dict)
     position: int = 0
@@ -150,6 +151,7 @@ class FeaturedDriver:
             "driver_name": self.driver_name,
             "story": self.story,
             "country": self.country,
+            "flair_id": self.flair_id,
             "car_image_url": self.car_image_url,
             "number_style": dict(self.number_style or {}),
             "position": self.position,
@@ -1067,6 +1069,7 @@ class OverlayServer:
         car_idx=-1,
         story="",
         country="",
+        flair_id="",
         duration=10.0,
         car_image_url="",
         position=0,
@@ -1091,6 +1094,7 @@ class OverlayServer:
                 driver_name=str(driver_name or ""),
                 story=str(story or ""),
                 country=str(country or ""),
+                flair_id=str(flair_id or ""),
                 car_image_url=proxied_iracing_render_url(car_image_url),
                 number_style=sanitize_driver_number_style(number_style),
                 position=self.state_builder.safe_int(position),
