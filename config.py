@@ -92,6 +92,11 @@ DISCORD_RACE_REPORT_WEBHOOK_URL = os.getenv("DISCORD_RACE_REPORT_WEBHOOK_URL", "
 DISCORD_RACE_REPORT_USE_OPENAI = os.getenv("DISCORD_RACE_REPORT_USE_OPENAI", "true").lower() == "true"
 DISCORD_RACE_REPORT_RESULTS_URL = os.getenv("DISCORD_RACE_REPORT_RESULTS_URL", "").strip()
 DISCORD_RACE_REPORT_CHAMPIONSHIP_URL = os.getenv("DISCORD_RACE_REPORT_CHAMPIONSHIP_URL", "").strip()
+SIMRACERHUB_SOURCE = os.getenv("SIMRACERHUB_SOURCE", "https://simracerhub.com").strip()
+SIMRACERHUB_RACE_SCHEDULE_CSV = os.getenv(
+    "SIMRACERHUB_RACE_SCHEDULE_CSV",
+    "league/race_schedule.csv",
+).strip()
 
 
 # Overlay graphics

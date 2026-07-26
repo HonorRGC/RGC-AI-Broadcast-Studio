@@ -1,6 +1,9 @@
+import csv
 import json
+import re
 import urllib.error
 import urllib.request
+from pathlib import Path
 
 from config import (
     DISCORD_RACE_REPORT_ENABLED,
@@ -10,6 +13,8 @@ from config import (
     DISCORD_RACE_REPORT_WEBHOOK_URL,
     OVERLAY_EVENT_TITLE,
     OVERLAY_SERIES_NAME,
+    SIMRACERHUB_RACE_SCHEDULE_CSV,
+    SIMRACERHUB_SOURCE,
 )
 
 
@@ -23,6 +28,8 @@ class DiscordRaceReporter:
         use_openai=DISCORD_RACE_REPORT_USE_OPENAI,
         results_url=DISCORD_RACE_REPORT_RESULTS_URL,
         championship_url=DISCORD_RACE_REPORT_CHAMPIONSHIP_URL,
+        sim_racer_hub_source=SIMRACERHUB_SOURCE,
+        race_schedule_csv=SIMRACERHUB_RACE_SCHEDULE_CSV,
         event_title=OVERLAY_EVENT_TITLE,
         series_name=OVERLAY_SERIES_NAME,
         opener=None,
@@ -32,6 +39,8 @@ class DiscordRaceReporter:
         self.use_openai = bool(use_openai)
         self.results_url = str(results_url or "").strip()
         self.championship_url = str(championship_url or "").strip()
+        self.sim_racer_hub_source = str(sim_racer_hub_source or "https://simracerhub.com").strip()
+        self.race_schedule_csv = str(race_schedule_csv or "").strip()
         self.event_title = str(event_title or "RGC AI Broadcast").strip()
         self.series_name = str(series_name or "").strip()
         self.opener = opener or urllib.request.urlopen
@@ -109,7 +118,7 @@ class DiscordRaceReporter:
             fields.append({"name": "Biggest Movers", "value": movers, "inline": False})
         if stats:
             fields.append({"name": "Race Stats", "value": stats, "inline": False})
-        links = self.format_result_links()
+        links = self.format_result_links(track_name)
         if links:
             fields.append({"name": "Official Links", "value": links, "inline": False})
 
@@ -128,13 +137,86 @@ class DiscordRaceReporter:
             ],
         }
 
-    def format_result_links(self):
+    def format_result_links(self, track_name=""):
         links = []
-        if self.results_url:
-            links.append(f"[Race results]({self.results_url})")
+        results_url = self.results_url or self.resolve_scheduled_results_url(track_name)
+        if results_url:
+            links.append(f"[Race results]({results_url})")
         if self.championship_url:
             links.append(f"[Championship standings]({self.championship_url})")
         return "\n".join(links)
+
+    def resolve_scheduled_results_url(self, track_name=""):
+        match = self.scheduled_race_for_track(track_name)
+        if not match:
+            return ""
+        if match.get("results_url"):
+            return match["results_url"]
+        schedule_id = match.get("schedule_id") or match.get("race_id")
+        if not schedule_id:
+            return ""
+        return self.sim_racer_hub_race_url(schedule_id)
+
+    def scheduled_race_for_track(self, track_name=""):
+        path = self.resolve_schedule_path(self.race_schedule_csv)
+        if not path or not path.exists():
+            return {}
+        wanted = self.normalize_track_name(track_name)
+        if not wanted:
+            return {}
+        try:
+            with path.open("r", encoding="utf-8-sig", newline="") as handle:
+                for row in csv.DictReader(handle):
+                    row_track = (
+                        row.get("track_name")
+                        or row.get("track")
+                        or row.get("track_display_name")
+                        or ""
+                    )
+                    if self.tracks_match(wanted, row_track):
+                        return {
+                            "track_name": row_track,
+                            "schedule_id": str(row.get("schedule_id") or "").strip(),
+                            "race_id": str(row.get("race_id") or "").strip(),
+                            "results_url": str(row.get("results_url") or "").strip(),
+                        }
+        except Exception:
+            return {}
+        return {}
+
+    def sim_racer_hub_race_url(self, schedule_id):
+        base = (self.sim_racer_hub_source or "https://simracerhub.com").rstrip("/")
+        return f"{base}/scoring/season_race.php?schedule_id={schedule_id}"
+
+    @staticmethod
+    def resolve_schedule_path(path):
+        text = str(path or "").strip()
+        if not text:
+            return None
+        candidate = Path(text)
+        if candidate.is_absolute():
+            return candidate
+        return Path.cwd() / candidate
+
+    @classmethod
+    def tracks_match(cls, wanted_normalized, row_track):
+        candidate = cls.normalize_track_name(row_track)
+        if not wanted_normalized or not candidate:
+            return False
+        return wanted_normalized == candidate or wanted_normalized in candidate or candidate in wanted_normalized
+
+    @staticmethod
+    def normalize_track_name(track_name):
+        text = str(track_name or "").lower()
+        text = text.replace("&", " and ")
+        text = re.sub(
+            r"\b(international speedway|motor speedway|motorsports park|"
+            r"superspeedway|speedway|raceway|oval|road course)\b",
+            " ",
+            text,
+        )
+        text = re.sub(r"[^a-z0-9]+", " ", text)
+        return " ".join(text.split())
 
     def ai_breakdown(
         self,

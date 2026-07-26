@@ -244,6 +244,22 @@ Use:
 
 The driver import is designed to preserve manual notes. That means you can add hometown, sponsor, team, driving style, or other notes later without the import wiping them out.
 
+For automatic post-race Discord results links, fill out the **Race Schedule CSV** for the profile. The default file is:
+
+```text
+league/race_schedule.csv
+```
+
+Use one row per race:
+
+```csv
+track_name,schedule_id,results_url,notes
+Michigan International Speedway,356761,,Race 1
+Homestead Miami Speedway,356762,,Race 2
+```
+
+If `results_url` is blank, the Studio builds the Sim Racer Hub race-results link from `schedule_id`. If `Race Results Link` is filled in under Discord Race Report, that manual link wins for that event.
+
 ## 10. Set up event sponsors
 
 In **Broadcast Settings**, use the **Event Sponsors / Overlay Links** section.
@@ -323,11 +339,11 @@ Optional Discord race report:
    Discord Race Report = true
    Race Report Webhook URL = your Discord webhook URL
    Use OpenAI Race Recap = true
-   Race Results Link = optional Sim Racer Hub race-results URL
+   Race Results Link = optional manual Sim Racer Hub race-results URL
    Championship Standings Link = optional league standings URL
    ```
 
-After the race, the Studio waits for the finishing order to stabilize, then posts a Discord recap with a short race breakdown, the top ten, biggest movers, available race stats, and any official results/championship links you added. The Discord interview bot fields are separate and can stay blank for now.
+After the race, the Studio waits for the finishing order to stabilize, then posts a Discord recap with a short race breakdown, the top ten, biggest movers, available race stats, and any official results/championship links you added. If the manual Race Results Link is blank, the Studio can use the Race Schedule CSV to find the matching Sim Racer Hub race link automatically. The Discord interview bot fields are separate and can stay blank for now.
 
 ## 12. Remote Producer Assist with Tailscale
 

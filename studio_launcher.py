@@ -70,6 +70,13 @@ DRIVER_PROFILE_FIELDS = [
     "car_image",
 ]
 
+RACE_SCHEDULE_FIELDS = [
+    "track_name",
+    "schedule_id",
+    "results_url",
+    "notes",
+]
+
 LAUNCHER_FIELDS = [
     ("USE_OPENAI", "true"),
     ("OPENAI_API_KEY", ""),
@@ -134,6 +141,7 @@ SIM_RACER_HUB_FIELDS = [
     ("SIMRACERHUB_SEASON_ID", ""),
     ("SIMRACERHUB_TRACK_NAME", ""),
     ("SIMRACERHUB_MIN_STARTS", "2"),
+    ("SIMRACERHUB_RACE_SCHEDULE_CSV", "league/race_schedule.csv"),
     ("SIMRACERHUB_SEASON_STATS_OUTPUT", "league/season.csv"),
     ("SIMRACERHUB_CAREER_STATS_OUTPUT", "league/career.csv"),
     ("SIMRACERHUB_DRIVERS_OUTPUT", "league/drivers.csv"),
@@ -571,11 +579,17 @@ def league_folder_slug(name):
 def league_csv_paths_for_profile(profile_name):
     slug = league_folder_slug(profile_name)
     if not slug:
-        return ("league/drivers.csv", "league/season.csv", "league/career.csv")
+        return (
+            "league/drivers.csv",
+            "league/season.csv",
+            "league/career.csv",
+            "league/race_schedule.csv",
+        )
     return (
         f"league/{slug}/drivers.csv",
         f"league/{slug}/season.csv",
         f"league/{slug}/career.csv",
+        f"league/{slug}/race_schedule.csv",
     )
 
 
@@ -584,6 +598,17 @@ def ensure_empty_driver_profile_csv(csv_path):
     if path.exists():
         return path
     return save_driver_profile_rows(path, [])
+
+
+def ensure_empty_race_schedule_csv(csv_path):
+    path = Path(csv_path)
+    if path.exists():
+        return path
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", newline="", encoding="utf-8") as csv_file:
+        writer = csv.DictWriter(csv_file, fieldnames=RACE_SCHEDULE_FIELDS)
+        writer.writeheader()
+    return path
 
 
 def build_health_status(values, root=ROOT, broadcast_running=False):
@@ -2278,7 +2303,8 @@ def build_league_tab(
     intro = (
         "Import league stats from Sim Racer Hub. You can use the clean URL "
         "https://simracerhub.com with League, Series, and Season IDs. "
-        "Track history is optional and only helps pre-load driver stats for an upcoming track."
+        "Track history is optional and only helps pre-load driver stats for an upcoming track. "
+        "Race Schedule CSV maps each track to its Sim Racer Hub race ID so Discord post-race reports can add the correct results link automatically."
     )
     label(parent, text=intro, anchor="w", justify="left", wraplength=900, bg=PANEL_BG, fg=MUTED_FG).pack(
         fill="x",
@@ -2296,6 +2322,10 @@ def build_league_tab(
         "SIMRACERHUB_SEASON_ID": existing.get("SIMRACERHUB_SEASON_ID", ""),
         "SIMRACERHUB_TRACK_NAME": existing.get("SIMRACERHUB_TRACK_NAME", ""),
         "SIMRACERHUB_MIN_STARTS": existing.get("SIMRACERHUB_MIN_STARTS", "2"),
+        "SIMRACERHUB_RACE_SCHEDULE_CSV": existing.get(
+            "SIMRACERHUB_RACE_SCHEDULE_CSV",
+            "league/race_schedule.csv",
+        ),
         "SIMRACERHUB_SEASON_STATS_OUTPUT": existing.get(
             "SIMRACERHUB_SEASON_STATS_OUTPUT",
             "league/season.csv",
@@ -2314,6 +2344,7 @@ def build_league_tab(
         ("Season ID", "SIMRACERHUB_SEASON_ID"),
         ("Track History Filter", "SIMRACERHUB_TRACK_NAME"),
         ("Minimum Starts", "SIMRACERHUB_MIN_STARTS"),
+        ("Race Schedule CSV", "SIMRACERHUB_RACE_SCHEDULE_CSV"),
         ("Season Stats CSV", "SIMRACERHUB_SEASON_STATS_OUTPUT"),
         ("Career Stats CSV", "SIMRACERHUB_CAREER_STATS_OUTPUT"),
         ("Drivers Output CSV", "SIMRACERHUB_DRIVERS_OUTPUT"),
@@ -2520,7 +2551,7 @@ def build_league_tab(
         entry_widget.delete(0, "end")
         entry_widget.insert(0, value)
 
-    def set_driver_csv_value(driver_csv, season_stats_csv="", career_stats_csv=""):
+    def set_driver_csv_value(driver_csv, season_stats_csv="", career_stats_csv="", race_schedule_csv=""):
         driver_csv = str(driver_csv or "league/drivers.csv").strip()
         driver_csv_var.set(driver_csv)
         if "LEAGUE_DRIVERS_CSV" in settings_entries:
@@ -2537,6 +2568,8 @@ def build_league_tab(
                 set_entry_value(settings_entries["LEAGUE_CAREER_STATS_CSV"], career_stats_csv)
             if "SIMRACERHUB_CAREER_STATS_OUTPUT" in entries:
                 set_entry_value(entries["SIMRACERHUB_CAREER_STATS_OUTPUT"], career_stats_csv)
+        if race_schedule_csv and "SIMRACERHUB_RACE_SCHEDULE_CSV" in entries:
+            set_entry_value(entries["SIMRACERHUB_RACE_SCHEDULE_CSV"], race_schedule_csv)
 
     def sync_driver_csv_from_settings(values):
         set_driver_csv_value(
@@ -2549,6 +2582,7 @@ def build_league_tab(
             values.get("LEAGUE_CAREER_STATS_CSV")
             or values.get("SIMRACERHUB_CAREER_STATS_OUTPUT")
             or "",
+            values.get("SIMRACERHUB_RACE_SCHEDULE_CSV") or "",
         )
         load_driver_profiles()
 
@@ -2645,8 +2679,9 @@ def build_league_tab(
         if not profile_name:
             messagebox.showerror("Missing profile", "Enter or select a profile name first.")
             return
-        drivers_csv, season_stats_csv, career_stats_csv = league_csv_paths_for_profile(profile_name)
+        drivers_csv, season_stats_csv, career_stats_csv, race_schedule_csv = league_csv_paths_for_profile(profile_name)
         ensure_empty_driver_profile_csv(resolve_project_path(drivers_csv, ROOT))
+        ensure_empty_race_schedule_csv(resolve_project_path(race_schedule_csv, ROOT))
         stats_header = (
             "name,car_number,stats_scope,starts,wins,top_fives,top_tens,poles,"
             "avg_finish,last_finish,points_position,points_to_next,"
@@ -2657,10 +2692,10 @@ def build_league_tab(
             stats_path.parent.mkdir(parents=True, exist_ok=True)
             if not stats_path.exists():
                 stats_path.write_text(stats_header, encoding="utf-8")
-        set_driver_csv_value(drivers_csv, season_stats_csv, career_stats_csv)
+        set_driver_csv_value(drivers_csv, season_stats_csv, career_stats_csv, race_schedule_csv)
         load_driver_profiles()
         status.set(
-            f"Created/selected league CSVs for {profile_name}: drivers, season, and career."
+            f"Created/selected league CSVs for {profile_name}: drivers, season, career, and race schedule."
         )
 
     def save_driver_profiles():
@@ -2998,6 +3033,8 @@ def build_help_tab(
         For official race testing, league files are optional. For league races, use the League / Sim Racer Hub tab.
         A clean Sim Racer Hub URL can be https://simracerhub.com, then fill in League ID, Series ID, and Season ID.
         Preview imports first. Driver imports preserve manual notes like hometown, sponsor, team, and driving style.
+        Race Schedule CSV can map track_name to schedule_id for every race in the season. If Discord Race Results Link is blank,
+        the post-race Discord report uses the current iRacing track to pick the matching Sim Racer Hub race link automatically.
         """,
     )
     section(

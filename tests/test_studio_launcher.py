@@ -41,6 +41,7 @@ from studio_launcher import (
     running_broadcast_pids,
     save_env_file,
     ensure_empty_driver_profile_csv,
+    ensure_empty_race_schedule_csv,
     save_profile,
     sanitize_asset_name,
     sanitize_video_asset_name,
@@ -244,6 +245,7 @@ def test_launcher_defaults_include_split_league_stats_csvs():
     assert defaults["SIMRACERHUB_LEAGUE_ID"] == ""
     assert defaults["SIMRACERHUB_SERIES_ID"] == ""
     assert defaults["SIMRACERHUB_SEASON_ID"] == ""
+    assert defaults["SIMRACERHUB_RACE_SCHEDULE_CSV"] == "league/race_schedule.csv"
 
 
 def test_launcher_defaults_migrate_old_anthem_audio_to_qualifying_music():
@@ -489,11 +491,13 @@ def test_launcher_builds_profile_specific_league_csv_paths():
         "league/DSR_Electric_Series/drivers.csv",
         "league/DSR_Electric_Series/season.csv",
         "league/DSR_Electric_Series/career.csv",
+        "league/DSR_Electric_Series/race_schedule.csv",
     )
     assert league_csv_paths_for_profile("") == (
         "league/drivers.csv",
         "league/season.csv",
         "league/career.csv",
+        "league/race_schedule.csv",
     )
 
 
@@ -784,6 +788,15 @@ def test_studio_can_create_empty_driver_profile_csv(tmp_path):
     assert path.read_text(encoding="utf-8").splitlines()[0].endswith(",car_image")
 
 
+def test_studio_can_create_empty_race_schedule_csv(tmp_path):
+    path = tmp_path / "league" / "DSR_Electric_Series" / "race_schedule.csv"
+
+    ensure_empty_race_schedule_csv(path)
+
+    assert path.exists()
+    assert path.read_text(encoding="utf-8").splitlines()[0] == "track_name,schedule_id,results_url,notes"
+
+
 def test_tester_zip_excludes_private_local_files():
     assert should_include("README.md")
     assert should_include("install_studio.bat")
@@ -792,6 +805,7 @@ def test_tester_zip_excludes_private_local_files():
 
     assert not should_include(".env")
     assert not should_include("league/drivers.csv")
+    assert not should_include("league/race_schedule.csv")
     assert not should_include("profiles/WFO_Truck.env")
     assert not should_include(".venv/Scripts/python.exe")
     assert not should_include("recordings/test.mp4")
