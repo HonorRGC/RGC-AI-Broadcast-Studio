@@ -172,6 +172,17 @@ def test_studio_mousewheel_scrolls_from_full_window():
     assert 'content.bind("<Enter>", enable_mousewheel)' not in source
 
 
+def test_studio_comboboxes_ignore_mousewheel_selection_changes():
+    source = Path("studio_launcher.py").read_text(encoding="utf-8")
+
+    assert "def disable_combobox_mousewheel(widget):" in source
+    assert 'widget.bind("<MouseWheel>", lambda _event: "break")' in source
+    assert 'widget.bind("<Button-4>", lambda _event: "break")' in source
+    assert 'widget.bind("<Button-5>", lambda _event: "break")' in source
+    assert "disable_combobox_mousewheel(profile_combo)" in source
+    assert "disable_combobox_mousewheel(entry_widget)" in source
+
+
 def test_launcher_version_comparison_helpers():
     assert version_parts("v1.2.3") == (1, 2, 3)
     assert version_parts("0.19.0-beta") == (0, 19, 0)

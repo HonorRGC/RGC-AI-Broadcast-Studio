@@ -1403,6 +1403,11 @@ def run_gui():
         scrollbar.pack(side="right", fill="y")
         return content
 
+    def disable_combobox_mousewheel(widget):
+        widget.bind("<MouseWheel>", lambda _event: "break")
+        widget.bind("<Button-4>", lambda _event: "break")
+        widget.bind("<Button-5>", lambda _event: "break")
+
     header_bar = frame(root)
     header_bar.pack(fill="x", padx=18, pady=(10, 6))
     header_text = frame(header_bar)
@@ -1467,6 +1472,7 @@ def run_gui():
         values=list_profiles(),
         width=28,
     )
+    disable_combobox_mousewheel(profile_combo)
     profile_combo.pack(side="left", padx=4, pady=8)
     button(
         profile_bar,
@@ -1687,6 +1693,8 @@ def run_gui():
         else:
             entry_widget = entry(settings_frame, width=72)
             entry_widget.insert(0, existing.get(key, ""))
+        if isinstance(entry_widget, ttk.Combobox):
+            disable_combobox_mousewheel(entry_widget)
         entry_widget.grid(row=settings_grid_row, column=1, sticky="ew", pady=3)
         entries[key] = entry_widget
         settings_grid_row += 1
