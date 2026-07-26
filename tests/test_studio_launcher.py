@@ -164,6 +164,16 @@ def test_start_broadcast_auto_opens_producer_assist():
     assert "trusted admins on your Tailscale network" in source
 
 
+def test_studio_mousewheel_scrolls_from_full_window():
+    source = Path("studio_launcher.py").read_text(encoding="utf-8")
+
+    assert 'root.bind_all("<MouseWheel>", on_mousewheel)' in source
+    assert 'root.bind_all("<Button-4>", on_linux_scroll_up)' in source
+    assert 'root.bind_all("<Button-5>", on_linux_scroll_down)' in source
+    assert 'event.widget.winfo_toplevel() != root' in source
+    assert 'content.bind("<Enter>", enable_mousewheel)' not in source
+
+
 def test_launcher_version_comparison_helpers():
     assert version_parts("v1.2.3") == (1, 2, 3)
     assert version_parts("0.19.0-beta") == (0, 19, 0)

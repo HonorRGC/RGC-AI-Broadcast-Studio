@@ -1348,20 +1348,25 @@ def run_gui():
         def resize_content(event):
             canvas.itemconfigure(window_id, width=event.width)
 
-        def enable_mousewheel(_event=None):
-            canvas.bind_all("<MouseWheel>", on_mousewheel)
-
-        def disable_mousewheel(_event=None):
-            canvas.unbind_all("<MouseWheel>")
-
         def on_mousewheel(event):
+            if event.widget.winfo_toplevel() != root:
+                return
             delta = int(-1 * (event.delta / 120))
             canvas.yview_scroll(delta, "units")
 
+        def on_linux_scroll_up(event):
+            if event.widget.winfo_toplevel() == root:
+                canvas.yview_scroll(-1, "units")
+
+        def on_linux_scroll_down(event):
+            if event.widget.winfo_toplevel() == root:
+                canvas.yview_scroll(1, "units")
+
         content.bind("<Configure>", update_scroll_region)
         canvas.bind("<Configure>", resize_content)
-        content.bind("<Enter>", enable_mousewheel)
-        content.bind("<Leave>", disable_mousewheel)
+        root.bind_all("<MouseWheel>", on_mousewheel)
+        root.bind_all("<Button-4>", on_linux_scroll_up)
+        root.bind_all("<Button-5>", on_linux_scroll_down)
         canvas.configure(yscrollcommand=scrollbar.set)
 
         canvas.pack(side="left", fill="both", expand=True)
