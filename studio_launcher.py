@@ -2357,8 +2357,8 @@ def build_league_tab(
         ("League ID", "SIMRACERHUB_LEAGUE_ID"),
         ("Series ID", "SIMRACERHUB_SERIES_ID"),
         ("Season ID", "SIMRACERHUB_SEASON_ID"),
-        ("Minimum Starts", "SIMRACERHUB_MIN_STARTS"),
         ("First Race Schedule ID", "SIMRACERHUB_FIRST_SCHEDULE_ID"),
+        ("Minimum Starts", "SIMRACERHUB_MIN_STARTS"),
         ("Race Schedule CSV", "SIMRACERHUB_RACE_SCHEDULE_CSV"),
         ("Season Stats CSV", "SIMRACERHUB_SEASON_STATS_OUTPUT"),
         ("Career Stats CSV", "SIMRACERHUB_CAREER_STATS_OUTPUT"),
@@ -2393,6 +2393,12 @@ def build_league_tab(
         selectcolor=FIELD_BG,
     ).grid(row=len(rows), column=1, sticky="w", pady=(4, 8))
 
+    buttons = frame(parent, bg=PANEL_BG)
+    buttons.pack(fill="x", padx=14, pady=(8, 4))
+
+    def values():
+        return {key: entry.get().strip() for key, entry in entries.items()}
+
     output_box = tk.Text(
         parent,
         height=18,
@@ -2404,10 +2410,6 @@ def build_league_tab(
         highlightthickness=1,
         highlightbackground="#26384c",
     )
-    output_box.pack(fill="both", expand=True, padx=14, pady=(8, 0))
-
-    def values():
-        return {key: entry.get().strip() for key, entry in entries.items()}
 
     def set_output(text):
         output_box.delete("1.0", "end")
@@ -2471,8 +2473,6 @@ def build_league_tab(
         else:
             status.set("Sim Racer Hub import failed. Check the output panel.")
 
-    buttons = frame(parent, bg=PANEL_BG)
-    buttons.pack(fill="x", padx=14, pady=10)
     button(buttons, text="Preview Stats", command=lambda: run_import(True), color="#334b64").pack(
         side="left",
         padx=4,
@@ -2504,6 +2504,7 @@ def build_league_tab(
         bg=PANEL_BG,
         fg=MUTED_FG,
     ).pack(side="left", padx=12)
+    output_box.pack(fill="both", expand=True, padx=14, pady=(8, 0))
 
     editor_panel = frame(parent, bg="#0b1520")
     editor_panel.pack(fill="both", expand=True, padx=14, pady=(4, 14))
