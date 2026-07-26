@@ -254,6 +254,12 @@ def test_live_driver_lookup_exposes_paint_matching_fields():
                     "CarScreenName": "NASCAR Truck",
                     "CarScreenNameShort": "Truck",
                     "Country": "USA",
+                    "CountryCode": "US",
+                    "CountryName": "United States",
+                    "ClubID": 34,
+                    "ClubName": "Ohio",
+                    "DivisionName": "Division 2",
+                    "LicString": "A 4.99",
                 }
             ]
         }
@@ -267,3 +273,11 @@ def test_live_driver_lookup_exposes_paint_matching_fields():
     assert driver["car_path"] == "stockcars/truck"
     assert driver["car_id"] == 123
     assert driver["car_class_id"] == 456
+    assert driver["country"] == "USA"
+    assert driver["country_code"] == "US"
+    assert driver["country_name"] == "United States"
+    assert driver["club_id"] == 34
+    assert driver["club_name"] == "Ohio"
+    assert driver["club"] == "Ohio"
+    assert driver["division_name"] == "Division 2"
+    assert driver["license"] == "A 4.99"

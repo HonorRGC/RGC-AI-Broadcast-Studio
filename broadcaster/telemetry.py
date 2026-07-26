@@ -326,7 +326,13 @@ class IRacingTelemetry:
                 "car_screen_name": driver.get("CarScreenName", ""),
                 "car_screen_name_short": driver.get("CarScreenNameShort", ""),
                 "country": driver.get("Country", ""),
+                "country_code": driver.get("CountryCode", ""),
+                "country_name": driver.get("CountryName", ""),
+                "club_id": driver.get("ClubID", ""),
+                "club_name": driver.get("ClubName", ""),
                 "club": driver.get("ClubName", ""),
+                "division_name": driver.get("DivisionName", ""),
+                "license": driver.get("LicString", ""),
                 "team_name": driver.get("TeamName", ""),
                 "sponsor": driver.get("CarSponsor_1", "")
                 or driver.get("CarSponsor1", ""),
