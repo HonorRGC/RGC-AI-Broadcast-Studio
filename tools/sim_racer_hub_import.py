@@ -41,6 +41,13 @@ DRIVER_FIELDS = [
     "car_image",
 ]
 
+SCHEDULE_FIELDS = [
+    "track_name",
+    "schedule_id",
+    "results_url",
+    "notes",
+]
+
 
 def fetch_url(url):
     request = Request(
@@ -56,9 +63,13 @@ def fetch_url(url):
         return response.read().decode("utf-8", errors="replace")
 
 
-def load_source(source, series_id="", season_id=""):
+def load_source(source, series_id="", season_id="", schedule_mode=False):
     if source.startswith("http://") or source.startswith("https://"):
-        source = normalize_sim_racer_hub_source(source, series_id=series_id, season_id=season_id)
+        source = (
+            normalize_sim_racer_hub_schedule_source(source, series_id=series_id, season_id=season_id)
+            if schedule_mode
+            else normalize_sim_racer_hub_source(source, series_id=series_id, season_id=season_id)
+        )
         return fetch_url(source)
     return Path(source).read_text(encoding="utf-8")
 
@@ -86,6 +97,35 @@ def normalize_sim_racer_hub_source(source, series_id="", season_id=""):
     return urlunparse(
         parsed._replace(
             path="/league_stats.php",
+            query=urlencode(replacement_query),
+        )
+    )
+
+
+def normalize_sim_racer_hub_schedule_source(source, series_id="", season_id=""):
+    parsed = urlparse(source)
+    if not parsed.netloc.endswith("simracerhub.com"):
+        return source
+
+    query = parse_qs(parsed.query)
+    selected_series_id = query.get("series_id", [series_id])[0]
+    selected_season_id = query.get("season_id", [season_id])[0]
+    path = parsed.path or "/"
+    is_home_page = path in ("", "/")
+    is_stats_page = path.endswith("/league_stats.php") or path == "league_stats.php"
+    is_series_page = path.endswith("/series_seasons.php") or path == "series_seasons.php"
+    if not is_home_page and not is_stats_page and not is_series_page:
+        return source
+
+    replacement_query = {}
+    if selected_series_id:
+        replacement_query["series_id"] = selected_series_id
+    if selected_season_id:
+        replacement_query["season_id"] = selected_season_id
+
+    return urlunparse(
+        parsed._replace(
+            path="/series_seasons.php",
             query=urlencode(replacement_query),
         )
     )
@@ -301,6 +341,177 @@ def summarize_driver_roster(
     return sorted(rows, key=lambda row: normalize(row.get("name")))
 
 
+def summarize_race_schedule(
+    page_html,
+    league_id="",
+    series_id="",
+    season_id="",
+    source_url="https://simracerhub.com",
+):
+    configs = extract_json_object(page_html, "configs")
+    rows_by_key = {}
+
+    for race in schedule_records_from_json(page_html):
+        if league_id and str(race.get("league_id")) != str(league_id):
+            continue
+        if series_id and str(race.get("series_id")) != str(series_id):
+            continue
+        if season_id and str(race.get("season_id")) != str(season_id):
+            continue
+        row = schedule_row_from_record(race, configs, source_url)
+        add_schedule_row(rows_by_key, row)
+
+    for row in schedule_rows_from_links(page_html, source_url):
+        add_schedule_row(rows_by_key, row)
+
+    rows = list(rows_by_key.values())
+    rows.sort(key=schedule_sort_key)
+    return rows
+
+
+def schedule_records_from_json(page_html):
+    records = []
+    for key in ("schedules", "schedule", "races", "race_schedule", "events"):
+        value = extract_json_object(page_html, key)
+        if not value:
+            continue
+        records.extend(value.values() if isinstance(value, dict) else value)
+
+    race_participants = extract_json_object(page_html, "rps")
+    if race_participants:
+        grouped = {}
+        for race in race_participants.values():
+            schedule_id = schedule_id_from_record(race)
+            if not schedule_id:
+                continue
+            grouped.setdefault(schedule_id, race)
+        records.extend(grouped.values())
+
+    return [record for record in records if isinstance(record, dict)]
+
+
+def schedule_row_from_record(record, configs, source_url):
+    schedule_id = schedule_id_from_record(record)
+    track_name = track_name_from_record(record, configs)
+    results_url = str(
+        record.get("results_url")
+        or record.get("race_url")
+        or record.get("url")
+        or ""
+    ).strip()
+    if results_url and results_url.startswith("/"):
+        results_url = sim_racer_hub_race_url(source_url, schedule_id) if schedule_id else ""
+    notes = str(
+        record.get("race_name")
+        or record.get("event_name")
+        or record.get("race_date_str")
+        or record.get("race_date")
+        or ""
+    ).strip()
+    return {
+        "track_name": track_name,
+        "schedule_id": schedule_id,
+        "results_url": results_url,
+        "notes": notes,
+    }
+
+
+def schedule_rows_from_links(page_html, source_url):
+    rows = []
+    pattern = re.compile(
+        r"<a[^>]+href=[\"'](?P<href>[^\"']*season_race\.php\?schedule_id=(?P<id>\d+)[^\"']*)[\"'][^>]*>(?P<label>.*?)</a>",
+        re.IGNORECASE | re.DOTALL,
+    )
+    for match in pattern.finditer(page_html or ""):
+        label = html.unescape(strip_tags(match.group("label"))).strip()
+        rows.append(
+            {
+                "track_name": label,
+                "schedule_id": match.group("id"),
+                "results_url": absolute_sim_racer_hub_url(source_url, match.group("href")),
+                "notes": "",
+            }
+        )
+    return rows
+
+
+def add_schedule_row(rows_by_key, row):
+    row = {field: str((row or {}).get(field, "") or "").strip() for field in SCHEDULE_FIELDS}
+    if not row["schedule_id"] and not row["results_url"]:
+        return
+    if not row["track_name"]:
+        row["track_name"] = row["notes"] or f"Race {len(rows_by_key) + 1}"
+    key = row["schedule_id"] or row["results_url"]
+    existing = rows_by_key.get(key)
+    if existing:
+        for field in SCHEDULE_FIELDS:
+            if not existing.get(field) and row.get(field):
+                existing[field] = row[field]
+        return
+    rows_by_key[key] = row
+
+
+def schedule_id_from_record(record):
+    for key in ("schedule_id", "race_schedule_id", "season_race_id", "race_id", "id"):
+        value = str((record or {}).get(key) or "").strip()
+        if value:
+            return value
+    return ""
+
+
+def track_name_from_record(record, configs):
+    for key in (
+        "track_name",
+        "track_display_name",
+        "track_config_name",
+        "track_config_short",
+        "track",
+    ):
+        value = str((record or {}).get(key) or "").strip()
+        if value:
+            return value
+
+    config_id = str((record or {}).get("track_config_id") or "").strip()
+    config = configs.get(config_id, {}) if config_id else {}
+    for key in ("track_name", "track_config_name", "track_config_short", "type_name"):
+        value = str(config.get(key) or "").strip()
+        if value:
+            return value
+    return ""
+
+
+def schedule_sort_key(row):
+    notes = str((row or {}).get("notes") or "")
+    date_match = re.search(r"\d{4}-\d{2}-\d{2}", notes)
+    if date_match:
+        parsed = parse_iso_date(date_match.group(0))
+        if parsed:
+            return (parsed.toordinal(), normalize(row.get("track_name")))
+    return (int_or_zero((row or {}).get("schedule_id")), normalize(row.get("track_name")))
+
+
+def sim_racer_hub_race_url(source_url, schedule_id):
+    base = sim_racer_hub_base_url(source_url)
+    return f"{base}/scoring/season_race.php?schedule_id={schedule_id}"
+
+
+def absolute_sim_racer_hub_url(source_url, href):
+    href = str(href or "").strip()
+    if href.startswith("http://") or href.startswith("https://"):
+        return href
+    base = sim_racer_hub_base_url(source_url)
+    if href.startswith("/"):
+        return f"{base}{href}"
+    return f"{base}/scoring/{href}"
+
+
+def sim_racer_hub_base_url(source_url):
+    parsed = urlparse(str(source_url or "https://simracerhub.com"))
+    scheme = parsed.scheme or "https"
+    netloc = parsed.netloc or "simracerhub.com"
+    return f"{scheme}://{netloc}".rstrip("/")
+
+
 def summarize_races(
     races,
     driver_name="",
@@ -493,6 +704,15 @@ def merge_driver_roster(output_path, new_rows):
         writer.writerows(merged_by_name[key] for key in order)
 
 
+def write_race_schedule(output_path, rows):
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with output_path.open("w", newline="", encoding="utf-8") as csv_file:
+        writer = csv.DictWriter(csv_file, fieldnames=SCHEDULE_FIELDS)
+        writer.writeheader()
+        writer.writerows({field: row.get(field, "") for field in SCHEDULE_FIELDS} for row in rows)
+
+
 def count_finishes_at_or_better(values, threshold):
     return sum(1 for value in values if value <= threshold)
 
@@ -630,6 +850,16 @@ def build_parser():
         help="Import a driver roster CSV instead of stats.",
     )
     parser.add_argument(
+        "--schedule-only",
+        action="store_true",
+        help="Import a race schedule CSV instead of stats.",
+    )
+    parser.add_argument(
+        "--schedule-output",
+        default="league/race_schedule.csv",
+        help="Race schedule CSV to write when --schedule-only is used.",
+    )
+    parser.add_argument(
         "--drivers-output",
         default="league/drivers.csv",
         help="Driver roster CSV to update when --drivers-only is used.",
@@ -644,7 +874,33 @@ def build_parser():
 
 def main(argv=None):
     args = build_parser().parse_args(argv)
-    page_html = load_source(args.source, series_id=args.series_id, season_id=args.season_id)
+    page_html = load_source(
+        args.source,
+        series_id=args.series_id,
+        season_id=args.season_id,
+        schedule_mode=args.schedule_only,
+    )
+
+    if args.schedule_only:
+        rows = summarize_race_schedule(
+            page_html,
+            league_id=args.league_id,
+            series_id=args.series_id,
+            season_id=args.season_id,
+            source_url=normalize_sim_racer_hub_schedule_source(
+                args.source,
+                series_id=args.series_id,
+                season_id=args.season_id,
+            ),
+        )
+        if args.dry_run:
+            writer = csv.DictWriter(sys.stdout, fieldnames=SCHEDULE_FIELDS)
+            writer.writeheader()
+            writer.writerows(rows)
+            return 0
+        write_race_schedule(args.schedule_output, rows)
+        print(f"Imported {len(rows)} race schedule rows -> {args.schedule_output}")
+        return 0
 
     if args.bulk:
         if args.drivers_only:

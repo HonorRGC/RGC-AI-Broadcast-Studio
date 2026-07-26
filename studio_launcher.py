@@ -1141,9 +1141,11 @@ def sim_racer_hub_import_command(
     min_starts="1",
     output="league/season.csv",
     drivers_output="league/drivers.csv",
+    schedule_output="league/race_schedule.csv",
     career_mode=False,
     dry_run=False,
     drivers_only=False,
+    schedule_only=False,
 ):
     command = [
         sys.executable,
@@ -1166,6 +1168,9 @@ def sim_racer_hub_import_command(
     if drivers_only:
         command.append("--drivers-only")
         command.extend(["--drivers-output", str(drivers_output)])
+    if schedule_only:
+        command.append("--schedule-only")
+        command.extend(["--schedule-output", str(schedule_output)])
     if dry_run:
         command.append("--dry-run")
     return command
@@ -1180,9 +1185,11 @@ def run_sim_racer_hub_import(
     min_starts="1",
     output="league/season.csv",
     drivers_output="league/drivers.csv",
+    schedule_output="league/race_schedule.csv",
     career_mode=False,
     dry_run=False,
     drivers_only=False,
+    schedule_only=False,
 ):
     command = sim_racer_hub_import_command(
         source=source,
@@ -1193,9 +1200,11 @@ def run_sim_racer_hub_import(
         min_starts=min_starts,
         output=output,
         drivers_output=drivers_output,
+        schedule_output=schedule_output,
         career_mode=career_mode,
         dry_run=dry_run,
         drivers_only=drivers_only,
+        schedule_only=schedule_only,
     )
     return subprocess.run(
         command,
@@ -2398,10 +2407,13 @@ def build_league_tab(
         output_box.delete("1.0", "end")
         output_box.insert("1.0", text)
 
-    def run_import(dry_run, drivers_only=False):
+    def run_import(dry_run, drivers_only=False, schedule_only=False):
         data = values()
         if not data["SIMRACERHUB_SOURCE"]:
             messagebox.showerror("Missing URL", "Paste a Sim Racer Hub URL first.")
+            return
+        if schedule_only and not data["SIMRACERHUB_SEASON_ID"]:
+            messagebox.showerror("Missing Season ID", "Add a Season ID before importing the race schedule.")
             return
 
         stats_output = (
@@ -2418,9 +2430,11 @@ def build_league_tab(
             min_starts=data["SIMRACERHUB_MIN_STARTS"],
             output=stats_output,
             drivers_output=data["SIMRACERHUB_DRIVERS_OUTPUT"],
-            career_mode=career_mode.get(),
+            schedule_output=data["SIMRACERHUB_RACE_SCHEDULE_CSV"],
+            career_mode=False if schedule_only else career_mode.get(),
             dry_run=dry_run,
             drivers_only=drivers_only,
+            schedule_only=schedule_only,
         )
         combined_output = result.stdout
         if result.stderr:
@@ -2429,13 +2443,15 @@ def build_league_tab(
         if result.returncode == 0:
             action = "Previewed" if dry_run else "Imported"
             mode = "career" if career_mode.get() else "season"
-            if drivers_only:
+            if schedule_only:
+                target = data["SIMRACERHUB_RACE_SCHEDULE_CSV"] or "league/race_schedule.csv"
+            elif drivers_only:
                 target = data["SIMRACERHUB_DRIVERS_OUTPUT"] or "league/drivers.csv"
             else:
                 target = stats_output or (
                     "league/career.csv" if career_mode.get() else "league/season.csv"
                 )
-            data_type = "driver roster" if drivers_only else "stats"
+            data_type = "race schedule" if schedule_only else ("driver roster" if drivers_only else "stats")
             suffix = "" if dry_run else f" to {target}"
             status.set(f"{action} Sim Racer Hub {mode} {data_type}{suffix}.")
         else:
@@ -2456,6 +2472,14 @@ def build_league_tab(
         padx=4,
     )
     button(buttons, text="Import Driver Roster", command=lambda: run_import(False, True), color=GREEN).pack(
+        side="left",
+        padx=4,
+    )
+    button(buttons, text="Preview Schedule", command=lambda: run_import(True, False, True), color="#334b64").pack(
+        side="left",
+        padx=4,
+    )
+    button(buttons, text="Import Schedule", command=lambda: run_import(False, False, True), color=GREEN).pack(
         side="left",
         padx=4,
     )

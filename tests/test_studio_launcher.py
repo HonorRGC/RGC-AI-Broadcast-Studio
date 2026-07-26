@@ -741,6 +741,23 @@ def test_launcher_builds_sim_racer_hub_driver_roster_command():
     ]
 
 
+def test_launcher_builds_sim_racer_hub_schedule_command():
+    command = sim_racer_hub_import_command(
+        "https://simracerhub.com",
+        league_id="1598",
+        series_id="3872",
+        season_id="29247",
+        schedule_output="league/race_schedule.csv",
+        schedule_only=True,
+    )
+
+    assert "--schedule-only" in command
+    assert ["--schedule-output", "league/race_schedule.csv"] == command[
+        command.index("--schedule-output") : command.index("--schedule-output") + 2
+    ]
+    assert ["--season-id", "29247"] == command[command.index("--season-id") : command.index("--season-id") + 2]
+
+
 def test_studio_driver_profile_rows_round_trip(tmp_path):
     from studio_launcher import load_driver_profile_rows, save_driver_profile_rows
 

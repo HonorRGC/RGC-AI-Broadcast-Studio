@@ -6,10 +6,13 @@ from tools.sim_racer_hub_import import (
     merge_stats_row,
     merge_stats_rows,
     normalize_sim_racer_hub_source,
+    normalize_sim_racer_hub_schedule_source,
     resolve_track_ids,
+    summarize_race_schedule,
     summarize_bulk_driver_stats,
     summarize_driver_roster,
     summarize_driver_stats,
+    write_race_schedule,
 )
 
 
@@ -68,6 +71,25 @@ React.createElement(LeagueStats,{user: {"driver_id":0},league_id: 1598,series_id
 "257":{"track_config_id":"257","track_config_short":"Michigan","track_id":"105","track_name":"Michigan International Speedway","type_name":"Speedway"},
 "328":{"track_config_id":"328","track_config_short":"Nashville SS","track_id":"129","track_name":"Nashville Superspeedway","type_name":"Speedway"}
 },}));
+</script>
+</body>
+</html>
+"""
+
+
+SCHEDULE_HTML = """
+<html>
+<body>
+<script>
+ReactDOM.createRoot(document.getElementById('series_seasons')).render(
+React.createElement(SeriesSeasons,{series_id: 3872, seasons: {}, schedules: {
+"10":{"schedule_id":"356761","series_id":"3872","season_id":"29247","league_id":"1598","track_config_id":"257","race_date":"2026-07-01","race_name":"Race 1"},
+"11":{"schedule_id":"356762","series_id":"3872","season_id":"29247","league_id":"1598","track_config_id":"328","race_date":"2026-07-08","race_name":"Race 2"},
+"12":{"schedule_id":"999999","series_id":"3872","season_id":"29248","league_id":"1598","track_config_id":"257","race_date":"2026-08-01","race_name":"Wrong season"}
+}, configs: {
+"257":{"track_config_id":"257","track_config_short":"Michigan","track_id":"105","track_name":"Michigan International Speedway","type_name":"Speedway"},
+"328":{"track_config_id":"328","track_config_short":"Nashville SS","track_id":"129","track_name":"Nashville Superspeedway","type_name":"Speedway"}
+}}));
 </script>
 </body>
 </html>
@@ -343,6 +365,59 @@ def test_sim_racer_hub_home_url_uses_series_and_season_filters():
     )
 
     assert url == "https://simracerhub.com/league_stats.php?series_id=3872&season_id=29247"
+
+
+def test_sim_racer_hub_home_url_uses_series_seasons_for_schedule_import():
+    url = normalize_sim_racer_hub_schedule_source(
+        "https://simracerhub.com",
+        series_id="3872",
+        season_id="29247",
+    )
+
+    assert url == "https://simracerhub.com/series_seasons.php?series_id=3872&season_id=29247"
+
+
+def test_summarizes_sim_racer_hub_race_schedule_for_season():
+    rows = summarize_race_schedule(
+        SCHEDULE_HTML,
+        league_id="1598",
+        series_id="3872",
+        season_id="29247",
+        source_url="https://simracerhub.com",
+    )
+
+    assert rows == [
+        {
+            "track_name": "Michigan International Speedway",
+            "schedule_id": "356761",
+            "results_url": "",
+            "notes": "Race 1",
+        },
+        {
+            "track_name": "Nashville Superspeedway",
+            "schedule_id": "356762",
+            "results_url": "",
+            "notes": "Race 2",
+        },
+    ]
+
+
+def test_write_race_schedule_csv(tmp_path):
+    output = tmp_path / "race_schedule.csv"
+    rows = summarize_race_schedule(
+        SCHEDULE_HTML,
+        league_id="1598",
+        series_id="3872",
+        season_id="29247",
+    )
+
+    write_race_schedule(output, rows)
+
+    with output.open(newline="", encoding="utf-8") as csv_file:
+        imported = list(csv.DictReader(csv_file))
+
+    assert imported[0]["track_name"] == "Michigan International Speedway"
+    assert imported[0]["schedule_id"] == "356761"
 
 
 def test_clean_driver_name_removes_sim_racer_hub_duplicate_suffix():
