@@ -4776,9 +4776,70 @@ OVERLAY_HTML = r"""<!doctype html>
       return flag ? `${flag} ${country}` : country;
     }
 
+    function countryFlagFromNameOrCode(country) {
+      const normalized = String(country || "").toLowerCase().replace(/\./g, "").trim();
+      if (!normalized) return "";
+      const compactCode = normalized.replace(/[^a-z]/g, "").toUpperCase();
+      if (/^[A-Z]{2}$/.test(compactCode)) return flagEmojiFromCode(compactCode);
+      const byName = {
+        "argentina": "AR",
+        "australia": "AU",
+        "austria": "AT",
+        "belgium": "BE",
+        "brazil": "BR",
+        "canada": "CA",
+        "chile": "CL",
+        "china": "CN",
+        "colombia": "CO",
+        "czech republic": "CZ",
+        "czechia": "CZ",
+        "denmark": "DK",
+        "finland": "FI",
+        "france": "FR",
+        "germany": "DE",
+        "hungary": "HU",
+        "india": "IN",
+        "ireland": "IE",
+        "italy": "IT",
+        "japan": "JP",
+        "mexico": "MX",
+        "netherlands": "NL",
+        "new zealand": "NZ",
+        "norway": "NO",
+        "poland": "PL",
+        "portugal": "PT",
+        "south africa": "ZA",
+        "south korea": "KR",
+        "spain": "ES",
+        "sweden": "SE",
+        "switzerland": "CH",
+        "united kingdom": "GB",
+        "england": "GB",
+        "scotland": "GB",
+        "wales": "GB",
+        "united states": "US",
+        "united states of america": "US",
+        "usa": "US",
+        "us": "US",
+      };
+      const code = byName[normalized];
+      return code ? flagEmojiFromCode(code) : "";
+    }
+
+    function flagEmojiFromCode(code) {
+      const clean = String(code || "").trim().toUpperCase();
+      if (!/^[A-Z]{2}$/.test(clean)) return "";
+      return String.fromCodePoint(
+        0x1F1E6 + clean.charCodeAt(0) - 65,
+        0x1F1E6 + clean.charCodeAt(1) - 65
+      );
+    }
+
     function countryFlag(country) {
       const normalized = String(country || "").toLowerCase().replace(/\./g, "").trim();
       if (!normalized) return "";
+      const mappedFlag = countryFlagFromNameOrCode(normalized);
+      if (mappedFlag) return mappedFlag;
       if (normalized.includes("united states") || /\busa?\b/.test(normalized)) return "🇺🇸";
       if (normalized.includes("canada")) return "🇨🇦";
       if (normalized.includes("united kingdom") || normalized.includes("england") || normalized.includes("scotland") || normalized.includes("wales")) return "🇬🇧";
