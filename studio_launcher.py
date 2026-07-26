@@ -2418,8 +2418,15 @@ def build_league_tab(
         if not data["SIMRACERHUB_SOURCE"]:
             messagebox.showerror("Missing URL", "Paste a Sim Racer Hub URL first.")
             return
-        if schedule_only and not data["SIMRACERHUB_SEASON_ID"]:
-            messagebox.showerror("Missing Season ID", "Add a Season ID before importing the race schedule.")
+        if (
+            schedule_only
+            and not data["SIMRACERHUB_SEASON_ID"]
+            and "season_id=" not in data["SIMRACERHUB_SOURCE"]
+        ):
+            messagebox.showerror(
+                "Missing Season ID",
+                "Add a Season ID or paste a Sim Racer Hub URL that includes season_id before importing the race schedule.",
+            )
             return
 
         stats_output = (

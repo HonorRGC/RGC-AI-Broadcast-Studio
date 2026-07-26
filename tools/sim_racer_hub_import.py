@@ -131,6 +131,13 @@ def normalize_sim_racer_hub_schedule_source(source, series_id="", season_id=""):
     )
 
 
+def sim_racer_hub_query_value(source, key):
+    parsed = urlparse(str(source or ""))
+    if not parsed.netloc.endswith("simracerhub.com"):
+        return ""
+    return parse_qs(parsed.query).get(key, [""])[0]
+
+
 def extract_driver_name(page_html):
     match = re.search(r"<h1[^>]*>(.*?)</h1>", page_html, re.IGNORECASE | re.DOTALL)
     if not match:
@@ -968,10 +975,15 @@ def build_parser():
 
 def main(argv=None):
     args = build_parser().parse_args(argv)
+    effective_season_id = args.season_id or sim_racer_hub_query_value(args.source, "season_id")
+    effective_first_schedule_id = (
+        args.first_schedule_id
+        or sim_racer_hub_query_value(args.source, "schedule_id")
+    )
     page_html = load_source(
         args.source,
         series_id=args.series_id,
-        season_id=args.season_id,
+        season_id=effective_season_id,
         schedule_mode=args.schedule_only,
     )
 
@@ -980,28 +992,28 @@ def main(argv=None):
             page_html,
             league_id=args.league_id,
             series_id=args.series_id,
-            season_id=args.season_id,
+            season_id=effective_season_id,
             source_url=normalize_sim_racer_hub_schedule_source(
                 args.source,
                 series_id=args.series_id,
-                season_id=args.season_id,
+                season_id=effective_season_id,
             ),
-            first_schedule_id=args.first_schedule_id,
+            first_schedule_id=effective_first_schedule_id,
         )
-        if not rows and args.first_schedule_id and args.source.startswith(("http://", "https://")):
+        if not rows and effective_first_schedule_id and args.source.startswith(("http://", "https://")):
             fallback_source = normalize_sim_racer_hub_source(
                 args.source,
                 series_id=args.series_id,
-                season_id=args.season_id,
+                season_id=effective_season_id,
             )
             fallback_html = fetch_url(fallback_source)
             rows = summarize_race_schedule(
                 fallback_html,
                 league_id=args.league_id,
                 series_id=args.series_id,
-                season_id=args.season_id,
+                season_id=effective_season_id,
                 source_url=fallback_source,
-                first_schedule_id=args.first_schedule_id,
+                first_schedule_id=effective_first_schedule_id,
             )
         if args.dry_run:
             writer = csv.DictWriter(sys.stdout, fieldnames=SCHEDULE_FIELDS)
