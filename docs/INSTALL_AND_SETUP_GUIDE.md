@@ -345,7 +345,7 @@ Setup:
 4. In RGC AI Broadcast Studio, set:
 
    ```text
-   Producer Assist Access = 0.0.0.0
+   Remote Producer Assist Access = 0.0.0.0
    ```
 
 5. Click **Save Settings**.
@@ -431,7 +431,7 @@ Check:
 
 - Tailscale is installed on both PCs.
 - Both PCs are signed into the same Tailscale network.
-- Broadcast Settings has `Producer Assist Access = 0.0.0.0`.
+- Broadcast Settings has `Remote Producer Assist Access = 0.0.0.0`.
 - The broadcast is started.
 - The helper is using the Producer Assist link, not the OBS overlay link.
 

@@ -1,6 +1,6 @@
 # Remote Producer Relay
 
-This is a future/advanced architecture note. The current recommended remote-helper workflow is Tailscale with Producer Assist Access set to `0.0.0.0`.
+This is an archived architecture note, not part of the v1.0 Studio setup. The current recommended remote-helper workflow is Tailscale with Remote Producer Assist Access set to `0.0.0.0`.
 
 Tailscale Windows download:
 

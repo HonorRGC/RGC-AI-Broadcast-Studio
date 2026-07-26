@@ -98,6 +98,8 @@ def test_broadcast_settings_have_friendly_labels_and_sections():
     assert BROADCAST_FIELD_LABELS["USE_OPENAI"] == "Use OpenAI Commentary"
     assert BROADCAST_FIELD_LABELS["OVERLAY_EVENT_TITLE"] == "Overlay Event Title"
     assert BROADCAST_FIELD_LABELS["OVERLAY_LEADERBOARD_STYLE"] == "Leaderboard Style"
+    assert BROADCAST_FIELD_LABELS["OVERLAY_HOST"] == "Remote Producer Assist Access"
+    assert "trusted admins on your Tailscale network" in BROADCAST_FIELD_HELP["OVERLAY_HOST"]
     assert BROADCAST_FIELD_LABELS["RACE_SPONSOR_1_NAME"] == "Sponsor 1 Name"
     assert BROADCAST_FIELD_LABELS["RACE_SPONSOR_1_LOGO"] == "Sponsor 1 Logo"
     assert BROADCAST_FIELD_LABELS["RACE_SPONSOR_1_READ"] == "Sponsor 1 Spoken Read"
@@ -134,6 +136,7 @@ def test_broadcast_settings_have_friendly_labels_and_sections():
     assert "DISCORD_RACE_REPORT_RESULTS_URL" in saved_keys
     assert "OVERLAY_BRAND_GRAPHICS" not in saved_keys
     assert "DISCORD_RACE_REPORT_CHAMPIONSHIP_URL" in saved_keys
+    assert "REMOTE_PRODUCER_ENABLED" not in saved_keys
 
 
 def test_studio_profile_buttons_use_clear_create_delete_language():
@@ -275,7 +278,7 @@ def test_launcher_health_reports_missing_ai_keys():
     assert row_map["OpenAI"][0] == "Needs key"
     assert row_map["ElevenLabs"][0] == "Needs setup"
     assert row_map["Discord Race Report"][0] == "Off"
-    assert row_map["Tailscale helper"][0] == "Local only"
+    assert row_map["Remote Producer Assist"][0] == "Local only"
     assert row_map["Broadcast"][0] == "Stopped"
 
 
@@ -305,8 +308,8 @@ def test_launcher_health_reports_tailscale_helper_access(monkeypatch):
     rows = build_health_status(values, root=Path("C:/RGC"), broadcast_running=False)
     row_map = {name: (state, detail, level) for name, state, detail, level in rows}
 
-    assert row_map["Tailscale helper"][0] == "Shared"
-    assert "http://100.90.80.70:8765/producer" in row_map["Tailscale helper"][1]
+    assert row_map["Remote Producer Assist"][0] == "Shared"
+    assert "http://100.90.80.70:8765/producer" in row_map["Remote Producer Assist"][1]
 
 
 def test_first_time_setup_checklist_flags_missing_profile_and_keys(tmp_path):

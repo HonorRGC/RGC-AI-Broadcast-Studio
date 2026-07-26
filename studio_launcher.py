@@ -125,10 +125,6 @@ LAUNCHER_FIELDS = [
     ("LEAGUE_SEASON_STATS_CSV", "league/season.csv"),
     ("LEAGUE_CAREER_STATS_CSV", "league/career.csv"),
     ("STAGE_END_LAPS", ""),
-    ("REMOTE_PRODUCER_ENABLED", "false"),
-    ("REMOTE_PRODUCER_RELAY_URL", ""),
-    ("REMOTE_PRODUCER_SESSION_CODE", ""),
-    ("REMOTE_PRODUCER_PIN", ""),
 ]
 
 SIM_RACER_HUB_FIELDS = [
@@ -164,6 +160,10 @@ LEGACY_SPONSOR_FIELDS = [
     ("DISCORD_BOOTH_CHANNEL_ID", ""),
     ("DISCORD_WAITING_CHANNEL_ID", ""),
     ("DISCORD_INTERVIEW_CHANNEL_ID", ""),
+    ("REMOTE_PRODUCER_ENABLED", "false"),
+    ("REMOTE_PRODUCER_RELAY_URL", ""),
+    ("REMOTE_PRODUCER_SESSION_CODE", ""),
+    ("REMOTE_PRODUCER_PIN", ""),
 ]
 
 SAVED_FIELDS = LAUNCHER_FIELDS + LEGACY_SPONSOR_FIELDS + SIM_RACER_HUB_FIELDS
@@ -181,11 +181,7 @@ BROADCAST_FIELD_LABELS = {
     "OVERLAY_SERIES_NAME": "Series Name",
     "OVERLAY_SERIES_LOGO": "Series Logo",
     "OVERLAY_LEADERBOARD_STYLE": "Leaderboard Style",
-    "OVERLAY_HOST": "Producer Assist Access",
-    "REMOTE_PRODUCER_ENABLED": "Future Remote Relay",
-    "REMOTE_PRODUCER_RELAY_URL": "Future Relay Server URL",
-    "REMOTE_PRODUCER_SESSION_CODE": "Remote Session Code",
-    "REMOTE_PRODUCER_PIN": "Remote Session PIN",
+    "OVERLAY_HOST": "Remote Producer Assist Access",
     "USE_SPONSOR_READS": "Use Sponsor Reads",
     "SPONSOR_READ_CAUSE": "Cause / Awareness Read",
     "SPONSOR_READ_CAUSE_LOGO": "Cause / Awareness Logo",
@@ -232,7 +228,6 @@ BROADCAST_FIELD_SECTIONS = {
     "USE_OPENAI": "AI Commentary",
     "USE_ELEVENLABS": "Broadcaster Voices",
     "OVERLAY_EVENT_TITLE": "Event Sponsors / Overlay Links",
-    "REMOTE_PRODUCER_ENABLED": "Future Remote Relay",
     "PRACTICE_MUSIC_PLAYLIST": "Practice / Qualifying / Caution Music",
     "POST_RACE_INTERVIEWS_ENABLED": "Race Flow",
     "RACE_ADMIN_MODE": "Race Control",
@@ -253,7 +248,7 @@ BROADCAST_FIELD_HELP = {
     "OVERLAY_SERIES_NAME": "League or series name. Example: WFO Wicked Wednesday Truck Series.",
     "OVERLAY_SERIES_LOGO": "Logo for the series. It can rotate in the title with sponsor and cause logos.",
     "OVERLAY_LEADERBOARD_STYLE": "side keeps the NASCAR-style left leaderboard. ticker scrolls across the top under the title.",
-    "OVERLAY_HOST": "Use 127.0.0.1 for this PC only. Use 0.0.0.0 when trusted helpers connect through Tailscale.",
+    "OVERLAY_HOST": "Use 127.0.0.1 for this PC only. Use 0.0.0.0 when trusted helpers connect through Tailscale. Start Broadcast, copy the Producer Assist Link, and send it only to trusted admins on your Tailscale network.",
     "USE_SPONSOR_READS": "Lets the AI work sponsor mentions into pre-race, caution, and race-update moments.",
     "SPONSOR_READ_CAUSE": "Cause or awareness message added to the end of sponsor reads, such as Autism Awareness.",
     "SPONSOR_READ_CAUSE_LOGO": "Logo for the cause/awareness message. It can rotate in the title and appear on sponsor popups.",
@@ -633,7 +628,7 @@ def build_health_status(values, root=ROOT, broadcast_running=False):
     if str(values.get("OVERLAY_HOST", "127.0.0.1") or "").strip() == "0.0.0.0":
         rows.append(
             (
-                "Tailscale helper",
+                "Remote Producer Assist",
                 "Shared",
                 f"Send trusted helpers the Producer Assist link: {producer_link_for_host('0.0.0.0')}",
                 "ok",
@@ -642,38 +637,9 @@ def build_health_status(values, root=ROOT, broadcast_running=False):
     else:
         rows.append(
             (
-                "Tailscale helper",
+                "Remote Producer Assist",
                 "Local only",
-                "Use Producer Assist Access 0.0.0.0 when a trusted helper will connect through Tailscale.",
-                "off",
-            )
-        )
-    if setting_enabled(values, "REMOTE_PRODUCER_ENABLED", "false"):
-        remote_link = remote_producer_link(values)
-        if remote_link:
-            rows.append(
-                (
-                    "Remote Producer",
-                    "Configured",
-                    "Hosted relay link is ready to copy once the relay service is deployed.",
-                    "ok",
-                )
-            )
-        else:
-            rows.append(
-                (
-                    "Remote Producer",
-                    "Needs setup",
-                    "Add a relay URL and session code, or turn Remote Producer Relay off.",
-                    "warn",
-                )
-            )
-    else:
-        rows.append(
-            (
-                "Remote Producer",
-                "Local only",
-                "Remote browser helpers are off. Local/Tailscale Producer Assist can still be used.",
+                "Use Remote Producer Assist Access 0.0.0.0 when a trusted helper will connect through Tailscale.",
                 "off",
             )
         )
@@ -783,7 +749,7 @@ def build_first_time_setup_checklist(
         )
 
     health = {name: (state, detail, level) for name, state, detail, level in build_health_status(values, root, broadcast_running)}
-    for name in ("OpenAI", "ElevenLabs", "League Notes", "Practice Music", "Discord Race Report", "Tailscale helper"):
+    for name in ("OpenAI", "ElevenLabs", "League Notes", "Practice Music", "Discord Race Report", "Remote Producer Assist"):
         state, detail, level = health.get(name, ("Unknown", "Refresh Broadcast Health.", "warn"))
         rows.append((name, state, detail, level))
 
@@ -1710,7 +1676,7 @@ def run_gui():
         if key == "REMOTE_PRODUCER_PIN":
             add_settings_hint(
                 "Future/advanced feature: a hosted relay could later create a normal browser link for distant admins. "
-                "For now, use Tailscale with Producer Assist Access set to 0.0.0.0."
+                "For v1.0, use Tailscale with Remote Producer Assist Access set to 0.0.0.0."
             )
 
         if key == "RACE_ADMIN_MODE":
@@ -1795,22 +1761,6 @@ def run_gui():
                 color="#334b64",
             ).grid(row=settings_grid_row, column=2, padx=(8, 0), sticky="w")
             settings_grid_row += 1
-
-    def generate_remote_code_for_form():
-        field = entries.get("REMOTE_PRODUCER_SESSION_CODE")
-        if field is None:
-            return
-        field.delete(0, "end")
-        field.insert(0, generate_remote_session_code())
-        status.set("Generated a Remote Producer session code. Save settings before starting.")
-
-    def copy_remote_link_from_form():
-        link = remote_producer_link(collect_values())
-        if not link:
-            status.set("Remote Producer link is not ready. Turn it on, add relay URL, and generate a session code.")
-            return
-        copy_to_clipboard(root, link)
-        status.set("Copied Remote Producer browser link for distant helper admins.")
 
     def choose_graphics_for_field(field_name, title, status_label):
         paths = filedialog.askopenfilenames(
@@ -1963,18 +1913,6 @@ def run_gui():
                 ),
                 color="#334b64",
             ).grid(row=settings_rows_by_key[video_key], column=2, padx=(8, 0), sticky="w")
-    button(
-        settings_frame,
-        text="Copy Remote Link",
-        command=copy_remote_link_from_form,
-        color="#334b64",
-    ).grid(row=settings_rows_by_key["REMOTE_PRODUCER_RELAY_URL"], column=2, padx=(8, 0), sticky="w")
-    button(
-        settings_frame,
-        text="Generate Code",
-        command=generate_remote_code_for_form,
-        color="#334b64",
-    ).grid(row=settings_rows_by_key["REMOTE_PRODUCER_SESSION_CODE"], column=2, padx=(8, 0), sticky="w")
     button(
         settings_frame,
         text="Choose Practice Music",
@@ -3086,7 +3024,7 @@ def build_help_tab(
         1. Install Tailscale on the broadcast PC.
         2. Install Tailscale on the helper admin's PC.
         3. Sign both PCs into the same Tailscale network.
-        4. In Broadcast Settings, set Producer Assist Access to 0.0.0.0 and save settings.
+        4. In Broadcast Settings, set Remote Producer Assist Access to 0.0.0.0 and save settings.
         5. Start Broadcast.
         6. Copy the Producer Assist Link and send it only to trusted helpers on your Tailscale network.
 

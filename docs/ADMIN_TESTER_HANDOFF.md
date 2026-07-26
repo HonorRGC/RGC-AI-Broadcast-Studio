@@ -72,7 +72,7 @@ If another trusted admin will help run Producer Assist from a different location
 https://tailscale.com/download/windows
 ```
 
-Both PCs must be signed into the same Tailscale network. In the Studio, set `Producer Assist Access` to `0.0.0.0`, save settings, start the broadcast, then copy/send the Producer Assist Link.
+Both PCs must be signed into the same Tailscale network. In the Studio, set `Remote Producer Assist Access` to `0.0.0.0`, save settings, start the broadcast, then copy/send the Producer Assist Link.
 
 The OBS/Streamlabs overlay should still use `http://127.0.0.1:8765/overlay` on the broadcast PC.
 
