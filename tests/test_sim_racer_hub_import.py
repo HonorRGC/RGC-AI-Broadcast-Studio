@@ -165,6 +165,22 @@ React.createElement(SeriesSeasons,{series_id: 3872, seasons: {}, schedules: [
 """
 
 
+STANDINGS_SCHEDULES_JSON_STYLE_HTML = """
+<html>
+<body>
+<script>
+ReactDOM.createRoot(document.getElementById('season_standings')).render(
+React.createElement(SeasonStandings,{"season_idstr":"29247","schedules":[
+{"schedule_id":356745,"chase":"N","race_id":1,"config_id":"157","track_name":"Daytona International Speedway","config_name":"Oval","race_date":1775696400,"race_date_fmt":"Apr 8, 2026"},
+{"schedule_id":365459,"chase":"Y","race_id":1,"config_id":null,"track_name":null,"config_name":null,"race_date":1782187200,"race_date_fmt":"Jun 23, 2026"},
+{"schedule_id":356762,"chase":"N","race_id":0,"config_id":"157","track_name":"Daytona International Speedway","config_name":"Oval","race_date":1785373200,"race_date_fmt":"Jul 29, 2026"}
+],"url_ref":"season_id=29247"}));
+</script>
+</body>
+</html>
+"""
+
+
 def test_summarizes_sim_racer_hub_driver_stats_for_filtered_season():
     row = summarize_driver_stats(
         SAMPLE_HTML,
@@ -530,6 +546,35 @@ def test_summarizes_upcoming_schedule_records_without_completed_results():
     assert [row["track_name"] for row in rows] == [
         "Michigan International Speedway",
         "Nashville Superspeedway",
+    ]
+
+
+def test_summarizes_standings_page_json_style_future_schedule_rows():
+    rows = summarize_race_schedule(
+        STANDINGS_SCHEDULES_JSON_STYLE_HTML,
+        season_id="29247",
+        source_url="https://www.simracerhub.com/season_standings.php?season_id=29247&schedule_id=356745",
+    )
+
+    assert rows == [
+        {
+            "track_name": "Daytona International Speedway",
+            "schedule_id": "356745",
+            "results_url": "",
+            "notes": "Apr 8, 2026",
+        },
+        {
+            "track_name": "Championship",
+            "schedule_id": "365459",
+            "results_url": "",
+            "notes": "Jun 23, 2026",
+        },
+        {
+            "track_name": "Daytona International Speedway",
+            "schedule_id": "356762",
+            "results_url": "",
+            "notes": "Jul 29, 2026",
+        },
     ]
 
 

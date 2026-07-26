@@ -1,6 +1,6 @@
 import argparse
 import csv
-from datetime import date
+from datetime import date, datetime
 import html
 import json
 import re
@@ -160,8 +160,13 @@ def extract_json_collection(page_html, key):
 
 
 def extract_json_value(page_html, key):
-    marker = f"{key}:"
-    start = page_html.find(marker)
+    start = -1
+    marker = ""
+    for candidate in (f"{key}:", f'"{key}":', f"'{key}':"):
+        found = page_html.find(candidate)
+        if found >= 0 and (start < 0 or found < start):
+            start = found
+            marker = candidate
     if start < 0:
         return {}
 
@@ -448,6 +453,8 @@ def schedule_record_matches_filters(record, league_id="", series_id="", season_i
 def schedule_row_from_record(record, configs, source_url):
     schedule_id = schedule_id_from_record(record)
     track_name = track_name_from_record(record, configs)
+    if not track_name and str(record.get("chase") or "").upper() == "Y":
+        track_name = "Championship"
     results_url = str(
         record.get("results_url")
         or record.get("race_url")
@@ -460,6 +467,7 @@ def schedule_row_from_record(record, configs, source_url):
         record.get("race_name")
         or record.get("event_name")
         or record.get("race_date_str")
+        or record.get("race_date_fmt")
         or record.get("race_date")
         or ""
     ).strip()
@@ -584,7 +592,7 @@ def track_name_from_record(record, configs):
         if value:
             return value
 
-    config_id = str((record or {}).get("track_config_id") or "").strip()
+    config_id = str((record or {}).get("track_config_id") or record.get("config_id") or "").strip()
     config = configs.get(config_id, {}) if config_id else {}
     for key in ("track_name", "track_config_name", "track_config_short", "type_name"):
         value = str(config.get(key) or "").strip()
@@ -600,6 +608,9 @@ def schedule_sort_key(row):
         parsed = parse_iso_date(date_match.group(0))
         if parsed:
             return (parsed.toordinal(), normalize(row.get("track_name")))
+    parsed = parse_sim_racer_hub_date(notes)
+    if parsed:
+        return (parsed.toordinal(), normalize(row.get("track_name")))
     return (int_or_zero((row or {}).get("schedule_id")), normalize(row.get("track_name")))
 
 
@@ -866,6 +877,16 @@ def parse_iso_date(value):
         return date.fromisoformat(str(value or "")[:10])
     except Exception:
         return None
+
+
+def parse_sim_racer_hub_date(value):
+    text = str(value or "").strip()
+    for fmt in ("%b %d, %Y", "%B %d, %Y"):
+        try:
+            return datetime.strptime(text, fmt).date()
+        except Exception:
+            continue
+    return None
 
 
 def float_or_none(value):
