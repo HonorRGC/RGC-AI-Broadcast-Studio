@@ -76,6 +76,8 @@ Both PCs must be signed into the same Tailscale network. In the Studio, set `Pro
 
 The OBS/Streamlabs overlay should still use `http://127.0.0.1:8765/overlay` on the broadcast PC.
 
+Race-control note: if iRacing chat/admin commands are sent from the broadcast PC, the chat box or iRacing window can interrupt the stream capture. For the cleanest league broadcast, have the trusted remote admin handle Race Control from their own PC through Producer Assist/Tailscale.
+
 ## Recommended first test
 
 For the first run, use `Start Broadcast`. The overlay, Producer Assist control room, cameras, and replay controls launch together.

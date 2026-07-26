@@ -283,7 +283,7 @@ BROADCAST_FIELD_HELP = {
     "CAUTION_REPLAY_AUDIO": "Music bed used during caution replay/presentation segments.",
     "POST_RACE_INTERVIEWS_ENABLED": "If true, the AI finishes the race recap/top 10 and then hands off to human post-race interviews for the top three. If false, it does the normal signoff.",
     "RACE_ADMIN_MODE": "Enables hosted-race admin commands in Producer Assist. Keep off unless this PC has race admin rights.",
-    "RACE_ADMIN_SEND_MODE": "clipboard is safest for stream. open_chat is faster but may show iRacing chat. ui_paste is testing-only.",
+    "RACE_ADMIN_SEND_MODE": "clipboard is safest for stream. open_chat/ui_paste can bring iRacing chat or the iRacing window onto the broadcast PC capture. For clean race control, use a trusted remote admin on another PC through Producer Assist/Tailscale.",
     "DISCORD_RACE_REPORT_ENABLED": "Posts an automatic post-race recap to a Discord webhook after the finish order stabilizes.",
     "DISCORD_RACE_REPORT_WEBHOOK_URL": "Required when Discord Race Report is true. Create this webhook in the Discord results channel.",
     "DISCORD_RACE_REPORT_USE_OPENAI": "Uses OpenAI for a more natural race recap. If off, the Studio posts a simpler generated recap.",
@@ -1723,7 +1723,9 @@ def run_gui():
             add_settings_hint(
                 "clipboard is broadcast-safe and only copies the iRacing command for manual send. "
                 "open_chat copies it and opens iRacing text chat for quick Ctrl+V/Enter. "
-                "ui_paste is testing-only and may show iRacing chat/window on the stream."
+                "ui_paste is testing-only and may show iRacing chat/window on the stream. "
+                "If the broadcast PC is also the streaming PC, any mode that opens chat can interrupt what viewers see. "
+                "For the cleanest production, have a trusted race-control admin open Producer Assist from another PC through Tailscale."
             )
 
         if key == "OVERLAY_HOST":
@@ -3071,6 +3073,8 @@ def build_help_tab(
 
         Race Admin Send Mode controls how admin commands are handled. clipboard is broadcast-safe and copies the command for manual send.
         open_chat copies the command and opens iRacing text chat for quick Ctrl+V/Enter. ui_paste is testing-only and may show iRacing chat/window on the broadcast.
+        If the broadcast PC is also the streaming PC, sending commands through iRacing chat can interrupt the viewer-facing broadcast capture.
+        For clean league race control, use a trusted admin on another PC through Producer Assist/Tailscale so any iRacing chat/admin workflow happens away from the broadcast screen.
         """,
     )
     section(

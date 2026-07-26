@@ -102,6 +102,8 @@ Install and sign into Tailscale on both PCs, using the same Tailscale network. I
 
 Keep the OBS/Streamlabs overlay link on `127.0.0.1`; Tailscale is only for the private Producer Assist control room.
 
+Race-control warning: sending iRacing admin commands from the broadcast PC can show the chat box or iRacing window on stream. For league races, the cleanest setup is a trusted remote admin using Producer Assist/Tailscale from another PC so race-control commands do not interrupt the broadcast capture.
+
 ## Streamlabs / OBS overlay
 
 In **Broadcast Settings**, the browser-source link is shown right after the overlay title, sponsor, series, and brand graphics fields. Click **Copy Overlay Link** and paste it into Streamlabs or OBS:

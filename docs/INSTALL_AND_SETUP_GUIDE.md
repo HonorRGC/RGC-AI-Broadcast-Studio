@@ -310,6 +310,8 @@ Then open Producer Assist if you want to switch between AI broadcast and human-b
 
 Race Control note: `Race Admin Send Mode = clipboard` is the broadcast-safe default. It copies commands like `!yellow` or `!eol #34` so the admin can send them without the program opening iRacing chat on stream. `open_chat` copies the command and opens iRacing text chat for quick Ctrl+V/Enter. `ui_paste` is testing-only and may show the iRacing window/chat box in the broadcast capture.
 
+Important broadcast warning: if the same PC is running the stream/recording and also sends iRacing chat/admin commands, the chat box or iRacing window can interrupt what viewers see. For the cleanest league production, use a second trusted race-control admin on another PC. Have that admin connect to Producer Assist through Tailscale and handle race-control commands away from the broadcast capture.
+
 Optional Discord race report:
 
 1. In Discord, open the results channel settings.
@@ -450,7 +452,7 @@ Check `Race Admin Send Mode`.
 - `open_chat` copies the command and opens iRacing text chat for quick Ctrl+V/Enter.
 - `ui_paste` tries to paste/send the command through iRacing chat and may show the chat box/window on stream.
 
-Until a true hidden iRacing admin-command method is confirmed, use clipboard mode for live broadcasts.
+Until a true hidden iRacing admin-command method is confirmed, use clipboard mode for live broadcasts. If you need fast live race-control decisions without risking the broadcast screen, use a trusted remote admin through Producer Assist/Tailscale on a separate PC.
 
 ## 16. Safety notes
 
