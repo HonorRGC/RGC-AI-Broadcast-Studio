@@ -148,6 +148,31 @@ def test_prompt_includes_road_course_discipline():
     assert "braking zone" in prompt["user"]
 
 
+def test_prompt_adds_draft_track_restraint_for_routine_driver_stories():
+    assignment = EditorialItem(
+        story_type="biggest_mover",
+        headline="Driver moving forward",
+        summary="The 24 has gained six positions.",
+    )
+
+    prompt = PromptBuilder().build_prompt(
+        "jeff",
+        assignment,
+        race_knowledge={
+            "track_profile": {
+                "style": "pack_draft",
+                "label": "pack drafting track",
+                "notes": "Pack momentum and lane timing can matter here.",
+            }
+        },
+    )
+
+    assert "Draft-track restraint" in prompt["user"]
+    assert "do not mention the draft" in prompt["user"]
+    assert "routine driver stories" in prompt["user"]
+    assert "execution, patience, timing" in prompt["user"]
+
+
 def test_prompt_includes_multiclass_discipline():
     assignment = EditorialItem(
         story_type="battle",

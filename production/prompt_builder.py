@@ -150,6 +150,17 @@ class PromptBuilder:
             "Keep any handoff short and conversational."
         )
         track_profile = (race_knowledge or {}).get("track_profile") or {}
+        if track_profile.get("style") == "pack_draft":
+            lines.append(
+                "Draft-track restraint: the race is at a drafting track, but do "
+                "not mention the draft, freight train, lanes, air, or pack "
+                "momentum in every call. Use that language only when the "
+                "assignment is specifically about a pack formation, lane move, "
+                "fuel saving in traffic, or a run being built. For routine "
+                "driver stories, focus instead on execution, patience, timing, "
+                "pressure, confidence, track position, or how the driver's race "
+                "is developing."
+            )
         if track_profile.get("style") == "road_course":
             lines.append(
                 "Road-course discipline: avoid oval pack-draft, freight-train, "

@@ -95,6 +95,14 @@ class BroadcastStoryProducer:
     def phase_notes(self, race_state, race_knowledge=None):
         notes = []
         track_profile = (race_knowledge or {}).get("track_profile") or {}
+        if track_profile.get("style") == "pack_draft":
+            notes.append(
+                "Track style: drafting track. Use draft/pack/lane language only "
+                "when the specific story is about a run, lane timing, fuel "
+                "saving in traffic, or pack formation. For normal driver updates, "
+                "vary the call with execution, pressure, patience, track position, "
+                "or race-long storyline."
+            )
         if track_profile.get("style") == "road_course":
             notes.append(
                 "Track style: road course. Prefer braking zones, apexes, exits, "

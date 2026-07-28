@@ -94,8 +94,9 @@ def racecraft_profile(track_info):
             "style": "pack_draft",
             "label": "pack drafting track",
             "notes": (
-                "Drafting, pack momentum, lane timing, and freight-train risk "
-                "are appropriate themes here."
+                "Pack momentum and lane timing can matter here, but vary the "
+                "broadcast language. Do not turn every driver story into a "
+                "draft or freight-train reference."
             ),
         }
     if is_long_straight_draft_assist_track(track_info):

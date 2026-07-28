@@ -51,3 +51,28 @@ def test_story_producer_discourages_repeating_start_position_for_same_driver():
     producer.frame(second)
 
     assert any("Avoid repeating where this driver started" in note for note in second.producer_notes)
+
+
+def test_story_producer_adds_draft_track_restraint_notes():
+    producer = BroadcastStoryProducer()
+    item = EditorialItem(
+        story_type="biggest_mover",
+        headline="Driver moving forward",
+        summary="The number 24 has gained six positions.",
+        driver_name="Dean Marsh",
+        car_number="24",
+    )
+
+    producer.frame(
+        item,
+        race_knowledge={
+            "track_profile": {
+                "style": "pack_draft",
+                "label": "pack drafting track",
+                "notes": "Pack momentum can matter here.",
+            }
+        },
+    )
+
+    assert any("Use draft/pack/lane language only" in note for note in item.producer_notes)
+    assert any("normal driver updates" in note for note in item.producer_notes)
