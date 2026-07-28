@@ -4,6 +4,7 @@ import re
 import urllib.error
 import urllib.parse
 import urllib.request
+from datetime import date, datetime
 from pathlib import Path
 
 from config import (
@@ -32,6 +33,7 @@ class DiscordRaceReporter:
         event_title=OVERLAY_EVENT_TITLE,
         series_name=OVERLAY_SERIES_NAME,
         opener=None,
+        current_date=None,
     ):
         self.enabled = bool(enabled)
         self.webhook_url = str(webhook_url or "").strip()
@@ -42,6 +44,7 @@ class DiscordRaceReporter:
         self.event_title = str(event_title or "RGC AI Broadcast").strip()
         self.series_name = str(series_name or "").strip()
         self.opener = opener or urllib.request.urlopen
+        self.current_date = current_date
         self.posted = False
         self.last_error = ""
 
@@ -174,6 +177,7 @@ class DiscordRaceReporter:
         wanted = self.normalize_track_name(track_name)
         if not wanted:
             return {}
+        matches = []
         try:
             with path.open("r", encoding="utf-8-sig", newline="") as handle:
                 for row in csv.DictReader(handle):
@@ -184,14 +188,82 @@ class DiscordRaceReporter:
                         or ""
                     )
                     if self.tracks_match(wanted, row_track):
-                        return {
+                        matches.append({
                             "track_name": row_track,
                             "schedule_id": str(row.get("schedule_id") or "").strip(),
                             "race_id": str(row.get("race_id") or "").strip(),
-                        }
+                            "notes": str(row.get("notes") or "").strip(),
+                            "race_date": str(row.get("race_date") or "").strip(),
+                        })
         except Exception:
             return {}
-        return {}
+        return self.choose_schedule_match(matches)
+
+    def choose_schedule_match(self, matches):
+        if not matches:
+            return {}
+        if len(matches) == 1:
+            return matches[0]
+
+        today = self.today()
+        dated = []
+        for index, match in enumerate(matches):
+            race_date = self.parse_schedule_date(
+                match.get("race_date") or match.get("notes") or ""
+            )
+            if race_date:
+                dated.append((abs((race_date - today).days), index, match))
+
+        if dated:
+            return sorted(dated, key=lambda item: (item[0], item[1]))[0][2]
+
+        return matches[0]
+
+    def today(self):
+        if isinstance(self.current_date, date):
+            return self.current_date
+        parsed = self.parse_schedule_date(self.current_date)
+        return parsed or date.today()
+
+    @classmethod
+    def parse_schedule_date(cls, value):
+        text = str(value or "").strip()
+        if not text:
+            return None
+
+        iso_match = re.search(r"\d{4}-\d{2}-\d{2}", text)
+        if iso_match:
+            try:
+                return date.fromisoformat(iso_match.group(0))
+            except ValueError:
+                pass
+
+        for pattern in (
+            "%b %d, %Y",
+            "%B %d, %Y",
+            "%b %d %Y",
+            "%B %d %Y",
+            "%m/%d/%Y",
+            "%m-%d-%Y",
+        ):
+            try:
+                return datetime.strptime(text, pattern).date()
+            except ValueError:
+                continue
+
+        month_match = re.search(
+            r"\b("
+            r"jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|"
+            r"jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|"
+            r"nov(?:ember)?|dec(?:ember)?"
+            r")\.?\s+\d{1,2},?\s+\d{4}\b",
+            text,
+            flags=re.IGNORECASE,
+        )
+        if month_match:
+            return cls.parse_schedule_date(month_match.group(0).replace(".", ""))
+
+        return None
 
     def sim_racer_hub_race_url(self, schedule_id):
         base = self.sim_racer_hub_base_url()

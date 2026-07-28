@@ -123,6 +123,37 @@ def test_discord_race_report_auto_builds_championship_link(tmp_path, monkeypatch
     assert "season_standings.php?season_id=29247&schedule_id=356762" in links
 
 
+def test_discord_race_report_uses_closest_schedule_date_for_duplicate_tracks(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    schedule = tmp_path / "league" / "race_schedule.csv"
+    schedule.parent.mkdir()
+    schedule.write_text(
+        "track_name,schedule_id,notes\n"
+        'Talladega Superspeedway,111111,"May 20, 2026"\n'
+        'Talladega Superspeedway,222222,"Jul 27, 2026"\n',
+        encoding="utf-8",
+    )
+    reporter = DiscordRaceReporter(
+        enabled=True,
+        webhook_url="https://discord.example/webhook",
+        use_openai=False,
+        sim_racer_hub_source="https://www.simracerhub.com",
+        sim_racer_hub_season_id="29247",
+        race_schedule_csv="league/race_schedule.csv",
+        current_date="2026-07-27",
+    )
+
+    payload = reporter.build_payload(
+        [{"CarIdx": 1, "Position": 0}],
+        {1: {"name": "Winner Driver", "number": "34"}},
+        track_info={"track_name": "Talladega Superspeedway"},
+    )
+
+    links = payload["embeds"][0]["fields"][-1]["value"]
+    assert "schedule_id=222222" in links
+    assert "schedule_id=111111" not in links
+
+
 def test_discord_race_report_uses_standings_source_for_auto_championship(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     schedule = tmp_path / "race_schedule.csv"
