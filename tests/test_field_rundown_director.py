@@ -166,6 +166,75 @@ def test_long_green_rundown_uses_adjacent_gap_not_leader_gap():
     )
 
 
+def test_long_green_rundown_prefers_league_track_stats_over_session_gap():
+    director = FieldRundownDirector()
+    results = [
+        {"CarIdx": 0, "Position": 1, "StartingPosition": 1, "Time": 0.0},
+        {"CarIdx": 1, "Position": 2, "StartingPosition": 2, "Time": 4.2},
+    ]
+    drivers = {
+        0: {
+            "name": "T.J. Lee",
+            "number": "34",
+            "league_stats_by_scope": [
+                {
+                    "stats_scope": "season",
+                    "track_starts": "5",
+                    "track_wins": "2",
+                    "best_track_finish": "1",
+                    "points_position": "3",
+                }
+            ],
+        },
+        1: {"name": "Driver Two", "number": "2"},
+    }
+
+    entries = director.build_entries(results, drivers)
+    message = director.format_entry(entries[0])
+
+    assert "At this track" in message
+    assert "5 previous league starts" in message
+    assert "2 track wins" in message
+    assert "best finish of first" in message
+    assert "best lap so far" not in message
+
+
+def test_long_green_rundown_uses_league_points_and_profile_notes():
+    director = FieldRundownDirector()
+    results = [
+        {"CarIdx": 0, "Position": 1, "StartingPosition": 1},
+        {"CarIdx": 1, "Position": 2, "StartingPosition": 4, "Time": 0.5},
+    ]
+    drivers = {
+        0: {"name": "Leader", "number": "1"},
+        1: {
+            "name": "Austin Peterson",
+            "number": "77",
+            "league_stats_by_scope": [
+                {
+                    "stats_scope": "season",
+                    "points_position": "2",
+                    "points_to_next": "8",
+                }
+            ],
+            "league_profile": {
+                "driving_style": "patient on long runs",
+                "hometown": "Lebanon",
+                "state": "Tennessee",
+                "country": "United States",
+            },
+        },
+    }
+
+    entries = director.build_entries(results, drivers)
+    message = director.format_entry(entries[1])
+
+    assert "Austin Peterson" in message
+    assert "patient on long runs" in message
+    assert "Lebanon, Tennessee, United States" in message
+    assert "within 0.5 seconds" not in message
+
+
 def test_long_green_final_rundown_segment_returns_to_home_camera():
     director = FieldRundownDirector()
     results = [

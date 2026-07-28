@@ -153,6 +153,10 @@ class FieldRundownDirector:
                             ),
                         )
                     ),
+                    "league_context": self.league_rundown_context(
+                        driver_info,
+                        order_position,
+                    ),
                 }
             )
             previous_gap_to_leader = gap_to_leader
@@ -332,10 +336,160 @@ class FieldRundownDirector:
                 f"The {number} of {name} is steady in {current_position}, no change from the grid.",
             )
 
-        stat_context = self.session_stat_context(entry, net)
+        stat_context = entry.get("league_context") or self.session_stat_context(
+            entry,
+            net,
+        )
         if stat_context:
             return f"{templates[(position - 1) % len(templates)]} {stat_context}"
         return templates[(position - 1) % len(templates)]
+
+    def league_rundown_context(self, driver_info, order_position=1):
+        candidates = []
+        driver_info = driver_info or {}
+
+        for stats in driver_info.get("league_stats_by_scope") or []:
+            stats_context = self.league_stats_context(stats)
+            if stats_context:
+                candidates.append(stats_context)
+
+        profile_context = self.league_profile_context(
+            driver_info.get("league_profile") or driver_info
+        )
+        if profile_context:
+            candidates.append(profile_context)
+
+        if not candidates:
+            return ""
+
+        index = max(0, self.safe_int(order_position, 1) - 1) % len(candidates)
+        return candidates[index]
+
+    def league_stats_context(self, stats):
+        stats = stats or {}
+        scope = str(stats.get("stats_scope") or "season").strip().casefold()
+        scope_label = (
+            "career"
+            if scope in {"career", "all", "all_seasons", "all seasons"}
+            else "season"
+        )
+
+        track_context = self.league_track_context(stats)
+        if track_context:
+            return track_context
+
+        points = self.clean(stats.get("points_position"))
+        points_to_next = self.clean(stats.get("points_to_next"))
+        if points:
+            sentence = f"They entered this one {PositionFormatter.ordinal(points)} in points"
+            if points_to_next:
+                sentence += f", {points_to_next} points from the next spot"
+            return f"{sentence}."
+
+        wins = self.clean(stats.get("wins"))
+        top_fives = self.clean(stats.get("top_fives"))
+        top_tens = self.clean(stats.get("top_tens"))
+        starts = self.clean(stats.get("starts"))
+        avg_finish = self.clean(stats.get("avg_finish"))
+        last_finish = self.clean(stats.get("last_finish"))
+
+        if self.positive_number(wins) or self.positive_number(top_fives):
+            pieces = []
+            if self.positive_number(wins):
+                pieces.append(f"{wins} {scope_label} win{'s' if wins != '1' else ''}")
+            if self.positive_number(top_fives):
+                pieces.append(f"{top_fives} top-five{'s' if top_fives != '1' else ''}")
+            return f"Their {scope_label} record shows {self.join_phrase(pieces)}."
+
+        if self.positive_number(starts) and scope_label == "career":
+            pieces = [f"{starts} league starts"]
+            if self.positive_number(top_tens):
+                pieces.append(f"{top_tens} top-tens")
+            return f"Across their league career, they have {self.join_phrase(pieces)}."
+
+        if avg_finish:
+            return f"Their {scope_label} average finish is {avg_finish}."
+
+        if last_finish:
+            return f"Last time out in the league, they finished {PositionFormatter.ordinal(last_finish)}."
+
+        note = self.clean(stats.get("notes"))
+        if note:
+            return self.trim_sentence(note)
+
+        return ""
+
+    def league_track_context(self, stats):
+        track_starts = self.clean(stats.get("track_starts"))
+        track_wins = self.clean(stats.get("track_wins"))
+        best_track_finish = self.clean(stats.get("best_track_finish"))
+        if not any((track_starts, track_wins, best_track_finish)):
+            return ""
+
+        pieces = []
+        if self.positive_number(track_starts):
+            pieces.append(
+                f"{track_starts} previous league start{'s' if track_starts != '1' else ''}"
+            )
+        if self.positive_number(track_wins):
+            pieces.append(f"{track_wins} track win{'s' if track_wins != '1' else ''}")
+        if best_track_finish:
+            pieces.append(f"a best finish of {PositionFormatter.ordinal(best_track_finish)}")
+
+        if not pieces:
+            return ""
+        return f"At this track, they have {self.join_phrase(pieces)}."
+
+    def league_profile_context(self, profile):
+        profile = profile or {}
+        style = self.clean(profile.get("driving_style"))
+        hometown = self.location_phrase(profile)
+        sponsor = self.clean(profile.get("sponsor"))
+        notes = self.clean(profile.get("notes"))
+
+        if style and hometown:
+            return f"League notes list them as {style}, representing {hometown}."
+        if style:
+            return f"League notes describe them as {style}."
+        if hometown:
+            return f"They represent {hometown}."
+        if sponsor:
+            return f"Their listed sponsor is {sponsor}."
+        if notes:
+            return self.trim_sentence(notes)
+        return ""
+
+    def location_phrase(self, profile):
+        parts = [
+            self.clean(profile.get("hometown")),
+            self.clean(profile.get("state")),
+            self.clean(profile.get("country")),
+        ]
+        parts = [part for part in parts if part]
+        return ", ".join(parts)
+
+    def join_phrase(self, pieces):
+        pieces = [str(piece) for piece in pieces if piece]
+        if len(pieces) <= 1:
+            return "".join(pieces)
+        if len(pieces) == 2:
+            return " and ".join(pieces)
+        return f"{', '.join(pieces[:-1])}, and {pieces[-1]}"
+
+    def positive_number(self, value):
+        try:
+            return float(str(value or "").strip()) > 0
+        except (TypeError, ValueError):
+            return False
+
+    def trim_sentence(self, text, max_words=18):
+        words = str(text or "").strip().split()
+        if not words:
+            return ""
+        if len(words) > max_words:
+            words = words[:max_words]
+        sentence = " ".join(words).rstrip(".,;")
+        return f"{sentence}."
 
     def session_stat_context(self, entry, net):
         position = self.safe_int(entry.get("position"), 0)
@@ -406,3 +560,6 @@ class FieldRundownDirector:
             return float(value)
         except Exception:
             return default
+
+    def clean(self, value):
+        return str(value or "").strip()
