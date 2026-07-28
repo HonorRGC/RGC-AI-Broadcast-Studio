@@ -66,6 +66,37 @@ def test_prompt_includes_verified_league_stats():
     assert "track wins: 2" in prompt["user"]
 
 
+def test_prompt_prioritizes_league_track_history_over_generic_track_talk():
+    assignment = EditorialItem(
+        story_type="biggest_mover",
+        headline="Driver moving forward",
+        summary="The 34 has gained five positions.",
+    )
+
+    prompt = PromptBuilder().build_prompt(
+        "jeff",
+        assignment,
+        race_knowledge={
+            "track_profile": {
+                "style": "pack_draft",
+                "label": "pack drafting track",
+                "notes": "Pack momentum can matter here.",
+            },
+            "league_driver_context": [
+                (
+                    "T.J. Lee in the number 34 stats: last race finish: 1st; "
+                    "track starts: 6, track wins: 2, best track finish: 1st"
+                )
+            ],
+        },
+    )
+
+    assert "League-stat priority" in prompt["user"]
+    assert "has won at this track before" in prompt["user"]
+    assert "Use at most one stat" in prompt["user"]
+    assert "Draft-track restraint" in prompt["user"]
+
+
 def test_prompt_includes_producer_notes_and_broadcast_angle():
     assignment = EditorialItem(
         story_type="biggest_mover",

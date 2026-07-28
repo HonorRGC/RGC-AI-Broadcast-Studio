@@ -76,3 +76,35 @@ def test_story_producer_adds_draft_track_restraint_notes():
 
     assert any("Use draft/pack/lane language only" in note for note in item.producer_notes)
     assert any("normal driver updates" in note for note in item.producer_notes)
+
+
+def test_story_producer_prefers_league_track_history_on_draft_tracks():
+    producer = BroadcastStoryProducer()
+    item = EditorialItem(
+        story_type="biggest_mover",
+        headline="Driver moving forward",
+        summary="The number 34 has gained five positions.",
+        driver_name="T.J. Lee",
+        car_number="34",
+    )
+
+    producer.frame(
+        item,
+        race_knowledge={
+            "track_profile": {
+                "style": "pack_draft",
+                "label": "pack drafting track",
+                "notes": "Pack momentum can matter here.",
+            },
+            "league_driver_context": [
+                (
+                    "T.J. Lee in the number 34 stats: last race finish: 1st; "
+                    "track starts: 6, track wins: 2, best track finish: 1st"
+                )
+            ],
+        },
+    )
+
+    assert any("Verified league stats are available" in note for note in item.producer_notes)
+    assert any("track-history" in note for note in item.producer_notes)
+    assert any("generic draft-track reference" in note for note in item.producer_notes)

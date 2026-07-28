@@ -149,6 +149,17 @@ class PromptBuilder:
             "refer to the booth in third person, or use script-style labels. "
             "Keep any handoff short and conversational."
         )
+        league_driver_context = (race_knowledge or {}).get("league_driver_context") or []
+        if league_driver_context:
+            lines.append(
+                "League-stat priority: when verified league notes include track "
+                "starts, track wins, best track finish, previous race finish, "
+                "points position, season wins, or career starts, prefer one "
+                "naturally fitting stat over another generic track-style comment. "
+                "Strong examples: a driver has won at this track before, ran "
+                "well here previously, finished well last time out, or has a "
+                "points battle shaping the race. Use at most one stat in the call."
+            )
         track_profile = (race_knowledge or {}).get("track_profile") or {}
         if track_profile.get("style") == "pack_draft":
             lines.append(

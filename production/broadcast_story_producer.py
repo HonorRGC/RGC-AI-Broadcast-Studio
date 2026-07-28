@@ -103,6 +103,12 @@ class BroadcastStoryProducer:
                 "vary the call with execution, pressure, patience, track position, "
                 "or race-long storyline."
             )
+            if self.has_league_track_history(race_knowledge):
+                notes.append(
+                    "Verified league stats are available. Prefer a track-history "
+                    "or previous-result nugget over another generic draft-track "
+                    "reference when it fits this driver."
+                )
         if track_profile.get("style") == "road_course":
             notes.append(
                 "Track style: road course. Prefer braking zones, apexes, exits, "
@@ -194,6 +200,24 @@ class BroadcastStoryProducer:
         if priority >= 9:
             return "high-priority race development"
         return "race context update"
+
+    def has_league_track_history(self, race_knowledge):
+        for line in (race_knowledge or {}).get("league_driver_context") or ():
+            text = str(line or "").casefold()
+            if any(
+                phrase in text
+                for phrase in (
+                    "track starts",
+                    "track wins",
+                    "best track finish",
+                    "last race finish",
+                    "season wins",
+                    "career wins",
+                    "points:",
+                )
+            ):
+                return True
+        return False
 
     def can_mention_start_position(self, driver_key):
         if not driver_key:
