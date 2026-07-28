@@ -182,6 +182,7 @@ def test_new_race_control_state_replaces_an_unspoken_old_state():
 
 def test_caution_uses_immediate_trouble_language():
     director = RaceDirector()
+    director.race_started = True
     queue = BroadcastQueue()
 
     director.handle_caution(queue, {"track_name": "Homestead"})
@@ -195,6 +196,7 @@ def test_caution_uses_immediate_trouble_language():
 
 def test_admin_caution_is_called_as_race_control_caution():
     director = RaceDirector()
+    director.race_started = True
     director.mark_admin_caution_pending()
     queue = BroadcastQueue()
 
@@ -219,6 +221,29 @@ def test_extended_yellow_is_not_called_new_trouble():
     assert "Trouble on the speedway" not in queue.items[0].message
     assert queue.items[0].dedupe_key == "race_control:caution_extended"
     assert queue.items[0].camera_focus_incident is False
+
+
+def test_initial_pace_lap_extension_does_not_interrupt_starting_lineup():
+    director = RaceDirector()
+    director.race_started = False
+    director.previous_phase = RacePhase.ONE_TO_GREEN
+    director.one_to_green_announced = True
+    queue = BroadcastQueue()
+    queue.add(
+        "Starting third, the 34 of T.J. Lee.",
+        priority=9,
+        category="opening_field_rundown_1",
+        speaker="jeff",
+        protected=False,
+        dedupe_key="opening_field_rundown_1",
+    )
+
+    director.handle_caution(queue, {"track_name": "EchoPark Speedway"})
+
+    assert len(queue.items) == 1
+    assert queue.items[0].category == "opening_field_rundown_1"
+    assert "caution" not in queue.items[0].message.lower()
+    assert director.one_to_green_announced is False
 
 
 def test_one_to_green_preserves_a_pending_caution_pit_summary():

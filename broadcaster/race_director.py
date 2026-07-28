@@ -232,12 +232,22 @@ class RaceDirector:
         self.one_to_green_announced = False
 
     def handle_caution(self, scheduler, track_info):
-        scheduler.clear_for_race_control()
-
         if self.yellow_announced:
             return
 
         track_name = self.get_track_name(track_info)
+
+        if not self.race_started:
+            # League admins often extend the initial pace laps before the green.
+            # iRacing can expose that as a yellow/caution flag even though there
+            # is no incident. Do not clear the welcome, track info, sponsor read,
+            # or starting lineup for that pre-race control state.
+            self.one_to_green_announced = False
+            self.admin_caution_pending = False
+            return
+
+        scheduler.clear_for_race_control()
+
         extended_yellow = self.race_started and self.previous_phase == RacePhase.ONE_TO_GREEN
         if extended_yellow:
             message = (
