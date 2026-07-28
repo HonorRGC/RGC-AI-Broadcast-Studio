@@ -24,11 +24,15 @@ class FormationDetector:
     CLOSE_GAP = 0.0060
     OVERLAP_GAP = 0.0014
     PACK_GAP = 0.0180
+    MULTI_PACK_GAP = 0.0350
+    MULTI_PACK_MIN_SIZE = 3
 
     def __init__(self):
         self.last_story_type = ""
         self.last_story_lap = -999
         self.min_laps_between_calls = 4
+        self.last_multi_pack_lap = -999
+        self.multi_pack_cooldown_laps = 8
 
     def analyze(
         self,
@@ -46,13 +50,23 @@ class FormationDetector:
         if len(cars) < 4:
             return []
 
+        draft_pack_track = (
+            True if track_info is None else is_true_pack_drafting_track(track_info)
+        )
+
+        if draft_pack_track:
+            multi_pack_story = self.detect_multiple_packs(
+                cars,
+                driver_lookup,
+                current_lap,
+            )
+            if multi_pack_story:
+                return [multi_pack_story]
+
         lead_pack = self.lead_pack(cars)
         if len(lead_pack) < 4:
             return []
 
-        draft_pack_track = (
-            True if track_info is None else is_true_pack_drafting_track(track_info)
-        )
         story = (
             self.detect_three_wide(lead_pack, driver_lookup, draft_pack_track)
             or self.detect_two_wide(lead_pack, draft_pack_track)
@@ -71,6 +85,60 @@ class FormationDetector:
         self.last_story_type = story.story_type
         self.last_story_lap = current_lap
         return [story]
+
+    def detect_multiple_packs(self, cars, driver_lookup, current_lap):
+        if current_lap - self.last_multi_pack_lap < self.multi_pack_cooldown_laps:
+            return None
+
+        packs = self.split_packs(cars)
+        if len(packs) < 2:
+            return None
+
+        lead_pack = packs[0]
+        second_pack = packs[1]
+        if (
+            len(lead_pack) < self.MULTI_PACK_MIN_SIZE
+            or len(second_pack) < self.MULTI_PACK_MIN_SIZE
+        ):
+            return None
+
+        separation = self.gap(lead_pack[-1], second_pack[0])
+        if separation < self.MULTI_PACK_GAP:
+            return None
+
+        second_leader = second_pack[0]
+        second_leader_name = self.name(driver_lookup, second_leader["car_idx"])
+        second_position = second_leader.get("position", 0)
+        gap_text = self.pack_gap_text(second_leader)
+        pack_count_text = (
+            "two draft packs"
+            if len(packs) == 2
+            else f"{min(len(packs), 3)} draft packs"
+        )
+        summary = (
+            f"The field has split into {pack_count_text}. The lead pack has "
+            f"{len(lead_pack)} cars, and the second pack starts around "
+            f"{self.ordinal(second_position)} with {second_leader_name}"
+        )
+        if gap_text:
+            summary += f", about {gap_text} behind the front group"
+        summary += (
+            ". That second group needs to get organized and work together, "
+            "because if they race each other too hard the lead pack can keep "
+            "stretching the gap."
+        )
+
+        self.last_multi_pack_lap = current_lap
+        return FormationStory(
+            story_type="formation_multiple_packs",
+            headline="Multiple draft packs have formed.",
+            summary=summary,
+            importance=9,
+            primary_car_idx=second_leader["car_idx"],
+            participant_car_indices=tuple(
+                car["car_idx"] for car in (lead_pack + second_pack)[:10]
+            ),
+        )
 
     def detect_three_wide(self, cars, driver_lookup, draft_pack_track=True):
         for index in range(len(cars) - 2):
@@ -184,6 +252,24 @@ class FormationDetector:
             pack.append(current)
         return pack
 
+    def split_packs(self, cars):
+        packs = []
+        current_pack = []
+        for car in cars:
+            if not current_pack:
+                current_pack = [car]
+                continue
+            previous = current_pack[-1]
+            if self.gap(previous, car) <= self.PACK_GAP:
+                current_pack.append(car)
+            else:
+                if current_pack:
+                    packs.append(current_pack)
+                current_pack = [car]
+        if current_pack:
+            packs.append(current_pack)
+        return packs
+
     def ordered_active_cars(self, results, distances, pit_status):
         pit_status = pit_status or []
         zero_based = any(self.integer(car.get("Position"), 999) == 0 for car in results)
@@ -208,9 +294,19 @@ class FormationDetector:
                     "position": position,
                     "lap": lap,
                     "distance": distance,
+                    "time": self.safe_float(
+                        car.get("Time", car.get("Gap", car.get("Interval", 0.0))),
+                        0.0,
+                    ),
                 }
             )
         return sorted(cars, key=lambda car: car["position"])
+
+    def pack_gap_text(self, pack_leader):
+        time_gap = self.safe_float(pack_leader.get("time", 0.0), 0.0)
+        if 1.0 <= time_gap < 120.0:
+            return f"{time_gap:.1f} seconds"
+        return ""
 
     def spread(self, cars):
         return max(self.gap(first, second) for first in cars for second in cars)
@@ -230,3 +326,22 @@ class FormationDetector:
             return int(value)
         except (TypeError, ValueError):
             return default
+
+    @staticmethod
+    def safe_float(value, default):
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return default
+
+    @staticmethod
+    def ordinal(position):
+        try:
+            position = int(position)
+        except (TypeError, ValueError):
+            return "that spot"
+        if 10 <= position % 100 <= 20:
+            suffix = "th"
+        else:
+            suffix = {1: "st", 2: "nd", 3: "rd"}.get(position % 10, "th")
+        return f"{position}{suffix}"

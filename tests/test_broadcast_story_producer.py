@@ -108,3 +108,18 @@ def test_story_producer_prefers_league_track_history_on_draft_tracks():
     assert any("Verified league stats are available" in note for note in item.producer_notes)
     assert any("track-history" in note for note in item.producer_notes)
     assert any("generic draft-track reference" in note for note in item.producer_notes)
+
+
+def test_story_producer_frames_multiple_pack_split_as_race_development():
+    producer = BroadcastStoryProducer()
+    item = SimpleNamespace(
+        story_type="formation_multiple_packs",
+        headline="Multiple packs have formed",
+        summary="The field has split into two draft packs.",
+        priority=9,
+    )
+
+    producer.frame(item)
+
+    assert item.broadcast_angle == "field has split into multiple draft packs"
+    assert any("two groups have formed" in note for note in item.producer_notes)

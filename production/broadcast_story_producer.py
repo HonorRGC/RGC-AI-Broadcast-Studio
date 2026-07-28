@@ -68,6 +68,13 @@ class BroadcastStoryProducer:
                 "lane unless explicitly stated. Describe the pack shape, tension, "
                 "draft momentum, and why this can create runs or risk."
             )
+            if story_type == "formation_multiple_packs":
+                notes.append(
+                    "Make this sound like a race development: two groups have "
+                    "formed, the second pack needs to organize, and the gap to "
+                    "the lead pack matters. Do not turn it into a generic draft "
+                    "track description."
+                )
 
         if getattr(item, "category", "") == "pit_strategy":
             notes.append(
@@ -189,6 +196,8 @@ class BroadcastStoryProducer:
             )
         if story_type == "formation_compressed_pack":
             return "lead pack compression"
+        if story_type == "formation_multiple_packs":
+            return "field has split into multiple draft packs"
         if story_type == "race_recovery":
             return "driver has rebuilt the race after losing track position"
         if story_type == "race_fade":

@@ -97,6 +97,84 @@ def test_detects_three_wide_pressure():
     assert stories[0].participant_car_indices == (0, 1, 2)
 
 
+def test_detects_multiple_draft_packs_with_gap():
+    detector = FormationDetector()
+    race_results = results(8)
+    race_results[3]["Time"] = 4.2
+
+    stories = detector.analyze(
+        results=race_results,
+        driver_lookup=drivers(8),
+        lap_dist_pct_status=[
+            0.5000,
+            0.5060,
+            0.5120,
+            0.5900,
+            0.5960,
+            0.6020,
+            0.7200,
+            0.7260,
+        ],
+        pit_road_status=[False] * 8,
+        current_lap=12,
+        track_info={"track_name": "Daytona International Speedway", "track_type": "oval"},
+    )
+
+    assert stories[0].story_type == "formation_multiple_packs"
+    assert "lead pack has 3 cars" in stories[0].summary
+    assert "second pack starts around 4th" in stories[0].summary
+    assert "4.2 seconds" in stories[0].summary
+    assert stories[0].primary_car_idx == 3
+
+
+def test_multiple_pack_story_is_limited_to_true_draft_tracks():
+    detector = FormationDetector()
+
+    stories = detector.analyze(
+        results=results(8),
+        driver_lookup=drivers(8),
+        lap_dist_pct_status=[
+            0.5000,
+            0.5060,
+            0.5120,
+            0.5900,
+            0.5960,
+            0.6020,
+            0.7200,
+            0.7260,
+        ],
+        pit_road_status=[False] * 8,
+        current_lap=12,
+        track_info={"track_name": "Pocono Raceway", "track_type": "oval"},
+    )
+
+    assert stories == []
+
+
+def test_multiple_pack_story_has_longer_cooldown():
+    detector = FormationDetector()
+    payload = dict(
+        results=results(8),
+        driver_lookup=drivers(8),
+        lap_dist_pct_status=[
+            0.5000,
+            0.5060,
+            0.5120,
+            0.5900,
+            0.5960,
+            0.6020,
+            0.7200,
+            0.7260,
+        ],
+        pit_road_status=[False] * 8,
+        track_info={"track_name": "Talladega Superspeedway", "track_type": "oval"},
+    )
+
+    assert detector.analyze(current_lap=12, **payload)
+    assert detector.analyze(current_lap=16, **payload) == []
+    assert detector.analyze(current_lap=20, **payload)
+
+
 def test_formation_detector_cooldown_prevents_repeating_same_call_too_soon():
     detector = FormationDetector()
     payload = dict(

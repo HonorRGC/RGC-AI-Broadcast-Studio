@@ -79,6 +79,13 @@ class PromptBuilder:
                 "or outside lane, three-wide formation, contact, or a completed pass "
                 "unless the assignment explicitly says the pass looks clear."
             )
+        if getattr(assignment, "story_type", "") == "formation_multiple_packs":
+            lines.append(
+                "Accuracy: Talk only about the packs and gap stated in the "
+                "assignment. Do not invent which lane caused the split, do not "
+                "claim the second pack is catching the lead pack unless the "
+                "assignment says so, and keep this as a concise race-development call."
+            )
         lines.append("")
 
         if race_state:
