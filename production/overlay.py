@@ -888,11 +888,11 @@ class OverlayStateBuilder:
         if "Time" in car and car.get("Time") not in (None, ""):
             value = self.safe_float(car.get("Time"))
             if value > 0:
-                return f"+{value:.1f}"
+                return f"+{value:.2f}"
         if "Gap" in car and car.get("Gap") not in (None, ""):
             value = self.safe_float(car.get("Gap"))
             if value > 0:
-                return f"+{value:.1f}"
+                return f"+{value:.2f}"
         return ""
 
     @staticmethod
@@ -3820,7 +3820,7 @@ OVERLAY_HTML = r"""<!doctype html>
       display: inline-flex;
       align-items: center;
       gap: 7px;
-      font-size: 13px;
+      font-size: 14px;
       font-weight: 800;
       color: var(--rgc-text);
       white-space: nowrap;
@@ -3849,8 +3849,10 @@ OVERLAY_HTML = r"""<!doctype html>
 
     .ticker-gap {
       color: var(--rgc-muted);
-      font-size: 13px;
-      font-weight: 850;
+      font-size: 14px;
+      font-weight: 900;
+      min-width: 50px;
+      text-align: right;
     }
 
     @keyframes tickerScroll {

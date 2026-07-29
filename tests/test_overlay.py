@@ -118,7 +118,7 @@ def test_overlay_leaderboard_sorts_and_formats_zero_based_positions():
     assert leaderboard[0]["driver_name"] == "Austin Peterson"
     assert leaderboard[0]["car_number"] == "77"
     assert leaderboard[1]["driver_name"] == "Dean Marsh"
-    assert leaderboard[2]["interval"] == "+1.6"
+    assert leaderboard[2]["interval"] == "+1.60"
 
 
 def test_overlay_leaderboard_can_include_live_number_style(monkeypatch):
@@ -367,8 +367,8 @@ def test_overlay_shows_time_gap_during_start_finish_lap_transition():
 
     state = OverlayStateBuilder().build_from_telemetry(LapTransitionTelemetry()).to_dict()
 
-    assert state["leaderboard"][1]["interval"] == "+4.2"
-    assert state["leaderboard"][2]["interval"] == "+9.9"
+    assert state["leaderboard"][1]["interval"] == "+4.20"
+    assert state["leaderboard"][2]["interval"] == "+9.90"
 
 
 def test_overlay_shows_computed_laps_down_when_car_is_truly_lapped():
@@ -637,6 +637,8 @@ def test_overlay_has_optional_ticker_leaderboard_and_compact_lap_bar():
     assert '${series} - Leaderboard' not in OVERLAY_HTML
     assert 'setText("ticker-label", "Leaderboard")' in OVERLAY_HTML
     assert "animation: tickerScroll 62s linear infinite" in OVERLAY_HTML
+    assert "font-size: 14px;" in OVERLAY_HTML
+    assert "min-width: 50px;" in OVERLAY_HTML
     assert "border-left: 0;" in OVERLAY_HTML
     assert "background: transparent;" in OVERLAY_HTML
     assert "leaderboard-ticker-mode" in OVERLAY_HTML
