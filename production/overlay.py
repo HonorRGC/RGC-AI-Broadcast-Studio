@@ -3545,6 +3545,47 @@ OVERLAY_HTML = r"""<!doctype html>
       top: 176px;
     }
 
+    .caution-status {
+      position: absolute;
+      left: 50%;
+      top: 118px;
+      transform: translateX(-50%);
+      box-sizing: border-box;
+      min-width: 250px;
+      padding: 9px 28px;
+      border-radius: 999px;
+      background:
+        linear-gradient(90deg, rgba(255, 212, 0, 0.96), rgba(255, 235, 90, 0.96));
+      color: #141414;
+      border: 2px solid rgba(20, 20, 20, 0.38);
+      box-shadow:
+        0 0 26px rgba(255, 212, 0, 0.54),
+        0 10px 26px rgba(0, 0, 0, 0.35);
+      text-align: center;
+      font-size: 20px;
+      font-weight: 950;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      z-index: 24;
+      pointer-events: none;
+      animation: cautionStatusPulse 0.95s infinite alternate ease-in-out;
+    }
+
+    body.leaderboard-ticker-mode .caution-status {
+      top: 176px;
+    }
+
+    @keyframes cautionStatusPulse {
+      from {
+        filter: brightness(0.96);
+        box-shadow: 0 0 18px rgba(255, 212, 0, 0.44), 0 10px 26px rgba(0, 0, 0, 0.35);
+      }
+      to {
+        filter: brightness(1.10);
+        box-shadow: 0 0 34px rgba(255, 212, 0, 0.76), 0 10px 26px rgba(0, 0, 0, 0.35);
+      }
+    }
+
     .top-banner.caution {
       border: 4px solid #ffd400;
       border-bottom-width: 5px;
@@ -4489,6 +4530,7 @@ OVERLAY_HTML = r"""<!doctype html>
   </section>
 
   <div id="session-center" class="session-center hidden"></div>
+  <div id="caution-status" class="caution-status hidden">Under Caution</div>
 
   <section id="leaderboard" class="leaderboard">
     <div class="leaderboard-header">
@@ -4572,6 +4614,7 @@ OVERLAY_HTML = r"""<!doctype html>
       const leaderboardStyle = normalizeLeaderboardStyle(event.leaderboard_style);
       document.body.classList.toggle("leaderboard-ticker-mode", leaderboardStyle === "ticker");
       document.getElementById("top-banner").classList.toggle("caution", !!state.caution);
+      document.getElementById("caution-status").classList.toggle("hidden", !state.caution);
       document.getElementById("leaderboard").classList.toggle("green", !!state.green);
       document.getElementById("leaderboard").classList.toggle("caution", !!state.caution);
       document.getElementById("ticker-leaderboard").classList.toggle("green", !!state.green);
