@@ -96,11 +96,11 @@ class LiveBattleDetector:
             self.mark_called(key)
             return LiveBattleStory(
                 story_type="live_three_wide",
-                headline=f"Three-wide fight near {self.ordinal(position)}.",
+                headline=f"Three-car battle near {self.ordinal(position)}.",
                 summary=(
-                    f"{names[0]}, {names[1]}, and {names[2]} are nearly even "
-                    f"on track around {self.ordinal(position)}. Call it as "
-                    "three-wide pressure, but do not say the pass is complete yet."
+                    f"{names[0]}, {names[1]}, and {names[2]} have been stacked "
+                    f"together around {self.ordinal(position)}. Call it as a "
+                    "tight battle for position without claiming a lane or a completed pass."
                 ),
                 importance=self.importance_for_position(position, total_laps, current_lap) + 1,
                 primary_car_idx=group[1]["car_idx"],
@@ -142,11 +142,11 @@ class LiveBattleDetector:
         self.mark_called(key)
         return LiveBattleStory(
             story_type="live_side_by_side",
-            headline=f"Side-by-side for {self.ordinal(best_position)}.",
+            headline=f"Close battle for {self.ordinal(best_position)}.",
             summary=(
-                f"{first_label} and {second_label} are side by side for "
+                f"{first_label} and {second_label} have been battling for "
                 f"{self.ordinal(best_position)}. The spot is not settled yet, "
-                "so describe the battle without declaring a completed pass."
+                "so describe the pressure without declaring a completed pass."
             ),
             importance=self.importance_for_position(best_position, total_laps, current_lap),
             primary_car_idx=second["car_idx"],

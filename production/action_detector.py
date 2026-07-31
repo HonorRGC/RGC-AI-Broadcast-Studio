@@ -95,8 +95,11 @@ class ActionDetector:
             first_name, second_name = [self._name(driver_lookup, car_idx) for car_idx in participants]
             events.append(ActionEvent(
                 event_type="side_by_side",
-                headline=f"{first_name} and {second_name} are side by side",
-                summary=f"{first_name} is alongside {second_name} in a close fight for position.",
+                headline=f"{first_name} and {second_name} are in a close battle",
+                summary=(
+                    f"{first_name} and {second_name} have been locked together "
+                    "in a close fight for position."
+                ),
                 importance=9,
                 primary_car_idx=participants[0],
                 participant_car_indices=participants,

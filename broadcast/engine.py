@@ -2527,7 +2527,7 @@ class BroadcastEngine:
             category="race_story_follow_up",
             protected=False,
             speaker="jeff",
-            delay_seconds=0.1,
+            delay_seconds=0.0,
             expires_after=35,
             dedupe_key=f"booth_follow_up:{self.editorial_producer.build_story_id(item)}",
             camera_target_car_idx=None,

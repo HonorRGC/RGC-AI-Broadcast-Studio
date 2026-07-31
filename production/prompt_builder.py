@@ -75,9 +75,11 @@ class PromptBuilder:
             "live_pass_clear",
         ):
             lines.append(
-                "Accuracy: Use only the stated relationship. Do not invent an inside "
-                "or outside lane, three-wide formation, contact, or a completed pass "
-                "unless the assignment explicitly says the pass looks clear."
+                "Accuracy: Use only the stated relationship. Unless the assignment "
+                "explicitly says the pass looks clear, describe this as a close "
+                "battle, pressure, or cars stacked together. Do not invent an inside "
+                "or outside lane, side-by-side formation, three-wide formation, "
+                "contact, or a completed pass."
             )
         if getattr(assignment, "story_type", "") == "formation_multiple_packs":
             lines.append(

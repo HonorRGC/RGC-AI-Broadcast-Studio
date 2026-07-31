@@ -22,7 +22,7 @@ def test_followup_adds_short_color_after_lead_story():
     )
 
     assert follow_up
-    assert follow_up.startswith("Yeah,")
+    assert not follow_up.startswith("Yeah,")
     assert "forward progress" in follow_up
 
 

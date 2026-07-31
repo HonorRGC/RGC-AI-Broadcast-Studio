@@ -93,7 +93,8 @@ def test_detects_three_wide_pressure():
     )
 
     assert stories[0].story_type == "formation_three_wide"
-    assert "three-wide pressure" in stories[0].summary
+    assert "packed tightly together" in stories[0].summary
+    assert "three-wide pressure" not in stories[0].summary
     assert stories[0].participant_car_indices == (0, 1, 2)
 
 

@@ -147,18 +147,17 @@ class FormationDetector:
                 continue
             names = [self.name(driver_lookup, car["car_idx"]) for car in group]
             summary = (
-                f"{names[0]}, {names[1]}, and {names[2]} are nearly even "
-                "in the draft. That is three-wide pressure building in the pack."
+                f"{names[0]}, {names[1]}, and {names[2]} are packed tightly "
+                "together in the draft. That is pressure building in the pack."
                 if draft_pack_track
                 else (
-                    f"{names[0]}, {names[1]}, and {names[2]} are nearly even "
-                    "on track. That is three-wide pressure building without much "
-                    "room to sort it out."
+                    f"{names[0]}, {names[1]}, and {names[2]} are packed tightly "
+                    "together on track with very little room to sort it out."
                 )
             )
             return FormationStory(
                 story_type="formation_three_wide",
-                headline="Three-wide pressure in the pack.",
+                headline="Three-car pressure in the pack.",
                 summary=summary,
                 importance=10,
                 primary_car_idx=group[1]["car_idx"],

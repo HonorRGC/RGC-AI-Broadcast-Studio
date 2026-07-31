@@ -66,18 +66,20 @@ class BroadcastStoryProducer:
 
         if story_type in {"live_side_by_side", "live_three_wide", "live_pass_clear"}:
             notes.append(
-                "This is a live on-track battle read. If the summary says the "
-                "spot is not settled, do not declare the pass complete. If the "
-                "summary says the pass looks clear, call it naturally as an "
-                "on-track move without mentioning scoring systems or internal "
-                "confidence language."
+                "This is a live on-track battle read. Unless the summary says "
+                "the pass looks clear, describe it as pressure or a close battle "
+                "without claiming side-by-side, three-wide, contact, lane choice, "
+                "or a completed pass. If the summary says the pass looks clear, "
+                "call it naturally as an on-track move without mentioning scoring "
+                "systems or internal confidence language."
             )
 
         if story_type.startswith("formation_"):
             notes.append(
                 "This is a pack-formation call. Do not claim inside or outside "
-                "lane unless explicitly stated. Describe the pack shape, tension, "
-                "draft momentum, and why this can create runs or risk."
+                "lane, side-by-side, or three-wide unless explicitly stated. "
+                "Describe the pack shape, tension, momentum, and why this can "
+                "create runs or risk."
             )
             if story_type == "formation_multiple_packs":
                 notes.append(
@@ -184,14 +186,14 @@ class BroadcastStoryProducer:
         if story_type in {"battle_for_top_five", "battle_for_top_ten", "side_by_side", "three_car_battle", "live_side_by_side", "live_pass_clear"}:
             return "localized battle with consequences"
         if story_type == "live_three_wide":
-            return "three-wide live battle building"
+            return "tight three-car live battle building"
         summary = str(getattr(item, "summary", "") or "").lower()
         is_draft_summary = "draft" in summary
         if story_type == "formation_three_wide":
             return (
-                "three-wide pressure in the draft"
+                "three-car pressure in the draft"
                 if is_draft_summary
-                else "three-wide pressure for track position"
+                else "three-car pressure for track position"
             )
         if story_type == "formation_two_wide":
             return (

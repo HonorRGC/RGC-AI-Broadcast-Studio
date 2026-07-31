@@ -62,33 +62,33 @@ class BoothFollowupDirector:
         if story_type in {"lead_change", "battle_for_lead"}:
             if closing:
                 return (
-                    "Yeah, this is where every corner matters now. Clean air is "
+                    "This is where every corner matters now. Clean air is "
                     "important, but one small mistake can bring the challenger "
                     "right back into it."
                 )
             return (
-                "Yeah, that changes the shape of this run. Clean air matters, "
+                "That changes the shape of this run. Clean air matters, "
                 "but now the question is whether the pace holds up over the next "
                 "few laps."
             )
 
         if story_type in {"battle", "battle_for_top_five", "battle_for_top_ten"}:
             return (
-                "Yeah, this is the kind of fight that can pull more cars into "
+                "This is the kind of fight that can pull more cars into "
                 "the picture. If they stay close too long, the pack behind them "
                 "starts getting a run."
             )
 
         if story_type in {"side_by_side", "three_car_battle"}:
             return (
-                "Yeah, that is where patience gets tested. When cars are stacked "
+                "That is where patience gets tested. When cars are stacked "
                 "that close together, one mistimed move can turn a good battle "
                 "into a problem in a hurry."
             )
 
         if story_type in {"biggest_mover", "top_five_charge", "momentum"}:
             return (
-                "Yeah, that is real forward progress. The next test is whether "
+                "That is real forward progress. The next test is whether "
                 "that pace is still there once the tires and traffic start to "
                 "even everything back out."
             )

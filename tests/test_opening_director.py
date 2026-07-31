@@ -146,6 +146,7 @@ def test_track_info_explains_hot_daytime_track_grip():
     assert "mile-and-a-half oval" in segment.message
     assert "hotter track should make the tires give up faster" in segment.message
     assert "drivers who manage throttle and corner entry" in segment.message
+    assert "racing surface is dry" not in segment.message.lower()
 
 
 def test_track_info_explains_cool_night_race_grip():
@@ -166,6 +167,62 @@ def test_track_info_explains_cool_night_race_grip():
 
     assert "cooler racing surface" in segment.message
     assert "more grip" in segment.message
+    assert "racing surface is dry" not in segment.message.lower()
+
+
+def test_road_course_track_info_can_include_surface_wetness():
+    director = OpeningDirector()
+    segment = director.build_track_info(
+        {
+            "track_name": "Road America",
+            "track_length": "4.048 mi",
+            "track_type": "road course",
+            "category": "Road",
+            "skies": "overcast",
+            "air_temp": 19.0,
+            "track_temp": 21.0,
+            "track_wetness": 2,
+        }
+    )
+
+    assert "racing surface is very lightly wet" in segment.message.lower()
+
+
+def test_league_opening_outlook_uses_championship_and_track_history():
+    director = OpeningDirector()
+    segment = director.build_race_outlook(
+        {"track_name": "Michigan International Speedway", "track_type": "oval"},
+        {
+            34: {
+                "name": "T.J. Lee",
+                "number": "34",
+                "league_stats_by_scope": [
+                    {
+                        "stats_scope": "season",
+                        "points_position": "2",
+                        "points_to_next": "8",
+                        "track_wins": "0",
+                    }
+                ],
+            },
+            24: {
+                "name": "Dean Marsh",
+                "number": "24",
+                "league_stats_by_scope": [
+                    {
+                        "stats_scope": "season",
+                        "points_position": "5",
+                        "track_wins": "1",
+                    }
+                ],
+            },
+        },
+    )
+
+    assert segment.speaker == "jeff"
+    assert "championship" in segment.message
+    assert "8 points from the next spot" in segment.message
+    assert "has won here before" in segment.message
 
 
 def test_track_info_uses_supplied_rain_chance():

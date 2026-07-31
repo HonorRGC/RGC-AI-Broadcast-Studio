@@ -41,7 +41,7 @@ class OpeningDirector:
             self.track_info_sent = True
 
         if not self.race_outlook_sent:
-            segments.append(self.build_race_outlook(track_info))
+            segments.append(self.build_race_outlook(track_info, driver_lookup))
             self.race_outlook_sent = True
 
         if not self.pit_report_sent:
@@ -195,11 +195,14 @@ class OpeningDirector:
             category="opening_track_info",
         )
 
-    def build_race_outlook(self, track_info):
+    def build_race_outlook(self, track_info, driver_lookup=None):
         track_name = track_info.get("track_name", "this place")
         track_type = str(track_info.get("track_type", "") or "").lower()
         length_miles = self.track_length_miles(track_info.get("track_length"))
-        if length_miles and length_miles <= 1.0:
+        league_story = self.league_opening_story(driver_lookup)
+        if league_story:
+            message = league_story
+        elif length_miles and length_miles <= 1.0:
             message = (
                 "The biggest thing tonight is patience. Restarts stack up quickly, "
                 "and the drivers who keep the nose clean should have options late."
@@ -282,7 +285,11 @@ class OpeningDirector:
         track_temp = self.format_temperature(track_info.get("track_temp"))
         humidity = self.format_humidity(track_info.get("humidity"))
         wind = self.format_wind(track_info.get("wind_speed"))
-        wetness = self.format_track_wetness(track_info.get("track_wetness"))
+        wetness = (
+            self.format_track_wetness(track_info.get("track_wetness"))
+            if is_road_course(track_info)
+            else ""
+        )
         rain_chance = self.format_rain_chance(track_info)
         grip_note = self.grip_note(track_info)
 
@@ -310,6 +317,89 @@ class OpeningDirector:
         if grip_note:
             sentence = f"{sentence} {grip_note}".strip()
         return sentence
+
+    def league_opening_story(self, driver_lookup):
+        contenders = []
+        track_specialists = []
+        for driver_info in (driver_lookup or {}).values():
+            stats = self.preferred_season_stats(driver_info)
+            if not stats:
+                continue
+            name = str(driver_info.get("name") or stats.get("name") or "").strip()
+            number = str(driver_info.get("number") or stats.get("car_number") or "").strip()
+            label = self.driver_label(name, number)
+            points_position = self.safe_int(stats.get("points_position"), 0)
+            points_to_next = str(stats.get("points_to_next") or "").strip()
+            if label and points_position > 0:
+                contenders.append((points_position, points_to_next, label))
+
+            track_wins = self.safe_int(stats.get("track_wins"), 0)
+            best_track_finish = self.safe_int(stats.get("best_track_finish"), 0)
+            if label and (track_wins > 0 or 0 < best_track_finish <= 3):
+                track_specialists.append((track_wins, best_track_finish, label))
+
+        contenders.sort(key=lambda item: item[0])
+        track_specialists.sort(key=lambda item: (-item[0], item[1] or 99))
+
+        if contenders and track_specialists:
+            points_pos, points_gap, contender = contenders[0]
+            wins, best_finish, specialist = track_specialists[0]
+            specialist_note = (
+                f"{specialist} has won here before"
+                if wins
+                else f"{specialist} owns a best finish of {self.ordinal(best_finish)} here"
+            )
+            points_note = (
+                f"{contender} comes in {self.ordinal(points_pos)} in the championship"
+            )
+            if points_gap:
+                points_note += f", {points_gap} points from the next spot"
+            return (
+                f"The race story is bigger than the track tonight. {points_note}, "
+                f"and {specialist_note}, so there are championship and track-history "
+                "stakes before we even get to the first corner."
+            )
+
+        if contenders:
+            points_pos, points_gap, contender = contenders[0]
+            message = f"{contender} enters this one {self.ordinal(points_pos)} in the championship"
+            if points_gap:
+                message += f", only {points_gap} points from the next spot"
+            return (
+                f"One thing to watch tonight: {message}. Every stage of this race "
+                "can matter when the points picture is that tight."
+            )
+
+        if track_specialists:
+            wins, best_finish, specialist = track_specialists[0]
+            if wins:
+                return (
+                    f"Keep an eye on {specialist}. They have won at this track before, "
+                    "and that kind of notebook can show up once the run settles in."
+                )
+            return (
+                f"Keep an eye on {specialist}. They have a podium-level run at this "
+                "track in the record book, and that gives the booth a real benchmark tonight."
+            )
+
+        return ""
+
+    def preferred_season_stats(self, driver_info):
+        stats_by_scope = driver_info.get("league_stats_by_scope") or []
+        for stats in stats_by_scope:
+            if str(stats.get("stats_scope") or "").strip().casefold() == "season":
+                return stats
+        stats = driver_info.get("league_stats")
+        return stats if isinstance(stats, dict) else {}
+
+    def driver_label(self, name, number):
+        if name and number:
+            return f"the {number} of {name}"
+        if name:
+            return name
+        if number:
+            return f"the number {number}"
+        return ""
 
     def build_field_rundown(
         self,
