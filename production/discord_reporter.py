@@ -159,6 +159,10 @@ class DiscordRaceReporter:
         return self.sim_racer_hub_race_url(schedule_id)
 
     def resolve_scheduled_championship_url(self, schedule_match=None):
+        series_id = self.sim_racer_hub_query_value("series_id")
+        if series_id:
+            return self.sim_racer_hub_series_standings_url(series_id)
+
         season_id = self.sim_racer_hub_season_id or self.sim_racer_hub_query_value("season_id")
         if not season_id:
             return ""
@@ -272,6 +276,10 @@ class DiscordRaceReporter:
     def sim_racer_hub_standings_url(self, season_id, schedule_id):
         base = self.sim_racer_hub_base_url()
         return f"{base}/season_standings.php?season_id={season_id}&schedule_id={schedule_id}"
+
+    def sim_racer_hub_series_standings_url(self, series_id):
+        base = self.sim_racer_hub_base_url()
+        return f"{base}/scoring/season_standings.php?series_id={series_id}"
 
     def sim_racer_hub_base_url(self):
         parsed = urllib.parse.urlparse(self.sim_racer_hub_source or "https://simracerhub.com")

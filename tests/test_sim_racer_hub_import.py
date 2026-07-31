@@ -7,6 +7,7 @@ from tools.sim_racer_hub_import import (
     merge_stats_rows,
     normalize_sim_racer_hub_source,
     normalize_sim_racer_hub_schedule_source,
+    normalize_sim_racer_hub_standings_source,
     resolve_track_ids,
     sim_racer_hub_query_value,
     summarize_race_schedule,
@@ -467,6 +468,17 @@ def test_sim_racer_hub_standings_url_exposes_season_and_schedule_ids():
 
     assert sim_racer_hub_query_value(source, "season_id") == "29247"
     assert sim_racer_hub_query_value(source, "schedule_id") == "356745"
+
+
+def test_sim_racer_hub_standings_url_can_use_series_id_scoring_page():
+    source = "https://www.simracerhub.com/scoring/season_standings.php?series_id=3872"
+
+    assert sim_racer_hub_query_value(source, "series_id") == "3872"
+    assert normalize_sim_racer_hub_standings_source(source) == source
+    assert normalize_sim_racer_hub_standings_source(
+        "https://www.simracerhub.com",
+        series_id="3872",
+    ) == "https://www.simracerhub.com/scoring/season_standings.php?series_id=3872"
 
 
 def test_summarizes_sim_racer_hub_race_schedule_for_season():

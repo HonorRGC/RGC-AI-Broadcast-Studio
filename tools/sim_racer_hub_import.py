@@ -130,22 +130,25 @@ def normalize_sim_racer_hub_schedule_source(source, series_id="", season_id=""):
     )
 
 
-def normalize_sim_racer_hub_standings_source(source, season_id="", schedule_id=""):
+def normalize_sim_racer_hub_standings_source(source, season_id="", schedule_id="", series_id=""):
     parsed = urlparse(source)
     if not parsed.netloc.endswith("simracerhub.com"):
         return source
 
     query = parse_qs(parsed.query)
+    selected_series_id = query.get("series_id", [series_id])[0]
     selected_season_id = query.get("season_id", [season_id])[0]
     selected_schedule_id = query.get("schedule_id", [schedule_id])[0]
     replacement_query = {}
-    if selected_season_id:
+    if selected_series_id:
+        replacement_query["series_id"] = selected_series_id
+    elif selected_season_id:
         replacement_query["season_id"] = selected_season_id
-    if selected_schedule_id:
+    if selected_schedule_id and not selected_series_id:
         replacement_query["schedule_id"] = selected_schedule_id
     return urlunparse(
         parsed._replace(
-            path="/season_standings.php",
+            path="/scoring/season_standings.php" if selected_series_id else "/season_standings.php",
             query=urlencode(replacement_query),
         )
     )

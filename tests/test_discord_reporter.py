@@ -180,6 +180,34 @@ def test_discord_race_report_uses_standings_source_for_auto_championship(tmp_pat
     assert "https://www.simracerhub.com/scoring/season_race.php?schedule_id=356762" in links
     assert "https://www.simracerhub.com/season_standings.php?season_id=29079&schedule_id=356762" in links
 
+
+def test_discord_race_report_can_use_series_id_standings_link(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    schedule = tmp_path / "race_schedule.csv"
+    schedule.write_text(
+        "track_name,schedule_id,notes\n"
+        "Talladega,356751,Jul 31 2026\n",
+        encoding="utf-8",
+    )
+    reporter = DiscordRaceReporter(
+        enabled=True,
+        webhook_url="https://discord.example/webhook",
+        use_openai=False,
+        sim_racer_hub_source="https://www.simracerhub.com/scoring/season_standings.php?series_id=3872",
+        race_schedule_csv=str(schedule),
+    )
+
+    payload = reporter.build_payload(
+        [{"CarIdx": 1, "Position": 0}],
+        {1: {"name": "Winner Driver", "number": "34"}},
+        track_info={"track_name": "Talladega Superspeedway"},
+    )
+
+    links = payload["embeds"][0]["fields"][-1]["value"]
+    assert "https://www.simracerhub.com/scoring/season_race.php?schedule_id=356751" in links
+    assert "https://www.simracerhub.com/scoring/season_standings.php?series_id=3872" in links
+
+
 def test_discord_race_report_uses_true_green_laps_only():
     reporter = DiscordRaceReporter(enabled=True, webhook_url="https://discord.example/webhook")
     results = [{"CarIdx": 1, "Position": 0}]
