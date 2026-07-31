@@ -13,7 +13,7 @@ from config import (
     RACE_SPONSOR_GRAPHICS,
     RACE_SPONSOR_NAMES,
     RACE_SPONSOR_VIDEOS,
-    SPONSOR_READ_CAUSE,
+    SPONSOR_READ_CAUSE_NAME,
     SPONSOR_READ_CAUSE_LOGO,
     SPONSOR_READ_NAME,
     SPONSOR_READ_NAME_2,
@@ -1838,7 +1838,7 @@ def configured_sponsor_names():
         SPONSOR_READ_NAME_2,
         SPONSOR_READ_NAME_3,
         OVERLAY_RACE_SPONSOR,
-        SPONSOR_READ_CAUSE,
+        SPONSOR_READ_CAUSE_NAME,
         "RGC Motorsports",
         "Autism Awareness",
     ):

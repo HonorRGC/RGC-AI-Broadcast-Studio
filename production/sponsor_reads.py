@@ -3,7 +3,8 @@ from config import (
     OVERLAY_RACE_SPONSOR,
     RACE_SPONSOR_NAMES,
     RACE_SPONSOR_READS,
-    SPONSOR_READ_CAUSE,
+    SPONSOR_READ_CAUSE_NAME,
+    SPONSOR_READ_CAUSE_READ,
     SPONSOR_READ_MESSAGE,
     SPONSOR_READ_NAME,
     SPONSOR_READ_NAME_2,
@@ -23,7 +24,8 @@ class SponsorReadDirector:
         sponsor_name_3=SPONSOR_READ_NAME_3,
         sponsor_names=None,
         sponsor_reads=None,
-        cause=SPONSOR_READ_CAUSE,
+        cause=SPONSOR_READ_CAUSE_NAME,
+        cause_read=SPONSOR_READ_CAUSE_READ,
         custom_message=SPONSOR_READ_MESSAGE,
         event_title=OVERLAY_EVENT_TITLE,
         fallback_sponsor=OVERLAY_RACE_SPONSOR,
@@ -43,6 +45,7 @@ class SponsorReadDirector:
             if str(name or "").strip() and str(read or "").strip()
         }
         self.cause = (cause or self.detect_cause(event_title) or "").strip()
+        self.cause_read = (cause_read or "").strip()
         self.custom_message = (custom_message or "").strip()
         self.max_caution_reads = int(max_caution_reads)
         self.opening_read_sent = False
@@ -93,6 +96,8 @@ class SponsorReadDirector:
             return ""
 
         if sponsor_name and self.cause:
+            if self.cause_read:
+                return self.with_cause(f"Tonight's coverage is presented by {sponsor_name}.")
             if self.is_autism_awareness(self.cause):
                 if opening:
                     return (
@@ -115,6 +120,8 @@ class SponsorReadDirector:
         if sponsor_name:
             return self.with_cause(f"Tonight's coverage is presented by {sponsor_name}.")
 
+        if self.cause_read:
+            return self.default_cause_read()
         return f"Tonight's broadcast is proud to support {self.cause}."
 
     def next_sponsor_name(self):
@@ -158,6 +165,7 @@ class SponsorReadDirector:
             str(message or "")
             .replace("{sponsor}", sponsor_name if sponsor_name is not None else self.current_sponsor_name())
             .replace("{cause}", self.cause)
+            .replace("{cause_read}", self.default_cause_read())
         ).strip()
 
     def with_cause(self, message):
@@ -166,6 +174,11 @@ class SponsorReadDirector:
             return message
         normalized_message = message.lower()
         normalized_cause = self.cause.lower()
+        if self.cause_read:
+            normalized_read = self.cause_read.lower()
+            if normalized_read in normalized_message:
+                return message
+            return f"{message} {self.default_cause_read()}"
         if normalized_cause in normalized_message:
             return message
         if self.is_autism_awareness(self.cause):
@@ -174,3 +187,15 @@ class SponsorReadDirector:
                 "understanding, acceptance, and supporting the families in our racing community."
             )
         return f"{message} The broadcast is also proud to support {self.cause}."
+
+    def default_cause_read(self):
+        if self.cause_read:
+            return str(self.cause_read).replace("{cause}", self.cause).strip()
+        if self.is_autism_awareness(self.cause):
+            return (
+                "A reminder from all of us at RGC: Autism Awareness is about "
+                "understanding, acceptance, and supporting the families in our racing community."
+            )
+        if self.cause:
+            return f"The broadcast is also proud to support {self.cause}."
+        return ""

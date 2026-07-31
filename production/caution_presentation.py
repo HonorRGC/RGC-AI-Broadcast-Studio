@@ -1,5 +1,5 @@
 from broadcaster.race_director import RacePhase
-from config import CAUTION_PRESENTATION_GRAPHICS, RACE_SPONSOR_NAMES, SPONSOR_READ_CAUSE, SPONSOR_READ_NAME
+from config import CAUTION_PRESENTATION_GRAPHICS, RACE_SPONSOR_NAMES, SPONSOR_READ_CAUSE_NAME, SPONSOR_READ_NAME
 
 
 class CautionPresentationDirector:
@@ -8,7 +8,7 @@ class CautionPresentationDirector:
     def __init__(
         self,
         sponsor_name=SPONSOR_READ_NAME,
-        sponsor_cause=SPONSOR_READ_CAUSE,
+        sponsor_cause=SPONSOR_READ_CAUSE_NAME,
         overlay_duration=600.0,
         graphics=None,
     ):

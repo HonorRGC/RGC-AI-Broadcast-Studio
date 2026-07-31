@@ -29,6 +29,19 @@ def test_sponsor_read_can_detect_autism_from_event_title():
     assert "Autism Awareness" in message
 
 
+def test_sponsor_read_uses_separate_cause_name_and_spoken_read():
+    director = SponsorReadDirector(
+        sponsor_name="RGC Motorsports",
+        cause="Autism Awareness",
+        cause_read="Autism Awareness celebrates understanding, acceptance, and support for every family in the racing community.",
+    )
+
+    message = director.opening_read()
+
+    assert "RGC Motorsports" in message
+    assert "Autism Awareness celebrates understanding" in message
+
+
 def test_caution_sponsor_reads_are_capped_and_once_per_lap():
     director = SponsorReadDirector(
         sponsor_name="RGC Motorsports",

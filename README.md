@@ -189,11 +189,12 @@ RACE_SPONSOR_1_LOGO=/assets/rgc_motorsports.png
 RACE_SPONSOR_1_READ=
 RACE_SPONSOR_2_NAME=
 RACE_SPONSOR_2_LOGO=
-SPONSOR_READ_CAUSE=Autism Awareness
+SPONSOR_READ_CAUSE_NAME=Autism Awareness
 SPONSOR_READ_CAUSE_LOGO=/assets/autism_awareness.png
+SPONSOR_READ_CAUSE_READ=Autism Awareness is about understanding, acceptance, and supporting the families in our racing community.
 ```
 
-When enabled, the broadcast rotates up to five race sponsors in order after the pre-race field rundown, during natural caution breaks after replay or pit-road coverage, and during race-update sponsor reads. If a sponsor-specific read is blank, the AI writes a natural read. The cause/awareness message is added to sponsor calls.
+When enabled, the broadcast rotates up to five race sponsors in order after the pre-race field rundown, during natural caution breaks after replay or pit-road coverage, and during race-update sponsor reads. If a sponsor-specific read is blank, the AI writes a natural read. The cause/awareness name is used on overlays, and the optional cause/awareness spoken read is added to sponsor calls.
 
 Optional RGC Anthem ceremony:
 

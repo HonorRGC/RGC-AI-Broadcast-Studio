@@ -5,7 +5,7 @@ from config import (
     PRACTICE_MUSIC_PLAYLIST,
     RACE_SPONSOR_NAMES,
     STUDIO_VOLUME,
-    SPONSOR_READ_CAUSE,
+    SPONSOR_READ_CAUSE_NAME,
     SPONSOR_READ_NAME,
 )
 from production.audio_bed import PlaylistAudioPlayer, percent_to_mci_volume
@@ -18,7 +18,7 @@ class PracticePresentationDirector:
         playlist=None,
         player=None,
         sponsor_name=SPONSOR_READ_NAME,
-        sponsor_cause=SPONSOR_READ_CAUSE,
+        sponsor_cause=SPONSOR_READ_CAUSE_NAME,
         music_volume=STUDIO_VOLUME,
         graphics=None,
     ):

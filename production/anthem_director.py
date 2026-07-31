@@ -6,7 +6,7 @@ from config import (
     NATIONAL_ANTHEM_AUDIO,
     RACE_SPONSOR_NAMES,
     STUDIO_VOLUME,
-    SPONSOR_READ_CAUSE,
+    SPONSOR_READ_CAUSE_NAME,
     SPONSOR_READ_NAME,
     USE_NATIONAL_ANTHEM,
 )
@@ -34,7 +34,7 @@ class NationalAnthemDirector:
         studio_volume=STUDIO_VOLUME,
         graphics=None,
         sponsor_name=SPONSOR_READ_NAME,
-        sponsor_cause=SPONSOR_READ_CAUSE,
+        sponsor_cause=SPONSOR_READ_CAUSE_NAME,
     ):
         self.enabled = bool(enabled)
         self.audio_path = str(audio_path or "").strip()

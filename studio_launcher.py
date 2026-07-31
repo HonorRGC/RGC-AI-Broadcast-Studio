@@ -97,8 +97,9 @@ LAUNCHER_FIELDS = [
     ("OVERLAY_LEADERBOARD_STYLE", "side"),
     ("OVERLAY_HOST", "127.0.0.1"),
     ("USE_SPONSOR_READS", "true"),
-    ("SPONSOR_READ_CAUSE", ""),
+    ("SPONSOR_READ_CAUSE_NAME", ""),
     ("SPONSOR_READ_CAUSE_LOGO", ""),
+    ("SPONSOR_READ_CAUSE_READ", ""),
     ("RACE_SPONSOR_1_NAME", ""),
     ("RACE_SPONSOR_1_LOGO", ""),
     ("RACE_SPONSOR_1_READ", ""),
@@ -161,6 +162,7 @@ LEGACY_SPONSOR_FIELDS = [
     ("SPONSOR_READ_NAME", ""),
     ("SPONSOR_READ_NAME_2", ""),
     ("SPONSOR_READ_NAME_3", ""),
+    ("SPONSOR_READ_CAUSE", ""),
     ("SPONSOR_READ_MESSAGE", ""),
     ("USE_NATIONAL_ANTHEM", "false"),
     ("NATIONAL_ANTHEM_AUDIO", ""),
@@ -195,8 +197,9 @@ BROADCAST_FIELD_LABELS = {
     "OVERLAY_LEADERBOARD_STYLE": "Leaderboard Style",
     "OVERLAY_HOST": "Remote Producer Assist Access",
     "USE_SPONSOR_READS": "Use Sponsor Reads",
-    "SPONSOR_READ_CAUSE": "Cause / Awareness Read",
+    "SPONSOR_READ_CAUSE_NAME": "Cause / Awareness Name",
     "SPONSOR_READ_CAUSE_LOGO": "Cause / Awareness Logo",
+    "SPONSOR_READ_CAUSE_READ": "Cause / Awareness Spoken Read",
     "RACE_SPONSOR_1_NAME": "Sponsor 1 Name",
     "RACE_SPONSOR_1_LOGO": "Sponsor 1 Logo",
     "RACE_SPONSOR_1_READ": "Sponsor 1 Spoken Read",
@@ -260,8 +263,9 @@ BROADCAST_FIELD_HELP = {
     "OVERLAY_LEADERBOARD_STYLE": "side keeps the NASCAR-style left leaderboard. ticker scrolls across the top under the title.",
     "OVERLAY_HOST": "Use 127.0.0.1 for this PC only. Use 0.0.0.0 when trusted helpers connect through Tailscale. The Producer Assist / Remote Admin Link is the link to send to trusted admins on your Tailscale network.",
     "USE_SPONSOR_READS": "Lets the AI work sponsor mentions into pre-race, caution, and race-update moments.",
-    "SPONSOR_READ_CAUSE": "Cause or awareness message added to the end of sponsor reads, such as Autism Awareness.",
+    "SPONSOR_READ_CAUSE_NAME": "Short cause or awareness name shown on overlays and used by {cause}. Example: Autism Awareness.",
     "SPONSOR_READ_CAUSE_LOGO": "Logo for the cause/awareness message. It can rotate in the title and appear on sponsor popups.",
+    "SPONSOR_READ_CAUSE_READ": "Optional exact words added after sponsor reads for the cause/awareness. Leave blank for the built-in default.",
     "RACE_SPONSOR_1_NAME": "First race sponsor. Sponsor reads, caution overlays, and title rotation use sponsors in this order.",
     "RACE_SPONSOR_1_LOGO": "Logo for Sponsor 1.",
     "RACE_SPONSOR_1_READ": "Optional exact spoken read for Sponsor 1. Use {sponsor} and {cause}; leave blank for AI to write it.",
@@ -322,8 +326,9 @@ INLINE_HELP_FIELDS = {
     "OVERLAY_EVENT_TITLE",
     "OVERLAY_SERIES_LOGO",
     "USE_SPONSOR_READS",
-    "SPONSOR_READ_CAUSE",
+    "SPONSOR_READ_CAUSE_NAME",
     "SPONSOR_READ_CAUSE_LOGO",
+    "SPONSOR_READ_CAUSE_READ",
     "RACE_SPONSOR_1_NAME",
     "RACE_SPONSOR_1_LOGO",
     "RACE_SPONSOR_1_READ",
@@ -496,6 +501,8 @@ def launcher_defaults(existing=None):
         defaults["RACE_SPONSOR_3_NAME"] = existing.get("SPONSOR_READ_NAME_3", "")
     if not defaults.get("RACE_SPONSOR_1_READ"):
         defaults["RACE_SPONSOR_1_READ"] = existing.get("SPONSOR_READ_MESSAGE", "")
+    if not defaults.get("SPONSOR_READ_CAUSE_NAME"):
+        defaults["SPONSOR_READ_CAUSE_NAME"] = existing.get("SPONSOR_READ_CAUSE", "")
     if not defaults.get("OVERLAY_RACE_SPONSOR"):
         defaults["OVERLAY_RACE_SPONSOR"] = defaults.get("RACE_SPONSOR_1_NAME", "")
     if not defaults.get("SPONSOR_READ_NAME"):
@@ -1749,6 +1756,11 @@ def run_gui():
                 "The cause/awareness read is paired with the active sponsor. If this script is blank, "
                 "RGC AI Broadcast Studio writes a natural read from the sponsor name and cause."
             )
+        if key == "SPONSOR_READ_CAUSE_READ":
+            add_settings_hint(
+                "This is the actual sentence the broadcaster says for the cause/awareness. "
+                "Example: Autism Awareness is about understanding, acceptance, and supporting families in our racing community."
+            )
 
         if key == "OVERLAY_HOST":
             add_settings_hint(
@@ -2042,6 +2054,7 @@ def run_gui():
         values["SPONSOR_READ_NAME"] = values.get("RACE_SPONSOR_1_NAME", "")
         values["SPONSOR_READ_NAME_2"] = values.get("RACE_SPONSOR_2_NAME", "")
         values["SPONSOR_READ_NAME_3"] = values.get("RACE_SPONSOR_3_NAME", "")
+        values["SPONSOR_READ_CAUSE"] = values.get("SPONSOR_READ_CAUSE_NAME", "")
         values["SPONSOR_READ_MESSAGE"] = values.get("RACE_SPONSOR_1_READ", "")
         values["NATIONAL_ANTHEM_AUDIO"] = values.get("QUALIFYING_MUSIC_PLAYLIST", "")
         values["USE_NATIONAL_ANTHEM"] = (

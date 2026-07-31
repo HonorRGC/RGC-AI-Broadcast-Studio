@@ -107,7 +107,9 @@ def test_broadcast_settings_have_friendly_labels_and_sections():
     assert BROADCAST_FIELD_LABELS["RACE_SPONSOR_1_VIDEO"] == "Sponsor 1 Commercial Video"
     assert BROADCAST_FIELD_LABELS["CRANK_IT_UP_SPONSOR_NAME"] == "Crank It Up Sponsor"
     assert "Sponsor 1" in BROADCAST_FIELD_HELP["CRANK_IT_UP_SPONSOR_NAME"]
+    assert BROADCAST_FIELD_LABELS["SPONSOR_READ_CAUSE_NAME"] == "Cause / Awareness Name"
     assert BROADCAST_FIELD_LABELS["SPONSOR_READ_CAUSE_LOGO"] == "Cause / Awareness Logo"
+    assert BROADCAST_FIELD_LABELS["SPONSOR_READ_CAUSE_READ"] == "Cause / Awareness Spoken Read"
     assert BROADCAST_FIELD_LABELS["RACE_ADMIN_MODE"] == "Race Admin Mode"
     assert BROADCAST_FIELD_LABELS["RACE_ADMIN_SEND_MODE"] == "Race Admin Send Mode"
     assert BROADCAST_FIELD_LABELS["QUALIFYING_MUSIC_PLAYLIST"] == "Qualifying Music Playlist"
@@ -458,12 +460,14 @@ def test_launcher_migrates_old_sponsor_fields_to_new_slots():
         {
             "OVERLAY_RACE_SPONSOR": "RGC Motorsports",
             "SPONSOR_READ_NAME_2": "Autism Awareness",
+            "SPONSOR_READ_CAUSE": "Autism Awareness",
             "SPONSOR_READ_MESSAGE": "Presented by {sponsor}.",
         }
     )
 
     assert defaults["RACE_SPONSOR_1_NAME"] == "RGC Motorsports"
     assert defaults["RACE_SPONSOR_2_NAME"] == "Autism Awareness"
+    assert defaults["SPONSOR_READ_CAUSE_NAME"] == "Autism Awareness"
     assert defaults["RACE_SPONSOR_1_READ"] == "Presented by {sponsor}."
     assert defaults["CRANK_IT_UP_SPONSOR_NAME"] == "RGC Motorsports"
 

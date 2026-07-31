@@ -17,7 +17,7 @@ from config import (
     OVERLAY_LEADERBOARD_STYLE,
     OVERLAY_RACE_SPONSOR,
     OVERLAY_SERIES_NAME,
-    SPONSOR_READ_CAUSE,
+    SPONSOR_READ_CAUSE_NAME,
 )
 from production.sim_racing_apps import (
     build_sim_racing_apps_car_debug_info,
@@ -80,7 +80,7 @@ def is_safe_hex_color(value):
 class OverlayEventConfig:
     title: str = OVERLAY_EVENT_TITLE
     sponsor: str = OVERLAY_RACE_SPONSOR
-    cause: str = SPONSOR_READ_CAUSE
+    cause: str = SPONSOR_READ_CAUSE_NAME
     series: str = OVERLAY_SERIES_NAME
     leaderboard_style: str = OVERLAY_LEADERBOARD_STYLE
     graphics: list[str] = field(default_factory=lambda: list(OVERLAY_BRAND_GRAPHICS))
