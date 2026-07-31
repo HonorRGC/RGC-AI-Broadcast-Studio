@@ -149,6 +149,27 @@ def test_track_info_explains_hot_daytime_track_grip():
     assert "racing surface is dry" not in segment.message.lower()
 
 
+def test_opening_expands_state_abbreviations_in_track_location():
+    director = OpeningDirector()
+    segment = director.build_welcome(
+        {
+            "track_name": "Talladega Superspeedway",
+            "track_city": "Lincoln",
+            "track_state": "AL",
+            "track_length": "2.66 mi",
+            "track_type": "oval",
+            "skies": "clear",
+            "air_temp": 27.0,
+            "track_temp": 33.0,
+            "track_wetness": 0,
+            "rain_chance": 0,
+        }
+    )
+
+    assert "Lincoln, Alabama" in segment.message
+    assert "Lincoln, AL" not in segment.message
+
+
 def test_track_info_explains_cool_night_race_grip():
     director = OpeningDirector()
     segment = director.build_track_info(
