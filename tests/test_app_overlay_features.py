@@ -1100,6 +1100,32 @@ def test_featured_driver_image_prefers_sim_racing_apps_live_render(monkeypatch):
     }
 
 
+def test_featured_driver_image_keeps_last_good_sim_racing_apps_render(monkeypatch):
+    import app
+
+    monkeypatch.setattr(app, "USE_IRACING_RENDERED_CAR_IMAGES", True)
+    app._FEATURED_DRIVER_RENDER_INFO_CACHE.clear()
+    calls = {"count": 0}
+
+    def render_info(driver):
+        calls["count"] += 1
+        if calls["count"] == 1:
+            return {
+                "image_url": "http://127.0.0.1/SIMRacingApps/iRacing/pk_car.png?car=34",
+                "number_style": {"color": "#ffffff", "background": "#000000"},
+            }
+        return {}
+
+    monkeypatch.setattr(app, "build_sim_racing_apps_car_render_info", render_info)
+    monkeypatch.setattr(app, "build_iracing_render_image_url", lambda driver: "")
+
+    first = build_featured_driver_render_info({"car_idx": 34, "number": "34", "name": "T.J. Lee"})
+    second = build_featured_driver_render_info({"car_idx": 34, "number": "34", "name": "T.J. Lee"})
+
+    assert first == second
+    assert second["image_url"].endswith("pk_car.png?car=34")
+
+
 def test_opening_intro_driver_image_does_not_use_stale_render_cache(monkeypatch):
     import app
 

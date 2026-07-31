@@ -55,6 +55,7 @@ def test_build_car_image_url_returns_empty_when_sim_racing_apps_is_unavailable(m
     monkeypatch.setattr(sim_racing_apps, "urlopen", fake_urlopen)
     sim_racing_apps._CACHE.clear()
     sim_racing_apps._ROSTER_CACHE.clear()
+    sim_racing_apps._LAST_GOOD_RENDER_INFO.clear()
 
     assert build_sim_racing_apps_car_image_url({"car_idx": 12}) == ""
 
@@ -66,6 +67,7 @@ def test_build_car_image_url_ignores_error_state(monkeypatch):
     monkeypatch.setattr(sim_racing_apps, "urlopen", fake_urlopen)
     sim_racing_apps._CACHE.clear()
     sim_racing_apps._ROSTER_CACHE.clear()
+    sim_racing_apps._LAST_GOOD_RENDER_INFO.clear()
 
     assert build_sim_racing_apps_car_image_url({"car_idx": 12}) == ""
 
@@ -90,6 +92,7 @@ def test_build_car_render_info_includes_number_style(monkeypatch):
     monkeypatch.setattr(sim_racing_apps, "urlopen", fake_urlopen)
     sim_racing_apps._CACHE.clear()
     sim_racing_apps._ROSTER_CACHE.clear()
+    sim_racing_apps._LAST_GOOD_RENDER_INFO.clear()
 
     info = build_sim_racing_apps_car_render_info(
         {"car_idx": 34, "number": "34", "name": "T.J. Lee"},
@@ -180,3 +183,42 @@ def test_build_car_render_info_does_not_reuse_mismatched_direct_car(monkeypatch)
     )
 
     assert info == {}
+
+
+def test_build_car_render_info_keeps_last_good_render_during_hiccup(monkeypatch):
+    responses = {
+        "Data/Car/I34/Number": {"State": "NORMAL", "Value": "34"},
+        "Data/Car/I34/DriverName": {"State": "NORMAL", "Value": "T.J. Lee"},
+        "Data/Car/I34/ImageUrl": {"State": "OFF", "Value": "iRacing/pk_car.png?car=34"},
+        "Data/Car/I34/ColorNumber": {"State": "NORMAL", "Value": 16777215},
+        "Data/Car/I34/ColorNumberBackground": {"State": "NORMAL", "Value": 0},
+    }
+
+    def fake_urlopen(url, timeout=0):
+        key = url.split("/SIMRacingApps/")[-1]
+        return Response(json.dumps(responses.get(key, {"State": "ERROR"})))
+
+    monkeypatch.setattr(sim_racing_apps, "urlopen", fake_urlopen)
+    sim_racing_apps._CACHE.clear()
+    sim_racing_apps._ROSTER_CACHE.clear()
+    sim_racing_apps._LAST_GOOD_RENDER_INFO.clear()
+
+    first = build_sim_racing_apps_car_render_info(
+        {"car_idx": 34, "number": "34", "name": "T.J. Lee"},
+        now=10.0,
+    )
+
+    def broken_urlopen(url, timeout=0):
+        raise OSError("temporary hiccup")
+
+    monkeypatch.setattr(sim_racing_apps, "urlopen", broken_urlopen)
+    sim_racing_apps._CACHE.clear()
+    sim_racing_apps._ROSTER_CACHE.clear()
+
+    second = build_sim_racing_apps_car_render_info(
+        {"car_idx": 34, "number": "34", "name": "T.J. Lee"},
+        now=20.0,
+    )
+
+    assert first["image_url"] == second["image_url"]
+    assert second["number_style"]["color"] == "#ffffff"

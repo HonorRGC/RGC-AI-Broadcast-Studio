@@ -16,6 +16,7 @@ MAX_ROSTER_CARS = 80
 
 _CACHE = {}
 _ROSTER_CACHE = {}
+_LAST_GOOD_RENDER_INFO = {}
 CAR_FIELDS = (
     "Number",
     "DriverName",
@@ -59,6 +60,7 @@ def build_sim_racing_apps_car_render_info(
 ):
     """Return live car render image plus number styling from SimRacingApps."""
     car_idx = normalize_car_idx(first_present(driver_info, "car_idx", "CarIdx", "id", "Id"))
+    render_cache_key = driver_render_cache_key(driver_info)
     has_identity = bool(
         first_present(driver_info, "number", "car_number", "CarNumber")
         or first_present(driver_info, "name", "driver_name", "UserName")
@@ -68,7 +70,10 @@ def build_sim_racing_apps_car_render_info(
     if car_idx is not None:
         data = fetch_sim_racing_apps_car_data(car_idx, base_url=base_url, now=now)
         if data.get("State") == "NORMAL" and sim_racing_apps_car_matches(data, driver_info):
-            return render_info_from_car_data(data, base_url=base_url)
+            return remember_render_info(
+                render_cache_key,
+                render_info_from_car_data(data, base_url=base_url),
+            )
 
     matched_data = find_matching_sim_racing_apps_car_data(
         driver_info,
@@ -76,13 +81,60 @@ def build_sim_racing_apps_car_render_info(
         now=now,
     )
     if matched_data:
-        return render_info_from_car_data(matched_data, base_url=base_url)
+        return remember_render_info(
+            render_cache_key,
+            render_info_from_car_data(matched_data, base_url=base_url),
+        )
 
     if data.get("State") != "NORMAL":
-        return {}
+        return last_good_render_info(render_cache_key)
     if has_identity:
         return {}
-    return render_info_from_car_data(data, base_url=base_url)
+    return remember_render_info(
+        render_cache_key,
+        render_info_from_car_data(data, base_url=base_url),
+    )
+
+
+def driver_render_cache_key(driver_info):
+    car_idx = normalize_car_idx(first_present(driver_info, "car_idx", "CarIdx", "id", "Id"))
+    number = normalize_text(
+        first_present(driver_info, "number", "car_number", "CarNumber")
+    )
+    name = normalize_text(
+        first_present(driver_info, "name", "driver_name", "UserName")
+    )
+    if name or number:
+        return (car_idx, number, name)
+    if car_idx is not None:
+        return (car_idx, "", "")
+    return None
+
+
+def remember_render_info(cache_key, render_info):
+    render_info = normalize_render_info(render_info)
+    if cache_key and (render_info.get("image_url") or render_info.get("number_style")):
+        _LAST_GOOD_RENDER_INFO[cache_key] = dict(render_info)
+    return render_info
+
+
+def last_good_render_info(cache_key):
+    cached = _LAST_GOOD_RENDER_INFO.get(cache_key) if cache_key else None
+    return dict(cached) if cached else {}
+
+
+def normalize_render_info(render_info):
+    if not isinstance(render_info, dict):
+        return {}
+    image_url = str(render_info.get("image_url") or "").strip()
+    number_style = render_info.get("number_style")
+    number_style = dict(number_style) if isinstance(number_style, dict) else {}
+    if not image_url and not number_style:
+        return {}
+    return {
+        "image_url": image_url,
+        "number_style": number_style,
+    }
 
 
 def build_sim_racing_apps_car_debug_info(

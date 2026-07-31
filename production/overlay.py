@@ -377,6 +377,7 @@ class OverlayStateBuilder:
         self.last_leaderboard = []
         self.lap_status_by_lap = {}
         self.starting_positions_by_car_idx = {}
+        self.number_style_by_car_idx = {}
 
     def build_from_telemetry(self, telemetry):
         results = telemetry.get_results()
@@ -451,7 +452,6 @@ class OverlayStateBuilder:
             default=0,
         )
         leader_car = valid_results[0] if valid_results else {}
-        sim_racing_apps_available = sim_racing_apps_session_car_count() > 0
         multiclass = build_multiclass_context(valid_results, driver_lookup)
 
         leaderboard = []
@@ -475,19 +475,18 @@ class OverlayStateBuilder:
             fastest_lap = self.format_lap_time(self.best_lap_value(car))
             on_pit_road = self.on_pit_road(car)
             class_position = multiclass.positions.get(car_idx)
+            render_info = build_sim_racing_apps_car_render_info(driver_info)
+            number_style = self.stable_number_style(
+                car_idx,
+                render_info.get("number_style", {}),
+            )
             leaderboard.append(
                 LeaderboardEntry(
                     position=display_position,
                     car_idx=car_idx,
                     car_number=str(driver.get("number") or "?"),
                     driver_name=str(driver.get("name") or f"Car {car_idx}"),
-                    number_style=sanitize_driver_number_style(
-                        build_sim_racing_apps_car_render_info(driver_info).get(
-                            "number_style", {}
-                        )
-                        if sim_racing_apps_available
-                        else {}
-                    ),
+                    number_style=number_style,
                     laps_complete=self.safe_int(
                         car.get("LapsComplete", car.get("Lap", 0))
                     ),
@@ -527,6 +526,17 @@ class OverlayStateBuilder:
                 )
             )
         return leaderboard
+
+    def stable_number_style(self, car_idx, style):
+        sanitized = sanitize_driver_number_style(style)
+        try:
+            key = int(car_idx)
+        except (TypeError, ValueError):
+            return sanitized
+        if sanitized:
+            self.number_style_by_car_idx[key] = sanitized
+            return sanitized
+        return dict(self.number_style_by_car_idx.get(key, {}))
 
     def update_starting_position_memory(
         self,

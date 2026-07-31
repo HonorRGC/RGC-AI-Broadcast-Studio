@@ -44,6 +44,7 @@ from production.race_control import RaceControlService
 
 DEFAULT_CRANK_IT_UP_SECONDS = 50.0
 MANUAL_SPONSOR_INDEX = 0
+_FEATURED_DRIVER_RENDER_INFO_CACHE = {}
 
 COUNTRY_ALIASES = {
     "arg": "Argentina",
@@ -2830,6 +2831,7 @@ def build_featured_driver_image(driver):
 
 
 def build_featured_driver_render_info(driver, require_live_render_match=False):
+    cache_key = featured_driver_render_cache_key(driver)
     for key in ("car_image_url", "paint_image_url"):
         value = str(driver.get(key, "") or "").strip()
         if value.startswith(("http://", "https://", "/")):
@@ -2859,13 +2861,70 @@ def build_featured_driver_render_info(driver, require_live_render_match=False):
                     "image_url": "",
                     "number_style": sim_racing_apps_info.get("number_style", {}),
                 }
-            return sim_racing_apps_info
+            return remember_featured_driver_render_info(cache_key, sim_racing_apps_info)
         if require_live_render_match:
             return {"image_url": "", "number_style": {}}
+        cached = last_good_featured_driver_render_info(cache_key)
+        if cached:
+            return cached
         render_url = build_iracing_render_image_url(driver)
         if render_url:
             return {"image_url": render_url, "number_style": {}}
     return {"image_url": "", "number_style": {}}
+
+
+def featured_driver_render_cache_key(driver):
+    car_idx = safe_int(
+        driver.get("car_idx")
+        or driver.get("CarIdx")
+        or driver.get("id")
+        or driver.get("Id"),
+        -1,
+    )
+    number = " ".join(
+        str(driver.get("number") or driver.get("car_number") or driver.get("CarNumber") or "")
+        .strip()
+        .casefold()
+        .split()
+    )
+    name = " ".join(
+        str(driver.get("name") or driver.get("driver_name") or driver.get("UserName") or "")
+        .strip()
+        .casefold()
+        .replace(".", "")
+        .split()
+    )
+    if name or number:
+        return (car_idx, number, name)
+    if car_idx >= 0:
+        return (car_idx, "", "")
+    return None
+
+
+def remember_featured_driver_render_info(cache_key, render_info):
+    render_info = normalize_featured_driver_render_info(render_info)
+    if cache_key and (render_info.get("image_url") or render_info.get("number_style")):
+        _FEATURED_DRIVER_RENDER_INFO_CACHE[cache_key] = dict(render_info)
+    return render_info
+
+
+def last_good_featured_driver_render_info(cache_key):
+    cached = _FEATURED_DRIVER_RENDER_INFO_CACHE.get(cache_key) if cache_key else None
+    return dict(cached) if cached else {}
+
+
+def normalize_featured_driver_render_info(render_info):
+    if not isinstance(render_info, dict):
+        return {}
+    image_url = str(render_info.get("image_url") or "").strip()
+    number_style = render_info.get("number_style")
+    number_style = dict(number_style) if isinstance(number_style, dict) else {}
+    if not image_url and not number_style:
+        return {}
+    return {
+        "image_url": image_url,
+        "number_style": number_style,
+    }
 
 
 def is_driver_specific_render_image_url(image_url):

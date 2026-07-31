@@ -148,6 +148,38 @@ def test_overlay_leaderboard_can_include_live_number_style(monkeypatch):
     assert 'class="ticker-num" style="${numberStyleAttribute' in OVERLAY_HTML
 
 
+def test_overlay_leaderboard_keeps_last_good_number_style(monkeypatch):
+    import production.overlay as overlay_module
+
+    calls = {"count": 0}
+
+    def render_info(driver):
+        calls["count"] += 1
+        if calls["count"] <= 3:
+            return {
+                "number_style": {
+                    "color": "#ffffff",
+                    "background": "#000000",
+                }
+            }
+        return {}
+
+    monkeypatch.setattr(overlay_module, "build_sim_racing_apps_car_render_info", render_info)
+    builder = OverlayStateBuilder()
+
+    first = builder.build_from_telemetry(OverlayTelemetry()).to_dict()
+    second = builder.build_from_telemetry(OverlayTelemetry()).to_dict()
+
+    assert first["leaderboard"][0]["number_style"] == {
+        "color": "#ffffff",
+        "background": "#000000",
+    }
+    assert second["leaderboard"][0]["number_style"] == {
+        "color": "#ffffff",
+        "background": "#000000",
+    }
+
+
 def test_overlay_leaderboard_includes_producer_driver_stats():
     class StatsTelemetry(OverlayTelemetry):
         def get_results(self):
