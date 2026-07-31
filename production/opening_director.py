@@ -89,6 +89,9 @@ class OpeningDirector:
         state = self.expand_state(track_info.get("track_state", ""))
         location = f" in {city}, {state}" if city and state else ""
         details = []
+        race_identity = self.race_identity(track_info)
+        if race_identity:
+            details.append(race_identity)
         story = self.track_opening_story(track_info)
         if story:
             details.append(story)
@@ -101,9 +104,34 @@ class OpeningDirector:
         detail_text = f" {' '.join(details)}" if details else ""
 
         return OpeningSegment(
-            f"Welcome to {track_name}{location}.{detail_text}",
+            f"Good evening and welcome to {track_name}{location}.{detail_text}",
             priority=10,
             category="opening_welcome",
+        )
+
+    def race_identity(self, track_info):
+        track_name = str(track_info.get("track_name", "") or "").strip()
+        if not track_name:
+            return ""
+        if is_road_course(track_info):
+            return (
+                "The cars are rolling toward a race where patience, braking discipline, "
+                "and clean exits have to work together."
+            )
+        if self.is_drafting_track(track_info):
+            return (
+                "The grid is forming for a race where timing, trust, and discipline "
+                "inside the pack can matter as much as outright speed."
+            )
+        length = self.track_length_miles(track_info.get("track_length"))
+        if length and length <= 1.0:
+            return (
+                "The field is getting ready for a night where traffic shows up fast "
+                "and every restart can change the whole race."
+            )
+        return (
+            "The field is getting ready for a race that should test pace, tire life, "
+            "and who can make the right adjustment as the run changes."
         )
 
     def track_opening_story(self, track_info):
@@ -196,38 +224,12 @@ class OpeningDirector:
         )
 
     def build_race_outlook(self, track_info, driver_lookup=None):
-        track_name = track_info.get("track_name", "this place")
-        track_type = str(track_info.get("track_type", "") or "").lower()
-        length_miles = self.track_length_miles(track_info.get("track_length"))
+        base_outlook = self.track_race_outlook(track_info)
         league_story = self.league_opening_story(driver_lookup)
         if league_story:
-            message = league_story
-        elif length_miles and length_miles <= 1.0:
-            message = (
-                "The biggest thing tonight is patience. Restarts stack up quickly, "
-                "and the drivers who keep the nose clean should have options late."
-            )
-        elif self.is_drafting_track(track_info):
-            message = (
-                "The draft should shape this race. Runs build fast, and timing "
-                "the lane changes may matter more than raw speed."
-            )
-        elif is_long_straight_draft_assist_track(track_info):
-            message = (
-                "The long straightaways can help drivers build a run, but this "
-                "is still about braking, corner exit, and keeping the car "
-                "balanced through the slower corners."
-            )
-        elif is_road_course(track_info):
-            message = (
-                "Rhythm and braking zones decide this one. Clean exits and "
-                "mistake-free laps should pay off over a full run."
-            )
+            message = f"{league_story} {base_outlook}"
         else:
-            message = (
-                "The story to watch is who can protect track position while "
-                "saving enough tire to attack when the run gets long."
-            )
+            message = base_outlook
         return OpeningSegment(
             message,
             priority=9,
@@ -235,18 +237,54 @@ class OpeningDirector:
             category="opening_race_outlook",
         )
 
+    def track_race_outlook(self, track_info):
+        length_miles = self.track_length_miles(track_info.get("track_length"))
+        if length_miles and length_miles <= 1.0:
+            message = (
+                "The race key is patience without giving away track position. "
+                "Restarts stack up quickly, and the drivers who keep the nose "
+                "clean should have options late."
+            )
+        elif self.is_drafting_track(track_info):
+            message = (
+                "The race key is timing. Runs can build fast, but the best drivers "
+                "will know when to push, when to stay tucked in, and when not to "
+                "force a move too early."
+            )
+        elif is_long_straight_draft_assist_track(track_info):
+            message = (
+                "The long straightaways can help a driver build a run, but this is "
+                "still about braking, corner exit, and keeping the car balanced "
+                "through the slower corners."
+            )
+        elif is_road_course(track_info):
+            message = (
+                "Rhythm and braking zones decide this one. The driver who avoids "
+                "the big mistake and keeps the exits clean should be dangerous "
+                "over a full run."
+            )
+        else:
+            message = (
+                "The story to watch is who can protect track position without "
+                "using up the tire too early. The fastest car on lap five may "
+                "not be the car everyone is chasing late in the run."
+            )
+        return message
+
     def build_pit_report(self, track_info):
         track_name = track_info.get("track_name", "this place")
         length_miles = self.track_length_miles(track_info.get("track_length"))
         if length_miles and length_miles <= 1.0:
             message = (
-                "Down here on pit road, track position will be huge. A clean stop "
-                "can keep a driver out of the hornet's nest."
+                "Down here on pit road, track position is going to be precious. "
+                "If cautions bunch this field up, a clean stop can keep a driver "
+                "out of the hornet's nest."
             )
         elif self.is_drafting_track(track_info):
             message = (
-                "Pit road timing could be a big swing tonight. If fuel strategy "
-                "comes into play, the cleanest group stop can win track position."
+                "Pit road could become a team exercise tonight. If fuel strategy "
+                "comes into play, getting in and out with the right group may be "
+                "just as important as the stop itself."
             )
         elif is_road_course(track_info):
             message = (
@@ -256,8 +294,9 @@ class OpeningDirector:
             )
         else:
             message = (
-                "Pit road should be quiet early, but once tires start to matter, "
-                "the timing of that first stop can change the race."
+                "Pit road should be quiet early, but once tires start to fall off, "
+                "the first stop can tell us who is playing track position and who "
+                "is thinking about the long run."
             )
         return OpeningSegment(
             message,
@@ -355,9 +394,9 @@ class OpeningDirector:
             if points_gap:
                 points_note += f", {points_gap} points from the next spot"
             return (
-                f"The race story is bigger than the track tonight. {points_note}, "
-                f"and {specialist_note}, so there are championship and track-history "
-                "stakes before we even get to the first corner."
+                f"From the championship side, {points_note}. {specialist_note}, "
+                "so there is already a points story and a track-history story "
+                "before we even get to the first corner."
             )
 
         if contenders:
@@ -366,8 +405,8 @@ class OpeningDirector:
             if points_gap:
                 message += f", only {points_gap} points from the next spot"
             return (
-                f"One thing to watch tonight: {message}. Every stage of this race "
-                "can matter when the points picture is that tight."
+                f"One thing to watch tonight: {message}. That makes every restart, "
+                "pit call, and late-race decision feel a little bigger."
             )
 
         if track_specialists:
