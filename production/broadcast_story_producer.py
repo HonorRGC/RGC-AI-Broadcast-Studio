@@ -33,6 +33,12 @@ class BroadcastStoryProducer:
                 "Do not make this only a position-gain read. Explain the race "
                 "story: pace, patience, traffic, long-run strength, or pressure."
             )
+            if self.has_championship_context(race_knowledge):
+                notes.append(
+                    "Verified championship standings are available. If it fits "
+                    "naturally, connect this run to points position or the gap "
+                    "to the next points spot instead of repeating only positions gained."
+                )
             if not self.can_mention_start_position(driver_key):
                 notes.append(
                     "Avoid repeating where this driver started. That fact has "
@@ -52,6 +58,11 @@ class BroadcastStoryProducer:
                 "Make the leader story feel important. Discuss pressure, gap, "
                 "clean air, lap traffic, or what the challenger must do next."
             )
+            if self.has_championship_context(race_knowledge):
+                notes.append(
+                    "If the championship points context fits the battle, use it "
+                    "as the stakes for why this position matters."
+                )
 
         if story_type in {"live_side_by_side", "live_three_wide", "live_pass_clear"}:
             notes.append(
@@ -113,8 +124,8 @@ class BroadcastStoryProducer:
             if self.has_league_track_history(race_knowledge):
                 notes.append(
                     "Verified league stats are available. Prefer a track-history "
-                    "or previous-result nugget over another generic draft-track "
-                    "reference when it fits this driver."
+                    "previous-result, or championship-standings nugget over "
+                    "another generic draft-track reference when it fits this driver."
                 )
         if track_profile.get("style") == "road_course":
             notes.append(
@@ -222,9 +233,17 @@ class BroadcastStoryProducer:
                     "last race finish",
                     "season wins",
                     "career wins",
+                    "championship points",
                     "points:",
                 )
             ):
+                return True
+        return False
+
+    def has_championship_context(self, race_knowledge):
+        for line in (race_knowledge or {}).get("league_driver_context") or ():
+            text = str(line or "").casefold()
+            if "championship points" in text or "points:" in text:
                 return True
         return False
 

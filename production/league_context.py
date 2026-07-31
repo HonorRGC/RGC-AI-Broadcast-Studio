@@ -103,7 +103,7 @@ class DriverStats:
     def context_summary(self):
         details = []
         if self.points_position:
-            point_text = f"points: {self.ordinal(self.points_position)}"
+            point_text = f"championship points: {self.ordinal(self.points_position)}"
             if self.points_to_next:
                 point_text += f", {self.points_to_next} points to the next spot"
             details.append(point_text)

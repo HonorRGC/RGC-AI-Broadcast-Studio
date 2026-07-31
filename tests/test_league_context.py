@@ -75,6 +75,7 @@ def test_league_context_enriches_driver_lookup_with_stats(tmp_path):
     )
 
     assert enriched[4]["league_stats"]["wins"] == "4"
+    assert "championship points: 1st" in enriched[4]["league_stats_summary"]
     assert "points: 1st" in enriched[4]["league_stats_summary"]
     assert "last race finish: 2nd" in enriched[4]["league_stats_summary"]
     assert "track wins: 2" in enriched[4]["league_stats_summary"]
@@ -99,6 +100,7 @@ def test_league_context_can_run_with_stats_only(tmp_path):
 
     assert context.is_configured()
     assert enriched[4]["league_stats"]["wins"] == "4"
+    assert "championship points: 1st" in enriched[4]["league_stats_summary"]
     assert "points: 1st" in enriched[4]["league_stats_summary"]
 
 
@@ -286,6 +288,7 @@ def test_league_context_builds_assignment_notes(tmp_path):
     assert "Nashville, TN, USA" in notes[0]
     assert "RGC Motorsports" in notes[0]
     assert any("season wins: 4" in note for note in notes)
+    assert any("championship points: 1st" in note for note in notes)
     assert any("points: 1st" in note for note in notes)
 
 

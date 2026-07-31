@@ -110,6 +110,29 @@ def test_story_producer_prefers_league_track_history_on_draft_tracks():
     assert any("generic draft-track reference" in note for note in item.producer_notes)
 
 
+def test_story_producer_uses_championship_context_for_driver_momentum():
+    producer = BroadcastStoryProducer()
+    item = EditorialItem(
+        story_type="biggest_mover",
+        headline="Driver moving forward",
+        summary="The number 34 has gained five positions.",
+        driver_name="T.J. Lee",
+        car_number="34",
+    )
+
+    producer.frame(
+        item,
+        race_knowledge={
+            "league_driver_context": [
+                "T.J. Lee in the number 34 stats: championship points: 4th, 9 points to the next spot"
+            ],
+        },
+    )
+
+    assert any("Verified championship standings are available" in note for note in item.producer_notes)
+    assert any("points position" in note for note in item.producer_notes)
+
+
 def test_story_producer_frames_multiple_pack_split_as_race_development():
     producer = BroadcastStoryProducer()
     item = SimpleNamespace(
