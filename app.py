@@ -1100,8 +1100,11 @@ def handle_producer_command(
             )
         return
 
-    if command in ("leaderboard_side", "leaderboard_ticker"):
-        style = "ticker" if command == "leaderboard_ticker" else "side"
+    if command in ("leaderboard_side", "leaderboard_ticker", "leaderboard_flo"):
+        style = {
+            "leaderboard_ticker": "ticker",
+            "leaderboard_flo": "flo",
+        }.get(command, "side")
         setter = getattr(overlay_server, "set_leaderboard_style", None)
         selected = setter(style) if setter else style
         publish_producer_event(

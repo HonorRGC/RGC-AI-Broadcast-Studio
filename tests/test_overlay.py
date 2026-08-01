@@ -666,11 +666,15 @@ def test_overlay_has_top_center_under_caution_badge():
 
 def test_overlay_has_optional_ticker_leaderboard_and_compact_lap_bar():
     assert 'id="ticker-leaderboard"' in OVERLAY_HTML
+    assert 'id="flo-leaderboard"' in OVERLAY_HTML
+    assert 'id="flo-sponsor-logo"' in OVERLAY_HTML
+    assert 'id="flo-series-logo"' in OVERLAY_HTML
     assert 'id="ticker-label"' in OVERLAY_HTML
     assert 'id="leaderboard-series"' in OVERLAY_HTML
     assert 'id="cause-line"' in OVERLAY_HTML
     assert "normalizeLeaderboardStyle" in OVERLAY_HTML
     assert "renderTickerLeaderboard" in OVERLAY_HTML
+    assert "renderFloLeaderboard" in OVERLAY_HTML
     assert "setLeaderboardSeries" in OVERLAY_HTML
     assert '${series} - Leaderboard' not in OVERLAY_HTML
     assert 'setText("ticker-label", "Leaderboard")' in OVERLAY_HTML
@@ -680,13 +684,17 @@ def test_overlay_has_optional_ticker_leaderboard_and_compact_lap_bar():
     assert "border-left: 0;" in OVERLAY_HTML
     assert "background: transparent;" in OVERLAY_HTML
     assert "leaderboard-ticker-mode" in OVERLAY_HTML
+    assert "leaderboard-flo-mode" in OVERLAY_HTML
     assert "compactLapHistoryRuns" in OVERLAY_HTML
     assert "segment.style.flexGrow" in OVERLAY_HTML
     assert "min-width: 0;" in OVERLAY_HTML
     assert "body.leaderboard-ticker-mode .special-presentation.race_sponsors" in OVERLAY_HTML
     assert "top: 226px" in OVERLAY_HTML
+    assert "body.leaderboard-flo-mode .special-presentation.race_sponsors" in OVERLAY_HTML
+    assert "top: 174px" in OVERLAY_HTML
     assert "body.leaderboard-ticker-mode .special-presentation.sponsor_bug" in OVERLAY_HTML
     assert "top: 224px" in OVERLAY_HTML
+    assert "body.leaderboard-flo-mode .special-presentation.sponsor_bug" in OVERLAY_HTML
 
 
 def test_overlay_title_branding_is_larger_and_more_polished():
@@ -912,7 +920,8 @@ def test_producer_assist_html_reads_overlay_state():
     assert 'id="broadcaster-volume-slider"' in PRODUCER_HTML
     assert 'id="music-volume-slider"' in PRODUCER_HTML
     assert 'sendProducerCommand("set_audio_volume"' in PRODUCER_HTML
-    assert 'sendProducerCommand(style === "ticker" ? "leaderboard_side" : "leaderboard_ticker")' in PRODUCER_HTML
+    assert '"leaderboard_flo"' in PRODUCER_HTML
+    assert "Leaderboard: Flo Top" in PRODUCER_HTML
     assert "Move Camera to Driver" in PRODUCER_HTML
     assert 'id="director-suggestions-list"' in PRODUCER_HTML
     assert "Live booth cues with race data" in PRODUCER_HTML
@@ -1079,3 +1088,10 @@ def test_overlay_server_can_override_leaderboard_style_from_producer():
     assert selected == "ticker"
     assert state["event"]["leaderboard_style"] == "ticker"
     assert state["control_state"]["leaderboard_style"] == "ticker"
+
+    selected = server.set_leaderboard_style("flo")
+    state = server.current_state_dict()
+
+    assert selected == "flo"
+    assert state["event"]["leaderboard_style"] == "flo"
+    assert state["control_state"]["leaderboard_style"] == "flo"

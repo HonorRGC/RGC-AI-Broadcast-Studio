@@ -678,6 +678,18 @@ def test_producer_command_can_switch_leaderboard_style():
     assert overlay.events[0]["title"] == "Overlay"
     assert "ticker" in overlay.events[0]["message"]
 
+    handle_producer_command(
+        "leaderboard_flo",
+        {},
+        overlay,
+        source=None,
+        engine=None,
+        booth=None,
+        camera_director=None,
+    )
+
+    assert overlay.styles[-1] == "flo"
+
 
 def test_manual_camera_follow_disables_auto_camera():
     overlay = ProducerOverlaySpy()

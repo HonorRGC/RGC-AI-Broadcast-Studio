@@ -16,7 +16,9 @@ from config import (
     OVERLAY_EVENT_TITLE,
     OVERLAY_LEADERBOARD_STYLE,
     OVERLAY_RACE_SPONSOR,
+    OVERLAY_SERIES_LOGO,
     OVERLAY_SERIES_NAME,
+    RACE_SPONSOR_LOGOS,
     SPONSOR_READ_CAUSE_NAME,
 )
 from production.sim_racing_apps import (
@@ -84,6 +86,8 @@ class OverlayEventConfig:
     series: str = OVERLAY_SERIES_NAME
     leaderboard_style: str = OVERLAY_LEADERBOARD_STYLE
     graphics: list[str] = field(default_factory=lambda: list(OVERLAY_BRAND_GRAPHICS))
+    sponsor_graphics: list[str] = field(default_factory=lambda: list(RACE_SPONSOR_LOGOS))
+    series_logo: str = OVERLAY_SERIES_LOGO
 
 
 @dataclass
@@ -335,6 +339,8 @@ class OverlayState:
                 "series": self.event.series,
                 "leaderboard_style": self.event.leaderboard_style,
                 "graphics": list(self.event.graphics),
+                "sponsor_graphics": list(self.event.sponsor_graphics),
+                "series_logo": self.event.series_logo,
             },
             "session_type": self.session_type,
             "track_name": self.track_name,
@@ -1069,7 +1075,11 @@ class OverlayServer:
     @staticmethod
     def normalize_leaderboard_style(value):
         style = str(value or "side").strip().lower()
-        return "ticker" if style in ("ticker", "scroll", "top") else "side"
+        if style in ("ticker", "scroll", "top"):
+            return "ticker"
+        if style in ("flo", "flo_top", "flo-top", "top_grid"):
+            return "flo"
+        return "side"
 
     def apply_runtime_overrides(self, state):
         state.event.leaderboard_style = self.normalize_leaderboard_style(
@@ -3119,7 +3129,9 @@ PRODUCER_HTML = r"""<!doctype html>
       const controlStyle = (state.control_state || {}).leaderboard_style;
       const eventStyle = (state.event || {}).leaderboard_style;
       const style = String(controlStyle || eventStyle || "side").toLowerCase().trim();
-      return ["ticker", "scroll", "top"].includes(style) ? "ticker" : "side";
+      if (["ticker", "scroll", "top"].includes(style)) return "ticker";
+      if (["flo", "flo_top", "flo-top", "top_grid"].includes(style)) return "flo";
+      return "side";
     }
 
     function renderProducerShare(state) {
@@ -3199,12 +3211,15 @@ PRODUCER_HTML = r"""<!doctype html>
       openAiButton.textContent = openAiOn ? "OpenAI: ON" : "OpenAI: OFF";
       elevenButton.textContent = elevenOn ? "ElevenLabs: ON" : "ElevenLabs: OFF";
       raceAdminButton.textContent = raceAdminOn ? "Race Admin: ON" : "Race Admin: OFF";
-      leaderboardButton.textContent = leaderboardStyle === "ticker" ? "Leaderboard: Ticker" : "Leaderboard: Side";
+      leaderboardButton.textContent =
+        leaderboardStyle === "ticker" ? "Leaderboard: Ticker" :
+        leaderboardStyle === "flo" ? "Leaderboard: Flo Top" :
+        "Leaderboard: Side";
       autoButton.className = `control-button ${autoOn ? "good" : "danger"}`;
       openAiButton.className = `control-button ${openAiOn ? "good" : "danger"}`;
       elevenButton.className = `control-button ${elevenOn ? "good" : "danger"}`;
       raceAdminButton.className = `control-button ${raceAdminOn ? "good" : "danger"}`;
-      leaderboardButton.className = `control-button ${leaderboardStyle === "ticker" ? "good" : ""}`;
+      leaderboardButton.className = `control-button ${leaderboardStyle !== "side" ? "good" : ""}`;
       renderAudioSliders(state, broadcasterSlider, musicSlider);
       renderRaceControl(state);
     }
@@ -3353,7 +3368,11 @@ PRODUCER_HTML = r"""<!doctype html>
     });
     document.getElementById("leaderboard-style-button").addEventListener("click", () => {
       const style = currentLeaderboardStyle(lastState || {});
-      sendProducerCommand(style === "ticker" ? "leaderboard_side" : "leaderboard_ticker");
+      const nextCommand =
+        style === "side" ? "leaderboard_ticker" :
+        style === "ticker" ? "leaderboard_flo" :
+        "leaderboard_side";
+      sendProducerCommand(nextCommand);
     });
     setupVolumeSlider("broadcaster-volume-slider", "broadcaster-volume-label", "broadcaster");
     setupVolumeSlider("music-volume-slider", "music-volume-label", "music");
@@ -3545,6 +3564,28 @@ OVERLAY_HTML = r"""<!doctype html>
       top: 176px;
     }
 
+    body.leaderboard-flo-mode .top-banner {
+      top: 12px;
+      height: 40px;
+      grid-template-columns: 1fr;
+      padding: 0 18px;
+    }
+
+    body.leaderboard-flo-mode .title-side,
+    body.leaderboard-flo-mode .title-right,
+    body.leaderboard-flo-mode #series {
+      display: none;
+    }
+
+    body.leaderboard-flo-mode .event-title {
+      font-size: 21px;
+      letter-spacing: 0.08em;
+    }
+
+    body.leaderboard-flo-mode .session-center {
+      top: 164px;
+    }
+
     .caution-status {
       position: absolute;
       left: 50%;
@@ -3573,6 +3614,10 @@ OVERLAY_HTML = r"""<!doctype html>
 
     body.leaderboard-ticker-mode .caution-status {
       top: 176px;
+    }
+
+    body.leaderboard-flo-mode .caution-status {
+      top: 164px;
     }
 
     @keyframes cautionStatusPulse {
@@ -3711,6 +3756,10 @@ OVERLAY_HTML = r"""<!doctype html>
       display: none;
     }
 
+    body.leaderboard-flo-mode .leaderboard {
+      display: none;
+    }
+
     .leaderboard-header {
       display: grid;
       grid-template-columns: 1fr auto;
@@ -3830,6 +3879,168 @@ OVERLAY_HTML = r"""<!doctype html>
 
     .ticker-leaderboard.hidden {
       display: none;
+    }
+
+    .flo-leaderboard {
+      position: absolute;
+      left: 24px;
+      right: 24px;
+      top: 62px;
+      height: 92px;
+      display: grid;
+      grid-template-columns: 184px minmax(0, 1fr) 184px;
+      background:
+        linear-gradient(90deg, rgba(255, 255, 255, 0.08), transparent 35%, rgba(255, 255, 255, 0.05) 65%, transparent),
+        linear-gradient(90deg, rgba(7, 9, 13, 0.96), rgba(24, 30, 42, 0.92));
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      border-bottom: 3px solid rgba(255, 255, 255, 0.18);
+      box-shadow: 0 14px 34px rgba(0, 0, 0, 0.44);
+      overflow: visible;
+      z-index: 22;
+      text-transform: uppercase;
+    }
+
+    .flo-leaderboard.hidden {
+      display: none;
+    }
+
+    .flo-brand,
+    .flo-series {
+      position: relative;
+      display: grid;
+      align-items: center;
+      justify-items: center;
+      padding: 8px 12px;
+      background: linear-gradient(180deg, rgba(245, 247, 251, 0.96), rgba(214, 219, 228, 0.92));
+      color: #111;
+      min-width: 0;
+    }
+
+    .flo-brand img,
+    .flo-series img {
+      max-width: 154px;
+      max-height: 58px;
+      object-fit: contain;
+      filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.28));
+    }
+
+    .flo-series-text {
+      font-size: 13px;
+      font-weight: 950;
+      letter-spacing: 0.07em;
+      text-align: center;
+      line-height: 1.1;
+      max-width: 160px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .flo-lap-box {
+      position: absolute;
+      left: 0;
+      top: 100%;
+      display: grid;
+      grid-template-columns: auto 62px;
+      align-items: stretch;
+      height: 36px;
+      border: 1px solid rgba(255, 255, 255, 0.20);
+      box-shadow: 0 8px 18px rgba(0, 0, 0, 0.36);
+    }
+
+    .flo-lap-label {
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      background: rgba(7, 9, 13, 0.94);
+      color: #fff;
+      font-size: 15px;
+      font-weight: 950;
+      letter-spacing: 0.05em;
+      white-space: nowrap;
+    }
+
+    .flo-lap-value {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #15c85f;
+      color: #06110a;
+      font-size: 22px;
+      font-weight: 950;
+      min-width: 62px;
+    }
+
+    .flo-leaderboard.caution .flo-lap-value {
+      background: #ffd400;
+      color: #16130a;
+    }
+
+    .flo-grid {
+      display: grid;
+      grid-template-rows: 1fr 1fr;
+      min-width: 0;
+    }
+
+    .flo-row {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      min-width: 0;
+    }
+
+    .flo-entry {
+      display: grid;
+      grid-template-columns: auto auto minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: center;
+      min-width: 0;
+      padding: 0 11px;
+      border-left: 1px solid rgba(255, 255, 255, 0.20);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.16);
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(0, 0, 0, 0.20));
+    }
+
+    .flo-position {
+      min-width: 29px;
+      height: 25px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.26);
+      color: #fff;
+      font-size: 15px;
+      font-weight: 950;
+    }
+
+    .flo-row:first-child .flo-entry:first-child .flo-position {
+      background: linear-gradient(180deg, #d7bd55, #a98d2a);
+      color: #12100b;
+      border-color: rgba(0, 0, 0, 0.32);
+    }
+
+    .flo-number {
+      color: #dfe5ef;
+      font-size: 14px;
+      font-weight: 950;
+      white-space: nowrap;
+    }
+
+    .flo-name {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: #fff;
+      font-size: 17px;
+      font-weight: 950;
+      letter-spacing: 0.04em;
+    }
+
+    .flo-gap {
+      color: var(--rgc-muted);
+      font-size: 11px;
+      font-weight: 900;
+      white-space: nowrap;
     }
 
     .ticker-leaderboard.green {
@@ -4232,6 +4443,14 @@ OVERLAY_HTML = r"""<!doctype html>
       height: 264px;
     }
 
+    body.leaderboard-flo-mode .special-presentation.race_sponsors {
+      left: auto;
+      right: 48px;
+      top: 174px;
+      width: 264px;
+      height: 264px;
+    }
+
     .special-presentation.sponsor_bug {
       left: auto;
       right: 52px;
@@ -4244,6 +4463,10 @@ OVERLAY_HTML = r"""<!doctype html>
 
     body.leaderboard-ticker-mode .special-presentation.sponsor_bug {
       top: 224px;
+    }
+
+    body.leaderboard-flo-mode .special-presentation.sponsor_bug {
+      top: 174px;
     }
 
     .special-presentation.sponsor_commercial {
@@ -4550,6 +4773,24 @@ OVERLAY_HTML = r"""<!doctype html>
     </div>
   </section>
 
+  <section id="flo-leaderboard" class="flo-leaderboard hidden">
+    <div class="flo-brand">
+      <img id="flo-sponsor-logo" alt="" />
+      <div class="flo-lap-box">
+        <div id="flo-lap-label" class="flo-lap-label">Lap</div>
+        <div id="flo-lap-value" class="flo-lap-value">--</div>
+      </div>
+    </div>
+    <div class="flo-grid">
+      <div id="flo-row-top" class="flo-row"></div>
+      <div id="flo-row-cycle" class="flo-row"></div>
+    </div>
+    <div class="flo-series">
+      <img id="flo-series-logo" alt="" />
+      <div id="flo-series-text" class="flo-series-text"></div>
+    </div>
+  </section>
+
   <section id="driver-card" class="driver-card hidden">
     <div class="driver-card-position-rank">
       <div id="driver-card-position-rank" class="rank">P--</div>
@@ -4613,15 +4854,19 @@ OVERLAY_HTML = r"""<!doctype html>
       setLeaderboardSeries(event.series || "");
       const leaderboardStyle = normalizeLeaderboardStyle(event.leaderboard_style);
       document.body.classList.toggle("leaderboard-ticker-mode", leaderboardStyle === "ticker");
+      document.body.classList.toggle("leaderboard-flo-mode", leaderboardStyle === "flo");
       document.getElementById("top-banner").classList.toggle("caution", !!state.caution);
       document.getElementById("caution-status").classList.toggle("hidden", !state.caution);
       document.getElementById("leaderboard").classList.toggle("green", !!state.green);
       document.getElementById("leaderboard").classList.toggle("caution", !!state.caution);
       document.getElementById("ticker-leaderboard").classList.toggle("green", !!state.green);
       document.getElementById("ticker-leaderboard").classList.toggle("caution", !!state.caution);
+      document.getElementById("flo-leaderboard").classList.toggle("green", !!state.green);
+      document.getElementById("flo-leaderboard").classList.toggle("caution", !!state.caution);
       renderBrandGraphic(event.graphics || [], state.session_type);
       renderLapHistory(state.lap_history || []);
       renderTickerLeaderboard(state.leaderboard || [], leaderboardStyle);
+      renderFloLeaderboard(state, leaderboardStyle);
       renderSpecialPresentation(state.special_presentation);
       renderDriverCard(shouldHideDriverCardForPresentation(state.special_presentation) ? null : state.featured_driver);
       renderStatPanel(state.stat_panel);
@@ -4644,7 +4889,9 @@ OVERLAY_HTML = r"""<!doctype html>
 
     function normalizeLeaderboardStyle(value) {
       const style = String(value || "side").toLowerCase().trim();
-      return ["ticker", "scroll", "top"].includes(style) ? "ticker" : "side";
+      if (["ticker", "scroll", "top"].includes(style)) return "ticker";
+      if (["flo", "flo_top", "flo-top", "top_grid"].includes(style)) return "flo";
+      return "side";
     }
 
     function setLeaderboardSeries(series) {
@@ -4675,6 +4922,81 @@ OVERLAY_HTML = r"""<!doctype html>
         </span>
       `).join("");
       track.innerHTML = items + items;
+    }
+
+    function renderFloLeaderboard(state, leaderboardStyle) {
+      const layer = document.getElementById("flo-leaderboard");
+      const leaderboard = state.leaderboard || [];
+      const active = leaderboardStyle === "flo" && leaderboard.length;
+      layer.classList.toggle("hidden", !active);
+      if (!active) {
+        document.getElementById("flo-row-top").innerHTML = "";
+        document.getElementById("flo-row-cycle").innerHTML = "";
+        return;
+      }
+
+      const event = state.event || {};
+      const sponsorLogo = pickRotatingGraphic(event.sponsor_graphics || event.graphics || [], 4.5);
+      const seriesLogo = event.series_logo || "";
+      const sponsorImage = document.getElementById("flo-sponsor-logo");
+      const seriesImage = document.getElementById("flo-series-logo");
+      sponsorImage.classList.toggle("hidden", !sponsorLogo);
+      sponsorImage.src = sponsorLogo || "";
+      seriesImage.classList.toggle("hidden", !seriesLogo);
+      seriesImage.src = seriesLogo || "";
+      setText("flo-series-text", seriesLogo ? "" : (event.series || event.sponsor || "RGC AI"));
+      renderFloLapBox(state);
+
+      const topFive = leaderboard.slice(0, 5);
+      const rest = leaderboard.slice(5);
+      const chunkCount = Math.max(1, Math.ceil(rest.length / 5));
+      const chunkIndex = rest.length > 5 ? Math.floor(Date.now() / 6000) % chunkCount : 0;
+      const cyclingFive = rest.slice(chunkIndex * 5, chunkIndex * 5 + 5);
+      document.getElementById("flo-row-top").innerHTML = topFive.map(renderFloEntry).join("");
+      document.getElementById("flo-row-cycle").innerHTML = cyclingFive.map(renderFloEntry).join("");
+    }
+
+    function renderFloEntry(entry) {
+      return `
+        <div class="flo-entry">
+          <span class="flo-position">${escapeHtml(entry.position || "")}</span>
+          <span class="flo-number" style="${numberStyleAttribute(entry.number_style || {})}">${escapeHtml(entry.car_number || "?")}</span>
+          <span class="flo-name">${escapeHtml(lastNameOrName(entry.driver_name || "Unknown"))}</span>
+          <span class="flo-gap">${escapeHtml(entry.class_position ? `${entry.class_name || "CLS"} ${ordinal(entry.class_position)}` : entry.interval || "")}</span>
+        </div>
+      `;
+    }
+
+    function lastNameOrName(name) {
+      const clean = String(name || "").trim();
+      if (!clean) return "Unknown";
+      const parts = clean.split(/\s+/).filter(Boolean);
+      return parts.length > 1 ? parts[parts.length - 1] : clean;
+    }
+
+    function renderFloLapBox(state) {
+      const label = document.getElementById("flo-lap-label");
+      const value = document.getElementById("flo-lap-value");
+      if (isTimedSession(state.session_type)) {
+        label.textContent = sessionLabel(state.session_type);
+        value.textContent = formatClock(Number(state.session_time_remaining || 0));
+        return;
+      }
+      const total = Number(state.total_laps || 0);
+      const lap = Number(state.lap || 0);
+      if (total > 0) {
+        const toGo = Math.max(total - lap, 0);
+        if (lap >= Math.ceil(total / 2) && toGo > 0) {
+          label.textContent = "Laps To Go";
+          value.textContent = String(toGo);
+          return;
+        }
+        label.textContent = "Lap";
+        value.textContent = `${lap}/${total}`;
+        return;
+      }
+      label.textContent = "Lap";
+      value.textContent = lap ? String(lap) : "--";
     }
 
     function numberStyleAttribute(style) {
