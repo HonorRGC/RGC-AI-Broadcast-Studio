@@ -669,6 +669,9 @@ def test_overlay_has_optional_ticker_leaderboard_and_compact_lap_bar():
     assert 'id="flo-leaderboard"' in OVERLAY_HTML
     assert 'id="flo-sponsor-logo"' in OVERLAY_HTML
     assert 'id="flo-series-logo"' in OVERLAY_HTML
+    assert 'id="flo-row-second"' in OVERLAY_HTML
+    assert "flo-row-cycle .flo-entry" in OVERLAY_HTML
+    assert "#d7bd55" not in OVERLAY_HTML
     assert 'id="ticker-label"' in OVERLAY_HTML
     assert 'id="leaderboard-series"' in OVERLAY_HTML
     assert 'id="cause-line"' in OVERLAY_HTML

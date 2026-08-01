@@ -3886,7 +3886,7 @@ OVERLAY_HTML = r"""<!doctype html>
       left: 24px;
       right: 24px;
       top: 62px;
-      height: 92px;
+      height: 108px;
       display: grid;
       grid-template-columns: 184px minmax(0, 1fr) 184px;
       background:
@@ -3977,7 +3977,7 @@ OVERLAY_HTML = r"""<!doctype html>
 
     .flo-grid {
       display: grid;
-      grid-template-rows: 1fr 1fr;
+      grid-template-rows: 1fr 1fr 1fr;
       min-width: 0;
     }
 
@@ -3999,6 +3999,13 @@ OVERLAY_HTML = r"""<!doctype html>
       background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(0, 0, 0, 0.20));
     }
 
+    .flo-row-cycle .flo-entry {
+      background: linear-gradient(180deg, rgba(245, 247, 251, 0.96), rgba(204, 212, 220, 0.94));
+      color: #111;
+      border-left-color: rgba(0, 0, 0, 0.20);
+      border-bottom-color: rgba(0, 0, 0, 0.14);
+    }
+
     .flo-position {
       min-width: 29px;
       height: 25px;
@@ -4012,10 +4019,10 @@ OVERLAY_HTML = r"""<!doctype html>
       font-weight: 950;
     }
 
-    .flo-row:first-child .flo-entry:first-child .flo-position {
-      background: linear-gradient(180deg, #d7bd55, #a98d2a);
-      color: #12100b;
-      border-color: rgba(0, 0, 0, 0.32);
+    .flo-row-cycle .flo-position {
+      background: #05070b;
+      border-color: rgba(0, 0, 0, 0.55);
+      color: #fff;
     }
 
     .flo-number {
@@ -4023,6 +4030,12 @@ OVERLAY_HTML = r"""<!doctype html>
       font-size: 14px;
       font-weight: 950;
       white-space: nowrap;
+    }
+
+    .flo-row-cycle .flo-number,
+    .flo-row-cycle .flo-name,
+    .flo-row-cycle .flo-gap {
+      color: #111;
     }
 
     .flo-name {
@@ -4782,7 +4795,8 @@ OVERLAY_HTML = r"""<!doctype html>
       </div>
     </div>
     <div class="flo-grid">
-      <div id="flo-row-top" class="flo-row"></div>
+      <div id="flo-row-top" class="flo-row flo-row-top"></div>
+      <div id="flo-row-second" class="flo-row flo-row-second"></div>
       <div id="flo-row-cycle" class="flo-row"></div>
     </div>
     <div class="flo-series">
@@ -4931,6 +4945,7 @@ OVERLAY_HTML = r"""<!doctype html>
       layer.classList.toggle("hidden", !active);
       if (!active) {
         document.getElementById("flo-row-top").innerHTML = "";
+        document.getElementById("flo-row-second").innerHTML = "";
         document.getElementById("flo-row-cycle").innerHTML = "";
         return;
       }
@@ -4948,11 +4963,13 @@ OVERLAY_HTML = r"""<!doctype html>
       renderFloLapBox(state);
 
       const topFive = leaderboard.slice(0, 5);
-      const rest = leaderboard.slice(5);
+      const secondFive = leaderboard.slice(5, 10);
+      const rest = leaderboard.slice(10);
       const chunkCount = Math.max(1, Math.ceil(rest.length / 5));
       const chunkIndex = rest.length > 5 ? Math.floor(Date.now() / 6000) % chunkCount : 0;
       const cyclingFive = rest.slice(chunkIndex * 5, chunkIndex * 5 + 5);
       document.getElementById("flo-row-top").innerHTML = topFive.map(renderFloEntry).join("");
+      document.getElementById("flo-row-second").innerHTML = secondFive.map(renderFloEntry).join("");
       document.getElementById("flo-row-cycle").innerHTML = cyclingFive.map(renderFloEntry).join("");
     }
 
