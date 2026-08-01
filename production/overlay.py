@@ -3886,9 +3886,9 @@ OVERLAY_HTML = r"""<!doctype html>
       left: 24px;
       right: 24px;
       top: 62px;
-      height: 108px;
+      height: 116px;
       display: grid;
-      grid-template-columns: 184px minmax(0, 1fr) 184px;
+      grid-template-columns: 210px minmax(0, 1fr) 210px;
       background:
         linear-gradient(90deg, rgba(255, 255, 255, 0.08), transparent 35%, rgba(255, 255, 255, 0.05) 65%, transparent),
         linear-gradient(90deg, rgba(7, 9, 13, 0.96), rgba(24, 30, 42, 0.92));
@@ -3910,29 +3910,39 @@ OVERLAY_HTML = r"""<!doctype html>
       display: grid;
       align-items: center;
       justify-items: center;
-      padding: 8px 12px;
-      background: linear-gradient(180deg, rgba(245, 247, 251, 0.96), rgba(214, 219, 228, 0.92));
-      color: #111;
+      align-content: center;
+      gap: 4px;
+      padding: 9px 14px;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(0, 0, 0, 0.20)),
+        rgba(7, 9, 13, 0.92);
+      color: #fff;
       min-width: 0;
+      border-left: 1px solid rgba(255, 255, 255, 0.16);
+      border-right: 1px solid rgba(255, 255, 255, 0.16);
     }
 
     .flo-brand img,
     .flo-series img {
-      max-width: 154px;
-      max-height: 58px;
+      max-width: 184px;
+      max-height: 72px;
       object-fit: contain;
-      filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.28));
+      filter:
+        drop-shadow(0 7px 12px rgba(0, 0, 0, 0.70))
+        drop-shadow(0 0 12px rgba(255, 255, 255, 0.12));
     }
 
     .flo-series-text {
-      font-size: 13px;
+      color: #ffffff;
+      font-size: 12px;
       font-weight: 950;
       letter-spacing: 0.07em;
       text-align: center;
       line-height: 1.1;
-      max-width: 160px;
+      max-width: 184px;
       overflow: hidden;
       text-overflow: ellipsis;
+      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.62);
     }
 
     .flo-lap-box {
@@ -4000,10 +4010,12 @@ OVERLAY_HTML = r"""<!doctype html>
     }
 
     .flo-row-cycle .flo-entry {
-      background: linear-gradient(180deg, rgba(245, 247, 251, 0.96), rgba(204, 212, 220, 0.94));
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(216, 224, 232, 0.98));
       color: #111;
-      border-left-color: rgba(0, 0, 0, 0.20);
-      border-bottom-color: rgba(0, 0, 0, 0.14);
+      border-left-color: rgba(0, 0, 0, 0.30);
+      border-bottom-color: rgba(0, 0, 0, 0.22);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95);
     }
 
     .flo-position {
@@ -4959,7 +4971,7 @@ OVERLAY_HTML = r"""<!doctype html>
       sponsorImage.src = sponsorLogo || "";
       seriesImage.classList.toggle("hidden", !seriesLogo);
       seriesImage.src = seriesLogo || "";
-      setText("flo-series-text", seriesLogo ? "" : (event.series || event.sponsor || "RGC AI"));
+      setText("flo-series-text", event.series || event.sponsor || "RGC AI");
       renderFloLapBox(state);
 
       const topFive = leaderboard.slice(0, 5);
