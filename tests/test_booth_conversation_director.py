@@ -33,6 +33,8 @@ def test_builds_long_green_booth_conversation_for_draft_track():
     assert len(lines) == 3
     assert [line.speaker for line in lines] == ["lead", "jeff", "sarah"]
     assert "draft" in lines[0].message.lower()
+    assert lines[1].delay_seconds == 0.05
+    assert lines[2].delay_seconds == 0.10
     assert lines[0].camera_target_car_idx == 1
     assert lines[0].participant_car_indices == (0, 1)
 

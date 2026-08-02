@@ -135,6 +135,51 @@ def test_race_stat_filler_finds_biggest_mover_without_close_battle():
     assert insight.camera_target_car_idx == 2
 
 
+def test_race_stat_filler_uses_league_track_context_before_generic_mover():
+    director = RaceInsightDirector(seed=8)
+    state = RaceState(
+        current_lap=18,
+        total_laps=80,
+        laps_remaining=62,
+        green_lap_count=12,
+        is_green=True,
+    )
+    results = [
+        {"CarIdx": 1, "Position": 0, "Time": 0.0, "StartingPosition": 1},
+        {"CarIdx": 2, "Position": 1, "Time": 2.0, "StartingPosition": 6},
+        {"CarIdx": 3, "Position": 2, "Time": 4.0, "StartingPosition": 3},
+    ]
+    drivers = {
+        1: {"name": "Austin Peterson", "number": "77"},
+        2: {
+            "name": "Dean Marsh",
+            "number": "24",
+            "league_stats_by_scope": [
+                {
+                    "stats_scope": "season",
+                    "track_starts": "4",
+                    "track_wins": "1",
+                    "points_position": "3",
+                }
+            ],
+            "league_profile": {
+                "driving_style": "patient long-run driver",
+                "location": "Lebanon, Tennessee",
+            },
+        },
+        3: {"name": "Eric Hudec", "number": "14"},
+    }
+
+    insight = director.race_stat_filler(results, drivers, state, current_lap=18)
+
+    assert insight is not None
+    assert insight.category.startswith("race_stat:driver_context")
+    assert "strong at this track" in insight.message
+    assert "Dean Marsh" in insight.message
+    assert insight.speaker == "jeff"
+    assert insight.camera_target_car_idx == 2
+
+
 def test_race_stat_filler_waits_for_green_run():
     director = RaceInsightDirector(seed=7)
     state = RaceState(

@@ -300,14 +300,14 @@ class BoothConversationDirector:
             BoothConversationLine(
                 message=line_b,
                 speaker=speaker_b,
-                delay_seconds=0.2,
+                delay_seconds=0.05,
                 camera_target_car_idx=target_idx,
                 participant_car_indices=participant_indices,
             ),
             BoothConversationLine(
                 message=line_c,
                 speaker=speaker_c,
-                delay_seconds=0.4,
+                delay_seconds=0.10,
                 camera_target_car_idx=target_idx,
                 participant_car_indices=participant_indices,
             ),
