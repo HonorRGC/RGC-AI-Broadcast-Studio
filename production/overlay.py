@@ -3620,7 +3620,7 @@ OVERLAY_HTML = r"""<!doctype html>
     }
 
     body.leaderboard-flo-mode .caution-status {
-      top: 164px;
+      top: 204px;
     }
 
     @keyframes cautionStatusPulse {
@@ -3905,6 +3905,15 @@ OVERLAY_HTML = r"""<!doctype html>
 
     .flo-leaderboard.hidden {
       display: none;
+    }
+
+    .flo-leaderboard.caution {
+      border-color: #ffd400;
+      border-bottom-color: #ffd400;
+      box-shadow:
+        0 14px 34px rgba(0, 0, 0, 0.44),
+        0 0 28px rgba(255, 212, 0, 0.52),
+        inset 0 0 0 2px rgba(255, 212, 0, 0.74);
     }
 
     .flo-brand,

@@ -664,6 +664,8 @@ def test_overlay_has_session_clock_above_sponsor_card():
 def test_overlay_has_top_center_under_caution_badge():
     assert 'id="caution-status" class="caution-status hidden">Under Caution</div>' in OVERLAY_HTML
     assert "body.leaderboard-ticker-mode .caution-status" in OVERLAY_HTML
+    assert "body.leaderboard-flo-mode .caution-status" in OVERLAY_HTML
+    assert "top: 204px" in OVERLAY_HTML
     assert 'document.getElementById("caution-status").classList.toggle("hidden", !state.caution)' in OVERLAY_HTML
 
 
@@ -672,6 +674,10 @@ def test_overlay_has_optional_ticker_leaderboard_and_compact_lap_bar():
     assert 'id="flo-leaderboard"' in OVERLAY_HTML
     assert 'id="flo-sponsor-logo"' in OVERLAY_HTML
     assert 'id="flo-series-logo"' in OVERLAY_HTML
+    assert "const sponsorLogo = pickRotatingGraphic(event.sponsor_graphics || event.graphics || [], 4.5)" in OVERLAY_HTML
+    assert 'const seriesLogo = event.series_logo || ""' in OVERLAY_HTML
+    assert ".flo-leaderboard.caution" in OVERLAY_HTML
+    assert "inset 0 0 0 2px rgba(255, 212, 0, 0.74)" in OVERLAY_HTML
     assert 'id="flo-row-second"' in OVERLAY_HTML
     assert 'id="flo-row-cycle" class="flo-row flo-row-cycle"' in OVERLAY_HTML
     assert "flo-row-cycle .flo-entry" in OVERLAY_HTML
