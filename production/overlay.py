@@ -4430,9 +4430,9 @@ OVERLAY_HTML = r"""<!doctype html>
     }
 
     .stat-panel.race_end_cap {
-      right: 50%;
+      right: 34px;
       bottom: 74px;
-      transform: translateX(50%);
+      transform: none;
       width: 520px;
       border-left-color: #ffffff;
       box-shadow: 0 18px 42px rgba(0, 0, 0, 0.50), 0 0 24px rgba(255, 255, 255, 0.10);

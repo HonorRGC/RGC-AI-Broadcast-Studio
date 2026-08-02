@@ -669,6 +669,12 @@ def test_overlay_has_top_center_under_caution_badge():
     assert 'document.getElementById("caution-status").classList.toggle("hidden", !state.caution)' in OVERLAY_HTML
 
 
+def test_post_race_end_cap_panel_is_right_aligned():
+    assert ".stat-panel.race_end_cap" in OVERLAY_HTML
+    assert "right: 34px;" in OVERLAY_HTML
+    assert "transform: none;" in OVERLAY_HTML
+
+
 def test_overlay_has_optional_ticker_leaderboard_and_compact_lap_bar():
     assert 'id="ticker-leaderboard"' in OVERLAY_HTML
     assert 'id="flo-leaderboard"' in OVERLAY_HTML
