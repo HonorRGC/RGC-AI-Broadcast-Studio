@@ -10,6 +10,7 @@ class CautionPitReport:
 
 class CautionPitReporter:
     def __init__(self):
+        self._phrase_counts = {}
         self.reset()
 
     def reset(self):
@@ -58,11 +59,27 @@ class CautionPitReporter:
             self.latest_driver_lookup,
         )
         service_note = self.service_summary(pit_states)
+        opener = self.rotate_phrase(
+            "majority_opener",
+            [
+                "Pit road is busy under this caution.",
+                "Sarah is reporting a busy pit road under this yellow.",
+                "The pit lane has come alive under this caution.",
+                "A big chunk of the field has chosen pit road this time.",
+            ],
+        )
+        count_phrase = self.rotate_phrase(
+            "majority_count",
+            [
+                f"A majority of the field has come in, {len(self.seen_on_pit_road)} of {field_size} cars, including {name_summary}.",
+                f"We have {len(self.seen_on_pit_road)} of {field_size} cars recorded on pit road, with {name_summary} among them.",
+                f"That is {len(self.seen_on_pit_road)} of {field_size} cars coming to the attention of their crews, including {name_summary}.",
+            ],
+        )
         return CautionPitReport(
             message=(
-                "Pit road is busy under this caution. "
-                f"A majority of the field has come in, {len(self.seen_on_pit_road)} "
-                f"of {field_size} cars, including {name_summary}. "
+                f"{opener} "
+                f"{count_phrase} "
                 f"{service_note}"
             ),
             car_indices=featured,
@@ -84,10 +101,27 @@ class CautionPitReporter:
         pitter_count = len(self.seen_on_pit_road)
         plural = "car has" if pitter_count == 1 else "cars have"
         service_note = self.service_summary(pit_states)
+        opener = self.rotate_phrase(
+            "small_group_opener",
+            [
+                "Only a few takers on pit road under this caution.",
+                "This is a smaller group choosing pit road under the yellow.",
+                "Most of the field stayed out, but a few cars have come down pit road.",
+                "Sarah has a short list of pit road traffic this time.",
+            ],
+        )
+        count_phrase = self.rotate_phrase(
+            "small_group_count",
+            [
+                f"{pitter_count} {plural} come in, including {name_summary}.",
+                f"{pitter_count} {plural} been on pit road, with {name_summary} on that list.",
+                f"The group includes {name_summary}, {pitter_count} {plural} total.",
+            ],
+        )
         return CautionPitReport(
             message=(
-                f"Only a few takers on pit road under this caution. "
-                f"{pitter_count} {plural} come in, including {name_summary}. "
+                f"{opener} "
+                f"{count_phrase} "
                 f"{service_note}"
             ),
             car_indices=featured,
@@ -143,9 +177,13 @@ class CautionPitReporter:
                     for state in extended[:3]
                 ]
             )
-            return (
-                f"{names} had an extended stop, which points toward damage repair "
-                "or a longer service call before the restart."
+            return self.rotate_phrase(
+                "extended_service",
+                [
+                    f"{names} had an extended stop, which points toward damage repair or a longer service call before the restart.",
+                    f"The longer stop for {names} suggests repairs or a more involved adjustment before they rejoin the field.",
+                    f"{names} spent extra time with the crew, so damage repair may be part of that story.",
+                ],
             )
         if full_service and track_position:
             names = self.join_names(
@@ -154,15 +192,22 @@ class CautionPitReporter:
                     for state in track_position[:3]
                 ]
             )
-            return (
-                "Most of those stops look long enough for full service. "
-                f"{names} had the quicker stop and gained track position, "
-                "so that has the look of a two-tire or fuel-only call."
+            return self.rotate_phrase(
+                "mixed_service",
+                [
+                    f"Most of those stops look long enough for full service. {names} had the quicker stop and gained track position, so that has the look of a two-tire or fuel-only call.",
+                    f"The main group appears to have had time for full service, while {names} came away quicker and picked up track position.",
+                    f"There may be a split on pit road here: several longer stops, but {names} gained spots with a shorter stop.",
+                ],
             )
         if full_service:
-            return (
-                "Several of those stops were long enough for full service, so tires "
-                "and fuel are likely part of this strategy reset."
+            return self.rotate_phrase(
+                "full_service",
+                [
+                    "Several of those stops were long enough for full service, so tires and fuel are likely part of this strategy reset.",
+                    "Those stop times look long enough for tires and fuel for a good portion of the group.",
+                    "That looked more like regular service than a quick splash-and-go for several of the cars.",
+                ],
             )
         if track_position:
             names = self.join_names(
@@ -171,11 +216,22 @@ class CautionPitReporter:
                     for state in track_position[:3]
                 ]
             )
-            return (
-                f"{names} gained spots with a short stop, so that looks like a "
-                "track-position call before the restart."
+            return self.rotate_phrase(
+                "track_position",
+                [
+                    f"{names} gained spots with a short stop, so that looks like a track-position call before the restart.",
+                    f"{names} came away with track position, which usually means the crew kept that stop short.",
+                    f"The quick stop paid off for {names}; they picked up spots for the restart.",
+                ],
             )
-        return "This is a major strategy reset before the restart."
+        return self.rotate_phrase(
+            "generic_service",
+            [
+                "This changes the restart picture once the field gets doubled up.",
+                "We will see who gained clean air and who has fresher tires when they come back to green.",
+                "The pit story is still forming, but track position will matter when they stack back up.",
+            ],
+        )
 
     @staticmethod
     def car_label(state):
@@ -200,6 +256,13 @@ class CautionPitReporter:
         if len(names) == 2:
             return f"{names[0]} and {names[1]}"
         return f"{names[0]}, {names[1]}, and {names[2]}"
+
+    def rotate_phrase(self, key, phrases):
+        if not phrases:
+            return ""
+        index = self._phrase_counts.get(key, 0)
+        self._phrase_counts[key] = index + 1
+        return phrases[index % len(phrases)]
 
     @staticmethod
     def safe_int(value, default=0):

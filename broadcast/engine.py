@@ -82,6 +82,7 @@ class BroadcastEngine:
         self.green_pit_cycle_announced = False
         self.green_pit_cycle_last_update_lap = 0
         self.green_pit_cycle_update_count = 0
+        self.story_variant_counts = {}
         self.crank_it_up_sent_this_green_run = False
         self.booth_conversation_active_until = 0.0
         self.last_leader_story_lap = 0
@@ -1445,10 +1446,14 @@ class BroadcastEngine:
         if not self.green_pit_cycle_announced:
             if len(on_pit_road) < 2 and len(new_green_entries) < 2:
                 return False
-            message = (
-                "Green flag pit stops are starting. Sarah will be watching who "
-                "short-pits, who stays out, and how the tire age starts to split "
-                "the field."
+            message = self.rotate_story_variant(
+                "green_pit_cycle_start",
+                [
+                    "Green flag pit stops are starting. Sarah will be watching who short-pits, who stays out, and how the tire age starts to split the field.",
+                    "Sarah is watching the pit cycle begin under green. This is where the timing of the stop can matter as much as the lap time.",
+                    "The first wave of green flag stops is underway. Now we watch who commits early and who stretches this run a few laps longer.",
+                    "Pit road is starting to open up under green, and this cycle could shuffle the running order before everyone is done.",
+                ],
             )
         else:
             if len(recent_states) < 2:
@@ -1458,10 +1463,14 @@ class BroadcastEngine:
                 for state in recent_states
                 if getattr(state, "car_idx", None) is not None
             })
-            message = (
-                f"Green flag pit cycle update: {pitted_count} cars have made stops "
-                "in the last few laps. The drivers who came early will have older "
-                "tires as this cycle keeps working through."
+            message = self.rotate_story_variant(
+                "green_pit_cycle_update",
+                [
+                    f"Green flag pit cycle update: {pitted_count} cars have made stops in the last few laps. The early takers may have track position now, but tire age could matter later.",
+                    f"Sarah has {pitted_count} cars logged with recent stops. The question now is whether the early stop pays off or the longer run wins out.",
+                    f"The pit cycle is still working through the field, with {pitted_count} cars already serviced recently. Watch the blend line as this shakes out.",
+                    f"{pitted_count} cars have been through pit road in this cycle, and the field may not look settled until the last group makes its stop.",
+                ],
             )
 
         self.broadcast_queue.add(
@@ -2654,3 +2663,10 @@ class BroadcastEngine:
             camera_target_car_idx=None,
             participant_car_indices=(),
         )
+
+    def rotate_story_variant(self, key, phrases):
+        if not phrases:
+            return ""
+        index = self.story_variant_counts.get(key, 0)
+        self.story_variant_counts[key] = index + 1
+        return phrases[index % len(phrases)]
