@@ -3541,9 +3541,12 @@ OVERLAY_HTML = r"""<!doctype html>
 
     .session-center {
       position: absolute;
-      right: 48px;
+      left: 50%;
       top: 116px;
-      width: 264px;
+      transform: translateX(-50%);
+      width: auto;
+      min-width: 264px;
+      max-width: 520px;
       box-sizing: border-box;
       padding: 8px 14px;
       border-radius: 999px;
@@ -3583,7 +3586,7 @@ OVERLAY_HTML = r"""<!doctype html>
     }
 
     body.leaderboard-flo-mode .session-center {
-      top: 164px;
+      top: 188px;
     }
 
     .caution-status {
@@ -3997,6 +4000,27 @@ OVERLAY_HTML = r"""<!doctype html>
       min-width: 0;
     }
 
+    .flo-row-cycle {
+      position: relative;
+      box-shadow:
+        inset 0 3px 0 rgba(255, 255, 255, 0.78),
+        inset 0 -3px 0 rgba(7, 9, 13, 0.38);
+    }
+
+    .flo-row-cycle::before {
+      content: "CYCLE";
+      position: absolute;
+      left: 0;
+      bottom: -18px;
+      padding: 3px 9px;
+      background: rgba(255, 255, 255, 0.92);
+      color: #111;
+      font-size: 10px;
+      font-weight: 950;
+      letter-spacing: 0.12em;
+      border-radius: 0 0 5px 5px;
+    }
+
     .flo-entry {
       display: grid;
       grid-template-columns: auto auto minmax(0, 1fr) auto;
@@ -4011,11 +4035,13 @@ OVERLAY_HTML = r"""<!doctype html>
 
     .flo-row-cycle .flo-entry {
       background:
-        linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(216, 224, 232, 0.98));
+        linear-gradient(180deg, rgba(255, 255, 255, 1), rgba(214, 224, 232, 0.98));
       color: #111;
       border-left-color: rgba(0, 0, 0, 0.30);
       border-bottom-color: rgba(0, 0, 0, 0.22);
-      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95);
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.95),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.28);
     }
 
     .flo-position {
@@ -4111,6 +4137,28 @@ OVERLAY_HTML = r"""<!doctype html>
       font-weight: 800;
       color: var(--rgc-text);
       white-space: nowrap;
+    }
+
+    .ticker-reset {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 13px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, rgba(215, 25, 32, 0.90), rgba(255, 255, 255, 0.16));
+      border: 1px solid rgba(255, 255, 255, 0.30);
+      color: #ffffff;
+      font-size: 12px;
+      font-weight: 950;
+      letter-spacing: 0.12em;
+    }
+
+    .ticker-reset::before,
+    .ticker-reset::after {
+      content: "";
+      width: 28px;
+      height: 2px;
+      background: rgba(255, 255, 255, 0.72);
     }
 
     .ticker-pos {
@@ -4471,7 +4519,7 @@ OVERLAY_HTML = r"""<!doctype html>
     body.leaderboard-flo-mode .special-presentation.race_sponsors {
       left: auto;
       right: 48px;
-      top: 174px;
+      top: 242px;
       width: 264px;
       height: 264px;
     }
@@ -4491,7 +4539,7 @@ OVERLAY_HTML = r"""<!doctype html>
     }
 
     body.leaderboard-flo-mode .special-presentation.sponsor_bug {
-      top: 174px;
+      top: 242px;
     }
 
     .special-presentation.sponsor_commercial {
@@ -4809,7 +4857,7 @@ OVERLAY_HTML = r"""<!doctype html>
     <div class="flo-grid">
       <div id="flo-row-top" class="flo-row flo-row-top"></div>
       <div id="flo-row-second" class="flo-row flo-row-second"></div>
-      <div id="flo-row-cycle" class="flo-row"></div>
+      <div id="flo-row-cycle" class="flo-row flo-row-cycle"></div>
     </div>
     <div class="flo-series">
       <img id="flo-series-logo" alt="" />
@@ -4947,7 +4995,8 @@ OVERLAY_HTML = r"""<!doctype html>
           <span class="ticker-gap">${escapeHtml(entry.class_position ? `${entry.class_name || "CLS"} ${ordinal(entry.class_position)}` : entry.interval || "")}</span>
         </span>
       `).join("");
-      track.innerHTML = items + items;
+      const resetMarker = `<span class="ticker-reset">Back to Leader</span>`;
+      track.innerHTML = items + resetMarker + items;
     }
 
     function renderFloLeaderboard(state, leaderboardStyle) {
