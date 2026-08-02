@@ -2242,6 +2242,77 @@ def test_final_laps_focuses_leader_when_win_is_close():
     assert "has led 3 laps" in item.message
 
 
+def test_final_lap_clears_stale_story_and_keeps_white_flag_first():
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    results = [
+        {"CarIdx": 0, "Position": 0, "Time": 0.0},
+        {"CarIdx": 1, "Position": 1, "Time": 0.4},
+    ]
+    drivers = {
+        0: {"name": "Race Leader", "number": "77"},
+        1: {"name": "Chaser", "number": "24"},
+    }
+    engine._update_leader_laps_led(results, 48)
+    engine._update_leader_laps_led(results, 49)
+    engine.broadcast_queue.add(
+        "A stale mid-pack Jeff story that should not run on the last lap.",
+        priority=11,
+        category="race_story",
+        protected=True,
+        speaker="jeff",
+        dedupe_key="stale_story",
+    )
+    engine.broadcast_queue.add(
+        "White flag. One lap to go.",
+        priority=13,
+        category="race_control",
+        protected=True,
+        speaker="lead",
+        dedupe_key="race_control:white_flag",
+    )
+
+    engine.prepare_final_lap_finish(
+        results,
+        drivers,
+        current_lap=49,
+        total_laps=50,
+    )
+
+    categories = [item.category for item in engine.broadcast_queue.items]
+    assert "race_story" not in categories
+    assert "race_control" in categories
+    assert "final_lap_finish_focus" in categories
+
+    first = engine.broadcast_queue.next_item(now=time.time())
+    assert first.dedupe_key == "race_control:white_flag"
+
+
+def test_final_lap_finish_focus_can_run_even_after_five_to_go_story():
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    engine.final_laps_battle_queued = True
+    results = [
+        {"CarIdx": 0, "Position": 0, "Time": 0.0},
+        {"CarIdx": 1, "Position": 1, "Time": 1.8},
+    ]
+    drivers = {
+        0: {"name": "Race Leader", "number": "77"},
+        1: {"name": "Second Place", "number": "24"},
+    }
+
+    queued = engine._queue_final_lap_finish_focus(
+        results,
+        drivers,
+        current_lap=49,
+        total_laps=50,
+    )
+
+    assert queued is True
+    item = engine.broadcast_queue.items[0]
+    assert item.category == "final_lap_finish_focus"
+    assert item.camera_target_car_idx == 0
+    assert "Final lap for Race Leader" in item.message
+
+
 def test_final_laps_can_show_best_battle_outside_top_five_when_leader_checked_out():
     engine = BroadcastEngine(openai_director=SilentOpenAI())
     results = [

@@ -75,6 +75,8 @@ class BroadcastEngine:
         self.caution_top_ten_order_signature = ()
         self.caution_top_ten_stable_ticks = 0
         self.final_laps_battle_queued = False
+        self.final_lap_finish_focus_queued = False
+        self.final_lap_queue_cleaned = False
         self.caution_lucky_dog_queued = False
         self.late_caution_note_queued = False
         self.green_pit_cycle_announced = False
@@ -273,6 +275,14 @@ class BroadcastEngine:
                 track_info,
             )
             if queued_recap:
+                return self.broadcast_queue.next_item()
+            if self.is_final_lap_window(current_lap, total_laps):
+                self.prepare_final_lap_finish(
+                    story_results,
+                    driver_lookup,
+                    current_lap,
+                    total_laps,
+                )
                 return self.broadcast_queue.next_item()
             queued_final_battle = self._queue_final_laps_battle(
                 story_results,
@@ -875,6 +885,117 @@ class BroadcastEngine:
             total_laps,
             leader_gap,
         )
+
+    def is_final_lap_window(self, current_lap, total_laps):
+        total_laps = self.safe_int(total_laps)
+        current_lap = self.safe_int(current_lap)
+        if total_laps <= 0 or current_lap <= 0:
+            return False
+        return 0 <= total_laps - current_lap <= 1
+
+    def prepare_final_lap_finish(self, results, driver_lookup, current_lap, total_laps):
+        self.clear_final_lap_nonessential_stories()
+        self._queue_final_lap_finish_focus(
+            results,
+            driver_lookup,
+            current_lap,
+            total_laps,
+        )
+
+    def clear_final_lap_nonessential_stories(self):
+        if self.final_lap_queue_cleaned:
+            return
+
+        preserved_categories = {
+            "race_control",
+            "final_lap_finish_focus",
+            "final_laps_battle",
+            "incident",
+            "stage_end",
+        }
+        self.broadcast_queue.items = [
+            item
+            for item in self.broadcast_queue.items
+            if item.category in preserved_categories
+            or str(item.category).startswith("finish_")
+        ]
+        self.editorial_producer.clear()
+        self.final_lap_queue_cleaned = True
+
+    def _queue_final_lap_finish_focus(
+        self,
+        results,
+        driver_lookup,
+        current_lap,
+        total_laps,
+    ):
+        if self.final_lap_finish_focus_queued:
+            return False
+        if self.broadcast_queue.items:
+            non_control_items = [
+                item
+                for item in self.broadcast_queue.items
+                if item.category != "race_control"
+            ]
+            if non_control_items:
+                return False
+
+        ordered = self.sorted_running_order(results)
+        if len(ordered) < 1:
+            return False
+
+        leader = ordered[0]
+        second = ordered[1] if len(ordered) > 1 else None
+        leader_idx = leader.get("CarIdx")
+        second_idx = second.get("CarIdx") if second else None
+        if leader_idx is None:
+            return False
+
+        leader_driver = driver_lookup.get(leader_idx, {})
+        leader_name = leader_driver.get("name", f"Car {leader_idx}")
+        leader_number = leader_driver.get("number", "?")
+        gap = self.gap_between_adjacent(leader, second) if second else 0.0
+        laps_led_total = max(1, self.leader_laps_led.get(leader_idx, 1))
+        led_word = "lap" if laps_led_total == 1 else "laps"
+
+        if second and gap < 1.0:
+            second_driver = driver_lookup.get(second_idx, {})
+            second_name = second_driver.get("name", "second place")
+            second_number = second_driver.get("number", "?")
+            message = (
+                f"Final lap for {leader_name} in the number {leader_number}. "
+                f"{second_name} in the number {second_number} is still close, "
+                f"about {gap:.1f} seconds back, and this race is not over yet."
+            )
+            participants = tuple(
+                idx for idx in (leader_idx, second_idx) if idx is not None
+            )
+        else:
+            gap_line = (
+                f"with about {gap:.1f} seconds in hand"
+                if gap > 0
+                else "with the field chasing"
+            )
+            message = (
+                f"Final lap for {leader_name} in the number {leader_number}, "
+                f"{gap_line}. They have led {laps_led_total} {led_word}, "
+                "and now it is one clean lap from the checkered flag."
+            )
+            participants = (leader_idx,)
+
+        self.broadcast_queue.add(
+            message,
+            priority=12,
+            category="final_lap_finish_focus",
+            protected=True,
+            speaker="lead",
+            expires_after=8,
+            dedupe_key=f"final_lap_finish_focus:{leader_idx}:{current_lap}:{total_laps}",
+            camera_target_car_idx=leader_idx,
+            participant_car_indices=participants,
+        )
+        self.final_lap_finish_focus_queued = True
+        return True
 
     def _queue_final_laps_position_battle(
         self,

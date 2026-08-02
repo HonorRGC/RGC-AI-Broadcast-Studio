@@ -117,6 +117,8 @@ class BroadcastQueue:
             return 50.0
         if category == "booth_conversation":
             return max(4.4, min(12.0, len(str(message).split()) / 2.9))
+        if category == "final_lap_finish_focus":
+            return max(3.0, min(7.0, len(str(message).split()) / 3.7))
         words = len(str(message).split())
         if category == "race_control" and self.is_short_lap_call(message):
             return max(1.2, words / 3.6)
