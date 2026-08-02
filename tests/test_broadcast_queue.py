@@ -78,12 +78,12 @@ def test_one_driver_lineup_items_have_a_shorter_air_gap():
 
     queue.next_item(now=100.0)
 
-    assert queue.estimate_gap_seconds("opening_field_rundown_12") == 0.08
+    assert queue.estimate_gap_seconds("opening_field_rundown_12") == 0.04
     expected_speech = queue.estimate_speech_seconds(
         "Starting twelfth, the 12 of Example Driver.",
         "opening_field_rundown_12",
     )
-    assert queue.busy_until == 100.0 + expected_speech + 0.08 + 0.08
+    assert queue.busy_until == 100.0 + expected_speech + 0.04 + 0.02
 
 
 def test_actual_voice_duration_keeps_opening_lineup_handoff_fast():
@@ -97,7 +97,7 @@ def test_actual_voice_duration_keeps_opening_lineup_handoff_fast():
 
     queue.mark_actual_playback_started(item, playback_seconds=2.1, now=101.0)
 
-    assert queue.busy_until == 101.0 + 2.1 + 0.08 + 0.08
+    assert queue.busy_until == 101.0 + 2.1 + 0.04 + 0.02
 
 
 def test_silent_feature_reserves_its_runtime_without_commentary():

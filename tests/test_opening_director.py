@@ -41,7 +41,6 @@ def test_opening_waits_for_lineup_after_welcome_and_weather():
 
     assert [segment.category for segment in first_segments] == [
         "opening_welcome",
-        "opening_race_outlook",
         "opening_pit_report",
     ]
     track_message = first_segments[0].message
@@ -52,9 +51,8 @@ def test_opening_waits_for_lineup_after_welcome_and_weather():
     assert "rain chance is 0 percent" in track_message
     assert "dynamic" not in track_message.lower()
     assert "hotter track should make the tires give up faster" in track_message
-    assert first_segments[1].speaker == "jeff"
-    assert first_segments[2].speaker == "sarah"
-    assert "Pit road" in first_segments[2].message
+    assert first_segments[1].speaker == "sarah"
+    assert "Pit road" in first_segments[1].message
     assert director.is_complete() is False
 
     results, drivers = build_lineup()
@@ -67,16 +65,17 @@ def test_opening_waits_for_lineup_after_welcome_and_weather():
     assert len(lineup_segments) == 13
     assert lineup_segments[0].category == "opening_field_rundown_1"
     assert lineup_segments[-1].category == "opening_hype"
-    assert "On the pole, the 1 of Driver 1" in lineup_segments[0].message
-    assert "Starting 12th, the 12 of Driver 12" in lineup_segments[-2].message
+    assert "Pole: the 1 of Driver 1" in lineup_segments[0].message
+    assert "12th: the 12 of Driver 12" in lineup_segments[-2].message
     assert lineup_segments[0].camera_sequence == (0,)
     assert lineup_segments[0].camera_sequence_steps == ((0, "Rear Chase", 0),)
     assert lineup_segments[0].camera_return_home_after_sequence is False
     assert lineup_segments[-2].camera_return_home_after_sequence is True
     assert lineup_segments[0].speaker == "jeff"
     assert lineup_segments[-1].speaker == "lead"
-    assert lineup_segments[-1].delay_seconds == 8.0
+    assert lineup_segments[-1].delay_seconds == 4.0
     assert "Let's settle in and go racing" in lineup_segments[-1].message
+    assert "pace car is about to pull in" in lineup_segments[-1].message
     assert "boys and girls" not in lineup_segments[-1].message
     assert (
         "That is your 12-car field for 80 laps at Nashville Superspeedway"
@@ -98,8 +97,8 @@ def test_lineup_supports_one_based_positions():
     lineup = [
         segment for segment in segments if "rundown" in segment.category
     ]
-    assert "On the pole, the 1 of Driver 1" in lineup[0].message
-    assert "Starting 5th, the 5 of Driver 5" in lineup[-1].message
+    assert "Pole: the 1 of Driver 1" in lineup[0].message
+    assert "5th: the 5 of Driver 5" in lineup[-1].message
 
 
 def test_lineup_uses_jeff_for_all_groups():
@@ -119,8 +118,9 @@ def test_opening_hype_follows_the_lineup():
 
     assert segment.category == "opening_hype"
     assert segment.speaker == "lead"
-    assert segment.delay_seconds == 8.0
+    assert segment.delay_seconds == 4.0
     assert "The field is set" in segment.message
+    assert "pace car is about to pull in" in segment.message
     assert "Let's settle in and go racing" in segment.message
 
 

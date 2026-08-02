@@ -123,7 +123,7 @@ class BroadcastQueue:
         if category == "race_control" and self.is_short_lap_call(message):
             return max(1.2, words / 3.6)
         if category.startswith("opening_field_rundown"):
-            return max(1.15, min(8.0, words / 4.05))
+            return max(0.85, min(6.0, words / 4.7))
         if category.startswith(
             ("quarter_field_rundown", "three_quarter_field_rundown", "long_green_field_rundown")
         ):
@@ -140,7 +140,7 @@ class BroadcastQueue:
 
     def estimate_gap_seconds(self, category=""):
         if category.startswith("opening_field_rundown"):
-            return 0.08
+            return 0.04
         if category.startswith(
             ("quarter_field_rundown", "three_quarter_field_rundown", "long_green_field_rundown")
         ):
@@ -158,7 +158,7 @@ class BroadcastQueue:
         if getattr(item, "silent", False):
             return 0.0
         if item.category.startswith("opening_field_rundown"):
-            return 0.08
+            return 0.02
         return self.voice_tail_padding_seconds
 
     def has_pending_booth_follow_up(self, now):

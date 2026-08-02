@@ -41,7 +41,10 @@ class OpeningDirector:
             self.track_info_sent = True
 
         if not self.race_outlook_sent:
-            segments.append(self.build_race_outlook(track_info, driver_lookup))
+            # Keep the start package tight. The lead opener already carries the
+            # track story, Sarah adds pit-road flavor, and Jeff owns the lineup.
+            # Skipping a separate Jeff outlook leaves more time for the sponsor
+            # read and pace-car call before the green.
             self.race_outlook_sent = True
 
         if not self.pit_report_sent:
@@ -308,13 +311,13 @@ class OpeningDirector:
     def build_hype(self):
         return OpeningSegment(
             (
-                "The field is set, the pace car is ready, and the next flag "
-                "will start this one. Let's settle in and go racing."
+                "The field is set, the pace car is about to pull in, and the "
+                "next flag starts this one. Let's settle in and go racing."
             ),
             priority=7,
             speaker="lead",
             category="opening_hype",
-            delay_seconds=8.0,
+            delay_seconds=4.0,
         )
 
     def build_weather_summary(self, track_info):
@@ -517,10 +520,10 @@ class OpeningDirector:
 
     def format_lineup_entry(self, position, number, name):
         if position == 1:
-            return f"On the pole, the {number} of {name}."
+            return f"Pole: the {number} of {name}."
         if position == 2:
-            return f"Alongside in second, the {number} of {name}."
-        return f"Starting {self.ordinal(position)}, the {number} of {name}."
+            return f"Second: the {number} of {name}."
+        return f"{self.ordinal(position).capitalize()}: the {number} of {name}."
 
     def results_are_zero_based(self, results):
         return any(self.safe_int(car.get("Position", 999), 999) == 0 for car in results)
