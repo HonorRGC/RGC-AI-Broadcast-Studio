@@ -1118,6 +1118,8 @@ def handle_producer_command(
     if command == "auto_camera_on":
         if replay_director:
             replay_director.end_manual_control()
+        if hasattr(camera_director, "end_manual_control"):
+            camera_director.end_manual_control()
         camera_director.mode = "auto"
         publish_producer_event(overlay_server, "info", "Producer Control", "Auto camera enabled.")
         return
@@ -1266,9 +1268,14 @@ def handle_producer_command(
         if replay_director:
             replay_director.reset()
             replay_director.end_manual_control()
+        if hasattr(camera_director, "end_manual_control"):
+            camera_director.end_manual_control()
         camera_director.replay_active = False
         camera_director.mode = "auto"
-        camera_decision = camera_director.manual_focus_home(source)
+        try:
+            camera_decision = camera_director.manual_focus_home(source, lock_manual=False)
+        except TypeError:
+            camera_decision = camera_director.manual_focus_home(source)
         report_camera_decision(camera_decision, overlay_server)
         message = "Returned to live racing." if returned else "Return-to-live command was not accepted."
         publish_producer_event(
@@ -1403,11 +1410,14 @@ def ensure_camera_control(overlay_server, payload):
 def begin_producer_camera_takeover(camera_director, replay_director=None):
     """Give Producer Assist manual authority until Return Live/Auto Camera is used."""
     if camera_director:
-        camera_director.mode = "off"
-        camera_director.replay_active = False
-        camera_director.return_home_at = None
-        if hasattr(camera_director, "clear_sequence"):
-            camera_director.clear_sequence()
+        if hasattr(camera_director, "begin_manual_control"):
+            camera_director.begin_manual_control()
+        else:
+            camera_director.mode = "off"
+            camera_director.replay_active = False
+            camera_director.return_home_at = None
+            if hasattr(camera_director, "clear_sequence"):
+                camera_director.clear_sequence()
     if replay_director and hasattr(replay_director, "begin_manual_control"):
         replay_director.begin_manual_control()
 

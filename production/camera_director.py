@@ -51,6 +51,7 @@ class CameraDirector:
         self.live_edge_initialized = False
         self.last_live_sync_at = None
         self.replay_active = False
+        self.manual_control_active = False
         self.clear_sequence()
         self.sequence_return_home = False
 
@@ -161,6 +162,8 @@ class CameraDirector:
     def follow(self, item, telemetry):
         if self.mode == "off":
             return CameraDecision("ignored", "Camera direction is off.")
+        if self.manual_control_active and not self.is_green_flag_item(item):
+            return CameraDecision("held", "Manual producer camera control is active.", role="manual")
 
         now = self.clock()
         if self.replay_active and not self.is_green_flag_item(item):
@@ -225,9 +228,21 @@ class CameraDirector:
         return decision
 
     def begin_replay(self):
+        if self.manual_control_active:
+            return
         self.replay_active = True
         self.return_home_at = None
         self.clear_sequence()
+
+    def begin_manual_control(self):
+        self.manual_control_active = True
+        self.mode = "off"
+        self.replay_active = False
+        self.return_home_at = None
+        self.clear_sequence()
+
+    def end_manual_control(self):
+        self.manual_control_active = False
 
     def focus_replay(self, car_idx, group_name, telemetry):
         return self.focus_car(
@@ -240,6 +255,7 @@ class CameraDirector:
         )
 
     def manual_focus_car(self, car_idx, group_name, telemetry):
+        self.manual_control_active = True
         self.clear_sequence()
         self.return_home_at = None
         return self.focus_car(
@@ -252,7 +268,9 @@ class CameraDirector:
             force_switch=True,
         )
 
-    def manual_focus_home(self, telemetry):
+    def manual_focus_home(self, telemetry, lock_manual=True):
+        if lock_manual:
+            self.manual_control_active = True
         self.clear_sequence()
         self.return_home_at = None
         car_idx = self.get_leader_car_idx(telemetry)
@@ -317,6 +335,14 @@ class CameraDirector:
         self.last_live_sync_at = None
         self.return_home_at = None
         self.clear_sequence()
+        if self.manual_control_active:
+            return CameraDecision(
+                "held",
+                "Replay ended, but manual producer camera control remains active.",
+                car_idx=self.current_car_idx,
+                group_number=self.current_group_number,
+                role="manual",
+            )
         return self.focus_home(telemetry, self.clock(), force=True)
 
     def focus_home(self, telemetry, now, force=False):

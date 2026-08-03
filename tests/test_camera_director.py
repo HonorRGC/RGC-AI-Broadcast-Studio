@@ -508,6 +508,24 @@ def test_crank_fixed_holds_static_camera_for_full_feature_when_available():
     assert telemetry.switches == [("14", 7, 0), ("77", 5, 0)]
 
 
+def test_manual_camera_control_blocks_replay_return_home_until_released():
+    telemetry = CameraTelemetry()
+    director = CameraDirector(mode="auto")
+    director.begin_replay()
+
+    manual = director.manual_focus_car(3, "TV1", telemetry)
+    replay_end = director.end_replay(telemetry)
+    director.end_manual_control()
+    auto_home = director.manual_focus_home(telemetry, lock_manual=False)
+
+    assert manual.status == "switched"
+    assert director.manual_control_active is False
+    assert replay_end.status == "held"
+    assert replay_end.role == "manual"
+    assert auto_home.status == "switched"
+    assert telemetry.switches == [("14", 4, 0), ("77", 5, 0)]
+
+
 def test_crank_fixed_skips_scenic_before_onboard_fallback():
     telemetry = CameraTelemetry()
     telemetry.get_camera_groups = lambda: [
