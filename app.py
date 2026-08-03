@@ -1,6 +1,7 @@
 import argparse
 import time
 from pathlib import Path
+from types import SimpleNamespace
 
 from config import (
     CRANK_IT_UP_ICON_GRAPHIC,
@@ -1565,6 +1566,7 @@ def show_overlay_feature(item, overlay_server, source=None, engine=None):
         return
 
     if category in ("post_race_story", "post_race", "post_race_recap"):
+        show_post_race_winner_card(overlay_server, source)
         rows = build_race_end_cap_rows(source, engine)
         if rows:
             overlay_server.show_stat_panel(
@@ -1572,7 +1574,7 @@ def show_overlay_feature(item, overlay_server, source=None, engine=None):
                 title="Race Recap",
                 subtitle="Unofficial finish and key race notes",
                 rows=rows,
-                duration=60.0,
+                duration=300.0,
                 dedupe_key="race_end_cap:post_race",
                 minimum_interval=9999.0,
             )
@@ -2591,6 +2593,29 @@ def update_overlay_featured_driver(overlay_server, item, source, camera_decision
         camera_decision,
         opening_intro=opening_intro,
         number_only_card=rundown_number_only,
+    )
+
+
+def show_post_race_winner_card(overlay_server, source):
+    results = sorted_results_by_position(source.get_results() if source else [])
+    if not results:
+        return
+    winner = results[0]
+    car_idx = winner.get("CarIdx")
+    if car_idx is None:
+        return
+    driver = (source.get_driver_lookup() if source else {}).get(car_idx, {})
+    camera_decision = SimpleNamespace(
+        status="held",
+        car_idx=car_idx,
+        car_number=str(driver.get("number", "") or ""),
+        role="post_race_winner",
+    )
+    update_overlay_focused_driver(
+        overlay_server,
+        source,
+        camera_decision,
+        duration=300.0,
     )
 
 

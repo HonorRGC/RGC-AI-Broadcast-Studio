@@ -28,6 +28,7 @@ class OverlaySpy:
     def __init__(self):
         self.stat_panels = []
         self.special_presentations = []
+        self.featured = []
 
     def show_stat_panel(self, **kwargs):
         self.stat_panels.append(kwargs)
@@ -35,6 +36,9 @@ class OverlaySpy:
 
     def show_special_presentation(self, **kwargs):
         self.special_presentations.append(kwargs)
+
+    def show_featured_driver(self, **kwargs):
+        self.featured.append(kwargs)
 
 
 class FeaturedDriverOverlaySpy:
@@ -392,7 +396,9 @@ def test_post_race_overlay_shows_end_cap_summary():
     assert panel["kind"] == "race_end_cap"
     assert panel["title"] == "Race Recap"
     assert panel["subtitle"] == "Unofficial finish and key race notes"
-    assert panel["duration"] == 60.0
+    assert panel["duration"] == 300.0
+    assert overlay.featured[0]["driver_name"] == "Winner Driver"
+    assert overlay.featured[0]["position"] == 1
     labels = [row["label"] for row in panel["rows"]]
     assert labels == [
         "Winner",

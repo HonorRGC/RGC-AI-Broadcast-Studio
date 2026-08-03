@@ -449,6 +449,22 @@ def test_finish_rundown_is_limited_to_top_ten():
     assert "Driver 12" not in rundown
 
 
+def test_finish_rundown_can_include_entire_field():
+    director = RaceDirector()
+    results = [
+        {"CarIdx": index, "Position": index + 1} for index in range(12)
+    ]
+    drivers = {
+        index: {"name": f"Driver {index + 1}", "number": str(index + 1)}
+        for index in range(12)
+    }
+
+    rundown = director.build_finish_rundown(results, drivers, max_cars=None)
+
+    assert "Driver 1" in rundown
+    assert "Driver 12" in rundown
+
+
 def test_post_race_recap_includes_key_race_summary_details():
     director = RaceDirector()
     results = [

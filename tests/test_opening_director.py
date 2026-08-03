@@ -104,14 +104,20 @@ def test_lineup_supports_one_based_positions():
     assert "5th: the 5 of Driver 5" in lineup[-1].message
 
 
-def test_lineup_uses_jeff_for_all_groups():
+def test_lineup_alternates_booth_by_ten_driver_blocks():
     director = OpeningDirector()
-    results, drivers = build_lineup(count=25)
+    results, drivers = build_lineup(count=45)
 
     segments = director.build_field_rundown(results, drivers)
 
-    assert len(segments) == 25
-    assert {segment.speaker for segment in segments} == {"jeff"}
+    assert len(segments) == 45
+    assert {segment.speaker for segment in segments[:10]} == {"jeff"}
+    assert {segment.speaker for segment in segments[10:20]} == {"lead"}
+    assert {segment.speaker for segment in segments[20:30]} == {"jeff"}
+    assert {segment.speaker for segment in segments[30:40]} == {"lead"}
+    assert {segment.speaker for segment in segments[40:]} == {"jeff"}
+    assert "Mike picks it up from here" in segments[10].message
+    assert "Back to Jeff for the next group" in segments[20].message
 
 
 def test_opening_hype_follows_the_lineup():

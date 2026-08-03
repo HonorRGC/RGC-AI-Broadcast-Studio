@@ -400,7 +400,7 @@ class RaceDirector:
         )
 
         scheduler.add(
-            self.build_finish_rundown(results, driver_lookup, max_cars=10),
+            self.build_finish_rundown(results, driver_lookup, max_cars=None),
             priority=9,
             category="post_race",
             protected=True,
@@ -694,7 +694,10 @@ class RaceDirector:
         lines = ["Here is how they finished."]
 
         zero_based_positions = self.results_are_zero_based(results)
-        for car in self.sort_results(results)[:max_cars]:
+        ordered = self.sort_results(results)
+        if max_cars is not None:
+            ordered = ordered[:max_cars]
+        for car in ordered:
             lines.append(
                 self.format_driver_position(
                     car,

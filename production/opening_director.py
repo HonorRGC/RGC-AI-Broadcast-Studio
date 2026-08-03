@@ -493,11 +493,18 @@ class OpeningDirector:
                 for entry in group
             ]
             group_number = start // self.LINEUP_GROUP_SIZE + 1
+            speaker = self.lineup_speaker_for_start(start)
             intro = (
                 "I'm Jeff, and here is your starting lineup. "
                 if group_number == 1
                 else ""
             )
+            if start > 0 and start % 10 == 0:
+                intro = (
+                    "Mike picks it up from here. "
+                    if speaker == "lead"
+                    else "Back to Jeff for the next group. "
+                )
             closing = ""
             is_final_segment = start + self.LINEUP_GROUP_SIZE >= len(entries)
             if is_final_segment and track_name:
@@ -510,7 +517,7 @@ class OpeningDirector:
                 OpeningSegment(
                     f"{intro}{' '.join(group_messages)}{closing}",
                     priority=9,
-                    speaker="jeff",
+                    speaker=speaker,
                     category=f"opening_field_rundown_{group_number}",
                     camera_sequence=group_car_indices,
                     camera_sequence_steps=tuple(
@@ -520,6 +527,11 @@ class OpeningDirector:
                 )
             )
         return segments
+
+    @staticmethod
+    def lineup_speaker_for_start(start):
+        block = max(int(start), 0) // 10
+        return "jeff" if block % 2 == 0 else "lead"
 
     def format_lineup_entry(self, position, number, name):
         if position == 1:
