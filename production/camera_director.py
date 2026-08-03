@@ -473,7 +473,10 @@ class CameraDirector:
 
         groups = telemetry.get_camera_groups()
         if self.find_crank_static_group(groups):
-            return sequence
+            # A true static/fixed camera needs time to breathe. Holding one
+            # position lets more of the pack roar past for the Crank It Up
+            # moment instead of cutting away just as the field arrives.
+            return sequence[:1]
 
         onboard_groups = self.available_crank_onboard_groups(groups)
         if not onboard_groups:

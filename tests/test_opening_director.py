@@ -45,6 +45,7 @@ def test_opening_waits_for_lineup_after_welcome_and_weather():
     ]
     track_message = first_segments[0].message
     assert "momentum race" in track_message
+    assert "I'm Mike" in track_message
     assert "partly cloudy" in track_message.lower()
     assert "mile-and-a-third oval" in track_message
     assert "81 degrees Fahrenheit" in track_message
@@ -52,7 +53,8 @@ def test_opening_waits_for_lineup_after_welcome_and_weather():
     assert "dynamic" not in track_message.lower()
     assert "hotter track should make the tires give up faster" in track_message
     assert first_segments[1].speaker == "sarah"
-    assert "Pit road" in first_segments[1].message
+    assert "I'm Sarah" in first_segments[1].message
+    assert "pit road" in first_segments[1].message.lower()
     assert director.is_complete() is False
 
     results, drivers = build_lineup()
@@ -65,6 +67,7 @@ def test_opening_waits_for_lineup_after_welcome_and_weather():
     assert len(lineup_segments) == 13
     assert lineup_segments[0].category == "opening_field_rundown_1"
     assert lineup_segments[-1].category == "opening_hype"
+    assert "I'm Jeff" in lineup_segments[0].message
     assert "Pole: the 1 of Driver 1" in lineup_segments[0].message
     assert "12th: the 12 of Driver 12" in lineup_segments[-2].message
     assert lineup_segments[0].camera_sequence == (0,)

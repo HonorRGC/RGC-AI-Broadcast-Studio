@@ -107,7 +107,10 @@ class OpeningDirector:
         detail_text = f" {' '.join(details)}" if details else ""
 
         return OpeningSegment(
-            f"Good evening and welcome to {track_name}{location}.{detail_text}",
+            (
+                f"Good evening and welcome to {track_name}{location}. "
+                f"I'm Mike, glad to have you with us.{detail_text}"
+            ),
             priority=10,
             category="opening_welcome",
         )
@@ -279,25 +282,25 @@ class OpeningDirector:
         length_miles = self.track_length_miles(track_info.get("track_length"))
         if length_miles and length_miles <= 1.0:
             message = (
-                "Down here on pit road, track position is going to be precious. "
+                "I'm Sarah down here on pit road. Track position is going to be precious. "
                 "If cautions bunch this field up, a clean stop can keep a driver "
                 "out of the hornet's nest."
             )
         elif self.is_drafting_track(track_info):
             message = (
-                "Pit road could become a team exercise tonight. If fuel strategy "
+                "I'm Sarah down on pit road, and this could become a team exercise tonight. If fuel strategy "
                 "comes into play, getting in and out with the right group may be "
                 "just as important as the stop itself."
             )
         elif is_road_course(track_info):
             message = (
-                "Down here on pit road, road-course strategy is all about the "
+                "I'm Sarah down here on pit road. Road-course strategy is all about the "
                 "window. A clean in-lap, a clean out-lap, and avoiding pit-road "
                 "speeding can make the undercut or overcut work."
             )
         else:
             message = (
-                "Pit road should be quiet early, but once tires start to fall off, "
+                "I'm Sarah on pit road. It should be quiet early, but once tires start to fall off, "
                 "the first stop can tell us who is playing track position and who "
                 "is thinking about the long run."
             )
@@ -491,7 +494,7 @@ class OpeningDirector:
             ]
             group_number = start // self.LINEUP_GROUP_SIZE + 1
             intro = (
-                "Here is your starting lineup. "
+                "I'm Jeff, and here is your starting lineup. "
                 if group_number == 1
                 else ""
             )

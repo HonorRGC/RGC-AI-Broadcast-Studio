@@ -477,6 +477,37 @@ def test_crank_fixed_cycles_onboard_cameras_when_static_is_missing():
     assert telemetry.switches == [("14", 8, 0), ("24", 9, 0), ("77", 10, 0)]
 
 
+def test_crank_fixed_holds_static_camera_for_full_feature_when_available():
+    telemetry = CameraTelemetry()
+    times = iter([100.0, 115.0, 151.0])
+    director = CameraDirector(mode="auto", clock=lambda: next(times))
+    feature = SimpleNamespace(
+        camera_target_car_idx=None,
+        camera_sequence=(),
+        camera_sequence_steps=(
+            (3, "Crank Fixed", 0),
+            (4, "Crank Fixed", 0),
+            (0, "Crank Fixed", 0),
+        ),
+        dedupe_key="crank_it_up:10",
+        category="crank_it_up",
+        message="Crank It Up",
+        silent=True,
+        feature_duration_seconds=50.0,
+        camera_return_home_after_sequence=True,
+    )
+
+    first = director.follow(feature, telemetry)
+    held = director.update(telemetry)
+    home = director.update(telemetry)
+
+    assert first.status == "switched"
+    assert first.group_name == "TV Fixed"
+    assert held.status == "held"
+    assert home.role == "home"
+    assert telemetry.switches == [("14", 7, 0), ("77", 5, 0)]
+
+
 def test_crank_fixed_skips_scenic_before_onboard_fallback():
     telemetry = CameraTelemetry()
     telemetry.get_camera_groups = lambda: [
