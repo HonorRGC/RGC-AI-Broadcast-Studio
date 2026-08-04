@@ -306,6 +306,48 @@ def test_engine_queues_sponsor_read_after_opening_lineup():
     assert sponsor_items[0].delay_seconds == 1.0
 
 
+def test_pre_start_extension_queues_league_stat_outlook_without_interrupting_lineup():
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    engine.race_director.phase = RacePhase.CAUTION
+    engine.race_director.race_started = False
+    engine.broadcast_queue.add(
+        "Starting second, the 24 of Dean Marsh.",
+        priority=9,
+        category="opening_field_rundown_2",
+        dedupe_key="opening_field_rundown_2",
+    )
+    engine.broadcast_queue.add(
+        "Race control is adding another pace lap before the start.",
+        priority=7,
+        category="race_control",
+        dedupe_key="race_control:pre_start_extension",
+    )
+
+    queued = engine._queue_pre_start_extension_outlook(
+        [{"CarIdx": 34, "Position": 1}],
+        {
+            34: {
+                "name": "T.J. Lee",
+                "number": "34",
+                "league_stats_by_scope": [
+                    {
+                        "stats_scope": "season",
+                        "points_position": "2",
+                        "track_wins": "1",
+                    }
+                ],
+            }
+        },
+    )
+
+    assert queued is True
+    assert engine.broadcast_queue.items[0].category == "opening_field_rundown_2"
+    outlook = engine.broadcast_queue.items[-1]
+    assert outlook.category == "pre_start_extension_outlook"
+    assert "one more pace lap" in outlook.message
+    assert "won here before" in outlook.message
+
+
 def test_engine_is_silent_until_the_race_session_begins():
     results = [
         {"CarIdx": index, "Position": index, "LapsComplete": 0}

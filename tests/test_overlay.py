@@ -41,6 +41,17 @@ class OverlayTelemetry:
         return 0.0
 
 
+class PreRaceYellowTelemetry(OverlayTelemetry):
+    def get_results(self):
+        return [
+            {"CarIdx": 7, "Position": 1, "LapsComplete": 0, "Time": 0.0},
+            {"CarIdx": 3, "Position": 2, "LapsComplete": 0, "Time": 0.0},
+        ]
+
+    def get_session_flags(self):
+        return 0x00000008
+
+
 def test_overlay_state_includes_title_sponsor_track_and_lap():
     builder = OverlayStateBuilder(
         event_config=OverlayEventConfig(
@@ -62,6 +73,15 @@ def test_overlay_state_includes_title_sponsor_track_and_lap():
     assert state["track_name"] == "Nashville Superspeedway"
     assert state["lap"] == 12
     assert state["total_laps"] == 80
+
+
+def test_overlay_does_not_show_caution_for_pre_start_pace_extension():
+    state = OverlayStateBuilder().build_from_telemetry(PreRaceYellowTelemetry()).to_dict()
+
+    assert state["lap"] == 0
+    assert state["caution"] is False
+    assert state["green"] is False
+    assert state["lap_history"] == []
 
 
 def test_brand_graphic_can_show_in_any_session():

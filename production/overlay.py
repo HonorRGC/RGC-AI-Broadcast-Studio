@@ -393,7 +393,12 @@ class OverlayStateBuilder:
         session_type = session_type_reader() if session_type_reader else "Unknown"
 
         lap = self.best_race_lap(results, telemetry.get_lap())
-        caution = self.is_caution(telemetry)
+        raw_caution = self.is_caution(telemetry)
+        caution = (
+            raw_caution
+            and self.is_race_session(session_type)
+            and self.safe_int(lap) > 0
+        )
         green = self.is_green(telemetry, session_type=session_type, lap=lap, caution=caution)
         self.update_starting_position_memory(
             telemetry,

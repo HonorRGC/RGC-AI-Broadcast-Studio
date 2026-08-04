@@ -84,6 +84,7 @@ class BroadcastEngine:
         self.final_lap_queue_cleaned = False
         self.caution_lucky_dog_queued = False
         self.late_caution_note_queued = False
+        self.pre_start_extension_outlook_queued = False
         self.green_pit_cycle_announced = False
         self.green_pit_cycle_last_update_lap = 0
         self.green_pit_cycle_update_count = 0
@@ -177,6 +178,7 @@ class BroadcastEngine:
             driver_lookup=driver_lookup,
             scheduler=self.broadcast_queue,
         )
+        self._queue_pre_start_extension_outlook(results, driver_lookup)
         self._handle_green_phase_change()
         self._handle_caution_phase_change(
             telemetry,
@@ -550,6 +552,52 @@ class BroadcastEngine:
             expires_after=180,
             dedupe_key="sponsor_read:opening",
         )
+
+    def _queue_pre_start_extension_outlook(self, results, driver_lookup):
+        if self.pre_start_extension_outlook_queued:
+            return False
+        if self.race_director.race_started:
+            return False
+        if self.race_director.phase != RacePhase.CAUTION:
+            return False
+        has_extension_call = any(
+            item.dedupe_key == "race_control:pre_start_extension"
+            for item in self.broadcast_queue.items
+        )
+        if not has_extension_call:
+            return False
+
+        league_story = self.opening_director.league_opening_story(driver_lookup)
+        if league_story:
+            message = (
+                "Since race control has given us one more pace lap, that gives us "
+                f"time for one more thing to watch. {league_story}"
+            )
+        else:
+            ordered = self.sorted_running_order(results)
+            polesitter = ordered[0] if ordered else {}
+            car_idx = polesitter.get("CarIdx")
+            driver = (driver_lookup or {}).get(car_idx, {}) if car_idx is not None else {}
+            name = driver.get("name") or "the polesitter"
+            number = driver.get("number") or "?"
+            message = (
+                "Since race control has given us one more pace lap, that gives the "
+                f"field a little more time to get organized. Keep an eye on the {number} "
+                f"of {name} once the green comes out; clean air on the opening run "
+                "can be a big advantage."
+            )
+
+        self.broadcast_queue.add(
+            message,
+            priority=6,
+            category="pre_start_extension_outlook",
+            protected=False,
+            speaker="jeff",
+            expires_after=180,
+            dedupe_key="pre_start_extension_outlook",
+        )
+        self.pre_start_extension_outlook_queued = True
+        return True
 
     def _collect_pass_stories(self, results, driver_lookup):
         for event in self.race_brain.analyze(results, driver_lookup):
