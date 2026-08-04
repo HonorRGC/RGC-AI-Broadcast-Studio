@@ -4948,7 +4948,7 @@ OVERLAY_HTML = r"""<!doctype html>
       document.getElementById("flo-leaderboard").classList.toggle("caution", !!state.caution);
       renderBrandGraphic(event.graphics || [], state.session_type);
       renderLapHistory(state.lap_history || []);
-      renderTickerLeaderboard(state.leaderboard || [], leaderboardStyle);
+      renderTickerLeaderboard(state.producer_leaderboard || state.leaderboard || [], leaderboardStyle);
       renderFloLeaderboard(state, leaderboardStyle);
       renderSpecialPresentation(state.special_presentation);
       renderDriverCard(shouldHideDriverCardForPresentation(state.special_presentation) ? null : state.featured_driver);
@@ -5010,7 +5010,7 @@ OVERLAY_HTML = r"""<!doctype html>
 
     function renderFloLeaderboard(state, leaderboardStyle) {
       const layer = document.getElementById("flo-leaderboard");
-      const leaderboard = state.leaderboard || [];
+      const leaderboard = state.producer_leaderboard || state.leaderboard || [];
       const active = leaderboardStyle === "flo" && leaderboard.length;
       layer.classList.toggle("hidden", !active);
       if (!active) {

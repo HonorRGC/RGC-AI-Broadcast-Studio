@@ -731,6 +731,56 @@ def test_green_flag_pit_cycle_update_reports_recent_stops_after_start():
     assert "2 cars have made stops" in item.message
 
 
+def test_green_flag_pit_cycle_uses_draft_track_strategy_language():
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    engine.race_director.phase = RacePhase.GREEN
+    engine.race_intelligence.race_state.laps_remaining = 40
+
+    queued = engine._queue_green_pit_cycle_update(
+        [
+            SimpleNamespace(event_type="PIT_STOP", under_caution=False, car_idx=0),
+            SimpleNamespace(event_type="PIT_STOP", under_caution=False, car_idx=1),
+        ],
+        [{"CarIdx": 0, "Position": 1}, {"CarIdx": 1, "Position": 2}],
+        {},
+        [True, True],
+        current_lap=30,
+        track_info={"track_name": "Daytona International Speedway"},
+    )
+
+    assert queued is True
+    item = engine.broadcast_queue.next_item()
+    assert "fuel" in item.message.lower()
+    assert "draft" in item.message.lower()
+
+
+def test_green_flag_pit_cycle_ignores_parked_race_control_car():
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    engine.race_director.phase = RacePhase.GREEN
+    engine.race_intelligence.race_state.laps_remaining = 40
+    engine.pit_strategy_detector.driver_states = {
+        0: SimpleNamespace(car_idx=0, started_from_pit_road=True, last_pit_exit_lap=0),
+        1: SimpleNamespace(car_idx=1, started_from_pit_road=False, last_pit_exit_lap=0),
+    }
+
+    queued = engine._queue_green_pit_cycle_update(
+        [
+            SimpleNamespace(event_type="PIT_STOP", under_caution=False, car_idx=0),
+            SimpleNamespace(event_type="PIT_STOP", under_caution=False, car_idx=1),
+        ],
+        [
+            {"CarIdx": 0, "Position": 1, "LapsComplete": 0},
+            {"CarIdx": 1, "Position": 2, "LapsComplete": 12},
+        ],
+        {},
+        [True, True],
+        current_lap=12,
+        track_info={"track_name": "Charlotte Motor Speedway"},
+    )
+
+    assert queued is False
+
+
 def test_due_field_rundown_blocks_normal_stories_until_booth_is_clear():
     results = [
         {"CarIdx": index, "Position": index, "LapsComplete": 20}

@@ -60,7 +60,8 @@ class RaceStateTracker:
         is_overtime = total_laps > 0 and current_lap > total_laps
         is_late_race = total_laps > 0 and laps_remaining <= 10
 
-        if is_caution and not self.last_was_caution:
+        race_has_started = current_lap > 0 or self.state.green_lap_count > 0
+        if is_caution and race_has_started and not self.last_was_caution:
             self.state.caution_count += 1
 
         if self.last_was_caution and is_green:

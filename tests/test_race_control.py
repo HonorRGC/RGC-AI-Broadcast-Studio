@@ -151,6 +151,21 @@ def test_green_run_counter_counts_laps_not_update_ticks():
     assert tracker.get_state().green_lap_count == 2
 
 
+def test_pre_race_yellow_does_not_count_as_live_caution():
+    tracker = RaceStateTracker()
+    yellow = RaceDirector.YELLOW_FLAG
+    green = RaceDirector.GREEN_FLAG
+
+    tracker.update(current_lap=0, total_laps=50, session_flags=yellow)
+
+    assert tracker.get_state().caution_count == 0
+
+    tracker.update(current_lap=1, total_laps=50, session_flags=green)
+    tracker.update(current_lap=2, total_laps=50, session_flags=yellow)
+
+    assert tracker.get_state().caution_count == 1
+
+
 def test_green_flag_clears_stale_opening_messages():
     director = RaceDirector()
     queue = BroadcastQueue()
@@ -240,9 +255,11 @@ def test_initial_pace_lap_extension_does_not_interrupt_starting_lineup():
 
     director.handle_caution(queue, {"track_name": "EchoPark Speedway"})
 
-    assert len(queue.items) == 1
+    assert len(queue.items) == 2
     assert queue.items[0].category == "opening_field_rundown_1"
-    assert "caution" not in queue.items[0].message.lower()
+    assert queue.items[1].dedupe_key == "race_control:pre_start_extension"
+    assert "adding another pace lap before the start" in queue.items[1].message
+    assert "serve any pre-race penalties" in queue.items[1].message
     assert director.one_to_green_announced is False
 
 

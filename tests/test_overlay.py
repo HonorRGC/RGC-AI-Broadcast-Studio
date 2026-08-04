@@ -700,6 +700,8 @@ def test_overlay_has_optional_ticker_leaderboard_and_compact_lap_bar():
     assert "normalizeLeaderboardStyle" in OVERLAY_HTML
     assert "renderTickerLeaderboard" in OVERLAY_HTML
     assert "renderFloLeaderboard" in OVERLAY_HTML
+    assert "renderTickerLeaderboard(state.producer_leaderboard || state.leaderboard || [], leaderboardStyle)" in OVERLAY_HTML
+    assert "const leaderboard = state.producer_leaderboard || state.leaderboard || [];" in OVERLAY_HTML
     assert "setLeaderboardSeries" in OVERLAY_HTML
     assert '${series} - Leaderboard' not in OVERLAY_HTML
     assert 'setText("ticker-label", "Leaderboard")' in OVERLAY_HTML

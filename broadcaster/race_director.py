@@ -242,6 +242,20 @@ class RaceDirector:
             # iRacing can expose that as a yellow/caution flag even though there
             # is no incident. Do not clear the welcome, track info, sponsor read,
             # or starting lineup for that pre-race control state.
+            scheduler.add(
+                (
+                    f"Race control is adding another pace lap before the start here at {track_name}. "
+                    "That gives the field time to get lined up and serve any pre-race penalties before we go green."
+                ),
+                priority=7,
+                category="race_control",
+                protected=False,
+                speaker="lead",
+                expires_after=35,
+                dedupe_key="race_control:pre_start_extension",
+                camera_focus_incident=False,
+            )
+            self.yellow_announced = True
             self.one_to_green_announced = False
             self.admin_caution_pending = False
             return
