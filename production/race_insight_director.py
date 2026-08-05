@@ -21,6 +21,7 @@ class RaceInsightDirector:
         self.last_green_insight_lap = 0
         self.last_stat_filler_lap = 0
         self.sent_stat_keys = {}
+        self.points_standings_sent = False
 
     def long_green_insight(self, race_state, current_lap):
         if not race_state or not race_state.is_green:
@@ -85,6 +86,8 @@ class RaceInsightDirector:
             return None
 
         insight = (
+            self.points_standings_insight(ordered, driver_lookup, race_state, current_lap)
+            or
             self.closest_battle_insight(ordered, driver_lookup, current_lap)
             or self.driver_context_insight(ordered, driver_lookup, current_lap)
             or self.biggest_mover_insight(ordered, driver_lookup, current_lap)
@@ -93,6 +96,80 @@ class RaceInsightDirector:
         if insight:
             self.last_stat_filler_lap = current_lap
         return insight
+
+    def points_standings_insight(self, ordered, driver_lookup, race_state, current_lap):
+        if self.points_standings_sent:
+            return None
+        if self.safe_int(getattr(race_state, "green_lap_count", 0)) < 10:
+            return None
+        if self.safe_int(getattr(race_state, "laps_remaining", 999), 999) <= 15:
+            return None
+
+        standings = self.points_standings_rows(driver_lookup)
+        if len(standings) < 3:
+            return None
+
+        leader = standings[0]
+        contenders = standings[1:4]
+        leader_name = leader["name"]
+        leader_position = leader["points_position"]
+        contender_text = ", ".join(
+            f"{row['name']} in {self.ordinal(row['points_position'])}"
+            for row in contenders[:2]
+        )
+        message = (
+            "This is a good time to reset the championship picture. "
+            f"{leader_name} came in leading the standings"
+        )
+        if contender_text:
+            message += f", with {contender_text} close enough to keep the pressure on"
+        message += ". We will keep that points battle in mind as this run plays out."
+
+        target_idx = None
+        for car in ordered:
+            driver = (driver_lookup or {}).get(car.get("CarIdx"), {}) or {}
+            if self.normalized_name(driver.get("name")) == self.normalized_name(leader["name"]):
+                target_idx = car.get("CarIdx")
+                break
+
+        self.points_standings_sent = True
+        return RaceInsight(
+            message=message,
+            category=f"race_stat:points_standings:{current_lap // 10}",
+            priority=6,
+            speaker="jeff",
+            camera_target_car_idx=target_idx,
+            participant_car_indices=tuple(idx for idx in (target_idx,) if idx is not None),
+        )
+
+    def points_standings_rows(self, driver_lookup):
+        rows = []
+        seen = set()
+        for driver in (driver_lookup or {}).values():
+            stats = self.scoped_stats((driver or {}).get("league_stats_by_scope") or [], "season")
+            if not stats:
+                stats = (driver or {}).get("league_stats") or {}
+            points_position = self.safe_int((stats or {}).get("points_position"), 0)
+            if points_position <= 0 or points_position > 20:
+                continue
+            name = str((driver or {}).get("name") or (stats or {}).get("name") or "").strip()
+            number = str((driver or {}).get("number") or (stats or {}).get("car_number") or "").strip()
+            key = self.normalized_name(name) or number
+            if not key or key in seen:
+                continue
+            seen.add(key)
+            rows.append(
+                {
+                    "points_position": points_position,
+                    "name": name or f"Car {number}",
+                    "number": number,
+                    "points_to_next": self.safe_int((stats or {}).get("points_to_next"), 0),
+                    "wins": self.safe_int((stats or {}).get("wins"), 0),
+                    "top_fives": self.safe_int((stats or {}).get("top_fives"), 0),
+                }
+            )
+        rows.sort(key=lambda row: row["points_position"])
+        return rows
 
     def closest_battle_insight(self, ordered, driver_lookup, current_lap):
         best = None
@@ -513,6 +590,9 @@ class RaceInsightDirector:
             return int(value)
         except Exception:
             return default
+
+    def normalized_name(self, value):
+        return str(value or "").strip().casefold()
 
     def safe_float(self, value, default=0.0):
         try:

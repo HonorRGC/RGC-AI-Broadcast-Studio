@@ -523,6 +523,42 @@ def test_biggest_movers_graphic_uses_shared_long_cooldown():
     assert overlay.stat_panels[0]["minimum_interval"] == 180.0
 
 
+def test_points_standings_story_shows_top_twenty_graphic():
+    overlay = OverlaySpy()
+    source = SimpleNamespace(
+        get_driver_lookup=lambda: {
+            index: {
+                "name": f"Driver {index}",
+                "number": str(index),
+                "league_stats_by_scope": [
+                    {
+                        "stats_scope": "season",
+                        "points_position": str(index),
+                        "points_to_next": str(index * 2),
+                        "wins": "1" if index == 1 else "0",
+                    }
+                ],
+            }
+            for index in range(1, 24)
+        }
+    )
+
+    show_overlay_feature(
+        item(category="race_stat:points_standings:2", target=1),
+        overlay,
+        source=source,
+    )
+
+    panel = overlay.stat_panels[0]
+    assert panel["kind"] == "points_standings"
+    assert panel["title"] == "Championship Standings"
+    assert panel["dedupe_key"] == "points_standings"
+    assert len(panel["rows"]) == 20
+    assert panel["rows"][0]["value"] == "1st"
+    assert panel["rows"][0]["label"] == "#1 Driver 1"
+    assert "2 pts to next" in panel["rows"][0]["detail"]
+
+
 def test_race_event_log_records_pass_with_session_lap_and_camera():
     overlay = ProducerOverlaySpy()
     source = SimpleNamespace(

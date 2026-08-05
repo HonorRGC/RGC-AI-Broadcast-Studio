@@ -180,6 +180,50 @@ def test_race_stat_filler_uses_league_track_context_before_generic_mover():
     assert insight.camera_target_car_idx == 2
 
 
+def test_race_stat_filler_can_reset_championship_standings():
+    director = RaceInsightDirector(seed=9)
+    state = RaceState(
+        current_lap=22,
+        total_laps=80,
+        laps_remaining=58,
+        green_lap_count=14,
+        is_green=True,
+    )
+    results = [
+        {"CarIdx": 1, "Position": 0, "Time": 0.0},
+        {"CarIdx": 2, "Position": 1, "Time": 2.0},
+        {"CarIdx": 3, "Position": 2, "Time": 4.0},
+    ]
+    drivers = {
+        1: {
+            "name": "T.J. Lee",
+            "number": "34",
+            "league_stats_by_scope": [{"stats_scope": "season", "points_position": "1"}],
+        },
+        2: {
+            "name": "Dean Marsh",
+            "number": "24",
+            "league_stats_by_scope": [{"stats_scope": "season", "points_position": "2"}],
+        },
+        3: {
+            "name": "Austin Peterson",
+            "number": "77",
+            "league_stats_by_scope": [{"stats_scope": "season", "points_position": "3"}],
+        },
+    }
+
+    insight = director.race_stat_filler(results, drivers, state, current_lap=22)
+
+    assert insight is not None
+    assert insight.category.startswith("race_stat:points_standings")
+    assert "championship picture" in insight.message
+    assert "T.J. Lee" in insight.message
+    assert insight.camera_target_car_idx == 1
+
+    second = director.race_stat_filler(results, drivers, state, current_lap=30)
+    assert second is None or not second.category.startswith("race_stat:points_standings")
+
+
 def test_race_stat_filler_waits_for_green_run():
     director = RaceInsightDirector(seed=7)
     state = RaceState(

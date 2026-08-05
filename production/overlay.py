@@ -4430,6 +4430,13 @@ OVERLAY_HTML = r"""<!doctype html>
       border-left-color: #15c85f;
     }
 
+    .stat-panel.points_standings {
+      width: 540px;
+      bottom: 42px;
+      border-left-color: #39a7ff;
+      background: linear-gradient(90deg, rgba(7, 11, 19, 0.97), rgba(18, 36, 58, 0.95));
+    }
+
     .stat-panel.pit_update {
       border-left-color: #ffd400;
     }
@@ -4493,6 +4500,29 @@ OVERLAY_HTML = r"""<!doctype html>
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+    }
+
+    .stat-panel.points_standings .stat-panel-title {
+      font-size: 21px;
+    }
+
+    .stat-panel.points_standings .stat-panel-row {
+      padding: 5px 12px;
+      grid-template-columns: minmax(0, 1fr) 58px;
+      gap: 8px;
+    }
+
+    .stat-panel.points_standings .stat-panel-label {
+      font-size: 12px;
+    }
+
+    .stat-panel.points_standings .stat-panel-value {
+      font-size: 14px;
+      color: #9ed8ff;
+    }
+
+    .stat-panel.points_standings .stat-panel-detail {
+      font-size: 10px;
     }
 
     .hidden {
@@ -5193,7 +5223,8 @@ OVERLAY_HTML = r"""<!doctype html>
       setText("stat-panel-subtitle", panel.subtitle || "");
       const rows = document.getElementById("stat-panel-rows");
       rows.innerHTML = "";
-      for (const row of (panel.rows || []).slice(0, 7)) {
+      const maxRows = panel.kind === "points_standings" ? 20 : 7;
+      for (const row of (panel.rows || []).slice(0, maxRows)) {
         const item = document.createElement("div");
         item.className = "stat-panel-row";
         item.innerHTML = `

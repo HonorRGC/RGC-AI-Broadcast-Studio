@@ -1565,6 +1565,20 @@ def show_overlay_feature(item, overlay_server, source=None, engine=None):
             )
         return
 
+    if category.startswith("race_stat:points_standings"):
+        rows = build_points_standings_rows(source, engine)
+        if rows:
+            overlay_server.show_stat_panel(
+                kind="points_standings",
+                title="Championship Standings",
+                subtitle="Top 20 entering tonight",
+                rows=rows,
+                duration=18.0,
+                dedupe_key="points_standings",
+                minimum_interval=900.0,
+            )
+        return
+
     if category in ("post_race_story", "post_race", "post_race_recap"):
         show_post_race_winner_card(overlay_server, source)
         rows = build_race_end_cap_rows(source, engine)
@@ -1595,6 +1609,71 @@ def show_overlay_feature(item, overlay_server, source=None, engine=None):
                 dedupe_key="biggest_movers",
                 minimum_interval=180.0,
             )
+
+
+def build_points_standings_rows(source=None, engine=None, limit=20):
+    driver_lookup = {}
+    if source and hasattr(source, "get_driver_lookup"):
+        driver_lookup = source.get_driver_lookup() or {}
+    if engine and getattr(engine, "league_context", None):
+        driver_lookup = engine.league_context.enrich_driver_lookup(driver_lookup)
+
+    standings = []
+    seen = set()
+    for driver in (driver_lookup or {}).values():
+        stats = preferred_season_stats(driver)
+        if not stats:
+            continue
+        points_position = safe_int((stats or {}).get("points_position"), 0)
+        if points_position <= 0:
+            continue
+        name = str((driver or {}).get("name") or (stats or {}).get("name") or "").strip()
+        number = str((driver or {}).get("number") or (stats or {}).get("car_number") or "").strip()
+        key = (name.casefold(), number)
+        if key in seen:
+            continue
+        seen.add(key)
+        points_to_next = safe_int((stats or {}).get("points_to_next"), 0)
+        wins = safe_int((stats or {}).get("wins"), 0)
+        top_fives = safe_int((stats or {}).get("top_fives"), 0)
+        detail_parts = []
+        if points_to_next > 0:
+            detail_parts.append(f"{points_to_next} pts to next")
+        if wins > 0:
+            detail_parts.append(f"{wins} win{'s' if wins != 1 else ''}")
+        if top_fives > 0:
+            detail_parts.append(f"{top_fives} top 5{'s' if top_fives != 1 else ''}")
+        standings.append(
+            {
+                "points_position": points_position,
+                "label": f"#{number} {name}".strip() if number else name,
+                "value": ordinal(points_position),
+                "detail": " | ".join(detail_parts) or "Championship contender",
+            }
+        )
+
+    standings.sort(key=lambda row: row["points_position"])
+    return [
+        {
+            "label": row["label"],
+            "value": row["value"],
+            "detail": row["detail"],
+        }
+        for row in standings[:limit]
+    ]
+
+
+def preferred_season_stats(driver):
+    stats_by_scope = (driver or {}).get("league_stats_by_scope") or []
+    if isinstance(stats_by_scope, dict):
+        stats_by_scope = [stats_by_scope]
+    for stats in stats_by_scope:
+        if str((stats or {}).get("stats_scope") or "").strip().casefold() == "season":
+            return stats
+    stats = (driver or {}).get("league_stats") or {}
+    if str((stats or {}).get("stats_scope") or "season").strip().casefold() in ("", "season"):
+        return stats
+    return {}
 
 
 def log_race_event_for_item(item, overlay_server, source=None, camera_decision=None):

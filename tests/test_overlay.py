@@ -744,6 +744,12 @@ def test_overlay_has_optional_ticker_leaderboard_and_compact_lap_bar():
     assert "body.leaderboard-flo-mode .special-presentation.sponsor_bug" in OVERLAY_HTML
 
 
+def test_overlay_supports_points_standings_stat_panel():
+    assert ".stat-panel.points_standings" in OVERLAY_HTML
+    assert 'panel.kind === "points_standings" ? 20 : 7' in OVERLAY_HTML
+    assert "Championship Standings" not in OVERLAY_HTML
+
+
 def test_overlay_title_branding_is_larger_and_more_polished():
     assert "max-width: 220px" in OVERLAY_HTML
     assert "max-height: 58px" in OVERLAY_HTML
