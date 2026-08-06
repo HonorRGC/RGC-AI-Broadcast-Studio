@@ -96,6 +96,7 @@ LAUNCHER_FIELDS = [
     ("OVERLAY_SERIES_LOGO", ""),
     ("OVERLAY_LEADERBOARD_STYLE", "side"),
     ("OVERLAY_HOST", "127.0.0.1"),
+    ("USE_SIM_RACING_APPS", "true"),
     ("USE_SPONSOR_READS", "true"),
     ("SPONSOR_READ_CAUSE_NAME", ""),
     ("SPONSOR_READ_CAUSE_LOGO", ""),
@@ -196,6 +197,7 @@ BROADCAST_FIELD_LABELS = {
     "OVERLAY_SERIES_LOGO": "Series Logo",
     "OVERLAY_LEADERBOARD_STYLE": "Leaderboard Style",
     "OVERLAY_HOST": "Remote Producer Assist Access",
+    "USE_SIM_RACING_APPS": "Use SIMRacingApps Car Graphics",
     "USE_SPONSOR_READS": "Use Sponsor Reads",
     "SPONSOR_READ_CAUSE_NAME": "Cause / Awareness Name",
     "SPONSOR_READ_CAUSE_LOGO": "Cause / Awareness Logo",
@@ -262,6 +264,7 @@ BROADCAST_FIELD_HELP = {
     "OVERLAY_SERIES_LOGO": "Logo for the series. It can rotate in the title with sponsor and cause logos.",
     "OVERLAY_LEADERBOARD_STYLE": "side keeps the NASCAR-style left leaderboard. ticker scrolls across the top under the title. flo uses a compact two-row top leaderboard with sponsor and series logos.",
     "OVERLAY_HOST": "Use 127.0.0.1 for this PC only. Use 0.0.0.0 when trusted helpers connect through Tailscale. The Producer Assist / Remote Admin Link is the link to send to trusted admins on your Tailscale network.",
+    "USE_SIM_RACING_APPS": "Uses SIMRacingAppsServer for live 3D car renders and styled car numbers. If this is true, start SIMRacingAppsServer before the broadcast. If you are not using it, set this to false so the overlay does not waste time looking for it.",
     "USE_SPONSOR_READS": "Lets the AI work sponsor mentions into pre-race, caution, and race-update moments.",
     "SPONSOR_READ_CAUSE_NAME": "Short cause or awareness name shown on overlays and used by {cause}. Example: Autism Awareness.",
     "SPONSOR_READ_CAUSE_LOGO": "Logo for the cause/awareness message. It can rotate in the title and appear on sponsor popups.",
@@ -325,6 +328,7 @@ INLINE_HELP_FIELDS = {
     "ELEVENLABS_API_KEY",
     "OVERLAY_EVENT_TITLE",
     "OVERLAY_SERIES_LOGO",
+    "USE_SIM_RACING_APPS",
     "USE_SPONSOR_READS",
     "SPONSOR_READ_CAUSE_NAME",
     "SPONSOR_READ_CAUSE_LOGO",
@@ -345,6 +349,18 @@ INLINE_HELP_FIELDS = {
     "DISCORD_RACE_REPORT_WEBHOOK_URL",
     "USE_LEAGUE_DRIVER_NOTES",
     "STAGE_END_LAPS",
+}
+
+BOOLEAN_SETTING_KEYS = {
+    "USE_OPENAI",
+    "USE_ELEVENLABS",
+    "USE_SIM_RACING_APPS",
+    "USE_SPONSOR_READS",
+    "POST_RACE_INTERVIEWS_ENABLED",
+    "RACE_ADMIN_MODE",
+    "DISCORD_RACE_REPORT_ENABLED",
+    "DISCORD_RACE_REPORT_USE_OPENAI",
+    "USE_LEAGUE_DRIVER_NOTES",
 }
 
 
@@ -531,6 +547,10 @@ def setting_enabled(values, key, default="false"):
     }
 
 
+def bool_setting_text(values, key, default="false"):
+    return "true" if setting_enabled(values, key, default) else "false"
+
+
 def resolve_project_path(path_value, root=ROOT):
     path = Path(str(path_value or "").strip())
     if not path:
@@ -664,7 +684,16 @@ def build_health_status(values, root=ROOT, broadcast_running=False):
 
     rows.append(("Overlay", "Ready", DEFAULT_OVERLAY_URL, "ok"))
     rows.append(("Producer Assist", "Ready", DEFAULT_PRODUCER_URL, "ok"))
-    if sim_racing_apps_is_running():
+    if not setting_enabled(values, "USE_SIM_RACING_APPS", "true"):
+        rows.append(
+            (
+                "SIMRacingApps",
+                "Disabled",
+                "Live car renders and styled car numbers are off. The overlay will use fallback graphics.",
+                "off",
+            )
+        )
+    elif sim_racing_apps_is_running():
         rows.append(
             (
                 "SIMRacingApps",
@@ -677,8 +706,8 @@ def build_health_status(values, root=ROOT, broadcast_running=False):
         rows.append(
             (
                 "SIMRacingApps",
-                "Optional setup",
-                "Start SIMRacingAppsServer before the broadcast for live car images and styled numbers.",
+                "Not running",
+                "Start SIMRacingAppsServer before broadcasting, or set Use SIMRacingApps Car Graphics to false.",
                 "warn",
             )
         )
@@ -1709,26 +1738,14 @@ def run_gui():
                 state="readonly",
             )
             entry_widget.set(existing.get(key, "127.0.0.1") or "127.0.0.1")
-        elif key in (
-            "REMOTE_PRODUCER_ENABLED",
-            "DISCORD_RACE_REPORT_ENABLED",
-            "DISCORD_RACE_REPORT_USE_OPENAI",
-        ):
+        elif key in BOOLEAN_SETTING_KEYS:
             entry_widget = ttk.Combobox(
                 settings_frame,
                 values=("false", "true"),
                 width=69,
                 state="readonly",
             )
-            entry_widget.set(existing.get(key, "false") or "false")
-        elif key == "RACE_ADMIN_MODE":
-            entry_widget = ttk.Combobox(
-                settings_frame,
-                values=("false", "true"),
-                width=69,
-                state="readonly",
-            )
-            entry_widget.set(existing.get(key, "false") or "false")
+            entry_widget.set(bool_setting_text(existing, key, _default))
         elif key == "RACE_ADMIN_SEND_MODE":
             entry_widget = ttk.Combobox(
                 settings_frame,
@@ -2221,6 +2238,18 @@ def run_gui():
 
     def start_broadcast():
         save_settings()
+        current_values = collect_values()
+        if setting_enabled(current_values, "USE_SIM_RACING_APPS", "true") and not sim_racing_apps_is_running():
+            messagebox.showwarning(
+                "SIMRacingApps is not running",
+                "Use SIMRacingApps Car Graphics is set to true, but SIMRacingAppsServer is not running.\n\n"
+                "Start SIMRacingAppsServer before starting the broadcast, or change Use SIMRacingApps Car Graphics to false and save settings.",
+            )
+            status.set(
+                "SIMRacingApps is enabled but not running. Start SIMRacingAppsServer or set it to false."
+            )
+            refresh_health()
+            return
         process = launch_broadcast()
         if process:
             status.set(

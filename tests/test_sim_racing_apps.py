@@ -1,5 +1,7 @@
 import json
 
+import pytest
+
 from production import sim_racing_apps
 from production.sim_racing_apps import (
     build_sim_racing_apps_car_image_url,
@@ -19,6 +21,15 @@ class Response:
 
     def read(self, *_):
         return self.text.encode("utf-8")
+
+
+@pytest.fixture(autouse=True)
+def clear_sim_racing_apps_state(monkeypatch):
+    monkeypatch.delenv("USE_SIM_RACING_APPS", raising=False)
+    sim_racing_apps._CACHE.clear()
+    sim_racing_apps._ROSTER_CACHE.clear()
+    sim_racing_apps._LAST_GOOD_RENDER_INFO.clear()
+    sim_racing_apps._OFFLINE_UNTIL_BY_BASE.clear()
 
 
 def test_build_car_image_url_uses_live_car_idx_endpoint(monkeypatch):
@@ -58,6 +69,32 @@ def test_build_car_image_url_returns_empty_when_sim_racing_apps_is_unavailable(m
     sim_racing_apps._LAST_GOOD_RENDER_INFO.clear()
 
     assert build_sim_racing_apps_car_image_url({"car_idx": 12}) == ""
+
+
+def test_build_car_image_url_is_disabled_by_env(monkeypatch):
+    def fake_urlopen(url, timeout=0):
+        raise AssertionError("SIMRacingApps should not be called when disabled")
+
+    monkeypatch.setenv("USE_SIM_RACING_APPS", "false")
+    monkeypatch.setattr(sim_racing_apps, "urlopen", fake_urlopen)
+
+    assert build_sim_racing_apps_car_image_url({"car_idx": 12}) == ""
+
+
+def test_sim_racing_apps_failure_marks_service_temporarily_offline(monkeypatch):
+    calls = []
+
+    def fake_urlopen(url, timeout=0):
+        calls.append(url)
+        raise OSError("server unavailable")
+
+    monkeypatch.setattr(sim_racing_apps, "urlopen", fake_urlopen)
+
+    assert build_sim_racing_apps_car_image_url({"car_idx": 12}, now=10.0) == ""
+    assert len(calls) == 1
+
+    assert build_sim_racing_apps_car_image_url({"car_idx": 12}, now=20.0) == ""
+    assert len(calls) == 1
 
 
 def test_build_car_image_url_ignores_error_state(monkeypatch):

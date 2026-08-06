@@ -13,10 +13,12 @@ CACHE_TTL_SECONDS = 3.0
 ROSTER_CACHE_TTL_SECONDS = 15.0
 REQUEST_TIMEOUT_SECONDS = 0.35
 MAX_ROSTER_CARS = 80
+OFFLINE_RETRY_SECONDS = 45.0
 
 _CACHE = {}
 _ROSTER_CACHE = {}
 _LAST_GOOD_RENDER_INFO = {}
+_OFFLINE_UNTIL_BY_BASE = {}
 CAR_FIELDS = (
     "Number",
     "DriverName",
@@ -59,8 +61,14 @@ def build_sim_racing_apps_car_render_info(
     now=None,
 ):
     """Return live car render image plus number styling from SimRacingApps."""
+    if not sim_racing_apps_enabled():
+        return {}
+
     car_idx = normalize_car_idx(first_present(driver_info, "car_idx", "CarIdx", "id", "Id"))
     render_cache_key = driver_render_cache_key(driver_info)
+    if sim_racing_apps_temporarily_offline(base_url, now=now):
+        return last_good_render_info(render_cache_key)
+
     has_identity = bool(
         first_present(driver_info, "number", "car_number", "CarNumber")
         or first_present(driver_info, "name", "driver_name", "UserName")
@@ -144,6 +152,23 @@ def build_sim_racing_apps_car_debug_info(
     now=None,
 ):
     """Return match diagnostics for the current live SimRacingApps roster."""
+    if not sim_racing_apps_enabled():
+        return {
+            "expected": {
+                "car_idx": normalize_car_idx(first_present(driver_info, "car_idx", "CarIdx", "id", "Id")),
+                "number": driver_info.get("number")
+                or driver_info.get("car_number")
+                or driver_info.get("CarNumber"),
+                "name": driver_info.get("name")
+                or driver_info.get("driver_name")
+                or driver_info.get("UserName"),
+            },
+            "session_cars": 0,
+            "direct": {"state": "DISABLED"},
+            "direct_matches": False,
+            "matched": {"state": "DISABLED"},
+            "render_info": {},
+        }
     car_idx = normalize_car_idx(first_present(driver_info, "car_idx", "CarIdx", "id", "Id"))
     direct = (
         fetch_sim_racing_apps_car_data(car_idx, base_url=base_url, now=now)
@@ -226,6 +251,11 @@ def find_matching_sim_racing_apps_car_data(driver_info, *, base_url=DEFAULT_BASE
 
 def sim_racing_apps_roster(*, base_url=DEFAULT_BASE_URL, now=None):
     now = time.time() if now is None else float(now)
+    if not sim_racing_apps_enabled() or sim_racing_apps_temporarily_offline(
+        base_url,
+        now=now,
+    ):
+        return []
     key = ensure_base_url(base_url)
     cached = _ROSTER_CACHE.get(key)
     if cached and now - cached["time"] <= ROSTER_CACHE_TTL_SECONDS:
@@ -246,6 +276,11 @@ def sim_racing_apps_roster(*, base_url=DEFAULT_BASE_URL, now=None):
 
 
 def sim_racing_apps_session_car_count(*, base_url=DEFAULT_BASE_URL, now=None):
+    if not sim_racing_apps_enabled() or sim_racing_apps_temporarily_offline(
+        base_url,
+        now=now,
+    ):
+        return 0
     data = fetch_sim_racing_apps_data("Data/Session/Cars", base_url=base_url, now=now)
     if data.get("State") != "NORMAL":
         return 0
@@ -289,6 +324,11 @@ def fetch_sim_racing_apps_car_data(car_idx, *, base_url=DEFAULT_BASE_URL, now=No
     values = {}
     any_ok = False
     for field_name in CAR_FIELDS:
+        if not sim_racing_apps_enabled() or sim_racing_apps_temporarily_offline(
+            base_url,
+            now=now,
+        ):
+            break
         data = fetch_sim_racing_apps_data(
             f"Data/Car/I{car_idx}/{field_name}",
             base_url=base_url,
@@ -388,7 +428,13 @@ def rgb_int_to_hex(value):
 
 def fetch_sim_racing_apps_data(path, *, base_url=DEFAULT_BASE_URL, now=None):
     now = time.time() if now is None else float(now)
-    url = urljoin(ensure_base_url(base_url), str(path).lstrip("/"))
+    if not sim_racing_apps_enabled() or sim_racing_apps_temporarily_offline(
+        base_url,
+        now=now,
+    ):
+        return {}
+    base_url = ensure_base_url(base_url)
+    url = urljoin(base_url, str(path).lstrip("/"))
     cached = _CACHE.get(url)
     if cached and now - cached["time"] <= CACHE_TTL_SECONDS:
         return dict(cached["data"])
@@ -397,6 +443,7 @@ def fetch_sim_racing_apps_data(path, *, base_url=DEFAULT_BASE_URL, now=None):
         with urlopen(url, timeout=REQUEST_TIMEOUT_SECONDS) as response:
             raw = response.read(64_000).decode("utf-8", errors="ignore")
     except (OSError, TimeoutError, URLError):
+        mark_sim_racing_apps_offline(base_url, now=now)
         _CACHE[url] = {"time": now, "data": {}}
         return {}
 
@@ -407,6 +454,26 @@ def fetch_sim_racing_apps_data(path, *, base_url=DEFAULT_BASE_URL, now=None):
 
     _CACHE[url] = {"time": now, "data": data}
     return dict(data)
+
+
+def sim_racing_apps_enabled():
+    return str(os.getenv("USE_SIM_RACING_APPS", "true") or "true").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+
+
+def sim_racing_apps_temporarily_offline(base_url=DEFAULT_BASE_URL, *, now=None):
+    now = time.time() if now is None else float(now)
+    offline_until = _OFFLINE_UNTIL_BY_BASE.get(ensure_base_url(base_url), 0.0)
+    return now < offline_until
+
+
+def mark_sim_racing_apps_offline(base_url=DEFAULT_BASE_URL, *, now=None):
+    now = time.time() if now is None else float(now)
+    _OFFLINE_UNTIL_BY_BASE[ensure_base_url(base_url)] = now + OFFLINE_RETRY_SECONDS
 
 
 def ensure_base_url(base_url):

@@ -108,13 +108,15 @@ Race-control warning: sending iRacing admin commands from the broadcast PC can s
 
 The broadcast works without SIMRacingApps, but live 3D car renders and styled car numbers require SIMRacingAppsServer to be running in the background.
 
+In the Studio, leave **Use SIMRacingApps Car Graphics** set to `true` if you want those graphics. If you are not using SIMRacingApps, set it to `false` before starting the broadcast.
+
 1. Download SIMRacingAppsServer from <https://simracingapps.com/>.
 2. Download the patched build from <https://github.com/ZoneXV/SIMRacingAppsServer/releases/tag/v1.22-paceCar-pitspeed-fix>.
 3. Start SIMRacingAppsServer before starting the broadcast.
 4. Leave SIMRacingAppsServer open or minimized while iRacing is running.
 5. Refresh Broadcast Health. It should show `SIMRacingApps: Running`.
 
-If SIMRacingApps is not running, car cards and leaderboards may fall back to plain numbers/manual graphics.
+If **Use SIMRacingApps Car Graphics** is `true` and SIMRacingApps is not running, the Studio will stop before starting the broadcast and ask you to either start SIMRacingAppsServer or change that setting to `false`.
 
 ## Streamlabs / OBS overlay
 

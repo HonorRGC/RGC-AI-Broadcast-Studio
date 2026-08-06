@@ -102,6 +102,8 @@ def test_broadcast_settings_have_friendly_labels_and_sections():
     assert "flo uses a compact two-row top leaderboard" in BROADCAST_FIELD_HELP["OVERLAY_LEADERBOARD_STYLE"]
     assert BROADCAST_FIELD_LABELS["OVERLAY_HOST"] == "Remote Producer Assist Access"
     assert "trusted admins on your Tailscale network" in BROADCAST_FIELD_HELP["OVERLAY_HOST"]
+    assert BROADCAST_FIELD_LABELS["USE_SIM_RACING_APPS"] == "Use SIMRacingApps Car Graphics"
+    assert "set this to false" in BROADCAST_FIELD_HELP["USE_SIM_RACING_APPS"]
     assert BROADCAST_FIELD_LABELS["RACE_SPONSOR_1_NAME"] == "Sponsor 1 Name"
     assert BROADCAST_FIELD_LABELS["RACE_SPONSOR_1_LOGO"] == "Sponsor 1 Logo"
     assert BROADCAST_FIELD_LABELS["RACE_SPONSOR_1_READ"] == "Sponsor 1 Spoken Read"
@@ -130,6 +132,7 @@ def test_broadcast_settings_have_friendly_labels_and_sections():
     saved_keys = [key for key, _default in LAUNCHER_FIELDS]
     assert "RACE_SPONSOR_5_VIDEO" in saved_keys
     assert "CRANK_IT_UP_SPONSOR_NAME" in saved_keys
+    assert "USE_SIM_RACING_APPS" in saved_keys
     assert "QUALIFYING_MUSIC_PLAYLIST" in saved_keys
     assert "USE_NATIONAL_ANTHEM" not in saved_keys
     assert "NATIONAL_ANTHEM_GRAPHICS" not in saved_keys
@@ -244,6 +247,7 @@ def test_launcher_defaults_include_split_league_stats_csvs():
     assert defaults["NATIONAL_ANTHEM_GRAPHICS"] == ""
     assert defaults["CAUTION_PRESENTATION_GRAPHICS"] == ""
     assert defaults["POST_RACE_INTERVIEWS_ENABLED"] == "false"
+    assert defaults["USE_SIM_RACING_APPS"] == "true"
     assert defaults["RACE_ADMIN_MODE"] == "false"
     assert defaults["RACE_ADMIN_SEND_MODE"] == "clipboard"
     assert defaults["DISCORD_BOT_ENABLED"] == "false"
@@ -348,9 +352,23 @@ def test_launcher_health_reports_sim_racing_apps_optional_when_not_running(monke
     rows = build_health_status(values, root=Path("C:/RGC"), broadcast_running=False)
     row_map = {name: (state, detail, level) for name, state, detail, level in rows}
 
-    assert row_map["SIMRacingApps"][0] == "Optional setup"
+    assert row_map["SIMRacingApps"][0] == "Not running"
     assert "Start SIMRacingAppsServer" in row_map["SIMRacingApps"][1]
     assert row_map["SIMRacingApps"][2] == "warn"
+
+
+def test_launcher_health_reports_sim_racing_apps_disabled(monkeypatch):
+    import studio_launcher
+
+    monkeypatch.setattr(studio_launcher, "sim_racing_apps_is_running", lambda: True)
+    values = launcher_defaults({"USE_SIM_RACING_APPS": "false"})
+
+    rows = build_health_status(values, root=Path("C:/RGC"), broadcast_running=False)
+    row_map = {name: (state, detail, level) for name, state, detail, level in rows}
+
+    assert row_map["SIMRacingApps"][0] == "Disabled"
+    assert "fallback graphics" in row_map["SIMRacingApps"][1]
+    assert row_map["SIMRacingApps"][2] == "off"
 
 
 def test_launcher_health_reports_sim_racing_apps_running(monkeypatch):

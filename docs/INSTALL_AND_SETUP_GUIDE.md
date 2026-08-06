@@ -312,6 +312,8 @@ Before race night, load the correct profile and check the Broadcast Health panel
 
 RGC AI Broadcast Studio can run without SIMRacingApps. However, live 3D car renders and styled car numbers work best when SIMRacingAppsServer is running in the background.
 
+In the Studio, leave **Use SIMRacingApps Car Graphics** set to `true` when SIMRacingAppsServer will be running. If you are not using SIMRacingApps, set it to `false` before starting the broadcast.
+
 Official SIMRacingApps site:
 
 <https://simracingapps.com/>
@@ -334,7 +336,7 @@ If SIMRacingApps is reachable, Broadcast Health will show:
 SIMRacingApps: Running
 ```
 
-If it is not running, the broadcast still works. The overlay will fall back to numbers/manual graphics where possible, but live car renders may be missing or less accurate.
+If **Use SIMRacingApps Car Graphics** is `true` and SIMRacingAppsServer is not running, the Studio will stop before starting the broadcast and ask you to either start SIMRacingAppsServer or change that setting to `false`. This prevents overlay stutter from repeated failed car-graphics requests.
 
 ## 13. Start the broadcast
 

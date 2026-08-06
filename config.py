@@ -102,6 +102,7 @@ SIMRACERHUB_RACE_SCHEDULE_CSV = os.getenv(
 USE_IRACING_RENDERED_CAR_IMAGES = (
     os.getenv("USE_IRACING_RENDERED_CAR_IMAGES", "true").lower() == "true"
 )
+USE_SIM_RACING_APPS = os.getenv("USE_SIM_RACING_APPS", "true").lower() == "true"
 OVERLAY_EVENT_TITLE = os.getenv("OVERLAY_EVENT_TITLE", "RGC AI Broadcast")
 OVERLAY_RACE_SPONSOR = os.getenv("OVERLAY_RACE_SPONSOR", os.getenv("RACE_SPONSOR_1_NAME", ""))
 OVERLAY_SERIES_NAME = os.getenv("OVERLAY_SERIES_NAME", "")
