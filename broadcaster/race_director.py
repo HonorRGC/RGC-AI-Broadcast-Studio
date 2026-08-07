@@ -210,7 +210,16 @@ class RaceDirector:
         self.formation_announced = True
 
     def handle_green_flag(self, scheduler, track_info):
-        scheduler.clear_for_race_control()
+        sponsor_pending = getattr(scheduler, "has_pending_category", lambda _category: False)(
+            "sponsor_read"
+        )
+        sponsor_on_air = getattr(scheduler, "is_busy_with_category", lambda _category: False)(
+            "sponsor_read"
+        )
+        scheduler.clear_for_race_control(
+            preserve_categories=("sponsor_read",),
+            reset_busy=not sponsor_on_air,
+        )
         track_name = self.get_track_name(track_info)
 
         if self.race_started and self.previous_phase in [RacePhase.CAUTION, RacePhase.ONE_TO_GREEN]:
@@ -220,7 +229,7 @@ class RaceDirector:
 
         scheduler.add(
             message,
-            priority=12,
+            priority=7 if sponsor_pending else 12,
             category="race_control",
             protected=True,
             speaker="lead",

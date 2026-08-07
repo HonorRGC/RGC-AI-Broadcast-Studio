@@ -14,6 +14,7 @@ from app import (
     find_brand_graphic_for_name,
     handle_producer_command,
     log_race_event_for_item,
+    reserve_sponsor_commercial_if_needed,
     split_sponsor_names,
     should_show_movers_graphic,
     show_sponsor_commercial_if_available,
@@ -655,6 +656,29 @@ def test_sponsor_commercial_plays_after_sponsor_read(monkeypatch):
     assert presentation["kind"] == "sponsor_commercial"
     assert presentation["video_url"] == "/assets/rgc_ad.mp4"
     assert presentation["duration"] == 60.0
+
+
+def test_sponsor_commercial_reserves_broadcast_queue(monkeypatch):
+    import app
+
+    overlay = OverlaySpy()
+    calls = []
+    engine = SimpleNamespace(
+        broadcast_queue=SimpleNamespace(
+            reserve_busy_seconds=lambda seconds: calls.append(seconds)
+        )
+    )
+    monkeypatch.setattr(app, "RACE_SPONSOR_VIDEOS", {"RGC Motorsports": "/assets/rgc_ad.mp4"})
+
+    reserved = reserve_sponsor_commercial_if_needed(
+        item(category="sponsor_read", target=None, message="Presented by RGC Motorsports."),
+        overlay,
+        engine,
+    )
+
+    assert reserved is True
+    assert calls == [60.0]
+    assert overlay.special_presentations[0]["kind"] == "sponsor_commercial"
 
 
 def test_producer_command_can_queue_manual_crank_it_up():

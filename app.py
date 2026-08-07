@@ -45,6 +45,7 @@ from production.replay_director import ReplayDirector
 from production.race_control import RaceControlService
 
 DEFAULT_CRANK_IT_UP_SECONDS = 50.0
+SPONSOR_COMMERCIAL_SECONDS = 60.0
 MANUAL_SPONSOR_INDEX = 0
 _FEATURED_DRIVER_RENDER_INFO_CACHE = {}
 
@@ -369,7 +370,11 @@ def run_source(
                 if not getattr(item, "silent", False):
                     prefade_music_before_restart_call(item, caution_audio_bed)
                     broadcast_with_actual_timing(booth, engine, item)
-                    show_sponsor_commercial_if_available(item, overlay_server)
+                    reserve_sponsor_commercial_if_needed(
+                        item,
+                        overlay_server,
+                        engine,
+                    )
                 else:
                     report_silent_feature(item, overlay_server)
                 camera_decision = camera_director.follow(item, source)
@@ -406,7 +411,11 @@ def run_source(
                 if not getattr(item, "silent", False):
                     prefade_music_before_restart_call(item, caution_audio_bed)
                     broadcast_with_actual_timing(booth, engine, item)
-                    show_sponsor_commercial_if_available(item, overlay_server)
+                    reserve_sponsor_commercial_if_needed(
+                        item,
+                        overlay_server,
+                        engine,
+                    )
                 else:
                     report_silent_feature(item, overlay_server)
 
@@ -1903,7 +1912,7 @@ def show_sponsor_commercial_if_available(item, overlay_server):
         kind="sponsor_commercial",
         title=" / ".join(mentions),
         subtitle="Commercial Break",
-        duration=60.0,
+        duration=SPONSOR_COMMERCIAL_SECONDS,
         graphics=graphics,
         video_url=video_url,
     )
@@ -1914,6 +1923,15 @@ def show_sponsor_commercial_if_available(item, overlay_server):
         "Sponsor commercial",
         f"Playing commercial for {' / '.join(mentions)}.",
     )
+    return True
+
+
+def reserve_sponsor_commercial_if_needed(item, overlay_server, engine):
+    if not show_sponsor_commercial_if_available(item, overlay_server):
+        return False
+    queue = getattr(engine, "broadcast_queue", None)
+    if queue and hasattr(queue, "reserve_busy_seconds"):
+        queue.reserve_busy_seconds(SPONSOR_COMMERCIAL_SECONDS)
     return True
 
 

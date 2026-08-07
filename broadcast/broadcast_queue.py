@@ -42,6 +42,8 @@ class BroadcastQueue:
     def __init__(self):
         self.items: List[ScheduledBroadcast] = []
         self.busy_until = 0.0
+        self.active_category = ""
+        self.active_dedupe_key = ""
         self.minimum_gap_seconds = 2.5
         self.voice_tail_padding_seconds = 0.55
 
@@ -213,6 +215,8 @@ class BroadcastQueue:
         selected = ready_items[0]
 
         self.items.remove(selected)
+        self.active_category = selected.category
+        self.active_dedupe_key = selected.dedupe_key
 
         if selected.silent and selected.category == "incident_camera_preview":
             return selected
@@ -248,6 +252,23 @@ class BroadcastQueue:
         gap_time = self.estimate_item_gap_seconds(item)
         tail_padding = self.estimate_tail_padding_seconds(item)
         self.busy_until = now + playback_seconds + gap_time + tail_padding
+
+    def reserve_busy_seconds(self, seconds, now=None):
+        try:
+            seconds = float(seconds or 0.0)
+        except (TypeError, ValueError):
+            seconds = 0.0
+        if seconds <= 0:
+            return
+        now = time.time() if now is None else now
+        self.busy_until = max(self.busy_until, now + seconds)
+
+    def has_pending_category(self, category):
+        return any(item.category == category for item in self.items)
+
+    def is_busy_with_category(self, category, now=None):
+        now = time.time() if now is None else now
+        return self.active_category == category and now < self.busy_until
 
     def clear_for_race_control(self, preserve_categories=(), reset_busy=True):
         preserved = set(preserve_categories)

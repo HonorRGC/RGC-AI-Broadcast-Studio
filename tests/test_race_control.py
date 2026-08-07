@@ -1,3 +1,5 @@
+import time
+
 import pytest
 
 from broadcast.broadcast_queue import BroadcastQueue
@@ -176,6 +178,54 @@ def test_green_flag_clears_stale_opening_messages():
     director.handle_green_flag(queue, {"track_name": "Daytona"})
 
     assert [item.category for item in queue.items] == ["race_control"]
+
+
+def test_green_flag_waits_for_pending_sponsor_read():
+    director = RaceDirector()
+    queue = BroadcastQueue()
+    queue.add("Welcome", category="opening_welcome")
+    queue.add(
+        "Tonight's coverage is presented by RGC Motorsports.",
+        priority=8,
+        category="sponsor_read",
+        protected=True,
+        speaker="lead",
+        dedupe_key="sponsor_read:opening",
+    )
+    director.previous_phase = RacePhase.ONE_TO_GREEN
+    director.phase = RacePhase.GREEN
+
+    director.handle_green_flag(queue, {"track_name": "Daytona"})
+
+    categories = [item.category for item in queue.items]
+    assert "opening_welcome" not in categories
+    assert categories == ["sponsor_read", "race_control"]
+    assert queue.next_item().category == "sponsor_read"
+
+
+def test_green_flag_does_not_interrupt_active_sponsor_read():
+    director = RaceDirector()
+    queue = BroadcastQueue()
+    queue.add(
+        "Tonight's coverage is presented by RGC Motorsports.",
+        priority=8,
+        category="sponsor_read",
+        protected=True,
+        speaker="lead",
+        dedupe_key="sponsor_read:opening",
+    )
+    now = time.time()
+    sponsor = queue.next_item(now=now)
+    assert sponsor.category == "sponsor_read"
+    busy_until = queue.busy_until
+    director.previous_phase = RacePhase.ONE_TO_GREEN
+    director.phase = RacePhase.GREEN
+
+    director.handle_green_flag(queue, {"track_name": "Daytona"})
+
+    assert queue.busy_until == busy_until
+    assert queue.next_item(now=now) is None
+    assert any(item.category == "race_control" for item in queue.items)
 
 
 def test_new_race_control_state_replaces_an_unspoken_old_state():
