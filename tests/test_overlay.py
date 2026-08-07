@@ -762,6 +762,13 @@ def test_overlay_title_branding_is_larger_and_more_polished():
     assert ".leaderboard-series" in OVERLAY_HTML
 
 
+def test_overlay_has_bottom_left_broadcast_studio_stamp():
+    assert ".studio-stamp" in OVERLAY_HTML
+    assert 'src="/static/rgc_ai_broadcast_stamp.png"' in OVERLAY_HTML
+    assert "bottom: 18px" in OVERLAY_HTML
+    assert "width: 74px" in OVERLAY_HTML
+
+
 def test_race_sponsor_presentation_is_right_side_square():
     assert ".special-presentation.race_sponsors" in OVERLAY_HTML
     assert "right: 48px" in OVERLAY_HTML

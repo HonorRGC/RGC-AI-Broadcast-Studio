@@ -4414,6 +4414,39 @@ OVERLAY_HTML = r"""<!doctype html>
       text-overflow: ellipsis;
     }
 
+    .studio-stamp {
+      position: absolute;
+      left: 18px;
+      bottom: 18px;
+      width: 74px;
+      height: 74px;
+      padding: 5px;
+      box-sizing: border-box;
+      border-radius: 18px;
+      background: rgba(4, 6, 10, 0.42);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      box-shadow:
+        0 10px 22px rgba(0, 0, 0, 0.34),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08);
+      opacity: 0.78;
+      z-index: 18;
+      pointer-events: none;
+    }
+
+    .studio-stamp img {
+      width: 100%;
+      height: 100%;
+      display: block;
+      object-fit: contain;
+      filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.44));
+    }
+
+    body.leaderboard-ticker-mode .studio-stamp,
+    body.leaderboard-flo-mode .studio-stamp {
+      left: 20px;
+      bottom: 16px;
+    }
+
     .stat-panel {
       position: absolute;
       right: 34px;
@@ -4933,6 +4966,10 @@ OVERLAY_HTML = r"""<!doctype html>
     </div>
     <div id="stat-panel-rows"></div>
   </section>
+
+  <div class="studio-stamp" aria-label="RGC AI Broadcast Studio">
+    <img src="/static/rgc_ai_broadcast_stamp.png" alt="RGC AI Broadcast" />
+  </div>
 
   <section id="special-presentation" class="special-presentation hidden">
     <div class="crank-speaker crank-speaker-left"></div>
