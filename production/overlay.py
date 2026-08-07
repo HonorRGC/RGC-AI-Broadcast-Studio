@@ -4422,17 +4422,17 @@ OVERLAY_HTML = r"""<!doctype html>
       position: absolute;
       left: 18px;
       bottom: 18px;
-      width: 74px;
-      height: 74px;
-      padding: 5px;
+      width: 112px;
+      height: 112px;
+      padding: 6px;
       box-sizing: border-box;
-      border-radius: 18px;
-      background: rgba(4, 6, 10, 0.42);
-      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 24px;
+      background: rgba(4, 6, 10, 0.24);
+      border: 1px solid rgba(255, 255, 255, 0.18);
       box-shadow:
-        0 10px 22px rgba(0, 0, 0, 0.34),
+        0 10px 24px rgba(0, 0, 0, 0.36),
         inset 0 1px 0 rgba(255, 255, 255, 0.08);
-      opacity: 0.78;
+      opacity: 0.88;
       z-index: 18;
       pointer-events: none;
     }
