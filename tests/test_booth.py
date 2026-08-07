@@ -19,8 +19,8 @@ def test_broadcast_booth_publishes_to_producer_sink():
     assert events == [
         {
             "kind": "broadcast",
-            "title": "RGC BROADCAST - LEAD",
+            "title": "RGC BROADCAST - MIKE",
             "message": "Green flag is in the air.",
-            "speaker": "LEAD",
+            "speaker": "MIKE",
         }
     ]

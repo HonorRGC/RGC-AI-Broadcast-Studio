@@ -1,5 +1,7 @@
 from dataclasses import dataclass
 
+from config import PIT_BROADCASTER_NAME
+
 
 @dataclass(frozen=True)
 class CautionPitReport:
@@ -63,7 +65,7 @@ class CautionPitReporter:
             "majority_opener",
             [
                 "Pit road is busy under this caution.",
-                "Sarah is reporting a busy pit road under this yellow.",
+                f"{PIT_BROADCASTER_NAME} is reporting a busy pit road under this yellow.",
                 "The pit lane has come alive under this caution.",
                 "A big chunk of the field has chosen pit road this time.",
             ],
@@ -107,7 +109,7 @@ class CautionPitReporter:
                 "Only a few takers on pit road under this caution.",
                 "This is a smaller group choosing pit road under the yellow.",
                 "Most of the field stayed out, but a few cars have come down pit road.",
-                "Sarah has a short list of pit road traffic this time.",
+                f"{PIT_BROADCASTER_NAME} has a short list of pit road traffic this time.",
             ],
         )
         count_phrase = self.rotate_phrase(

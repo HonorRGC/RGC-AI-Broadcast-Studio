@@ -104,6 +104,13 @@ def test_broadcast_settings_have_friendly_labels_and_sections():
     assert "trusted admins on your Tailscale network" in BROADCAST_FIELD_HELP["OVERLAY_HOST"]
     assert BROADCAST_FIELD_LABELS["USE_SIM_RACING_APPS"] == "Use SIMRacingApps Car Graphics"
     assert "set this to false" in BROADCAST_FIELD_HELP["USE_SIM_RACING_APPS"]
+    assert BROADCAST_FIELD_LABELS["LEAD_BROADCASTER_NAME"] == "Lead Broadcaster Name"
+    assert BROADCAST_FIELD_LABELS["COLOR_BROADCASTER_NAME"] == "Analyst Broadcaster Name"
+    assert BROADCAST_FIELD_LABELS["PIT_BROADCASTER_NAME"] == "Pit Road Broadcaster Name"
+    assert BROADCAST_FIELD_LABELS["LEAD_VOICE_ID"] == "Lead Voice ID"
+    assert BROADCAST_FIELD_LABELS["COLOR_VOICE_ID"] == "Analyst Voice ID"
+    assert BROADCAST_FIELD_LABELS["PIT_VOICE_ID"] == "Pit Road Voice ID"
+    assert "introduces themselves" in BROADCAST_FIELD_HELP["LEAD_BROADCASTER_NAME"]
     assert BROADCAST_FIELD_LABELS["RACE_SPONSOR_1_NAME"] == "Sponsor 1 Name"
     assert BROADCAST_FIELD_LABELS["RACE_SPONSOR_1_LOGO"] == "Sponsor 1 Logo"
     assert BROADCAST_FIELD_LABELS["RACE_SPONSOR_1_READ"] == "Sponsor 1 Spoken Read"
@@ -133,6 +140,9 @@ def test_broadcast_settings_have_friendly_labels_and_sections():
     assert "RACE_SPONSOR_5_VIDEO" in saved_keys
     assert "CRANK_IT_UP_SPONSOR_NAME" in saved_keys
     assert "USE_SIM_RACING_APPS" in saved_keys
+    assert "LEAD_BROADCASTER_NAME" in saved_keys
+    assert "COLOR_BROADCASTER_NAME" in saved_keys
+    assert "PIT_BROADCASTER_NAME" in saved_keys
     assert "QUALIFYING_MUSIC_PLAYLIST" in saved_keys
     assert "USE_NATIONAL_ANTHEM" not in saved_keys
     assert "NATIONAL_ANTHEM_GRAPHICS" not in saved_keys
@@ -234,6 +244,9 @@ def test_launcher_defaults_include_split_league_stats_csvs():
     assert defaults["DISCORD_RACE_REPORT_ENABLED"] == "false"
     assert defaults["DISCORD_RACE_REPORT_WEBHOOK_URL"] == ""
     assert defaults["DISCORD_RACE_REPORT_USE_OPENAI"] == "true"
+    assert defaults["LEAD_BROADCASTER_NAME"] == "Mike"
+    assert defaults["COLOR_BROADCASTER_NAME"] == "Jeff"
+    assert defaults["PIT_BROADCASTER_NAME"] == "Sarah"
     assert defaults["OVERLAY_LEADERBOARD_STYLE"] == "side"
     assert defaults["RACE_SPONSOR_2_NAME"] == ""
     assert defaults["RACE_SPONSOR_3_NAME"] == ""

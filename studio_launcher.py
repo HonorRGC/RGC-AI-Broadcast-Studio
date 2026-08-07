@@ -88,6 +88,9 @@ LAUNCHER_FIELDS = [
     ("OPENAI_MODEL", "gpt-5.5"),
     ("USE_ELEVENLABS", "true"),
     ("ELEVENLABS_API_KEY", ""),
+    ("LEAD_BROADCASTER_NAME", "Mike"),
+    ("COLOR_BROADCASTER_NAME", "Jeff"),
+    ("PIT_BROADCASTER_NAME", "Sarah"),
     ("LEAD_VOICE_ID", ""),
     ("COLOR_VOICE_ID", ""),
     ("PIT_VOICE_ID", ""),
@@ -189,9 +192,12 @@ BROADCAST_FIELD_LABELS = {
     "OPENAI_MODEL": "OpenAI Model",
     "USE_ELEVENLABS": "Use ElevenLabs Voices",
     "ELEVENLABS_API_KEY": "ElevenLabs API Key",
-    "LEAD_VOICE_ID": "Mike Voice ID",
-    "COLOR_VOICE_ID": "Jeff Voice ID",
-    "PIT_VOICE_ID": "Sarah Voice ID",
+    "LEAD_BROADCASTER_NAME": "Lead Broadcaster Name",
+    "COLOR_BROADCASTER_NAME": "Analyst Broadcaster Name",
+    "PIT_BROADCASTER_NAME": "Pit Road Broadcaster Name",
+    "LEAD_VOICE_ID": "Lead Voice ID",
+    "COLOR_VOICE_ID": "Analyst Voice ID",
+    "PIT_VOICE_ID": "Pit Road Voice ID",
     "OVERLAY_EVENT_TITLE": "Overlay Event Title",
     "OVERLAY_SERIES_NAME": "Series Name",
     "OVERLAY_SERIES_LOGO": "Series Logo",
@@ -256,9 +262,12 @@ BROADCAST_FIELD_HELP = {
     "OPENAI_MODEL": "Model used to write broadcast lines and Discord recaps. Leave the default unless you are testing another model.",
     "USE_ELEVENLABS": "Required for spoken AI broadcasters. Turn this off for silent producer prompts or a human-only broadcast.",
     "ELEVENLABS_API_KEY": "Required when ElevenLabs voices are on. Keep this private.",
-    "LEAD_VOICE_ID": "Mike / lead play-by-play voice.",
-    "COLOR_VOICE_ID": "Jeff / analyst voice.",
-    "PIT_VOICE_ID": "Sarah / pit road and strategy voice.",
+    "LEAD_BROADCASTER_NAME": "Name used when the lead play-by-play broadcaster introduces themselves. Default: Mike.",
+    "COLOR_BROADCASTER_NAME": "Name used when the analyst introduces themselves and handles lineup blocks. Default: Jeff.",
+    "PIT_BROADCASTER_NAME": "Name used when the pit road broadcaster introduces themselves. Default: Sarah.",
+    "LEAD_VOICE_ID": "Voice ID for the lead play-by-play broadcaster.",
+    "COLOR_VOICE_ID": "Voice ID for the analyst broadcaster.",
+    "PIT_VOICE_ID": "Voice ID for pit road and strategy.",
     "OVERLAY_EVENT_TITLE": "Required for a polished overlay and Discord report title. Example: Autism Awareness 100.",
     "OVERLAY_SERIES_NAME": "League or series name. Example: WFO Wicked Wednesday Truck Series.",
     "OVERLAY_SERIES_LOGO": "Logo for the series. It can rotate in the title with sponsor and cause logos.",
@@ -326,6 +335,9 @@ INLINE_HELP_FIELDS = {
     "OPENAI_API_KEY",
     "USE_ELEVENLABS",
     "ELEVENLABS_API_KEY",
+    "LEAD_BROADCASTER_NAME",
+    "COLOR_BROADCASTER_NAME",
+    "PIT_BROADCASTER_NAME",
     "OVERLAY_EVENT_TITLE",
     "OVERLAY_SERIES_LOGO",
     "USE_SIM_RACING_APPS",
@@ -665,9 +677,9 @@ def build_health_status(values, root=ROOT, broadcast_running=False):
         if not values.get("LEAD_VOICE_ID"):
             missing.append("lead voice")
         if not values.get("COLOR_VOICE_ID"):
-            missing.append("Jeff voice")
+            missing.append("analyst voice")
         if not values.get("PIT_VOICE_ID"):
-            missing.append("Sarah voice")
+            missing.append("pit road voice")
         if missing:
             rows.append(
                 (

@@ -3,7 +3,11 @@ import time
 from broadcast.broadcast_queue import BroadcastQueue
 from broadcaster.race_brain import RaceBrain
 from broadcaster.race_director import RaceDirector, RacePhase
-from config import CRANK_IT_UP_SPONSOR_NAME, STAGE_END_LAPS
+from config import (
+    CRANK_IT_UP_SPONSOR_NAME,
+    PIT_BROADCASTER_NAME,
+    STAGE_END_LAPS,
+)
 from production.commentary_cleaner import CommentaryCleaner
 from production.caution_pit_reporter import CautionPitReporter
 from production.action_detector import ActionDetector
@@ -1577,50 +1581,50 @@ class BroadcastEngine:
     def green_pit_cycle_start_messages(self, track_info):
         if is_true_pack_drafting_track(track_info):
             return [
-                "Green flag stops are starting, and Sarah will be watching who can save fuel, keep a drafting partner, and blend back into a pack.",
+                f"Green flag stops are starting, and {PIT_BROADCASTER_NAME} will be watching who can save fuel, keep a drafting partner, and blend back into a pack.",
                 "Pit road is opening under green. On this kind of draft track, the stop matters, but who you leave pit road with can matter just as much.",
                 "The first wave of green flag stops is underway. Fuel saving and finding help on exit could decide who cycles out with track position.",
             ]
         if is_long_straight_draft_assist_track(track_info):
             return [
-                "Green flag stops are starting. Sarah is watching fuel numbers, pit timing, and who gets back up to speed cleanly on the long straights.",
+                f"Green flag stops are starting. {PIT_BROADCASTER_NAME} is watching fuel numbers, pit timing, and who gets back up to speed cleanly on the long straights.",
                 "The first wave of green flag pit stops is underway. The undercut can help, but the out-lap has to be clean for it to pay off.",
                 "Pit road is starting to open under green, and this cycle may briefly shuffle the lead before everyone has made their stop.",
             ]
         if is_road_course(track_info):
             return [
-                "Green flag stops are starting. Sarah is watching the in-laps and out-laps now, because one mistake in the pit window can swing the order.",
+                f"Green flag stops are starting. {PIT_BROADCASTER_NAME} is watching the in-laps and out-laps now, because one mistake in the pit window can swing the order.",
                 "The pit cycle is beginning under green. This is where the undercut, traffic, and a clean pit exit can change the race.",
                 "The first cars are coming to pit road under green, and the running order may not make sense again until this cycle is complete.",
             ]
         return [
-            "Green flag pit stops are starting. Sarah will be watching who short-pits for fresh tires, who stretches the run, and how tire age splits the field.",
-            "Sarah is watching the pit cycle begin under green. On this type of oval, tires can change the pace quickly once the first group commits.",
+            f"Green flag pit stops are starting. {PIT_BROADCASTER_NAME} will be watching who short-pits for fresh tires, who stretches the run, and how tire age splits the field.",
+            f"{PIT_BROADCASTER_NAME} is watching the pit cycle begin under green. On this type of oval, tires can change the pace quickly once the first group commits.",
             "The first wave of green flag stops is underway. Now we watch who takes the early grip and who tries to stretch the run a few laps longer.",
         ]
 
     def green_pit_cycle_update_messages(self, pitted_count, track_info):
         if is_true_pack_drafting_track(track_info):
             return [
-                f"Sarah has {pitted_count} cars logged with recent green flag stops. The key now is whether they blend back into help or get stranded between packs.",
+                f"{PIT_BROADCASTER_NAME} has {pitted_count} cars logged with recent green flag stops. The key now is whether they blend back into help or get stranded between packs.",
                 f"{pitted_count} cars have already been through pit road in this cycle. On a draft track, the running order can look strange until the groups reform.",
                 f"Green flag pit cycle update: {pitted_count} cars have stopped recently, and some lead changes may be strategy until the last group cycles through.",
             ]
         if is_long_straight_draft_assist_track(track_info):
             return [
-                f"Sarah has {pitted_count} recent stops logged. The timing can briefly change the lead, but the real answer comes once everyone is back at speed.",
+                f"{PIT_BROADCASTER_NAME} has {pitted_count} recent stops logged. The timing can briefly change the lead, but the real answer comes once everyone is back at speed.",
                 f"{pitted_count} cars have been through pit road recently. Watch the out-laps now; clean air and speed down the straights can decide this cycle.",
                 f"The pit cycle is still working through the field, with {pitted_count} cars already serviced under green.",
             ]
         if is_road_course(track_info):
             return [
-                f"Sarah has {pitted_count} cars logged with recent stops. The undercut and out-lap traffic are the big pieces to watch here.",
+                f"{PIT_BROADCASTER_NAME} has {pitted_count} cars logged with recent stops. The undercut and out-lap traffic are the big pieces to watch here.",
                 f"{pitted_count} cars have stopped recently, so the leaderboard may not settle until the pit window closes.",
                 f"The green flag pit cycle is still unfolding, with {pitted_count} cars already through pit road.",
             ]
         return [
             f"Green flag pit cycle update: {pitted_count} cars have made stops in the last few laps. The early takers may have grip now, but tire age could matter later.",
-            f"Sarah has {pitted_count} cars logged with recent stops. The question now is whether fresh tires beat the longer run.",
+            f"{PIT_BROADCASTER_NAME} has {pitted_count} cars logged with recent stops. The question now is whether fresh tires beat the longer run.",
             f"{pitted_count} cars have been through pit road in this cycle, and the field may not look settled until the last group makes its stop.",
         ]
 

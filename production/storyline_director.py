@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+from config import COLOR_BROADCASTER_NAME, PIT_BROADCASTER_NAME
 from helpers.position_formatter import PositionFormatter
 
 
@@ -121,7 +122,7 @@ class StorylineDirector:
         message = (
             f"{record.driver_name} has gone the wrong direction after running as "
             f"high as {best_text}. The number {record.car_number} is now shown "
-            f"{current_text}, so Jeff will be watching whether that is handling, "
+            f"{current_text}, so {COLOR_BROADCASTER_NAME} will be watching whether that is handling, "
             "traffic, tire falloff, or just the rhythm of this run going away."
         )
         self.mark_sent(topic, current_lap)
@@ -167,7 +168,7 @@ class StorylineDirector:
             f"The pit cycle has become part of {record.driver_name}'s story. "
             f"The number {record.car_number} last came to pit road around lap "
             f"{record.last_pit_lap}, and now they are scored {current_text}. "
-            "That is the kind of sequence Sarah will keep tracking as strategy "
+            f"That is the kind of sequence {PIT_BROADCASTER_NAME} will keep tracking as strategy "
             "starts to separate the field."
         )
         self.mark_sent(topic, current_lap)

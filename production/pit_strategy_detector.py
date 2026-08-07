@@ -2,6 +2,8 @@ import time
 from dataclasses import dataclass
 from typing import Dict, List
 
+from config import PIT_BROADCASTER_NAME
+
 
 @dataclass
 class PitStrategyEvent:
@@ -212,7 +214,7 @@ class PitStrategyDetector:
                 [
                     f"{state.driver_name} is on pit road under green. We'll watch whether that is scheduled service, damage repair, or an off-sequence stop.",
                     f"{state.driver_name} has committed to pit road in the number {state.car_number}. That puts them into the pit cycle while the race stays green.",
-                    f"Sarah has {state.driver_name} on pit road under green; now the question is how that stop blends into the cycle.",
+                    f"{PIT_BROADCASTER_NAME} has {state.driver_name} on pit road under green; now the question is how that stop blends into the cycle.",
                     f"The number {state.car_number} is in for {state.driver_name}, and we will learn more when they roll off pit road.",
                 ],
             )

@@ -65,6 +65,9 @@ USE_ELEVENLABS = os.getenv("USE_ELEVENLABS", "true").lower() == "true"
 
 
 # Voice IDs
+LEAD_BROADCASTER_NAME = os.getenv("LEAD_BROADCASTER_NAME", "Mike").strip() or "Mike"
+COLOR_BROADCASTER_NAME = os.getenv("COLOR_BROADCASTER_NAME", "Jeff").strip() or "Jeff"
+PIT_BROADCASTER_NAME = os.getenv("PIT_BROADCASTER_NAME", "Sarah").strip() or "Sarah"
 LEAD_VOICE_ID = os.getenv("LEAD_VOICE_ID")
 COLOR_VOICE_ID = os.getenv("COLOR_VOICE_ID")
 PIT_VOICE_ID = os.getenv("PIT_VOICE_ID")

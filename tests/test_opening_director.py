@@ -120,6 +120,26 @@ def test_lineup_alternates_booth_by_ten_driver_blocks():
     assert "Back to Jeff for the next group" in segments[20].message
 
 
+def test_opening_uses_custom_broadcaster_names():
+    director = OpeningDirector(
+        lead_name="Lee",
+        color_name="James",
+        pit_name="Amanda",
+    )
+
+    first_segments = director.update(TrackTelemetry(), [], {})
+
+    assert "I'm Lee" in first_segments[0].message
+    assert "I'm Amanda" in first_segments[1].message
+
+    results, drivers = build_lineup(count=22)
+    segments = director.build_field_rundown(results, drivers)
+
+    assert "I'm James" in segments[0].message
+    assert "Lee picks it up from here" in segments[10].message
+    assert "Back to James for the next group" in segments[20].message
+
+
 def test_opening_hype_follows_the_lineup():
     director = OpeningDirector()
 

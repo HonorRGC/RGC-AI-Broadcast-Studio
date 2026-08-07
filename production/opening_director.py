@@ -5,6 +5,11 @@ from production.track_style import (
     is_road_course,
     is_true_pack_drafting_track,
 )
+from config import (
+    COLOR_BROADCASTER_NAME,
+    LEAD_BROADCASTER_NAME,
+    PIT_BROADCASTER_NAME,
+)
 
 
 @dataclass
@@ -22,7 +27,15 @@ class OpeningSegment:
 class OpeningDirector:
     LINEUP_GROUP_SIZE = 1
 
-    def __init__(self):
+    def __init__(
+        self,
+        lead_name=LEAD_BROADCASTER_NAME,
+        color_name=COLOR_BROADCASTER_NAME,
+        pit_name=PIT_BROADCASTER_NAME,
+    ):
+        self.lead_name = self.clean_broadcaster_name(lead_name, "Mike")
+        self.color_name = self.clean_broadcaster_name(color_name, "Jeff")
+        self.pit_name = self.clean_broadcaster_name(pit_name, "Sarah")
         self.welcome_sent = False
         self.track_info_sent = False
         self.race_outlook_sent = False
@@ -30,6 +43,11 @@ class OpeningDirector:
         self.lineup_sent = False
         self.hype_sent = False
         self.lineup_ready_ticks = 0
+
+    @staticmethod
+    def clean_broadcaster_name(name, fallback):
+        text = str(name or "").strip()
+        return text or fallback
 
     def update(self, telemetry, results, driver_lookup, current_lap=0):
         segments = []
@@ -109,7 +127,7 @@ class OpeningDirector:
         return OpeningSegment(
             (
                 f"Good evening and welcome to {track_name}{location}. "
-                f"I'm Mike, glad to have you with us.{detail_text}"
+                f"I'm {self.lead_name}, glad to have you with us.{detail_text}"
             ),
             priority=10,
             category="opening_welcome",
@@ -282,25 +300,25 @@ class OpeningDirector:
         length_miles = self.track_length_miles(track_info.get("track_length"))
         if length_miles and length_miles <= 1.0:
             message = (
-                "I'm Sarah down here on pit road. Track position is going to be precious. "
+                f"I'm {self.pit_name} down here on pit road. Track position is going to be precious. "
                 "If cautions bunch this field up, a clean stop can keep a driver "
                 "out of the hornet's nest."
             )
         elif self.is_drafting_track(track_info):
             message = (
-                "I'm Sarah down on pit road, and this could become a team exercise tonight. If fuel strategy "
+                f"I'm {self.pit_name} down on pit road, and this could become a team exercise tonight. If fuel strategy "
                 "comes into play, getting in and out with the right group may be "
                 "just as important as the stop itself."
             )
         elif is_road_course(track_info):
             message = (
-                "I'm Sarah down here on pit road. Road-course strategy is all about the "
+                f"I'm {self.pit_name} down here on pit road. Road-course strategy is all about the "
                 "window. A clean in-lap, a clean out-lap, and avoiding pit-road "
                 "speeding can make the undercut or overcut work."
             )
         else:
             message = (
-                "I'm Sarah on pit road. It should be quiet early, but once tires start to fall off, "
+                f"I'm {self.pit_name} on pit road. It should be quiet early, but once tires start to fall off, "
                 "the first stop can tell us who is playing track position and who "
                 "is thinking about the long run."
             )
@@ -495,15 +513,15 @@ class OpeningDirector:
             group_number = start // self.LINEUP_GROUP_SIZE + 1
             speaker = self.lineup_speaker_for_start(start)
             intro = (
-                "I'm Jeff, and here is your starting lineup. "
+                f"I'm {self.color_name}, and here is your starting lineup. "
                 if group_number == 1
                 else ""
             )
             if start > 0 and start % 10 == 0:
                 intro = (
-                    "Mike picks it up from here. "
+                    f"{self.lead_name} picks it up from here. "
                     if speaker == "lead"
-                    else "Back to Jeff for the next group. "
+                    else f"Back to {self.color_name} for the next group. "
                 )
             closing = ""
             is_final_segment = start + self.LINEUP_GROUP_SIZE >= len(entries)

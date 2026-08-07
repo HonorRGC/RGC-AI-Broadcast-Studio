@@ -1,6 +1,9 @@
 from config import (
     USE_ELEVENLABS,
     ELEVENLABS_API_KEY,
+    LEAD_BROADCASTER_NAME,
+    COLOR_BROADCASTER_NAME,
+    PIT_BROADCASTER_NAME,
     LEAD_VOICE_ID,
     COLOR_VOICE_ID,
     PIT_VOICE_ID,
@@ -108,13 +111,16 @@ class BroadcastBooth:
         return 0.0
 
     def get_speaker_label(self, speaker):
+        return self.get_speaker_display_name(speaker).upper()
+
+    def get_speaker_display_name(self, speaker):
         if speaker == "jeff":
-            return "JEFF"
+            return COLOR_BROADCASTER_NAME or "Jeff"
 
         if speaker == "sarah":
-            return "SARAH"
+            return PIT_BROADCASTER_NAME or "Sarah"
 
-        return "LEAD"
+        return LEAD_BROADCASTER_NAME or "Mike"
 
     def get_voice_id(self, speaker):
         if speaker == "jeff":

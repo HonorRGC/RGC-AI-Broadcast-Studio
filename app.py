@@ -10,6 +10,7 @@ from config import (
     OVERLAY_BRAND_GRAPHICS,
     OVERLAY_HOST,
     OVERLAY_RACE_SPONSOR,
+    PIT_BROADCASTER_NAME,
     RACE_ADMIN_MODE,
     RACE_SPONSOR_GRAPHICS,
     RACE_SPONSOR_NAMES,
@@ -639,7 +640,7 @@ def build_director_suggestions(state):
                 "kind": "suggestion",
                 "title": "Pit Road",
                 "message": (
-                    f"Sarah may want pit-road attention: #{row.get('car_number', '--')} "
+                    f"{PIT_BROADCASTER_NAME} may want pit-road attention: #{row.get('car_number', '--')} "
                     f"{row.get('driver_name', 'Unknown Driver')} is on pit road."
                 ),
                 "car_idx": row.get("car_idx", 0),
@@ -3168,11 +3169,14 @@ def main():
     voice_ready, voice_reason = booth.voice_status()
     voice_ids = booth.voice_id_status()
     print(f"ElevenLabs: {'ON' if voice_ready else 'OFF'} ({voice_reason})")
+    lead_name = booth.get_speaker_display_name("lead")
+    color_name = booth.get_speaker_display_name("jeff")
+    pit_name = booth.get_speaker_display_name("sarah")
     print(
         "Voice IDs: "
-        f"Lead={'SET' if voice_ids['lead'] else 'MISSING'} | "
-        f"Jeff={'SET' if voice_ids['jeff'] else 'MISSING'} | "
-        f"Sarah={'SET' if voice_ids['sarah'] else 'MISSING'}"
+        f"{lead_name}={'SET' if voice_ids['lead'] else 'MISSING'} | "
+        f"{color_name}={'SET' if voice_ids['jeff'] else 'MISSING'} | "
+        f"{pit_name}={'SET' if voice_ids['sarah'] else 'MISSING'}"
     )
     print(f"Incident replay: {args.incident_replay.upper()}")
     print(f"Race Admin Mode: {'ON' if race_control_service.enabled else 'OFF'}")
