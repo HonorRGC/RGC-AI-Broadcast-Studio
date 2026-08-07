@@ -201,6 +201,30 @@ def test_green_flag_waits_for_pending_sponsor_read():
     assert "opening_welcome" not in categories
     assert categories == ["sponsor_read", "race_control"]
     assert queue.next_item().category == "sponsor_read"
+    green = queue.items[0]
+    assert green.message == "We are under green at Daytona."
+
+
+def test_delayed_restart_green_uses_back_under_green_wording():
+    director = RaceDirector()
+    director.race_started = True
+    queue = BroadcastQueue()
+    queue.add(
+        "Tonight's coverage is presented by RGC Motorsports.",
+        priority=8,
+        category="sponsor_read",
+        protected=True,
+        speaker="lead",
+        dedupe_key="sponsor_read:caution",
+    )
+    director.previous_phase = RacePhase.ONE_TO_GREEN
+    director.phase = RacePhase.GREEN
+
+    director.handle_green_flag(queue, {"track_name": "Daytona"})
+
+    green = [item for item in queue.items if item.category == "race_control"][0]
+    assert green.message == "We are back under green at Daytona."
+    assert "Green flag is back in the air" not in green.message
 
 
 def test_green_flag_does_not_interrupt_active_sponsor_read():

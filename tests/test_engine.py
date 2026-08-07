@@ -2244,6 +2244,39 @@ def test_restart_launch_story_can_queue_behind_green_flag_call():
     ]
 
 
+def test_restart_launch_story_can_queue_behind_delayed_sponsor_green_call():
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    engine.race_director.previous_phase = RacePhase.ONE_TO_GREEN
+    engine.broadcast_queue.add(
+        "We are back under green at Daytona.",
+        priority=7,
+        category="race_control",
+        protected=True,
+        dedupe_key="race_control:green:ONE_TO_GREEN",
+    )
+    drivers = {
+        34: {"name": "T.J. Lee", "number": "34"},
+        12: {"name": "Second Place", "number": "12"},
+    }
+    results = [
+        {"CarIdx": 34, "Position": 0, "Time": 0.0},
+        {"CarIdx": 12, "Position": 1, "Time": 0.4},
+    ]
+
+    queued = engine._queue_restart_launch_story(
+        results,
+        drivers,
+        green_lap_count=1,
+    )
+
+    assert queued is True
+    assert [item.category for item in engine.broadcast_queue.items] == [
+        "race_control",
+        "restart_launch",
+    ]
+    assert "Good start" in engine.broadcast_queue.items[1].message
+
+
 def test_restart_launch_story_can_call_tight_lead():
     engine = BroadcastEngine(openai_director=SilentOpenAI())
     engine.race_director.previous_phase = RacePhase.ONE_TO_GREEN

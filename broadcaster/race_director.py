@@ -216,13 +216,18 @@ class RaceDirector:
         sponsor_on_air = getattr(scheduler, "is_busy_with_category", lambda _category: False)(
             "sponsor_read"
         )
+        sponsor_delayed_green = bool(sponsor_pending or sponsor_on_air)
         scheduler.clear_for_race_control(
             preserve_categories=("sponsor_read",),
             reset_busy=not sponsor_on_air,
         )
         track_name = self.get_track_name(track_info)
 
-        if self.race_started and self.previous_phase in [RacePhase.CAUTION, RacePhase.ONE_TO_GREEN]:
+        if sponsor_delayed_green and self.race_started:
+            message = f"We are back under green at {track_name}."
+        elif sponsor_delayed_green:
+            message = f"We are under green at {track_name}."
+        elif self.race_started and self.previous_phase in [RacePhase.CAUTION, RacePhase.ONE_TO_GREEN]:
             message = f"Green flag is back in the air! We are racing again at {track_name}!"
         else:
             message = f"Green flag is in the air! We are racing at {track_name}!"
