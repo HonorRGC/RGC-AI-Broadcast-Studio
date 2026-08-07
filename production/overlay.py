@@ -1560,12 +1560,17 @@ class OverlayServer:
                     self.send_json(server.sim_racing_apps_debug_state())
                     return
 
-                if self.path.startswith("/assets/"):
-                    self.send_asset(self.path.removeprefix("/assets/"))
+                asset_path = self.path.split("?", 1)[0]
+                if asset_path.startswith("/assets/"):
+                    self.send_asset(asset_path.removeprefix("/assets/"))
                     return
 
-                if self.path.startswith("/paint-previews/"):
-                    self.send_paint_preview(self.path.removeprefix("/paint-previews/"))
+                if asset_path.startswith("/static/"):
+                    self.send_asset(asset_path.removeprefix("/static/"))
+                    return
+
+                if asset_path.startswith("/paint-previews/"):
+                    self.send_paint_preview(asset_path.removeprefix("/paint-previews/"))
                     return
 
                 if self.path.startswith("/iracing-render"):
@@ -4972,7 +4977,7 @@ OVERLAY_HTML = r"""<!doctype html>
   </section>
 
   <div class="studio-stamp" aria-label="RGC AI Broadcast Studio">
-    <img src="/static/rgc_ai_broadcast_stamp.png" alt="RGC AI Broadcast" />
+    <img src="/assets/rgc_ai_broadcast_stamp.png?v=1" alt="RGC AI Broadcast" />
   </div>
 
   <section id="special-presentation" class="special-presentation hidden">

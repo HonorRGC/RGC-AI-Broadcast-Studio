@@ -5,6 +5,7 @@ from production.overlay import (
     OverlayServer,
     OverlayStateBuilder,
 )
+import inspect
 
 
 class OverlayTelemetry:
@@ -763,11 +764,16 @@ def test_overlay_title_branding_is_larger_and_more_polished():
 
 
 def test_overlay_has_bottom_left_broadcast_studio_stamp():
+    handler_source = inspect.getsource(OverlayServer.make_handler)
+
     assert ".studio-stamp" in OVERLAY_HTML
-    assert 'src="/static/rgc_ai_broadcast_stamp.png"' in OVERLAY_HTML
+    assert 'src="/assets/rgc_ai_broadcast_stamp.png?v=1"' in OVERLAY_HTML
+    assert 'src="/static/rgc_ai_broadcast_stamp.png"' not in OVERLAY_HTML
     assert "bottom: 18px" in OVERLAY_HTML
     assert "width: 112px" in OVERLAY_HTML
     assert "height: 112px" in OVERLAY_HTML
+    assert 'asset_path.startswith("/assets/")' in handler_source
+    assert 'asset_path.startswith("/static/")' in handler_source
 
 
 def test_race_sponsor_presentation_is_right_side_square():
