@@ -2579,8 +2579,47 @@ def test_closing_pressure_calls_when_second_place_gains_on_leader():
     assert item.category == "closing_pressure"
     assert item.camera_target_car_idx == 1
     assert "Closing Chaser" in item.message
-    assert "trimmed" in item.message
-    assert "Can they get there?" in item.message
+    assert "cutting into" in item.message
+    assert "need another big lap" in item.message
+
+
+def test_closing_pressure_says_chaser_can_get_there_with_enough_trend():
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    drivers = {
+        0: {"name": "Race Leader", "number": "77"},
+        1: {"name": "Closing Chaser", "number": "24"},
+    }
+    engine._remember_p2_gap(
+        [
+            {"CarIdx": 0, "Position": 0, "Time": 0.0},
+            {"CarIdx": 1, "Position": 1, "Time": 1.4},
+        ],
+        current_lap=43,
+    )
+    engine._remember_p2_gap(
+        [
+            {"CarIdx": 0, "Position": 0, "Time": 0.0},
+            {"CarIdx": 1, "Position": 1, "Time": 1.0},
+        ],
+        current_lap=44,
+    )
+    queued = engine._queue_closing_pressure_story(
+        [
+            {"CarIdx": 0, "Position": 0, "Time": 0.0},
+            {"CarIdx": 1, "Position": 1, "Time": 0.55},
+        ],
+        drivers,
+        current_lap=45,
+        total_laps=50,
+        track_info={"track_name": "Homestead-Miami Speedway"},
+    )
+
+    item = engine.broadcast_queue.items[0]
+    assert queued is True
+    assert item.category == "closing_pressure"
+    assert item.camera_target_car_idx == 1
+    assert "last few laps" in item.message
+    assert "can absolutely get there" in item.message
 
 
 def test_closing_pressure_calls_when_leader_pulls_away():
@@ -2614,8 +2653,47 @@ def test_closing_pressure_calls_when_leader_pulls_away():
     assert queued is True
     assert item.category == "closing_pressure"
     assert item.camera_target_car_idx == 0
-    assert "answered that lap" in item.message
-    assert "running out of time" in item.message
+    assert "breathing room" in item.message
+    assert "under control" in item.message
+
+
+def test_closing_pressure_says_leader_is_not_under_real_threat():
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    drivers = {
+        0: {"name": "Race Leader", "number": "77"},
+        1: {"name": "Second Place", "number": "24"},
+    }
+    engine._remember_p2_gap(
+        [
+            {"CarIdx": 0, "Position": 0, "Time": 0.0},
+            {"CarIdx": 1, "Position": 1, "Time": 1.7},
+        ],
+        current_lap=43,
+    )
+    engine._remember_p2_gap(
+        [
+            {"CarIdx": 0, "Position": 0, "Time": 0.0},
+            {"CarIdx": 1, "Position": 1, "Time": 1.65},
+        ],
+        current_lap=44,
+    )
+    queued = engine._queue_closing_pressure_story(
+        [
+            {"CarIdx": 0, "Position": 0, "Time": 0.0},
+            {"CarIdx": 1, "Position": 1, "Time": 1.6},
+        ],
+        drivers,
+        current_lap=45,
+        total_laps=50,
+        track_info={"track_name": "Nashville Superspeedway"},
+    )
+
+    item = engine.broadcast_queue.items[0]
+    assert queued is True
+    assert item.category == "closing_pressure"
+    assert item.camera_target_car_idx == 0
+    assert "going to need help" in item.message
+    assert "make a real run" in item.message
 
 
 def test_closing_pressure_uses_pack_finish_language_on_draft_track():

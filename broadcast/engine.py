@@ -89,6 +89,7 @@ class BroadcastEngine:
         self.last_closing_pressure_story_lap = 0
         self.last_p2_gap_snapshot_lap = 0
         self.last_p2_gap_snapshot = None
+        self.p2_gap_history = []
         self.caution_lucky_dog_queued = False
         self.late_caution_note_queued = False
         self.pre_start_extension_outlook_queued = False
@@ -1276,6 +1277,7 @@ class BroadcastEngine:
         track_style = profile.get("style", "")
         delta = current_gap - previous_gap
         abs_delta = abs(delta)
+        trend = self.p2_gap_trend(current_lap, current_gap)
 
         if track_style == "pack_draft" and current_gap <= 1.2:
             message = (
@@ -1284,6 +1286,35 @@ class BroadcastEngine:
                 f"but {second_name} in the number {second_number} is close enough "
                 "to time a run. The question now is who makes the move, and who "
                 "gets the push when they fan out."
+            )
+            camera_target = leader_idx
+        elif trend and trend["closing_rate"] >= 0.06 and current_gap <= 1.5:
+            if trend["laps_to_catch"] <= laps_to_go + 0.5:
+                chance_line = "At this pace, they can absolutely get there."
+            elif current_gap <= 0.75:
+                chance_line = "They are close enough that one small mistake could decide it."
+            else:
+                chance_line = "They still need another big lap or a mistake from the leader."
+            message = (
+                f"{second_name} in the number {second_number} has been cutting into "
+                f"{leader_name}'s lead over the last few laps. The gap is about "
+                f"{current_gap:.1f} seconds with {laps_to_go} laps left. {chance_line}"
+            )
+            camera_target = second_idx
+        elif trend and trend["opening_rate"] >= 0.06:
+            message = (
+                f"{leader_name} in the number {leader_number} is giving themselves "
+                f"breathing room at the perfect time. {second_name} has not been "
+                f"able to close the gap over the last few laps, and with {laps_to_go} "
+                "laps to go, the leader has this under control if they stay clean."
+            )
+            camera_target = leader_idx
+        elif trend and current_gap >= 1.5 and trend["closing_rate"] < 0.06:
+            message = (
+                f"{leader_name} in the number {leader_number} has the lead out to "
+                f"about {current_gap:.1f} seconds with {laps_to_go} laps left. "
+                f"{second_name} is going to need help from traffic or a mistake up "
+                "front to make a real run at this."
             )
             camera_target = leader_idx
         elif delta <= -0.08:
@@ -1339,6 +1370,42 @@ class BroadcastEngine:
             return
         self.last_p2_gap_snapshot = gap
         self.last_p2_gap_snapshot_lap = current_lap
+        self.p2_gap_history.append((current_lap, gap))
+        self.p2_gap_history = [
+            (lap, stored_gap)
+            for lap, stored_gap in self.p2_gap_history[-8:]
+            if current_lap - lap <= 6
+        ]
+
+    def p2_gap_trend(self, current_lap, current_gap):
+        current_lap = self.safe_int(current_lap)
+        current_gap = self.safe_float(current_gap)
+        recent = [
+            (lap, gap)
+            for lap, gap in self.p2_gap_history
+            if 0 < current_lap - self.safe_int(lap) <= 4
+        ]
+        if not recent:
+            return None
+        oldest_lap, oldest_gap = recent[0]
+        lap_span = max(1, current_lap - self.safe_int(oldest_lap))
+        gap_change = current_gap - self.safe_float(oldest_gap)
+        closing_rate = max(0.0, -gap_change / lap_span)
+        opening_rate = max(0.0, gap_change / lap_span)
+        laps_to_catch = (
+            current_gap / closing_rate
+            if closing_rate > 0
+            else float("inf")
+        )
+        return {
+            "oldest_lap": oldest_lap,
+            "oldest_gap": oldest_gap,
+            "lap_span": lap_span,
+            "gap_change": gap_change,
+            "closing_rate": closing_rate,
+            "opening_rate": opening_rate,
+            "laps_to_catch": laps_to_catch,
+        }
 
     def gap_delta_phrase(self, delta):
         delta = self.safe_float(delta)
