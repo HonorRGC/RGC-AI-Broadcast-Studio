@@ -270,8 +270,20 @@ class IRacingTelemetry:
 
     def get_starting_grid(self):
         """Return the fullest available race grid before live results populate."""
-        current_results = self.get_results()
-        candidates = [current_results, self.get_qualifying_results()]
+        best_grid = self.get_best_qualifying_grid()
+        if self._valid_result_count(best_grid) > 0:
+            return best_grid
+        return self.get_results()
+
+    def get_starting_grid_source(self):
+        if self._valid_result_count(self.get_best_qualifying_grid()) > 0:
+            return "qualifying"
+        if self._valid_result_count(self.get_results()) > 0:
+            return "current_results"
+        return "none"
+
+    def get_best_qualifying_grid(self):
+        grid_candidates = [self.get_qualifying_results()]
 
         sessions = (self.get_session_info() or {}).get("Sessions", []) or []
         current_session_num = self.get_current_session_num()
@@ -284,9 +296,9 @@ class IRacingTelemetry:
                 session.get("SessionType") or session.get("SessionName") or ""
             ).lower()
             if session_num < current_session_num and "qual" in session_type:
-                candidates.append(session.get("ResultsPositions") or [])
+                grid_candidates.append(session.get("ResultsPositions") or [])
 
-        return max(candidates, key=self._valid_result_count, default=[])
+        return max(grid_candidates, key=self._valid_result_count, default=[])
 
     def get_qualifying_results(self):
         qualify_info = self.safe_read("QualifyResultsInfo") or {}

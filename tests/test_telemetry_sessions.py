@@ -46,6 +46,36 @@ def test_starting_grid_falls_back_to_qualifying_results():
     }
 
     assert telemetry.get_starting_grid() == qualifying_grid
+    assert telemetry.get_starting_grid_source() == "qualifying"
+
+
+def test_starting_grid_prefers_qualifying_results_over_mid_race_order():
+    telemetry = IRacingTelemetry.__new__(IRacingTelemetry)
+    race_results = [
+        {"CarIdx": 7, "Position": 1},
+        {"CarIdx": 3, "Position": 2},
+    ]
+    qualifying_grid = [
+        {"CarIdx": 3, "Position": 1},
+        {"CarIdx": 7, "Position": 2},
+    ]
+    telemetry.ir = {
+        "SessionNum": 2,
+        "QualifyResultsInfo": {"Results": qualifying_grid},
+        "SessionInfo": {
+            "Sessions": [
+                {"SessionNum": 1, "SessionType": "Qualify"},
+                {
+                    "SessionNum": 2,
+                    "SessionType": "Race",
+                    "ResultsPositions": race_results,
+                },
+            ]
+        },
+    }
+
+    assert telemetry.get_starting_grid() == qualifying_grid
+    assert telemetry.get_starting_grid_source() == "qualifying"
 
 
 def test_live_telemetry_reads_session_time_remaining_directly():

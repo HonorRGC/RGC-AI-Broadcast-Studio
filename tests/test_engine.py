@@ -426,6 +426,54 @@ def test_engine_uses_qualifying_grid_when_race_results_are_not_ready():
     assert all(len(item.camera_sequence) == 1 for item in rundown)
 
 
+def test_engine_uses_recovered_qualifying_grid_when_joining_mid_race():
+    class QualifyingGridSource(SnapshotSource):
+        def get_starting_grid_source(self):
+            return "qualifying"
+
+    grid = [
+        {"CarIdx": 0, "Position": 1},
+        {"CarIdx": 1, "Position": 2},
+        {"CarIdx": 2, "Position": 3},
+        {"CarIdx": 3, "Position": 4},
+        {"CarIdx": 4, "Position": 5},
+        {"CarIdx": 5, "Position": 6},
+    ]
+    running_order = [
+        {"CarIdx": 5, "Position": 1, "LapsComplete": 12},
+        {"CarIdx": 0, "Position": 2, "LapsComplete": 12},
+        {"CarIdx": 1, "Position": 3, "LapsComplete": 12},
+        {"CarIdx": 2, "Position": 4, "LapsComplete": 12},
+        {"CarIdx": 3, "Position": 5, "LapsComplete": 12},
+        {"CarIdx": 4, "Position": 6, "LapsComplete": 12},
+    ]
+    drivers = {
+        index: {"name": f"Driver {index}", "number": str(index)}
+        for index in range(6)
+    }
+    snapshot = TelemetrySnapshot(
+        lap=12,
+        session_type="Race",
+        total_laps=40,
+        session_flags=RaceFlags.GREEN,
+        track_info={"track_name": "Michigan"},
+        results=running_order,
+        starting_grid=grid,
+        driver_lookup=drivers,
+        pit_road_status=[False] * 6,
+    )
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+
+    engine.tick(QualifyingGridSource(snapshot))
+
+    assert engine.joined_mid_race is True
+    biggest_mover = engine.race_intelligence.get_biggest_movers(1)[0]
+    assert biggest_mover.car_idx == 5
+    assert biggest_mover.starting_position == 6
+    assert biggest_mover.current_position == 1
+    assert biggest_mover.positions_gained == 5
+
+
 def test_engine_preserves_camera_target_for_close_action():
     results = [
         {"CarIdx": index, "Position": index, "LapsComplete": 4}

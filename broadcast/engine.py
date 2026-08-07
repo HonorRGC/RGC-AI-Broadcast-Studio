@@ -137,12 +137,25 @@ class BroadcastEngine:
         track_info = telemetry.get_track_info()
         pit_road_status = telemetry.get_car_idx_on_pit_road()
         track_surface_status = telemetry.get_car_idx_track_surface()
+        grid_reader = getattr(telemetry, "get_starting_grid", None)
+        starting_grid = grid_reader() if grid_reader else results
+        grid_source_reader = getattr(telemetry, "get_starting_grid_source", None)
+        starting_grid_source = (
+            grid_source_reader() if callable(grid_source_reader) else ""
+        )
+        reliable_starting_grid = self.has_reliable_starting_grid(
+            starting_grid,
+            results,
+            current_lap,
+            starting_grid_source,
+        )
         self._detect_mid_race_start(
             current_lap=current_lap,
             total_laps=total_laps,
             session_flags=session_flags,
             results=results,
             telemetry=telemetry,
+            reliable_starting_grid=reliable_starting_grid,
         )
         self.race_ticks_seen += 1
         story_results = self.active_race_results(
@@ -150,6 +163,12 @@ class BroadcastEngine:
             pit_road_status=pit_road_status,
             track_surface_status=track_surface_status,
         )
+
+        if starting_grid and (not self.joined_mid_race or reliable_starting_grid):
+            self.race_intelligence.seed_starting_positions(
+                starting_grid,
+                driver_lookup,
+            )
 
         race_knowledge = self.race_intelligence.update(
             results=story_results,
@@ -162,9 +181,7 @@ class BroadcastEngine:
         race_knowledge["track_profile"] = racecraft_profile(track_info)
         race_state = self.race_intelligence.get_race_state()
 
-        grid_reader = getattr(telemetry, "get_starting_grid", None)
-        starting_grid = grid_reader() if grid_reader else results
-        if not self.joined_mid_race:
+        if starting_grid and (not self.joined_mid_race or reliable_starting_grid):
             self.race_brain.seed_starting_positions(
                 starting_grid or results,
                 driver_lookup,
@@ -453,6 +470,7 @@ class BroadcastEngine:
         session_flags,
         results,
         telemetry,
+        reliable_starting_grid=False,
     ):
         if self.race_ticks_seen > 0 or self.joined_mid_race:
             return
@@ -474,12 +492,55 @@ class BroadcastEngine:
             return
 
         self.joined_mid_race = True
-        self.race_brain.disable_starting_position_context()
+        if not reliable_starting_grid:
+            self.race_brain.disable_starting_position_context()
 
         if phase == RacePhase.GREEN:
             self.race_director.phase = RacePhase.GREEN
             self.race_director.previous_phase = RacePhase.GREEN
             self.race_director.race_started = True
+
+    def has_reliable_starting_grid(
+        self,
+        starting_grid,
+        results,
+        current_lap,
+        starting_grid_source="",
+    ):
+        if not starting_grid:
+            return False
+
+        grid_count = self.valid_result_count(starting_grid)
+        if grid_count <= 0:
+            return False
+        if str(starting_grid_source).lower() in {"qualifying", "grid"}:
+            return True
+        if current_lap <= 1:
+            return True
+
+        result_count = self.valid_result_count(results)
+        if grid_count > result_count:
+            return True
+
+        grid_order = self.result_order_signature(starting_grid)
+        result_order = self.result_order_signature(results)
+        return bool(grid_order and result_order and grid_order != result_order)
+
+    def valid_result_count(self, results):
+        return sum(1 for car in results or [] if car.get("CarIdx") is not None)
+
+    def result_order_signature(self, results):
+        return tuple(
+            car.get("CarIdx")
+            for car in sorted(
+                [
+                    car
+                    for car in results or []
+                    if car.get("CarIdx") is not None and car.get("Position") is not None
+                ],
+                key=lambda car: self.safe_int(car.get("Position"), 999),
+            )
+        )
 
     def _queue_mid_race_join_note(self, current_lap, total_laps, track_info):
         if not self.joined_mid_race or self.mid_race_join_note_queued:
