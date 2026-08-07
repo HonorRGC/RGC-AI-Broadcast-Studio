@@ -657,6 +657,31 @@ def sim_racing_apps_is_running(url=SIM_RACING_APPS_HEALTH_URL, timeout=0.35):
         return False
 
 
+def trading_paints_is_running(process_output=None):
+    """Return True when the Trading Paints desktop client appears to be running."""
+    try:
+        if process_output is None:
+            if os.name == "nt":
+                process_output = subprocess.check_output(
+                    ["tasklist", "/fo", "csv", "/nh"],
+                    text=True,
+                    stderr=subprocess.DEVNULL,
+                    timeout=1.0,
+                )
+            else:
+                process_output = subprocess.check_output(
+                    ["ps", "-A", "-o", "comm="],
+                    text=True,
+                    stderr=subprocess.DEVNULL,
+                    timeout=1.0,
+                )
+    except Exception:
+        return False
+
+    normalized = str(process_output or "").lower().replace(" ", "")
+    return "tradingpaints" in normalized
+
+
 def build_health_status(values, root=ROOT, broadcast_running=False):
     """Return launcher health rows as (name, state, detail, level)."""
 
@@ -723,6 +748,26 @@ def build_health_status(values, root=ROOT, broadcast_running=False):
                 "warn",
             )
         )
+
+    if trading_paints_is_running():
+        rows.append(
+            (
+                "Trading Paints",
+                "Running",
+                "Custom paints should stay current for the most accurate car graphics.",
+                "ok",
+            )
+        )
+    else:
+        rows.append(
+            (
+                "Trading Paints",
+                "Not detected",
+                "Start Trading Paints before joining iRacing if you want the most accurate current paints.",
+                "warn",
+            )
+        )
+
     if str(values.get("OVERLAY_HOST", "127.0.0.1") or "").strip() == "0.0.0.0":
         rows.append(
             (
@@ -3161,18 +3206,24 @@ def build_help_tab(
         """,
     )
     section(
-        "5. Optional SIMRacingApps car graphics setup",
+        "5. Optional car graphics setup",
         f"""
-        RGC AI Broadcast Studio can run without SIMRacingApps, but live 3D car renders and styled car numbers work best when SIMRacingAppsServer is running in the background.
+        RGC AI Broadcast Studio can run without SIMRacingApps or Trading Paints, but live 3D car renders, styled car numbers, and accurate custom paints work best when both are running in the background.
 
-        Recommended setup:
+        Recommended SIMRacingApps setup:
         1. Download the original SIMRacingAppsServer from {SIM_RACING_APPS_HOME_URL}
         2. Download the patched build from {SIM_RACING_APPS_PATCH_URL}
         3. Run SIMRacingAppsServer before starting the broadcast.
         4. Leave the SIMRacingAppsServer window open or minimized while iRacing is running.
         5. Refresh Broadcast Health. SIMRacingApps should show as Running.
 
+        Recommended Trading Paints setup:
+        1. Start Trading Paints before joining the iRacing session.
+        2. Let it download/update driver paints while the session loads.
+        3. Refresh Broadcast Health. Trading Paints should show as Running.
+
         If SIMRacingApps is not running, the broadcast still works. The overlay will fall back to numbers/manual graphics where possible, but car renders may be missing or less accurate.
+        If Trading Paints is not running, the broadcast still works, but custom paints may be stale, missing, or less accurate.
         """,
     )
     section(

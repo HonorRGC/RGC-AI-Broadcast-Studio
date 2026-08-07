@@ -388,6 +388,7 @@ def test_launcher_health_reports_sim_racing_apps_running(monkeypatch):
     import studio_launcher
 
     monkeypatch.setattr(studio_launcher, "sim_racing_apps_is_running", lambda: True)
+    monkeypatch.setattr(studio_launcher, "trading_paints_is_running", lambda: True)
     values = launcher_defaults({})
 
     rows = build_health_status(values, root=Path("C:/RGC"), broadcast_running=False)
@@ -396,6 +397,36 @@ def test_launcher_health_reports_sim_racing_apps_running(monkeypatch):
     assert row_map["SIMRacingApps"][0] == "Running"
     assert "Live car renders" in row_map["SIMRacingApps"][1]
     assert row_map["SIMRacingApps"][2] == "ok"
+    assert row_map["Trading Paints"][0] == "Running"
+    assert "accurate car graphics" in row_map["Trading Paints"][1]
+    assert row_map["Trading Paints"][2] == "ok"
+
+
+def test_launcher_health_reports_trading_paints_not_detected(monkeypatch):
+    import studio_launcher
+
+    monkeypatch.setattr(studio_launcher, "sim_racing_apps_is_running", lambda: False)
+    monkeypatch.setattr(studio_launcher, "trading_paints_is_running", lambda: False)
+    values = launcher_defaults({})
+
+    rows = build_health_status(values, root=Path("C:/RGC"), broadcast_running=False)
+    row_map = {name: (state, detail, level) for name, state, detail, level in rows}
+
+    assert row_map["Trading Paints"][0] == "Not detected"
+    assert "Start Trading Paints" in row_map["Trading Paints"][1]
+    assert row_map["Trading Paints"][2] == "warn"
+
+
+def test_trading_paints_process_detection_accepts_spaced_or_compact_names():
+    import studio_launcher
+
+    assert studio_launcher.trading_paints_is_running(
+        '"TradingPaints.exe","1234","Console"'
+    )
+    assert studio_launcher.trading_paints_is_running(
+        "Trading Paints Helper\nOtherProcess"
+    )
+    assert not studio_launcher.trading_paints_is_running("iRacingSim64DX11.exe")
 
 
 def test_first_time_setup_checklist_flags_missing_profile_and_keys(tmp_path):
