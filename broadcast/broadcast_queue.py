@@ -179,10 +179,28 @@ class BroadcastQueue:
 
     def next_item(self, now=None):
         now = time.time() if now is None else now
-        if not self.items or not self.can_speak(now):
+        if not self.items:
             return None
 
         self.items = [item for item in self.items if not item.is_expired(now)]
+        if not self.can_speak(now):
+            ready_camera_previews = [
+                item
+                for item in self.items
+                if item.ready_at <= now
+                and item.silent
+                and item.category == "incident_camera_preview"
+            ]
+            if not ready_camera_previews:
+                return None
+            ready_camera_previews.sort(
+                key=lambda item: (item.priority, -item.created_at),
+                reverse=True,
+            )
+            selected = ready_camera_previews[0]
+            self.items.remove(selected)
+            return selected
+
         ready_items = [item for item in self.items if item.ready_at <= now]
 
         if not ready_items:
@@ -195,6 +213,9 @@ class BroadcastQueue:
         selected = ready_items[0]
 
         self.items.remove(selected)
+
+        if selected.silent and selected.category == "incident_camera_preview":
+            return selected
 
         speech_time = (
             selected.feature_duration_seconds

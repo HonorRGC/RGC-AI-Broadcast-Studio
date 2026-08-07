@@ -596,26 +596,52 @@ class IncidentDetector:
         if score < score_threshold:
             return None
 
+        loss_of_control = (
+            (
+                abnormal_surface
+                and lap_distance_loss >= lap_loss_threshold
+                and est_time_loss >= time_loss_threshold
+            )
+            or (
+                lap_distance_loss >= combined_lap_loss_threshold
+                and est_time_loss >= combined_time_loss_threshold
+            )
+        )
+
         if road_course_mode:
-            message = (
-                f"{state.driver_name} in the number {state.car_number} may have "
-                "had a road-course moment. They lost time after getting away "
-                "from the racing line, and that could be an off-track, a spin, "
-                "or damage without a full-course yellow."
-            )
+            if loss_of_control:
+                message = (
+                    f"Trouble for {state.driver_name} in the number {state.car_number}. "
+                    "They lost time and got away from the racing line, so that "
+                    "looks like a spin, contact, or a serious off-track moment."
+                )
+            else:
+                message = (
+                    f"{state.driver_name} in the number {state.car_number} may have "
+                    "had a road-course moment. They lost time after getting away "
+                    "from the racing line, and that could be an off-track, a spin, "
+                    "or damage without a full-course yellow."
+                )
         else:
-            message = (
-                f"{state.driver_name} in the number {state.car_number} may have "
-                "had a moment a bit ago. They lost time after getting away from "
-                "the ideal racing line, and now the question is whether that hurt "
-                "the car or just overheated the tires."
-            )
+            if loss_of_control:
+                message = (
+                    f"Trouble for {state.driver_name} in the number {state.car_number}. "
+                    "That looks like a real loss of control after they lost time "
+                    "and slipped away from the racing line."
+                )
+            else:
+                message = (
+                    f"{state.driver_name} in the number {state.car_number} may have "
+                    "had a moment a bit ago. They lost time after getting away from "
+                    "the ideal racing line, and now the question is whether that hurt "
+                    "the car or just overheated the tires."
+                )
 
         return self.build_event(
             state,
-            "possible trouble",
+            "loss of control" if loss_of_control else "possible trouble",
             message,
-            5,
+            7 if loss_of_control else 5,
             current_lap,
             0,
             incident_count,

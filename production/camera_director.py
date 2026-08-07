@@ -211,7 +211,11 @@ class CameraDirector:
         self.clear_sequence()
         force = (
             self.current_role in ("", "home")
-            or getattr(item, "category", "") in ("incident", "caution_pit_summary")
+            or getattr(item, "category", "") in (
+                "incident",
+                "incident_camera_preview",
+                "caution_pit_summary",
+            )
         )
         decision = self.focus_car(
             car_idx,

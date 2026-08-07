@@ -96,8 +96,8 @@ def test_serious_single_car_moment_breaks_through_soft_suppression():
     )
 
     assert len(events) == 1
-    assert events[0].trouble_type == "possible trouble"
-    assert "may have had a moment" in events[0].message
+    assert events[0].trouble_type == "loss of control"
+    assert "Trouble for Solo Driver" in events[0].message
     assert events[0].car_idx == 0
 
 
@@ -127,8 +127,8 @@ def test_road_course_mode_calls_serious_local_trouble():
     )
 
     assert len(events) == 1
-    assert events[0].trouble_type == "possible trouble"
-    assert "road-course moment" in events[0].message
+    assert events[0].trouble_type == "loss of control"
+    assert "Trouble for Road Racer" in events[0].message
 
 
 def test_green_flag_pit_exit_does_not_create_pack_wreck():

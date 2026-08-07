@@ -1758,6 +1758,7 @@ def race_event_log_details(item):
         "opening_race_outlook",
         "opening_pit_report",
         "opening_hype",
+        "incident_camera_preview",
     }
     if category in skip_categories or category.startswith("opening_field_rundown"):
         return None

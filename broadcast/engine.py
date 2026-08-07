@@ -1077,17 +1077,17 @@ class BroadcastEngine:
         laps_to_go = max(total_laps - current_lap, 0)
         message = (
             f"Inside the {self.laps_to_go_phrase(laps_to_go)}, {leader_name} "
-            f"has a comfortable lead at about {leader_gap:.1f} seconds, so the best "
-            f"fight on the track is for {self.ordinal_position(position)}. "
-            f"{chasing_name} in the number {chasing_number} is only {gap:.1f} "
-            f"seconds behind {front_name} in the number {front_number}."
+            f"has opened the lead to about {leader_gap:.1f} seconds, but do not "
+            f"look away from this fight for {self.ordinal_position(position)}. "
+            f"{chasing_name} in the number {chasing_number} is right there with "
+            f"{front_name} in the number {front_number}, only {gap:.1f} seconds apart."
         )
         self.broadcast_queue.add(
             message,
-            priority=11,
+            priority=12,
             category="final_laps_battle",
             protected=True,
-            speaker="jeff",
+            speaker="lead",
             expires_after=12,
             dedupe_key=f"final_laps_battle:{current_lap}",
             camera_target_car_idx=chasing_idx,
@@ -1114,24 +1114,23 @@ class BroadcastEngine:
         laps_to_go = max(total_laps - current_lap, 0)
         laps_led_total = max(1, self.leader_laps_led.get(leader_idx, 1))
         gap_line = (
-            "but the battle for the win is still within reach"
+            "and the battle for the win is absolutely still alive"
             if leader_gap < 1.0
             else f"with about {leader_gap:.1f} seconds back to second"
         )
         led_word = "lap" if laps_led_total == 1 else "laps"
         message = (
             f"Inside the {self.laps_to_go_phrase(laps_to_go)}, {name} in "
-            f"the number {number} is trying to close this out {gap_line}. "
-            f"The {number} has led {laps_led_total} {led_word}, and now it is "
-            "about clean marks, smart traffic management, and not giving the "
-            "chasers one last opening."
+            f"the number {number} is trying to finish the job {gap_line}. "
+            f"They have led {laps_led_total} {led_word}; now every corner, every "
+            "lap car, and every mistake matters."
         )
         self.broadcast_queue.add(
             message,
-            priority=11,
+            priority=12,
             category="final_laps_battle",
             protected=True,
-            speaker="jeff",
+            speaker="lead",
             expires_after=15,
             dedupe_key=f"final_laps_leader:{leader_idx}:{current_lap}",
             camera_target_car_idx=leader_idx,
@@ -2475,6 +2474,11 @@ class BroadcastEngine:
             replay_eligible = (
                 (not is_pack_wreck and event.incident_delta >= 2)
                 or (not is_pack_wreck and event.trouble_type == "caution candidate")
+                or (
+                    not is_pack_wreck
+                    and event.trouble_type == "loss of control"
+                    and caution_just_started
+                )
                 or (is_pack_wreck and caution_just_started)
             )
             candidate_replay_time = getattr(event, "replay_session_time", None)
@@ -2491,10 +2495,30 @@ class BroadcastEngine:
                 and replay_eligible
             )
             soft_green_incident = (
-                event.trouble_type == "possible trouble"
+                event.trouble_type in ("possible trouble", "loss of control")
+                and not caution_just_started
+            )
+            loss_of_control = (
+                event.trouble_type == "loss of control"
                 and not caution_just_started
             )
             road_soft_incident = soft_green_incident and road_course_mode
+            if loss_of_control:
+                self.broadcast_queue.add(
+                    "Camera preview: possible loss of control.",
+                    priority=10,
+                    category="incident_camera_preview",
+                    protected=False,
+                    speaker="producer",
+                    expires_after=6,
+                    dedupe_key=(
+                        f"incident_camera_preview:{event.car_idx}:"
+                        f"{event.trouble_type}:{event.lap}"
+                    ),
+                    camera_target_car_idx=event.car_idx,
+                    participant_car_indices=(event.car_idx,),
+                    silent=True,
+                )
             replay_message = self.incident_broadcast_message(
                 event,
                 current_lap=current_lap,
@@ -2507,13 +2531,17 @@ class BroadcastEngine:
                 priority=(
                     event.importance
                     if not soft_green_incident
-                    else 5 if road_soft_incident else 4
+                    else 7 if loss_of_control else 5 if road_soft_incident else 4
                 ),
                 category="incident",
                 protected=not soft_green_incident,
                 speaker="lead",
-                delay_seconds=1.0 if road_soft_incident else 2.0 if soft_green_incident else 0.0,
-                expires_after=25 if road_soft_incident else 18 if soft_green_incident else 25,
+                delay_seconds=(
+                    0.75
+                    if loss_of_control
+                    else 1.0 if road_soft_incident else 2.0 if soft_green_incident else 0.0
+                ),
+                expires_after=22 if loss_of_control else 25 if road_soft_incident else 18 if soft_green_incident else 25,
                 dedupe_key=(
                     f"incident:{event.car_idx}:{event.trouble_type}:"
                     f"{event.lap}:{event.total_incidents}"
@@ -2782,6 +2810,10 @@ class BroadcastEngine:
         return 45
 
     def _queue_booth_follow_up(self, item, race_state):
+        laps_remaining = self.safe_int(getattr(race_state, "laps_remaining", 999), 999)
+        if laps_remaining <= 3:
+            return
+
         follow_up = self.booth_followup_director.follow_up_for(
             item,
             race_state=race_state,

@@ -119,6 +119,28 @@ def test_silent_feature_reserves_its_runtime_without_commentary():
     assert queue.busy_until == now + 52.5
 
 
+def test_incident_camera_preview_can_air_while_voice_is_busy():
+    queue = BroadcastQueue()
+    now = 100.0
+    queue.busy_until = now + 20.0
+    queue.add(
+        "Camera preview: possible loss of control.",
+        category="incident_camera_preview",
+        priority=10,
+        silent=True,
+        camera_target_car_idx=7,
+        dedupe_key="incident_camera_preview:7",
+    )
+    queue.items[0].created_at = now
+
+    item = queue.next_item(now=now)
+
+    assert item.category == "incident_camera_preview"
+    assert item.silent is True
+    assert item.camera_target_car_idx == 7
+    assert queue.busy_until == now + 20.0
+
+
 def test_spoken_feature_reserves_its_runtime():
     queue = BroadcastQueue()
     queue.add(

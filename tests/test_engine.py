@@ -1324,15 +1324,22 @@ def test_green_flag_possible_trouble_moves_camera_to_car():
         total_laps=50,
     )
 
+    preview = next(
+        item
+        for item in engine.broadcast_queue.items
+        if item.category == "incident_camera_preview"
+    )
     incident = next(
         item for item in engine.broadcast_queue.items if item.category == "incident"
     )
-    assert "may have had a moment" in incident.message
+    assert preview.silent is True
+    assert preview.camera_target_car_idx == 2
+    assert "Trouble for Trouble Driver" in incident.message
     assert incident.camera_target_car_idx == 2
     assert incident.camera_focus_incident is False
     assert incident.protected is False
-    assert incident.priority == 4
-    assert incident.delay_seconds == 2.0
+    assert incident.priority == 7
+    assert incident.delay_seconds == 0.75
 
 
 def test_green_flag_soft_incident_does_not_clear_current_broadcast():
@@ -1393,6 +1400,7 @@ def test_green_flag_soft_incident_does_not_clear_current_broadcast():
 
     categories = [item.category for item in engine.broadcast_queue.items]
     assert "race_story" in categories
+    assert "incident_camera_preview" in categories
     assert "incident" in categories
 
 
@@ -2300,7 +2308,7 @@ def test_final_laps_battle_prioritizes_closest_top_five_gap():
     assert item.camera_target_car_idx == 2
     assert "for 3rd" in item.message
     assert "0.3 seconds" in item.message
-    assert "comfortable lead" in item.message
+    assert "opened the lead" in item.message
 
 
 def test_final_laps_focuses_leader_when_win_is_close():
@@ -2330,8 +2338,8 @@ def test_final_laps_focuses_leader_when_win_is_close():
     assert item.category == "final_laps_battle"
     assert item.camera_target_car_idx == 0
     assert "Race Leader" in item.message
-    assert "trying to close this out" in item.message
-    assert "has led 3 laps" in item.message
+    assert "trying to finish the job" in item.message
+    assert "have led 3 laps" in item.message
 
 
 def test_final_lap_clears_stale_story_and_keeps_white_flag_first():
