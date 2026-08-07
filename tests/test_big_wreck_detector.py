@@ -101,6 +101,79 @@ def test_serious_single_car_moment_breaks_through_soft_suppression():
     assert events[0].car_idx == 0
 
 
+def test_clear_single_car_surface_moment_needs_less_position_loss():
+    detector = IncidentDetector()
+    drivers = {0: {"name": "Loose Driver", "number": "14"}}
+
+    detector.analyze(
+        results=[{"CarIdx": 0, "Position": 3, "Incidents": 0}],
+        driver_lookup=drivers,
+        current_lap=18,
+        lap_dist_pct_status=[0.70],
+        est_time_status=[20.0],
+        track_surface_status=[3],
+        pit_road_status=[False],
+        suppress_soft_events=True,
+    )
+    events = detector.analyze(
+        results=[{"CarIdx": 0, "Position": 4, "Incidents": 0}],
+        driver_lookup=drivers,
+        current_lap=18,
+        lap_dist_pct_status=[0.69],
+        est_time_status=[21.4],
+        track_surface_status=[0],
+        pit_road_status=[False],
+        suppress_soft_events=True,
+    )
+
+    assert len(events) == 1
+    assert events[0].trouble_type == "loss of control"
+    assert events[0].car_idx == 0
+
+
+def test_multiple_surface_moments_can_create_pack_wreck():
+    detector = IncidentDetector()
+    drivers = {
+        index: {"name": f"Driver {index + 1}", "number": str(index + 1)}
+        for index in range(5)
+    }
+    first_results = [
+        {"CarIdx": index, "Position": index + 1, "Incidents": 0}
+        for index in range(5)
+    ]
+    second_results = [
+        {"CarIdx": 0, "Position": 2, "Incidents": 0},
+        {"CarIdx": 1, "Position": 3, "Incidents": 0},
+        {"CarIdx": 2, "Position": 4, "Incidents": 0},
+        {"CarIdx": 3, "Position": 5, "Incidents": 0},
+        {"CarIdx": 4, "Position": 1, "Incidents": 0},
+    ]
+
+    detector.analyze(
+        results=first_results,
+        driver_lookup=drivers,
+        current_lap=12,
+        lap_dist_pct_status=[0.50, 0.51, 0.52, 0.53, 0.54],
+        est_time_status=[20.0, 20.2, 20.4, 20.6, 20.8],
+        track_surface_status=[3] * 5,
+        pit_road_status=[False] * 5,
+        suppress_soft_events=True,
+    )
+    events = detector.analyze(
+        results=second_results,
+        driver_lookup=drivers,
+        current_lap=12,
+        lap_dist_pct_status=[0.494, 0.504, 0.514, 0.524, 0.54],
+        est_time_status=[21.0, 21.2, 21.4, 21.6, 20.8],
+        track_surface_status=[0, 0, 0, 0, 3],
+        pit_road_status=[False] * 5,
+        suppress_soft_events=True,
+    )
+
+    assert len(events) == 1
+    assert events[0].trouble_type == "pack wreck"
+
+
 def test_road_course_mode_calls_serious_local_trouble():
     detector = IncidentDetector()
     drivers = {0: {"name": "Road Racer", "number": "12"}}

@@ -181,11 +181,12 @@ class LiveBattleDetector:
             self.mark_called(key)
             best_story = LiveBattleStory(
                 story_type="live_pass_clear",
-                headline=f"{challenger_label} has the advantage for {self.ordinal(position)}.",
+                headline=f"{challenger_label} makes the move for {self.ordinal(position)}.",
                 summary=(
-                    f"{challenger_label} appears to have cleared {leader_label} "
-                    f"for {self.ordinal(position)} on track. The pass looks "
-                    "complete as they run."
+                    f"{challenger_label} has worked past {leader_label} "
+                    f"for {self.ordinal(position)} on track. Call it as a "
+                    "completed move only if it still matches the live picture; "
+                    "otherwise make it a pressure battle for that spot."
                 ),
                 importance=self.importance_for_position(position, total_laps, current_lap) + 1,
                 primary_car_idx=challenger["car_idx"],

@@ -1203,8 +1203,9 @@ class BroadcastEngine:
             return "The gap behind the leader is still forming. "
         if gap < 0.5:
             return (
-                "It is a tight battle at the front, with second place close "
-                "enough to keep the pressure on. "
+                "The leader does not have any room to breathe right now; second "
+                "place is close enough to fill the mirror and force every entry "
+                "to be clean. "
             )
         if gap < 1.0:
             return f"The advantage is slim at about {gap:.1f} seconds. "
@@ -2469,12 +2470,6 @@ class BroadcastEngine:
                 and self.is_final_lap_window(current_lap, total_laps)
                 and not caution_just_started
             )
-            if (
-                is_pack_wreck
-                and not caution_just_started
-                and not self.is_final_lap_window(current_lap, total_laps)
-            ):
-                continue
             replay_eligible = (
                 (not is_pack_wreck and event.incident_delta >= 2)
                 or (not is_pack_wreck and event.trouble_type == "caution candidate")

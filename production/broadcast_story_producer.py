@@ -67,9 +67,9 @@ class BroadcastStoryProducer:
         if story_type in {"live_side_by_side", "live_three_wide", "live_pass_clear"}:
             notes.append(
                 "This is a live on-track battle read. Unless the summary says "
-                "the pass looks clear, describe it as pressure or a close battle "
+                "one driver worked past another driver, describe it as pressure or a close battle "
                 "without claiming side-by-side, three-wide, contact, lane choice, "
-                "or a completed pass. If the summary says the pass looks clear, "
+                "or a completed pass. If the summary says a driver worked past another driver, "
                 "call it naturally as an on-track move without mentioning scoring "
                 "systems or internal confidence language."
             )

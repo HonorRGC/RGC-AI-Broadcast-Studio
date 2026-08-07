@@ -88,7 +88,11 @@ class CommentaryCleaner:
             r"\bconfident but careful language[:,]?\s*",
             r"\bwithout mentioning telemetry, confidence, leaderboard delay, or official scoring delay\.?",
             r"\bwithout mentioning telemetry, confidence, or official scoring delay\.?",
+            r"\bthe pass looks complete live,?\s*while official scoring may take a moment to update\.?",
+            r"\bthe pass looks complete as they run\.?",
+            r"\bthe pass looks clear\.?",
             r"\bofficial scoring delay\.?",
+            r"\bofficial scoring may take a moment to update\.?",
             r"\bHe is currently the biggest mover in the field\.?",
             r"\bShe is currently the biggest mover in the field\.?",
         ]

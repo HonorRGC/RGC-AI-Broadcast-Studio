@@ -27,6 +27,18 @@ def test_commentary_cleaner_removes_live_battle_prompt_leakage():
     assert "official scoring" not in cleaned
 
 
+def test_commentary_cleaner_removes_scoring_disclaimer_without_prefix():
+    cleaner = CommentaryCleaner()
+
+    cleaned = cleaner.clean(
+        "Joshua Slate has worked past Luke Thompson for fourth. "
+        "The pass looks complete as they run."
+    )
+
+    assert cleaned == "Joshua Slate has worked past Luke Thompson for fourth."
+    assert "pass looks complete" not in cleaned
+
+
 def test_commentary_cleaner_removes_broadcaster_script_prefixes():
     cleaner = CommentaryCleaner()
 

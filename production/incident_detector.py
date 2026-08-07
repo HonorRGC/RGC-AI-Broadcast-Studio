@@ -381,7 +381,17 @@ class IncidentDetector:
             + est_time_loss
             + (2.5 if abnormal_surface else 0.0)
         )
+        strong_surface_moment = (
+            abnormal_surface
+            and (
+                position_loss >= 1
+                or lap_distance_loss >= 0.004
+                or est_time_loss >= 0.8
+            )
+        )
         if incident_delta >= 2:
+            enough_signal = True
+        elif strong_surface_moment:
             enough_signal = True
         else:
             enough_signal = score >= 3.0 and len(reasons) >= 2
@@ -569,11 +579,11 @@ class IncidentDetector:
     ):
         abnormal_surface = self.is_abnormal_surface(track_surface)
         reasons = []
-        time_loss_threshold = 1.0 if road_course_mode else 1.5
-        lap_loss_threshold = 0.008 if road_course_mode else 0.012
-        combined_lap_loss_threshold = 0.018 if road_course_mode else 0.025
-        combined_time_loss_threshold = 2.0 if road_course_mode else 3.0
-        score_threshold = 6.0 if road_course_mode else 7.5
+        time_loss_threshold = 1.0 if road_course_mode else 1.2
+        lap_loss_threshold = 0.008 if road_course_mode else 0.009
+        combined_lap_loss_threshold = 0.018 if road_course_mode else 0.02
+        combined_time_loss_threshold = 2.0 if road_course_mode else 2.5
+        score_threshold = 6.0 if road_course_mode else 5.0
 
         if abnormal_surface and est_time_loss >= time_loss_threshold:
             reasons.append("left the racing surface and lost time")

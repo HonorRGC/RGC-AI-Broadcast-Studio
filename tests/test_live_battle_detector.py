@@ -75,7 +75,10 @@ def test_confident_clear_requires_three_consecutive_ticks():
 
     assert not any(story.story_type == "live_pass_clear" for story in first)
     assert not any(story.story_type == "live_pass_clear" for story in second)
-    assert any(story.story_type == "live_pass_clear" for story in third)
+    clear_story = next(story for story in third if story.story_type == "live_pass_clear")
+    assert "worked past" in clear_story.summary
+    assert "pass looks complete" not in clear_story.summary
+    assert "appears to have cleared" not in clear_story.summary
 
 
 def test_detector_stays_quiet_under_caution_or_pit_road():

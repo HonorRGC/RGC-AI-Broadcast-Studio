@@ -76,7 +76,7 @@ class PromptBuilder:
         ):
             lines.append(
                 "Accuracy: Use only the stated relationship. Unless the assignment "
-                "explicitly says the pass looks clear, describe this as a close "
+                "explicitly says a driver worked past another driver, describe this as a close "
                 "battle, pressure, or cars stacked together. Do not invent an inside "
                 "or outside lane, side-by-side formation, three-wide formation, "
                 "contact, or a completed pass."
