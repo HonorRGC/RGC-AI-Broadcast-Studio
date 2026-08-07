@@ -1016,6 +1016,56 @@ def test_mid_race_join_does_not_count_unobserved_laps_as_long_green_run():
     assert engine.race_intelligence.get_race_state().green_lap_count == 0
 
 
+def test_mid_race_recap_does_not_claim_whole_race_was_caution_free():
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    engine.joined_mid_race = True
+    race_state = RaceState(
+        current_lap=45,
+        total_laps=60,
+        laps_remaining=15,
+        green_lap_count=20,
+        caution_count=0,
+        is_green=True,
+    )
+
+    message = engine.build_three_quarter_recap(
+        results=[],
+        driver_lookup={},
+        race_state=race_state,
+        current_lap=45,
+        total_laps=60,
+        track_info={"track_name": "Michigan International Speedway"},
+    )
+
+    assert "caution-free" not in message
+    assert "Since we joined the broadcast, we have not tracked a caution" in message
+    assert "The stretch we have tracked has stayed green" in message
+
+
+def test_full_race_recap_can_still_say_caution_free_when_seen_from_start():
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    race_state = RaceState(
+        current_lap=45,
+        total_laps=60,
+        laps_remaining=15,
+        green_lap_count=20,
+        caution_count=0,
+        is_green=True,
+    )
+
+    message = engine.build_three_quarter_recap(
+        results=[],
+        driver_lookup={},
+        race_state=race_state,
+        current_lap=45,
+        total_laps=60,
+        track_info={"track_name": "Michigan International Speedway"},
+    )
+
+    assert "This has been caution-free so far" in message
+    assert "The race has stayed green long enough" in message
+
+
 def test_pass_story_carries_overtaking_car_as_camera_target():
     engine = BroadcastEngine(openai_director=SilentOpenAI())
     drivers = {

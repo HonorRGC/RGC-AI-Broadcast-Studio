@@ -908,11 +908,7 @@ class BroadcastEngine:
     ):
         track_name = (track_info or {}).get("track_name") or "the speedway"
         caution_count = self.safe_int(getattr(race_state, "caution_count", 0))
-        caution_text = (
-            "This has been caution-free so far"
-            if caution_count <= 0
-            else f"We have had {caution_count} caution{'s' if caution_count != 1 else ''} so far"
-        )
+        caution_text = self.race_recap_caution_text(caution_count)
         lead_change_text = (
             "the lead has stayed pretty steady"
             if self.lead_change_count <= 0
@@ -934,6 +930,21 @@ class BroadcastEngine:
         if tone_text:
             parts.append(tone_text)
         return " ".join(parts)
+
+    def race_recap_caution_text(self, caution_count):
+        caution_count = self.safe_int(caution_count)
+        if self.joined_mid_race:
+            if caution_count <= 0:
+                return (
+                    "Since we joined the broadcast, we have not tracked a caution"
+                )
+            return (
+                f"Since we joined the broadcast, we have tracked {caution_count} "
+                f"caution{'s' if caution_count != 1 else ''}"
+            )
+        if caution_count <= 0:
+            return "This has been caution-free so far"
+        return f"We have had {caution_count} caution{'s' if caution_count != 1 else ''} so far"
 
     def fastest_lap_recap_text(self, driver_lookup):
         car_idx = self.fastest_lap_tracker.fastest_car_idx
@@ -971,6 +982,8 @@ class BroadcastEngine:
         if caution_count >= 4:
             return "Cautions have shaped the rhythm, so restarts and pit calls have mattered as much as outright pace."
         if caution_count == 0 and green_run >= 15:
+            if self.joined_mid_race:
+                return "The stretch we have tracked has stayed green long enough that pit windows, tire life, and clean execution are starting to shape the next move."
             return "The race has stayed green long enough that pit windows, tire life, and clean execution are starting to shape the next move."
         if green_run >= 12:
             return "The field is deep into this run now; corner exits, balance, and who has kept the tires underneath them are starting to show."
