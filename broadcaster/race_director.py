@@ -565,7 +565,8 @@ class RaceDirector:
             and not self.ten_to_go_announced
         ):
             scheduler.clear_for_race_control(
-                preserve_categories=("caution_pit_summary", "sponsor_read")
+                preserve_categories=("caution_pit_summary", "sponsor_read"),
+                reset_busy=False,
             )
             scheduler.add(
                 "Ten laps to go. The closing stage of this race is underway.",

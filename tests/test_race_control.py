@@ -466,6 +466,18 @@ def test_final_lap_calls_wait_for_current_broadcast_to_finish():
     assert queue.busy_until == 999
 
 
+def test_ten_to_go_waits_for_current_broadcast_to_finish():
+    director = RaceDirector()
+    director.race_started = True
+    queue = BroadcastQueue()
+    queue.busy_until = 999
+
+    director.handle_lap_calls(current_lap=40, total_laps=50, scheduler=queue)
+
+    assert any(item.dedupe_key == "race_control:ten_to_go" for item in queue.items)
+    assert queue.busy_until == 999
+
+
 def test_only_key_final_lap_calls_are_announced():
     expected = {
         45: ("Five laps to go", "race_control:five_to_go"),
