@@ -81,9 +81,10 @@ class BoothFollowupDirector:
 
         if story_type in {"side_by_side", "three_car_battle"}:
             return (
-                "That is where patience gets tested. When cars are stacked "
-                "that close together, one mistimed move can turn a good battle "
-                "into a problem in a hurry."
+                "When they are packed together like that, the next corner "
+                "matters as much as the straightaway. A driver can gain the "
+                "spot with a clean exit, or lose all that momentum if they get "
+                "pinched in traffic."
             )
 
         if story_type in {"biggest_mover", "top_five_charge", "momentum"}:

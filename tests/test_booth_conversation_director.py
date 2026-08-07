@@ -76,6 +76,9 @@ def test_booth_conversation_uses_track_specific_tire_topic():
 
     assert len(lines) == 3
     assert "tire-management" in lines[0].message
+    combined = " ".join(line.message.lower() for line in lines)
+    assert "patience pays off" not in combined
+    assert "throttle discipline" in combined
 
 
 def test_superspeedway_name_alone_does_not_force_draft_topic():
@@ -97,3 +100,24 @@ def test_superspeedway_name_alone_does_not_force_draft_topic():
     assert len(lines) == 3
     assert "draft" not in " ".join(line.message.lower() for line in lines)
     assert "tire-management" in lines[0].message
+
+
+def test_short_track_conversation_avoids_generic_patience_line():
+    director = BoothConversationDirector()
+    results = [
+        {"CarIdx": index, "Position": index + 1, "Time": 0.7}
+        for index in range(8)
+    ]
+
+    lines = director.build(
+        results=results,
+        driver_lookup={},
+        track_info={"track_name": "Martinsville Speedway"},
+        race_state=race_state(green_lap_count=16, laps_remaining=45),
+        current_lap=25,
+        total_laps=100,
+    )
+
+    combined = " ".join(line.message.lower() for line in lines)
+    assert "patience can be just as valuable" not in combined
+    assert "the smart move is not always the first move" in combined

@@ -58,3 +58,25 @@ def test_followup_stays_quiet_in_closing_laps():
         )
         is None
     )
+
+
+def test_side_by_side_followup_avoids_generic_patience_warning():
+    director = BoothFollowupDirector()
+    item = EditorialItem(
+        story_type="side_by_side",
+        headline="Close battle",
+        summary="Two cars are tight for position.",
+        priority=10,
+        speaker="lead",
+        driver_name="T.J. Lee",
+        car_number="34",
+    )
+
+    follow_up = director.follow_up_for(
+        item,
+        race_state=SimpleNamespace(laps_remaining=35),
+    )
+
+    assert "patience gets tested" not in follow_up
+    assert "mistimed move" not in follow_up
+    assert "clean exit" in follow_up

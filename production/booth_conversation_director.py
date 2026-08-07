@@ -171,9 +171,9 @@ class BoothConversationDirector:
                 ),
                 "jeff",
                 (
-                    "That is where patience pays off. A driver who gives up a tenth "
-                    "early can get it back later when the right-front tire still has "
-                    "something left."
+                    "That is where throttle discipline pays off. A driver who gives "
+                    "up a tenth on entry can get it back later when the right-front "
+                    "tire still has something left."
                 ),
                 "sarah",
                 (
@@ -221,9 +221,9 @@ class BoothConversationDirector:
             "short_track_patience": (
                 "lead",
                 (
-                    f"At {track_name}, patience can be just as valuable as aggression. "
-                    "You can catch someone quickly and still spend several laps trying "
-                    "to finish the pass."
+                    f"At {track_name}, the smart move is not always the first move. "
+                    "You can catch someone quickly and still spend several laps "
+                    "setting up the pass."
                 ),
                 "jeff",
                 (
