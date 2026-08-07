@@ -86,6 +86,9 @@ class BroadcastEngine:
         self.final_laps_battle_queued = False
         self.final_lap_finish_focus_queued = False
         self.final_lap_queue_cleaned = False
+        self.last_closing_pressure_story_lap = 0
+        self.last_p2_gap_snapshot_lap = 0
+        self.last_p2_gap_snapshot = None
         self.caution_lucky_dog_queued = False
         self.late_caution_note_queued = False
         self.pre_start_extension_outlook_queued = False
@@ -320,6 +323,15 @@ class BroadcastEngine:
                 total_laps,
             )
             if queued_final_battle:
+                return self.broadcast_queue.next_item()
+            queued_closing_pressure = self._queue_closing_pressure_story(
+                story_results,
+                driver_lookup,
+                current_lap,
+                total_laps,
+                track_info,
+            )
+            if queued_closing_pressure:
                 return self.broadcast_queue.next_item()
             queued_restart_launch = self._queue_restart_launch_story(
                 story_results,
@@ -1203,6 +1215,126 @@ class BroadcastEngine:
         )
         self.final_laps_battle_queued = True
         return True
+
+    def _queue_closing_pressure_story(
+        self,
+        results,
+        driver_lookup,
+        current_lap,
+        total_laps,
+        track_info=None,
+    ):
+        if total_laps <= 0 or current_lap <= 0:
+            return False
+
+        laps_to_go = total_laps - current_lap
+        if laps_to_go < 3 or laps_to_go > 5:
+            self._remember_p2_gap(results, current_lap)
+            return False
+
+        ordered = self.sorted_running_order(results)
+        if len(ordered) < 2:
+            self._remember_p2_gap(results, current_lap)
+            return False
+
+        leader = ordered[0]
+        second = ordered[1]
+        current_gap = self.gap_between_adjacent(leader, second)
+        previous_gap = self.last_p2_gap_snapshot
+        previous_lap = self.last_p2_gap_snapshot_lap
+        self._remember_p2_gap(results, current_lap)
+
+        if previous_gap is None or previous_lap >= current_lap:
+            return False
+        if self.last_closing_pressure_story_lap == current_lap:
+            return False
+        if self.has_pending_race_control() or self.broadcast_queue.items:
+            return False
+
+        leader_idx = leader.get("CarIdx")
+        second_idx = second.get("CarIdx")
+        leader_driver = driver_lookup.get(leader_idx, {})
+        second_driver = driver_lookup.get(second_idx, {})
+        leader_name = leader_driver.get("name", f"Car {leader_idx}")
+        leader_number = leader_driver.get("number", "?")
+        second_name = second_driver.get("name", f"Car {second_idx}")
+        second_number = second_driver.get("number", "?")
+        profile = racecraft_profile(track_info or {})
+        track_style = profile.get("style", "")
+        delta = current_gap - previous_gap
+        abs_delta = abs(delta)
+
+        if track_style == "pack_draft" and current_gap <= 1.2:
+            message = (
+                f"Inside {laps_to_go} laps to go, this is still anybody's race. "
+                f"{leader_name} in the number {leader_number} has the lead, "
+                f"but {second_name} in the number {second_number} is close enough "
+                "to time a run. The question now is who makes the move, and who "
+                "gets the push when they fan out."
+            )
+            camera_target = leader_idx
+        elif delta <= -0.08:
+            message = (
+                f"{second_name} in the number {second_number} just trimmed "
+                f"{self.gap_delta_phrase(abs_delta)} off the lead. "
+                f"The gap is down to about {current_gap:.1f} seconds with "
+                f"{laps_to_go} laps left. Can they get there?"
+            )
+            camera_target = second_idx
+        elif delta >= 0.08:
+            message = (
+                f"{leader_name} in the number {leader_number} answered that lap, "
+                f"stretching the lead by {self.gap_delta_phrase(abs_delta)}. "
+                f"{second_name} is running out of time with {laps_to_go} laps to go."
+            )
+            camera_target = leader_idx
+        elif current_gap <= 0.75:
+            message = (
+                f"The lead battle is still tight with {laps_to_go} laps to go. "
+                f"{leader_name} has {second_name} close enough to feel the pressure, "
+                "and one small slip could open the door."
+            )
+            camera_target = leader_idx
+        else:
+            return False
+
+        self.broadcast_queue.add(
+            message,
+            priority=11,
+            category="closing_pressure",
+            protected=True,
+            speaker="lead",
+            expires_after=8,
+            dedupe_key=f"closing_pressure:{current_lap}",
+            camera_target_car_idx=camera_target,
+            participant_car_indices=tuple(
+                idx for idx in (leader_idx, second_idx) if idx is not None
+            ),
+        )
+        self.last_closing_pressure_story_lap = current_lap
+        return True
+
+    def _remember_p2_gap(self, results, current_lap):
+        current_lap = self.safe_int(current_lap)
+        if current_lap <= 0 or self.last_p2_gap_snapshot_lap == current_lap:
+            return
+        ordered = self.sorted_running_order(results)
+        if len(ordered) < 2:
+            return
+        gap = self.gap_between_adjacent(ordered[0], ordered[1])
+        if gap <= 0:
+            return
+        self.last_p2_gap_snapshot = gap
+        self.last_p2_gap_snapshot_lap = current_lap
+
+    def gap_delta_phrase(self, delta):
+        delta = self.safe_float(delta)
+        tenths = round(delta * 10)
+        if tenths <= 0:
+            return "almost nothing"
+        if tenths == 1:
+            return "a tenth"
+        return f"{tenths} tenths"
 
     def closest_top_five_battle(self, results):
         return self.closest_late_race_battle(results, start_index=0, max_position=5)
