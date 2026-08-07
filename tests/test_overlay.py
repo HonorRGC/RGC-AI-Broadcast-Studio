@@ -968,7 +968,10 @@ def test_producer_assist_html_reads_overlay_state():
     assert 'data-camera-group="Chase"' in PRODUCER_HTML
     assert 'data-camera-group="Rear Chase"' in PRODUCER_HTML
     assert 'data-camera-group="Nose"' in PRODUCER_HTML
+    assert 'data-camera-group="Gearbox"' in PRODUCER_HTML
     assert 'data-camera-group="Cockpit"' in PRODUCER_HTML
+    assert 'data-camera-group="Chopper"' in PRODUCER_HTML
+    assert 'data-camera-group="Scenic"' in PRODUCER_HTML
     assert "selectedManualCameraGroup" in PRODUCER_HTML
     assert 'sendProducerCommand(on ? "openai_off" : "openai_on")' in PRODUCER_HTML
     assert 'sendProducerCommand("replay_pause")' in PRODUCER_HTML

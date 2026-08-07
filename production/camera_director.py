@@ -597,6 +597,7 @@ class CameraDirector:
             "chase": ("chase", "far chase", "rear chase", "tv1"),
             "rear chase": ("rear chase", "far chase", "chase", "tv1"),
             "nose": ("nose", "bumper", "gearbox", "cockpit", "in car", "tv1"),
+            "gearbox": ("gearbox", "nose", "bumper", "cockpit", "in car", "tv1"),
             "cockpit": ("cockpit", "in car", "driver", "tv1"),
             "chopper": ("chopper", "blimp", "aerial", "gyro", "tv3", "tv1"),
             "crank fixed": (

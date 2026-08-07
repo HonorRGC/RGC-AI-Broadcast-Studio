@@ -247,6 +247,47 @@ def test_manual_nose_camera_falls_back_to_bumper_when_missing():
     assert telemetry.switches == [("14", 10, 0)]
 
 
+def test_manual_gearbox_camera_falls_back_to_nose_when_missing():
+    telemetry = CameraTelemetry()
+    telemetry.get_camera_groups = lambda: [
+        {"GroupNum": 4, "GroupName": "TV1"},
+        {"GroupNum": 9, "GroupName": "Nose"},
+    ]
+    director = CameraDirector(mode="auto")
+
+    decision = director.manual_focus_car(3, "Gearbox", telemetry)
+
+    assert decision.status == "switched"
+    assert decision.group_name == "Nose"
+    assert telemetry.switches == [("14", 9, 0)]
+
+
+def test_manual_chopper_camera_falls_back_to_aerial_when_missing():
+    telemetry = CameraTelemetry()
+    telemetry.get_camera_groups = lambda: [
+        {"GroupNum": 4, "GroupName": "TV1"},
+        {"GroupNum": 12, "GroupName": "Aerial"},
+    ]
+    director = CameraDirector(mode="auto")
+
+    decision = director.manual_focus_car(3, "Chopper", telemetry)
+
+    assert decision.status == "switched"
+    assert decision.group_name == "Aerial"
+    assert telemetry.switches == [("14", 12, 0)]
+
+
+def test_manual_scenic_camera_uses_scenic_group():
+    telemetry = CameraTelemetry()
+    director = CameraDirector(mode="auto")
+
+    decision = director.manual_focus_car(3, "Scenic", telemetry)
+
+    assert decision.status == "switched"
+    assert decision.group_name == "Scenic"
+    assert telemetry.switches == [("14", 1, 0)]
+
+
 def test_single_driver_lineup_holds_shot_instead_of_returning_home():
     telemetry = CameraTelemetry()
     telemetry.get_camera_groups = lambda: [
