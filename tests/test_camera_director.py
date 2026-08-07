@@ -216,6 +216,37 @@ def test_rear_chase_lineup_falls_back_to_far_chase_when_missing():
     assert telemetry.switches == [("14", 8, 0)]
 
 
+def test_manual_chase_camera_prefers_plain_chase_group():
+    telemetry = CameraTelemetry()
+    telemetry.get_camera_groups = lambda: [
+        {"GroupNum": 4, "GroupName": "TV1"},
+        {"GroupNum": 8, "GroupName": "Far Chase"},
+        {"GroupNum": 9, "GroupName": "Chase"},
+    ]
+    director = CameraDirector(mode="auto")
+
+    decision = director.manual_focus_car(3, "Chase", telemetry)
+
+    assert decision.status == "switched"
+    assert decision.group_name == "Chase"
+    assert telemetry.switches == [("14", 9, 0)]
+
+
+def test_manual_nose_camera_falls_back_to_bumper_when_missing():
+    telemetry = CameraTelemetry()
+    telemetry.get_camera_groups = lambda: [
+        {"GroupNum": 4, "GroupName": "TV1"},
+        {"GroupNum": 10, "GroupName": "Bumper"},
+    ]
+    director = CameraDirector(mode="auto")
+
+    decision = director.manual_focus_car(3, "Nose", telemetry)
+
+    assert decision.status == "switched"
+    assert decision.group_name == "Bumper"
+    assert telemetry.switches == [("14", 10, 0)]
+
+
 def test_single_driver_lineup_holds_shot_instead_of_returning_home():
     telemetry = CameraTelemetry()
     telemetry.get_camera_groups = lambda: [

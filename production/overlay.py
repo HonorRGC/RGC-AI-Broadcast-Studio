@@ -2543,12 +2543,16 @@ PRODUCER_HTML = r"""<!doctype html>
           <select class="camera-shot-select" id="manual-camera-group-select" title="Manual camera shot">
             <option value="TV1">TV1</option>
             <option value="Far Chase">Far Chase</option>
+            <option value="Chase">Chase</option>
             <option value="Rear Chase">Rear Chase</option>
+            <option value="Nose">Nose</option>
             <option value="Cockpit">Cockpit</option>
           </select>
           <button class="control-button camera-shot-button" data-camera-group="TV1">TV1</button>
           <button class="control-button camera-shot-button" data-camera-group="Far Chase">Far Chase</button>
+          <button class="control-button camera-shot-button" data-camera-group="Chase">Chase</button>
           <button class="control-button camera-shot-button" data-camera-group="Rear Chase">Rear Chase</button>
+          <button class="control-button camera-shot-button" data-camera-group="Nose">Nose</button>
           <button class="control-button camera-shot-button" data-camera-group="Cockpit">Cockpit</button>
         </div>
 
