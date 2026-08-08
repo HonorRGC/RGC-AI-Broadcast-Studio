@@ -653,7 +653,7 @@ def test_checkered_queues_finish_rundown_then_signoff():
     assert queue.items[1].priority > queue.items[2].priority
     assert queue.items[2].priority > queue.items[3].priority
     assert queue.items[3].priority > queue.items[4].priority
-    assert "top ten" in queue.items[1].message.lower()
+    assert "finishing order" in queue.items[1].message.lower()
     assert "Final race recap from Homestead Miami Speedway" in queue.items[3].message
     assert "Thank you for watching" in queue.items[4].message
     assert "Homestead Miami Speedway" in queue.items[4].message

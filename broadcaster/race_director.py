@@ -768,7 +768,7 @@ class RaceDirector:
                 f"The winning run included {laps_led} {lap_word} led."
             )
         story_parts.append(
-            "We will let the rest of the field get across the line, then we will run through the top ten."
+            "We will let the rest of the field get across the line, then we will run through the finishing order."
         )
         return " ".join(story_parts)
 
