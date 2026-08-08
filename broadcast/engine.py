@@ -345,6 +345,7 @@ class BroadcastEngine:
                 story_results,
                 race_state.green_lap_count,
                 race_state.laps_remaining,
+                track_info,
             )
             if queued_crank_it_up:
                 return self.broadcast_queue.next_item()
@@ -2145,7 +2146,13 @@ class BroadcastEngine:
             and not str(item.category).startswith(blocked_prefixes)
         ]
 
-    def _queue_crank_it_up(self, results, green_lap_count, laps_remaining=None):
+    def _queue_crank_it_up(
+        self,
+        results,
+        green_lap_count,
+        laps_remaining=None,
+        track_info=None,
+    ):
         if self.crank_it_up_sent_this_green_run:
             return False
         if green_lap_count < 10:
@@ -2160,6 +2167,7 @@ class BroadcastEngine:
         if not steps:
             return False
 
+        feature_duration = self.crank_it_up_feature_duration_seconds(track_info)
         self.crank_it_up_sent_this_green_run = True
         sponsor_name = str(CRANK_IT_UP_SPONSOR_NAME or "").strip() or "RGC Motorsports"
         self.broadcast_queue.add(
@@ -2182,15 +2190,21 @@ class BroadcastEngine:
             camera_sequence_steps=steps,
             camera_return_home_after_sequence=True,
             silent=True,
-            feature_duration_seconds=50.0,
+            feature_duration_seconds=feature_duration,
         )
         return True
 
-    def queue_manual_crank_it_up(self, results, sponsor_name="RGC Motorsports"):
+    def queue_manual_crank_it_up(
+        self,
+        results,
+        sponsor_name="RGC Motorsports",
+        track_info=None,
+    ):
         steps = self.build_crank_it_up_camera_steps(results)
         if not steps:
             return False
 
+        feature_duration = self.crank_it_up_feature_duration_seconds(track_info)
         sponsor_name = str(sponsor_name or "").strip() or "RGC Motorsports"
         dedupe_seed = time.time()
         self.crank_it_up_sent_this_green_run = True
@@ -2214,9 +2228,14 @@ class BroadcastEngine:
             camera_sequence_steps=steps,
             camera_return_home_after_sequence=True,
             silent=True,
-            feature_duration_seconds=50.0,
+            feature_duration_seconds=feature_duration,
         )
         return True
+
+    def crank_it_up_feature_duration_seconds(self, track_info=None):
+        if is_true_pack_drafting_track(track_info):
+            return 50.0
+        return 62.0
 
     def build_crank_it_up_camera_steps(self, results):
         ordered = self.sorted_running_order(results)

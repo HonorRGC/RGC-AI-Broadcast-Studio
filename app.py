@@ -979,7 +979,13 @@ def handle_producer_command(
         sponsor_name = str(payload.get("sponsor_name", "") or "").strip()
         if not sponsor_name:
             sponsor_name = configured_crank_it_up_sponsor_name()
-        queued = engine.queue_manual_crank_it_up(results, sponsor_name=sponsor_name)
+        track_info_reader = getattr(source, "get_track_info", None) if source else None
+        track_info = track_info_reader() if callable(track_info_reader) else None
+        queued = engine.queue_manual_crank_it_up(
+            results,
+            sponsor_name=sponsor_name,
+            track_info=track_info,
+        )
         publish_producer_event(
             overlay_server,
             "info" if queued else "warning",

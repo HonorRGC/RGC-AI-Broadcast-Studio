@@ -63,8 +63,8 @@ class ManualCrankEngineSpy:
     def __init__(self):
         self.calls = []
 
-    def queue_manual_crank_it_up(self, results, sponsor_name=""):
-        self.calls.append((results, sponsor_name))
+    def queue_manual_crank_it_up(self, results, sponsor_name="", track_info=None):
+        self.calls.append((results, sponsor_name, track_info))
         return True
 
 
@@ -696,7 +696,7 @@ def test_producer_command_can_queue_manual_crank_it_up():
         camera_director=None,
     )
 
-    assert engine.calls == [([{"CarIdx": 1, "Position": 1}], "RGC Motorsports")]
+    assert engine.calls == [([{"CarIdx": 1, "Position": 1}], "RGC Motorsports", None)]
     assert overlay.events[0]["title"] == "Crank It Up"
     assert "Queued" in overlay.events[0]["message"]
 

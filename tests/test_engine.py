@@ -670,7 +670,7 @@ def test_engine_queues_silent_crank_it_up_after_ten_green_laps():
     assert silent_item.message == "Crank It Up"
     assert silent_item.silent is True
     assert silent_item.protected is True
-    assert silent_item.feature_duration_seconds == 50.0
+    assert silent_item.feature_duration_seconds == 62.0
     assert silent_item.camera_sequence_steps == (
         (0, "Crank Fixed", 0),
         (1, "Crank Fixed", 0),
@@ -726,7 +726,7 @@ def test_crank_it_up_silent_feature_uses_tv_fixed_camera():
     )
     assert item.silent is True
     assert item.protected is True
-    assert item.feature_duration_seconds == 50.0
+    assert item.feature_duration_seconds == 62.0
     assert item.camera_sequence_steps == (
         (0, "Crank Fixed", 0),
         (1, "Crank Fixed", 0),
@@ -766,7 +766,27 @@ def test_manual_crank_it_up_bypasses_green_run_trigger():
     categories = [item.category for item in engine.broadcast_queue.items]
     assert categories == ["crank_it_up_intro", "crank_it_up"]
     assert "Test Sponsor" in engine.broadcast_queue.items[0].message
-    assert engine.broadcast_queue.items[1].feature_duration_seconds == 50.0
+    assert engine.broadcast_queue.items[1].feature_duration_seconds == 62.0
+
+
+def test_crank_it_up_keeps_tighter_hold_on_pack_draft_tracks():
+    results = [
+        {"CarIdx": index, "Position": index + 1, "LapsComplete": 10}
+        for index in range(8)
+    ]
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+
+    engine._queue_crank_it_up(
+        results,
+        green_lap_count=10,
+        track_info={"track_name": "Talladega Superspeedway"},
+    )
+
+    item = next(
+        item for item in engine.broadcast_queue.items
+        if item.category == "crank_it_up"
+    )
+    assert item.feature_duration_seconds == 50.0
 
 
 def test_green_flag_pit_cycle_update_starts_when_multiple_cars_pit():
