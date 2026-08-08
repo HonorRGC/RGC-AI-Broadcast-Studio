@@ -727,6 +727,61 @@ def test_producer_command_queues_manual_sponsor_read(monkeypatch):
     assert "commercial" in overlay.events[0]["message"].lower()
 
 
+def test_producer_command_can_queue_specific_sponsor_slot(monkeypatch):
+    import app
+
+    overlay = ProducerOverlaySpy()
+    queue = QueueSpy()
+    engine = SimpleNamespace(broadcast_queue=queue)
+    monkeypatch.setattr(app, "RACE_SPONSOR_1_NAME", "Sponsor One")
+    monkeypatch.setattr(app, "RACE_SPONSOR_2_NAME", "Sponsor Two")
+    monkeypatch.setattr(app, "RACE_SPONSOR_3_NAME", "")
+    monkeypatch.setattr(app, "RACE_SPONSOR_4_NAME", "")
+    monkeypatch.setattr(app, "RACE_SPONSOR_5_NAME", "")
+
+    handle_producer_command(
+        "producer_sponsor_commercial",
+        {"sponsor_slot": 2},
+        overlay,
+        source=None,
+        engine=engine,
+        booth=None,
+        camera_director=None,
+    )
+
+    assert queue.items[0].category == "sponsor_read"
+    assert "Sponsor Two" in queue.items[0].message
+    assert "Sponsor One" not in queue.items[0].message
+    assert "Sponsor Two" in overlay.events[0]["message"]
+
+
+def test_producer_command_warns_when_specific_sponsor_slot_is_blank(monkeypatch):
+    import app
+
+    overlay = ProducerOverlaySpy()
+    queue = QueueSpy()
+    engine = SimpleNamespace(broadcast_queue=queue)
+    monkeypatch.setattr(app, "RACE_SPONSOR_1_NAME", "Sponsor One")
+    monkeypatch.setattr(app, "RACE_SPONSOR_2_NAME", "")
+    monkeypatch.setattr(app, "RACE_SPONSOR_3_NAME", "")
+    monkeypatch.setattr(app, "RACE_SPONSOR_4_NAME", "")
+    monkeypatch.setattr(app, "RACE_SPONSOR_5_NAME", "")
+
+    handle_producer_command(
+        "producer_sponsor_commercial",
+        {"sponsor_slot": 2},
+        overlay,
+        source=None,
+        engine=engine,
+        booth=None,
+        camera_director=None,
+    )
+
+    assert queue.items == []
+    assert overlay.events[0]["kind"] == "warning"
+    assert "Sponsor 2 is not configured" in overlay.events[0]["message"]
+
+
 def test_producer_command_can_switch_leaderboard_style():
     overlay = ProducerOverlaySpy()
 

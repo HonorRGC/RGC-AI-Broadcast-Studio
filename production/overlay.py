@@ -2581,7 +2581,12 @@ PRODUCER_HTML = r"""<!doctype html>
           <div class="small">Use these when the race needs energy, a sponsor hit, or a manual commercial break.</div>
           <div class="button-row control-grid" style="margin-top: 10px;">
             <button class="control-button warn" id="manual-crank-it-up-button">Play Crank It Up</button>
-            <button class="control-button" id="manual-sponsor-button">Play Sponsor / Commercial</button>
+            <button class="control-button" id="manual-sponsor-button">Play Next Sponsor</button>
+            <button class="control-button sponsor-slot-button" data-sponsor-slot="1">Sponsor 1</button>
+            <button class="control-button sponsor-slot-button" data-sponsor-slot="2">Sponsor 2</button>
+            <button class="control-button sponsor-slot-button" data-sponsor-slot="3">Sponsor 3</button>
+            <button class="control-button sponsor-slot-button" data-sponsor-slot="4">Sponsor 4</button>
+            <button class="control-button sponsor-slot-button" data-sponsor-slot="5">Sponsor 5</button>
           </div>
         </div>
 
@@ -3370,6 +3375,13 @@ PRODUCER_HTML = r"""<!doctype html>
     document.getElementById("manual-sponsor-button").addEventListener("click", () => {
       sendProducerCommand("producer_sponsor_commercial");
     });
+    for (const button of document.querySelectorAll(".sponsor-slot-button")) {
+      button.addEventListener("click", () => {
+        sendProducerCommand("producer_sponsor_commercial", {
+          sponsor_slot: Number(button.dataset.sponsorSlot || 0)
+        });
+      });
+    }
     document.getElementById("auto-camera-button").addEventListener("click", () => {
       const on = controlEnabled(lastState || {}, "auto_camera");
       sendProducerCommand(on ? "auto_camera_off" : "auto_camera_on");

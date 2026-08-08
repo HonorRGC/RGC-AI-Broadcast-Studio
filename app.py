@@ -12,6 +12,11 @@ from config import (
     OVERLAY_RACE_SPONSOR,
     PIT_BROADCASTER_NAME,
     RACE_ADMIN_MODE,
+    RACE_SPONSOR_1_NAME,
+    RACE_SPONSOR_2_NAME,
+    RACE_SPONSOR_3_NAME,
+    RACE_SPONSOR_4_NAME,
+    RACE_SPONSOR_5_NAME,
     RACE_SPONSOR_GRAPHICS,
     RACE_SPONSOR_NAMES,
     RACE_SPONSOR_VIDEOS,
@@ -1007,13 +1012,21 @@ def handle_producer_command(
                 "Broadcast engine is not available.",
             )
             return
-        sponsor_name = next_manual_sponsor_name()
+        sponsor_slot = payload.get("sponsor_slot")
+        sponsor_name = manual_sponsor_name_for_slot(sponsor_slot)
+        if not sponsor_name and sponsor_slot is None:
+            sponsor_name = next_manual_sponsor_name()
         if not sponsor_name:
+            slot_text = (
+                f"Sponsor {sponsor_slot}"
+                if sponsor_slot is not None
+                else "No race sponsors"
+            )
             publish_producer_event(
                 overlay_server,
                 "warning",
                 "Sponsor",
-                "No race sponsors are configured yet.",
+                f"{slot_text} is not configured yet.",
             )
             return
         engine.broadcast_queue.add(
@@ -1985,6 +1998,27 @@ def next_manual_sponsor_name():
     sponsor_name = names[MANUAL_SPONSOR_INDEX % len(names)]
     MANUAL_SPONSOR_INDEX += 1
     return sponsor_name
+
+
+def configured_race_sponsor_slots():
+    return (
+        str(RACE_SPONSOR_1_NAME or "").strip(),
+        str(RACE_SPONSOR_2_NAME or "").strip(),
+        str(RACE_SPONSOR_3_NAME or "").strip(),
+        str(RACE_SPONSOR_4_NAME or "").strip(),
+        str(RACE_SPONSOR_5_NAME or "").strip(),
+    )
+
+
+def manual_sponsor_name_for_slot(slot):
+    try:
+        index = int(slot) - 1
+    except (TypeError, ValueError):
+        return ""
+    slots = configured_race_sponsor_slots()
+    if index < 0 or index >= len(slots):
+        return ""
+    return slots[index]
 
 
 def split_sponsor_names(value):
