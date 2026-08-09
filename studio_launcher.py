@@ -3260,10 +3260,14 @@ def build_help_tab(
     section(
         "9. Start Broadcast and Producer Assist",
         """
-        Start Broadcast runs the broadcast engine, overlay, Producer Assist control room, cameras, replay controls, and race control.
+        Start Broadcast runs the broadcast engine, overlay, Producer Assist control room, cameras, caution replay controls, and race control.
         Producer Assist opens automatically after Start Broadcast. If you close it, use the Producer Assist link to open it again.
         Use Producer Assist to turn OpenAI, ElevenLabs, and auto cameras on or off during the same running broadcast.
         Stop Broadcast stops a broadcast launched by the studio.
+
+        Important: RGC AI Broadcast Studio is currently for live iRacing sessions only. Start it while the session is live
+        during practice, qualifying, grid, or race. Saved iRacing replays are not officially supported for normal broadcasts yet.
+        Replay SDK data can behave differently from live telemetry, so cameras, timing, cautions, scoring, and broadcast calls may not line up correctly.
 
         Race Admin Send Mode controls how admin commands are handled. clipboard is broadcast-safe and copies the command for manual send.
         open_chat copies the command and opens iRacing text chat for quick Ctrl+V/Enter. ui_paste is testing-only and may show iRacing chat/window on the broadcast.

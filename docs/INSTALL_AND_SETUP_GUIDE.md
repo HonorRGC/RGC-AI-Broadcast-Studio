@@ -21,6 +21,20 @@ You need:
 
 If you only want overlays, cameras, and race information for a human broadcaster, start the broadcast and use **Producer Assist** to turn OpenAI and ElevenLabs off.
 
+## Live-session support only
+
+RGC AI Broadcast Studio is currently built for **live iRacing sessions only**.
+
+Use it during a live practice, qualifying, grid, race, hosted session, league race, official race, or AI race. Do not use saved iRacing replays for normal broadcasts yet.
+
+Replay support is not officially supported because some replay data from the iRacing SDK does not behave the same as live telemetry. In saved replays, cameras, scoring, timing, caution detection, pit reporting, and broadcast calls may not line up correctly.
+
+Best practice:
+
+```text
+Open iRacing session live -> open RGC AI Broadcast Studio -> Start Broadcast
+```
+
 ## 2. Install Python
 
 1. Go to the official Python download page:
@@ -356,6 +370,8 @@ Start Broadcast
 ```
 
 Then open Producer Assist if you want to switch between AI broadcast and human-broadcaster control during the same running session.
+
+Important: start the Studio while the iRacing session is live. Saved iRacing replay broadcasts are not supported for normal use yet. Replay controls inside Producer Assist are for live-session caution/incident review, not for running a full broadcast from a saved replay file.
 
 Race Control note: `Race Admin Send Mode = clipboard` is the broadcast-safe default. It copies commands like `!yellow` or `!eol #34` so the admin can send them without the program opening iRacing chat on stream. `open_chat` copies the command and opens iRacing text chat for quick Ctrl+V/Enter. `ui_paste` is testing-only and may show the iRacing window/chat box in the broadcast capture.
 

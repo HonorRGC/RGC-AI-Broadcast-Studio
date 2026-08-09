@@ -1,11 +1,11 @@
 # RGC AI Broadcast Studio
 
-AI-directed race production for iRacing. The studio turns live or recorded telemetry into editorial assignments, natural commentary, and routed ElevenLabs voices for a lead announcer, analyst, and pit reporter.
+AI-directed race production for live iRacing sessions. The studio turns live telemetry into editorial assignments, natural commentary, and routed ElevenLabs voices for a lead announcer, analyst, and pit reporter.
 
 ## How the platform works
 
 ```text
-iRacing or JSONL replay
+iRacing live session
         -> Race intelligence and event detectors
         -> Editorial producer
         -> OpenAI commentary renderer
@@ -13,7 +13,9 @@ iRacing or JSONL replay
         -> Lead / Jeff / Sarah ElevenLabs voices
 ```
 
-Both live and replay telemetry use the same `BroadcastEngine`. Race-control messages can preempt stale commentary, pending stories are deduplicated and expired, and every story has one route to air.
+The live telemetry path uses a single `BroadcastEngine`. Race-control messages can preempt stale commentary, pending stories are deduplicated and expired, and every story has one route to air.
+
+Important: normal user broadcasts are **live-session only** right now. Saved iRacing replays are not officially supported because the iRacing SDK can expose replay timing, scoring, caution, camera, and pit-road data differently than a live session. For best results, start the Studio while the iRacing session is live.
 
 The action detector watches position-adjacent cars on the same lap for very small longitudinal gaps. It creates side-by-side and three-car-battle assignments and attaches the involved car indices plus a recommended camera target. Lane-specific calls such as "on the outside" or "three-wide" are intentionally withheld until a future camera or spatial-data layer can confirm them.
 
@@ -153,6 +155,8 @@ Camera direction is auto by default. `observe` prints the car and camera group t
 
 Incident replay is auto by default and requires `--camera-mode auto`. Cautions receive one stable Far Chase replay using iRacing's previous-incident marker with 25 seconds of pre-roll, held for 20 seconds, then the broadcast returns to the live leader. Live-edge enforcement pauses while replay is active, and green or checkered immediately aborts replay and returns live. Use `--incident-replay observe` to preview replay decisions without sending replay or camera commands.
 
+Note: this is live-session incident replay control, not full saved-replay broadcast support.
+
 Race-flow resets are intentionally conservative. The pre-race starting lineup moves quickly from driver to driver, then returns the camera to the TV Mixed leader/home shot when the lineup closes. During a race, Jeff gives one long-run top-ten reset only after 20 consecutive green-flag laps; if a caution interrupts that feature, it does not resume with stale positions. Under caution, Sarah waits until one-to-green to summarize pit-road activity so the field has time to finish the pit cycle, and Jeff can add one quick current top-ten reset before the restart. If a caution flies immediately after a restart, the replay backs up farther to include more of the restart stack-up.
 
 During long green runs, the booth can add one-time racing insight about tire wear, throttle technique, drafting, or fuel saving. These notes are non-repeating and only air when the race has enough natural space. On a late caution before a short run to the finish, Jeff can also frame the restart as a sprint where track position and execution matter more than saving tires.
@@ -231,14 +235,14 @@ Overlay: ON (http://127.0.0.1:8765/overlay)
 
 Add that URL to Streamlabs or OBS as a browser source. The page shows a top race banner with the title, sponsor, series, track, and session, plus a left-side leaderboard that updates from iRacing telemetry.
 
-## Run a recorded race
+## Developer-only JSONL replay testing
 
 ```powershell
 python tools\telemetry_recorder.py recordings\race.jsonl
 python app.py --replay recordings\race.jsonl --no-voice
 ```
 
-Replay mode exercises the same race director, detectors, editorial producer, OpenAI renderer, and scheduler as live mode.
+JSONL replay mode is a developer/testing tool for recorded telemetry snapshots. It is not the supported workflow for normal user broadcasts and is not the same as broadcasting from a saved iRacing replay.
 
 ## Verify changes
 
