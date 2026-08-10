@@ -631,6 +631,15 @@ def league_csv_paths_for_profile(profile_name):
     )
 
 
+def driver_roster_import_target(active_driver_csv="", sim_racer_hub_output=""):
+    """Return the one driver CSV the editor and Sim Racer Hub import should share."""
+    active = str(active_driver_csv or "").strip()
+    if active:
+        return active
+    configured = str(sim_racer_hub_output or "").strip()
+    return configured or "league/drivers.csv"
+
+
 def ensure_empty_driver_profile_csv(csv_path):
     path = Path(csv_path)
     if path.exists():
@@ -2573,6 +2582,13 @@ def build_league_tab(
             if career_mode.get()
             else data["SIMRACERHUB_SEASON_STATS_OUTPUT"]
         )
+        if drivers_only:
+            driver_target = driver_roster_import_target(
+                driver_csv_var.get(),
+                data.get("SIMRACERHUB_DRIVERS_OUTPUT", ""),
+            )
+            data["SIMRACERHUB_DRIVERS_OUTPUT"] = driver_target
+            set_driver_csv_value(driver_target)
         result = run_sim_racer_hub_import(
             source=data["SIMRACERHUB_SOURCE"],
             league_id=data["SIMRACERHUB_LEAGUE_ID"],
@@ -2599,7 +2615,9 @@ def build_league_tab(
             if schedule_only:
                 target = data["SIMRACERHUB_RACE_SCHEDULE_CSV"] or "league/race_schedule.csv"
             elif drivers_only:
-                target = data["SIMRACERHUB_DRIVERS_OUTPUT"] or "league/drivers.csv"
+                target = data["SIMRACERHUB_DRIVERS_OUTPUT"] or driver_roster_import_target()
+                if not dry_run:
+                    load_driver_profiles()
             else:
                 target = stats_output or (
                     "league/career.csv" if career_mode.get() else "league/season.csv"

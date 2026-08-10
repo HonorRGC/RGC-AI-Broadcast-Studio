@@ -28,6 +28,7 @@ from studio_launcher import (
     install_overlay_commercial_video,
     is_newer_version,
     is_process_running,
+    driver_roster_import_target,
     league_csv_paths_for_profile,
     league_folder_slug,
     launcher_defaults,
@@ -608,6 +609,23 @@ def test_launcher_builds_profile_specific_league_csv_paths():
         "league/career.csv",
         "league/race_schedule.csv",
     )
+
+
+def test_driver_roster_import_target_prefers_visible_driver_csv():
+    target = driver_roster_import_target(
+        "league/DSR_Electric_Series/drivers.csv",
+        "league/WFO_Truck_Series/drivers.csv",
+    )
+
+    assert target == "league/DSR_Electric_Series/drivers.csv"
+
+
+def test_driver_roster_import_target_falls_back_to_import_output():
+    assert (
+        driver_roster_import_target("", "league/WFO_Truck_Series/drivers.csv")
+        == "league/WFO_Truck_Series/drivers.csv"
+    )
+    assert driver_roster_import_target("", "") == "league/drivers.csv"
 
 
 def test_launcher_saves_lists_and_loads_profiles(tmp_path):
