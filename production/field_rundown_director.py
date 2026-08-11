@@ -264,13 +264,13 @@ class FieldRundownDirector:
         lap_text = f" with {laps_left} laps to go" if laps_left else ""
         if group_number == 1:
             return (
-                f"We have had a 20-lap green flag run{lap_text}. "
+                f"We are 20 laps into this green-flag stretch{lap_text}. "
                 "Let's do a rundown of the top ten."
             )
         return ""
 
     def segment_closing(self, milestone):
-        return " That completes the top-ten reset for this long green run."
+        return " That completes the top-ten reset."
 
     def build_quarter_camera_steps(self, group):
         steps = []
@@ -348,16 +348,18 @@ class FieldRundownDirector:
         candidates = []
         driver_info = driver_info or {}
 
-        for stats in driver_info.get("league_stats_by_scope") or []:
-            stats_context = self.league_stats_context(stats)
-            if stats_context:
-                candidates.append(stats_context)
-
         profile_context = self.league_profile_context(
             driver_info.get("league_profile") or driver_info
         )
         if profile_context:
             candidates.append(profile_context)
+
+        for stats in driver_info.get("league_stats_by_scope") or []:
+            stats_context = self.league_stats_context(stats)
+            if stats_context:
+                if profile_context:
+                    candidates.append(f"{profile_context} {stats_context}")
+                candidates.append(stats_context)
 
         if not candidates:
             return ""

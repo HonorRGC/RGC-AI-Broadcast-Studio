@@ -104,6 +104,19 @@ def test_lineup_supports_one_based_positions():
     assert "5th: the 5 of Driver 5" in lineup[-1].message
 
 
+def test_lineup_can_include_league_driver_location():
+    director = OpeningDirector()
+    results, drivers = build_lineup(count=2, zero_based=False)
+    drivers[0]["league_profile"] = {
+        "hometown": "Richmond",
+        "state": "VA",
+    }
+
+    segments = director.build_field_rundown(results, drivers)
+
+    assert "Pole: the 1 of Driver 1 from Richmond, Virginia" in segments[0].message
+
+
 def test_lineup_alternates_booth_by_ten_driver_blocks():
     director = OpeningDirector()
     results, drivers = build_lineup(count=45)

@@ -576,7 +576,7 @@ def test_engine_queues_long_green_field_rundown_under_green():
     assert rundown.protected is True
     assert rundown.feature_duration_seconds == 22.0
     assert rundown.camera_return_home_after_sequence is False
-    assert "20-lap green flag run" in rundown.message
+    assert "20 laps into this green-flag stretch" in rundown.message
 
 
 def test_engine_blocks_long_green_field_rundown_with_less_than_thirteen_to_go():
@@ -929,7 +929,7 @@ def test_due_field_rundown_blocks_normal_stories_until_booth_is_clear():
     second = engine.tick(SnapshotSource(snapshot))
 
     assert second.category == "long_green_field_rundown_1"
-    assert "20-lap green flag run" in second.message
+    assert "20 laps into this green-flag stretch" in second.message
 
 
 def test_due_field_rundown_waits_for_green_flag_call_then_airs():

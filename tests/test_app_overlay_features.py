@@ -1359,8 +1359,8 @@ def test_featured_driver_story_for_league_races_can_use_extra_profile_details():
     }
 
     assert build_featured_driver_country(driver) == "United States"
-    assert build_featured_driver_profile(driver) == "RGC Motorsports • Richmond, VA"
-    assert build_featured_driver_story(driver) == "RGC Motorsports • Richmond, VA"
+    assert build_featured_driver_profile(driver) == "RGC Motorsports • Richmond, Virginia"
+    assert build_featured_driver_story(driver) == "RGC Motorsports • Richmond, Virginia"
 
 
 def test_featured_driver_position_info_includes_gap_to_next_without_speed():
@@ -1591,3 +1591,52 @@ def test_long_green_rundown_forces_number_only_card_even_with_live_car_image(mon
         "color": "#ffee00",
         "background": "#222222",
     }
+
+
+def test_featured_driver_card_uses_engine_league_profile_context():
+    overlay = FeaturedDriverOverlaySpy()
+    camera_decision = SimpleNamespace(
+        status="switched",
+        car_idx=34,
+        car_number="34",
+    )
+    source = SimpleNamespace(
+        get_driver_lookup=lambda: {
+            34: {
+                "name": "T.J. Lee",
+                "number": "34",
+                "country": "United States",
+            }
+        },
+        get_results=lambda: [
+            {"CarIdx": 34, "Position": 4, "StartingPosition": 9, "Time": 4.2},
+        ],
+        get_starting_grid=lambda: [],
+    )
+    engine = SimpleNamespace(
+        league_context=SimpleNamespace(
+            enrich_driver_lookup=lambda lookup: {
+                34: {
+                    **lookup[34],
+                    "league_profile": {
+                        "hometown": "Richmond",
+                        "state": "VA",
+                        "country": "United States",
+                    },
+                    "hometown": "Richmond",
+                    "state": "VA",
+                }
+            }
+        )
+    )
+
+    update_overlay_featured_driver(
+        overlay,
+        item(category="long_green_field_rundown_5", target=34),
+        source,
+        camera_decision,
+        engine,
+    )
+
+    assert overlay.featured[0]["position"] == 4
+    assert overlay.featured[0]["story"] == "Richmond, Virginia"

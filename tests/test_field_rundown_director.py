@@ -56,7 +56,7 @@ def test_long_green_rundown_freezes_top_ten_and_airs_one_driver_at_a_time():
     )
     assert segments[0].feature_duration_seconds == 22.0
     assert second_segment[0].camera_sequence == (1,)
-    assert "20-lap green flag run" in segments[0].message
+    assert "20 laps into this green-flag stretch" in segments[0].message
     assert "top ten" in segments[0].message
     assert "First place" in segments[0].message
     assert "best lap so far is 30.125 seconds" in segments[0].message

@@ -157,6 +157,60 @@ US_STATE_NAMES = {
     "wyoming",
 }
 
+US_STATE_ABBREVIATIONS = {
+    "AL": "Alabama",
+    "AK": "Alaska",
+    "AZ": "Arizona",
+    "AR": "Arkansas",
+    "CA": "California",
+    "CO": "Colorado",
+    "CT": "Connecticut",
+    "DE": "Delaware",
+    "FL": "Florida",
+    "GA": "Georgia",
+    "HI": "Hawaii",
+    "ID": "Idaho",
+    "IL": "Illinois",
+    "IN": "Indiana",
+    "IA": "Iowa",
+    "KS": "Kansas",
+    "KY": "Kentucky",
+    "LA": "Louisiana",
+    "ME": "Maine",
+    "MD": "Maryland",
+    "MA": "Massachusetts",
+    "MI": "Michigan",
+    "MN": "Minnesota",
+    "MS": "Mississippi",
+    "MO": "Missouri",
+    "MT": "Montana",
+    "NE": "Nebraska",
+    "NV": "Nevada",
+    "NH": "New Hampshire",
+    "NJ": "New Jersey",
+    "NM": "New Mexico",
+    "NY": "New York",
+    "NC": "North Carolina",
+    "ND": "North Dakota",
+    "OH": "Ohio",
+    "OK": "Oklahoma",
+    "OR": "Oregon",
+    "PA": "Pennsylvania",
+    "RI": "Rhode Island",
+    "SC": "South Carolina",
+    "SD": "South Dakota",
+    "TN": "Tennessee",
+    "TX": "Texas",
+    "UT": "Utah",
+    "VT": "Vermont",
+    "VA": "Virginia",
+    "WA": "Washington",
+    "WV": "West Virginia",
+    "WI": "Wisconsin",
+    "WY": "Wyoming",
+    "DC": "Washington, D.C.",
+}
+
 CANADIAN_PROVINCES = {
     "alberta",
     "british columbia",
@@ -325,6 +379,7 @@ def run_source(
                 camera_update_decision,
                 duration=9.0,
                 opening_intro=getattr(camera_update_decision, "role", "") == "lineup",
+                engine=engine,
             )
         non_race_camera_decision = qualifying_camera_director.update(
             source, camera_director
@@ -336,6 +391,7 @@ def run_source(
                 source,
                 non_race_camera_decision,
                 duration=9.0,
+                engine=engine,
             )
         item = engine.tick(source)
         if overlay_server:
@@ -390,6 +446,7 @@ def run_source(
                         item,
                         source,
                         camera_decision,
+                        engine,
                     )
                     log_race_event_for_item(
                         item,
@@ -406,6 +463,7 @@ def run_source(
                         item,
                         source,
                         camera_decision,
+                        engine,
                     )
                     log_race_event_for_item(
                         item,
@@ -1609,7 +1667,7 @@ def show_overlay_feature(item, overlay_server, source=None, engine=None):
         return
 
     if category in ("post_race_story", "post_race", "post_race_recap"):
-        show_post_race_winner_card(overlay_server, source)
+        show_post_race_winner_card(overlay_server, source, engine)
         rows = build_race_end_cap_rows(source, engine)
         if rows:
             overlay_server.show_stat_panel(
@@ -2702,7 +2760,7 @@ def report_replay_decision(decision, overlay_server=None):
     publish_producer_event(overlay_server, "replay", "Replay", message)
 
 
-def update_overlay_featured_driver(overlay_server, item, source, camera_decision):
+def update_overlay_featured_driver(overlay_server, item, source, camera_decision, engine=None):
     if camera_decision is None:
         return
     if camera_decision.status not in ("suggested", "switched", "held"):
@@ -2732,10 +2790,11 @@ def update_overlay_featured_driver(overlay_server, item, source, camera_decision
         camera_decision,
         opening_intro=opening_intro,
         number_only_card=rundown_number_only,
+        engine=engine,
     )
 
 
-def show_post_race_winner_card(overlay_server, source):
+def show_post_race_winner_card(overlay_server, source, engine=None):
     results = sorted_results_by_position(source.get_results() if source else [])
     if not results:
         return
@@ -2743,7 +2802,7 @@ def show_post_race_winner_card(overlay_server, source):
     car_idx = winner.get("CarIdx")
     if car_idx is None:
         return
-    driver = (source.get_driver_lookup() if source else {}).get(car_idx, {})
+    driver = enriched_driver_lookup(source, engine).get(car_idx, {})
     camera_decision = SimpleNamespace(
         status="held",
         car_idx=car_idx,
@@ -2755,6 +2814,7 @@ def show_post_race_winner_card(overlay_server, source):
         source,
         camera_decision,
         duration=300.0,
+        engine=engine,
     )
 
 
@@ -2769,6 +2829,7 @@ def update_overlay_focused_driver(
     duration=12.0,
     opening_intro=False,
     number_only_card=False,
+    engine=None,
 ):
     if camera_decision is None:
         return
@@ -2781,7 +2842,8 @@ def update_overlay_focused_driver(
     if car_idx is None:
         return
 
-    driver = dict(source.get_driver_lookup().get(car_idx, {}) or {})
+    driver_lookup = enriched_driver_lookup(source, engine)
+    driver = dict(driver_lookup.get(car_idx, {}) or {})
     driver["car_idx"] = car_idx
     driver.setdefault("CarIdx", car_idx)
     driver_name = driver.get("name", "")
@@ -2802,7 +2864,7 @@ def update_overlay_focused_driver(
     position_info = featured_driver_position_info(
         car_idx,
         results,
-        driver_lookup=source.get_driver_lookup(),
+        driver_lookup=driver_lookup,
         use_position_as_start=opening_intro,
         include_interval=not opening_intro,
     )
@@ -2824,6 +2886,18 @@ def update_overlay_focused_driver(
         interval=position_info["interval"],
         speed="",
     )
+
+
+def enriched_driver_lookup(source, engine=None):
+    raw_lookup = source.get_driver_lookup() if source else {}
+    league_context = getattr(engine, "league_context", None) if engine else None
+    enricher = getattr(league_context, "enrich_driver_lookup", None)
+    if enricher:
+        try:
+            return enricher(raw_lookup)
+        except Exception:
+            pass
+    return raw_lookup or {}
 
 
 def featured_driver_results(source, opening_intro=False):
@@ -2974,7 +3048,7 @@ def build_featured_driver_profile(driver):
     details = []
     team_name = str(driver.get("team_name", "") or "").strip()
     hometown = str(driver.get("hometown", "") or driver.get("home_town", "") or "").strip()
-    state = str(driver.get("state", "") or "").strip()
+    state = expand_driver_state(driver.get("state", ""))
 
     if team_name:
         details.append(team_name)
@@ -3001,6 +3075,13 @@ def build_featured_driver_story(driver):
         return build_featured_driver_country(driver) or "Featured driver"
 
     return build_featured_driver_profile(driver) or "Featured driver"
+
+
+def expand_driver_state(state):
+    text = str(state or "").strip()
+    if not text:
+        return ""
+    return US_STATE_ABBREVIATIONS.get(text.upper(), text)
 
 
 def build_featured_driver_image(driver):

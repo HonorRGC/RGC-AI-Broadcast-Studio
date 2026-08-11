@@ -150,7 +150,7 @@ class BroadcastStoryProducer:
 
         if moment == "LONG_GREEN_RUN":
             notes.extend([
-                "Race phase: long green-flag run. Connect the story to tire wear, rhythm, traffic, or strategy if it fits."
+                "Race phase: extended green-flag stretch. Connect the story to tire wear, rhythm, traffic, or strategy if it fits, but avoid repeating the phrase long green run."
             ])
             return notes
         if moment in {"CLOSING_LAPS", "WHITE_FLAG", "OVERTIME"}:

@@ -5532,12 +5532,14 @@ OVERLAY_HTML = r"""<!doctype html>
 
     function buildDriverCardPositionLine(driver) {
       const pieces = [];
+      const position = Number(driver.position || 0);
       const start = Number(driver.starting_position || 0);
       const delta = Number(driver.position_delta || 0);
       const classPosition = Number(driver.class_position || 0);
       if (classPosition > 0) {
         pieces.push(`${driver.class_name || "Class"} ${ordinal(classPosition)}${driver.class_size ? ` of ${driver.class_size}` : ""}`);
       }
+      if (position > 0) pieces.push(`Running ${ordinal(position)}`);
       if (start > 0) pieces.push(`Started ${ordinal(start)}`);
       if (start > 0 && delta !== 0) {
         const sign = delta > 0 ? "+" : "";

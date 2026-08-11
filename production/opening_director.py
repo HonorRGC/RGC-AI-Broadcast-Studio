@@ -489,12 +489,14 @@ class OpeningDirector:
             driver_info = driver_lookup.get(car_idx, {})
             name = driver_info.get("name", f"Car {car_idx}")
             number = driver_info.get("number", "?")
+            location = self.driver_location(driver_info)
             entries.append(
                 {
                     "car_idx": car_idx,
                     "position": position,
                     "number": number,
                     "name": name,
+                    "location": location,
                 }
             )
 
@@ -507,6 +509,7 @@ class OpeningDirector:
                     entry["position"],
                     entry["number"],
                     entry["name"],
+                    entry.get("location", ""),
                 )
                 for entry in group
             ]
@@ -551,12 +554,24 @@ class OpeningDirector:
         block = max(int(start), 0) // 10
         return "jeff" if block % 2 == 0 else "lead"
 
-    def format_lineup_entry(self, position, number, name):
+    def format_lineup_entry(self, position, number, name, location=""):
+        location = f" from {location}" if location else ""
         if position == 1:
-            return f"Pole: the {number} of {name}."
+            return f"Pole: the {number} of {name}{location}."
         if position == 2:
-            return f"Second: the {number} of {name}."
-        return f"{self.ordinal(position).capitalize()}: the {number} of {name}."
+            return f"Second: the {number} of {name}{location}."
+        return f"{self.ordinal(position).capitalize()}: the {number} of {name}{location}."
+
+    def driver_location(self, driver_info):
+        profile = (driver_info or {}).get("league_profile") or driver_info or {}
+        hometown = str(profile.get("hometown") or profile.get("home_town") or "").strip()
+        state = self.expand_state(str(profile.get("state") or "").strip())
+        country = str(profile.get("country") or "").strip()
+        if hometown and state:
+            return f"{hometown}, {state}"
+        if hometown and country:
+            return f"{hometown}, {country}"
+        return hometown or state or ""
 
     def results_are_zero_based(self, results):
         return any(self.safe_int(car.get("Position", 999), 999) == 0 for car in results)
