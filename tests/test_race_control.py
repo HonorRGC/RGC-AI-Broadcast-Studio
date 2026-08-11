@@ -660,6 +660,35 @@ def test_checkered_queues_finish_rundown_then_signoff():
     assert "Jeff and Sarah" in queue.items[4].message
 
 
+def test_post_race_signoff_uses_next_race_from_schedule(tmp_path):
+    schedule = tmp_path / "race_schedule.csv"
+    schedule.write_text(
+        "track_name,schedule_id,notes\n"
+        "Daytona International Speedway,356745,Apr 8 2026\n"
+        "Texas Motor Speedway,356746,Apr 15 2026\n",
+        encoding="utf-8",
+    )
+    director = RaceDirector(race_schedule_csv_path=schedule)
+
+    signoff = director.build_signoff("Daytona International Speedway")
+
+    assert "see you next time at Texas Motor Speedway on Apr 15 2026" in signoff
+
+
+def test_post_race_signoff_stays_generic_without_schedule_match(tmp_path):
+    schedule = tmp_path / "race_schedule.csv"
+    schedule.write_text(
+        "track_name,schedule_id,notes\n"
+        "Daytona International Speedway,356745,Apr 8 2026\n",
+        encoding="utf-8",
+    )
+    director = RaceDirector(race_schedule_csv_path=schedule)
+
+    signoff = director.build_signoff("Michigan International Speedway")
+
+    assert "we will see you next time." in signoff
+
+
 def test_checkered_with_interviews_queues_handoff_instead_of_signoff():
     director = RaceDirector(post_race_interviews_enabled=True)
     queue = BroadcastQueue()

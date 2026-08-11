@@ -1,7 +1,12 @@
+import csv
+import re
+from pathlib import Path
+
 from enum import Enum
 
 from config import (
     POST_RACE_INTERVIEWS_ENABLED,
+    SIMRACERHUB_RACE_SCHEDULE_CSV,
     SPONSOR_READ_CAUSE,
     USE_SPONSOR_READS,
 )
@@ -38,8 +43,11 @@ class RaceDirector:
     def __init__(
         self,
         post_race_interviews_enabled=POST_RACE_INTERVIEWS_ENABLED,
+        race_schedule_csv_path=SIMRACERHUB_RACE_SCHEDULE_CSV,
     ):
         self.post_race_interviews_enabled = bool(post_race_interviews_enabled)
+        self.race_schedule_csv_path = Path(race_schedule_csv_path or "")
+        self._race_schedule_rows = None
         self.reset()
 
     def reset(self):
@@ -820,11 +828,84 @@ class RaceDirector:
         return " ".join(parts)
 
     def build_signoff(self, track_name):
+        next_race = self.next_scheduled_race(track_name)
+        next_line = "we will see you next time."
+        if next_race:
+            next_track = next_race.get("track_name", "").strip()
+            next_date = next_race.get("notes", "").strip()
+            if next_track and next_date:
+                next_line = f"we will see you next time at {next_track} on {next_date}."
+            elif next_track:
+                next_line = f"we will see you next time at {next_track}."
         return (
             f"That will do it tonight from {track_name}. "
             "For Jeff and Sarah, I am Mike with RGC AI Broadcast. "
-            "Thank you for watching, and we will see you next time."
+            f"Thank you for watching, and {next_line}"
         )
+
+    def next_scheduled_race(self, track_name):
+        rows = self.load_race_schedule()
+        if not rows:
+            return None
+
+        current_key = self.normalize_track_name(track_name)
+        if not current_key:
+            return None
+
+        current_index = None
+        for index, row in enumerate(rows):
+            row_key = self.normalize_track_name(row.get("track_name", ""))
+            if row_key and (row_key == current_key or row_key in current_key or current_key in row_key):
+                current_index = index
+                break
+
+        if current_index is None:
+            return None
+
+        for row in rows[current_index + 1 :]:
+            if str(row.get("track_name", "") or "").strip():
+                return row
+        return None
+
+    def load_race_schedule(self):
+        if self._race_schedule_rows is not None:
+            return self._race_schedule_rows
+
+        self._race_schedule_rows = []
+        path = self.race_schedule_csv_path
+        if not path or not path.is_file():
+            return self._race_schedule_rows
+
+        try:
+            with path.open(newline="", encoding="utf-8-sig") as csv_file:
+                for row in csv.DictReader(csv_file):
+                    track_name = str(row.get("track_name", "") or "").strip()
+                    if not track_name:
+                        continue
+                    self._race_schedule_rows.append(
+                        {
+                            "track_name": track_name,
+                            "schedule_id": str(row.get("schedule_id", "") or "").strip(),
+                            "notes": str(row.get("notes", "") or "").strip(),
+                        }
+                    )
+        except OSError:
+            self._race_schedule_rows = []
+        return self._race_schedule_rows
+
+    @staticmethod
+    def normalize_track_name(track_name):
+        text = str(track_name or "").casefold()
+        text = re.sub(r"\([^)]*\)", " ", text)
+        text = re.sub(r"[^a-z0-9]+", " ", text)
+        replacements = {
+            "super speedway": "superspeedway",
+            "motor speedway": "speedway",
+            "international speedway": "speedway",
+        }
+        for old, new in replacements.items():
+            text = text.replace(old, new)
+        return " ".join(text.split())
 
     def build_interview_handoff(self, results, driver_lookup):
         podium = self.podium_names(results, driver_lookup)
