@@ -67,7 +67,9 @@ def test_opening_waits_for_lineup_after_welcome_and_weather():
     assert len(lineup_segments) == 13
     assert lineup_segments[0].category == "opening_field_rundown_1"
     assert lineup_segments[-1].category == "opening_hype"
+    assert "Thanks, Mike" in lineup_segments[0].message
     assert "I'm Jeff" in lineup_segments[0].message
+    assert "12-car field" in lineup_segments[0].message
     assert "Pole: the 1 of Driver 1" in lineup_segments[0].message
     assert "12th: the 12 of Driver 12" in lineup_segments[-2].message
     assert lineup_segments[0].camera_sequence == (0,)
@@ -149,8 +151,21 @@ def test_opening_uses_custom_broadcaster_names():
     segments = director.build_field_rundown(results, drivers)
 
     assert "I'm James" in segments[0].message
+    assert "Lee" in segments[0].message
     assert "Lee picks it up from here" in segments[10].message
     assert "Back to James for the next group" in segments[20].message
+
+
+def test_lineup_opening_handoff_varies_with_field_size_and_track():
+    director = OpeningDirector()
+
+    first = director.lineup_opening_handoff(field_size=25, track_name="Daytona")
+    second = director.lineup_opening_handoff(field_size=26, track_name="Daytona")
+
+    assert first != second
+    assert "Mike" in first
+    assert "Jeff" in first
+    assert "25-car field" in first
 
 
 def test_opening_hype_follows_the_lineup():

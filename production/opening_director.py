@@ -515,11 +515,12 @@ class OpeningDirector:
             ]
             group_number = start // self.LINEUP_GROUP_SIZE + 1
             speaker = self.lineup_speaker_for_start(start)
-            intro = (
-                f"I'm {self.color_name}, and here is your starting lineup. "
-                if group_number == 1
-                else ""
-            )
+            intro = ""
+            if group_number == 1:
+                intro = self.lineup_opening_handoff(
+                    field_size=len(entries),
+                    track_name=track_name,
+                )
             if start > 0 and start % 10 == 0:
                 intro = (
                     f"{self.lead_name} picks it up from here. "
@@ -548,6 +549,39 @@ class OpeningDirector:
                 )
             )
         return segments
+
+    def lineup_opening_handoff(self, field_size=0, track_name=""):
+        field_text = (
+            f"tonight's {field_size}-car field"
+            if field_size
+            else "tonight's field"
+        )
+        track_text = f" here at {track_name}" if track_name else ""
+        options = [
+            (
+                f"Thanks, {self.lead_name}. I'm {self.color_name}, and "
+                f"{field_text} is taking the grid{track_text}. Let's see "
+                "who will lead them to green in the starting lineup. "
+            ),
+            (
+                f"Thanks, {self.lead_name}. I'm {self.color_name}. "
+                f"The grid is filling in, {field_text} is ready to put on "
+                "a show, and we will start with the front row. "
+            ),
+            (
+                f"Appreciate it, {self.lead_name}. I'm {self.color_name}, "
+                f"and this is where the night starts to come alive. "
+                f"{field_text.capitalize()} is rolling into place, so here "
+                "is how they line up. "
+            ),
+            (
+                f"Thanks, {self.lead_name}. I'm {self.color_name}. "
+                f"Before the pace car brings them around, let's reset "
+                f"{field_text} and run through the starting order. "
+            ),
+        ]
+        index = (field_size + len(str(track_name or ""))) % len(options)
+        return options[index]
 
     @staticmethod
     def lineup_speaker_for_start(start):
