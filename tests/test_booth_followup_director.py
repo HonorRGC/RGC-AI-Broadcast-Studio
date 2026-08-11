@@ -24,6 +24,7 @@ def test_followup_adds_short_color_after_lead_story():
     assert follow_up
     assert not follow_up.startswith("Yeah,")
     assert "forward progress" in follow_up
+    assert "tires" not in follow_up
 
 
 def test_followup_does_not_follow_jeff_with_jeff():
@@ -80,3 +81,4 @@ def test_side_by_side_followup_avoids_generic_patience_warning():
     assert "patience gets tested" not in follow_up
     assert "mistimed move" not in follow_up
     assert "clean exit" in follow_up
+    assert "No need to overtalk" in follow_up

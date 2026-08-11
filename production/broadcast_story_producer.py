@@ -30,8 +30,10 @@ class BroadcastStoryProducer:
 
         if story_type in {"biggest_mover", "top_five_charge", "momentum"}:
             notes.append(
-                "Do not make this only a position-gain read. Explain the race "
-                "story: pace, patience, traffic, long-run strength, or pressure."
+                "Do not make this only a position-gain read, but do not attach "
+                "a tire-wear, fuel, patience, or strategy explanation every time. "
+                "Often the best call is simple: name the driver, describe the "
+                "charge, add one stat or driver note if available, and move on."
             )
             if self.has_championship_context(race_knowledge):
                 notes.append(
@@ -50,13 +52,15 @@ class BroadcastStoryProducer:
         if story_type == "fading_driver":
             notes.append(
                 "Frame this as a developing concern, not just a driver losing spots. "
-                "Mention possible handling, tire falloff, traffic, or rhythm only as possibilities."
+                "Mention handling, tire falloff, traffic, or rhythm only if the "
+                "assignment strongly supports it; otherwise keep the call short."
             )
 
         if story_type in {"battle_for_lead", "lead_change", "live_pass_clear", "live_pressure_battle"}:
             notes.append(
-                "Make the leader story feel important. Discuss pressure, gap, "
-                "clean air, lap traffic, or what the challenger must do next."
+                "Make the leader story feel important without overexplaining. "
+                "Use pressure, gap, clean air, lap traffic, or the challenger's "
+                "next move only when it fits the live story."
             )
             if self.has_championship_context(race_knowledge):
                 notes.append(
@@ -150,7 +154,12 @@ class BroadcastStoryProducer:
 
         if moment == "LONG_GREEN_RUN":
             notes.extend([
-                "Race phase: extended green-flag stretch. Connect the story to tire wear, rhythm, traffic, or strategy if it fits, but avoid repeating the phrase long green run."
+                "Race phase: extended green-flag stretch. Do not turn every call "
+                "into tire wear, fuel, patience, or strategy. Most routine calls "
+                "should simply spotlight a battle, driver, or stat nugget, then "
+                "let the camera watch it. Use racecraft only when the assignment "
+                "is specifically about pace falloff, pit windows, tires, fuel, "
+                "or long-run management."
             ])
             return notes
         if moment in {"CLOSING_LAPS", "WHITE_FLAG", "OVERTIME"}:
@@ -184,7 +193,7 @@ class BroadcastStoryProducer:
         if story_type in {"battle_for_lead", "lead_change"}:
             return "fight for control of the race"
         if story_type in {"battle_for_top_five", "battle_for_top_ten", "side_by_side", "three_car_battle", "live_side_by_side", "live_pass_clear", "live_pressure_battle"}:
-            return "localized battle with consequences"
+            return "good battle worth watching"
         if story_type == "live_three_wide":
             return "tight three-car live battle building"
         summary = str(getattr(item, "summary", "") or "").lower()

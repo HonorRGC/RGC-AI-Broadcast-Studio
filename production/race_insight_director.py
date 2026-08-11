@@ -19,6 +19,7 @@ class RaceInsightDirector:
         self.random = random.Random(seed)
         self.used_topics = set()
         self.last_green_insight_lap = 0
+        self.long_green_insight_count = 0
         self.last_stat_filler_lap = 0
         self.sent_stat_keys = {}
         self.points_standings_sent = False
@@ -30,7 +31,9 @@ class RaceInsightDirector:
             return None
         if race_state.laps_remaining and race_state.laps_remaining <= 10:
             return None
-        if self.last_green_insight_lap and current_lap - self.last_green_insight_lap < 8:
+        if self.long_green_insight_count >= 2:
+            return None
+        if self.last_green_insight_lap and current_lap - self.last_green_insight_lap < 16:
             return None
 
         candidates = [
@@ -66,6 +69,7 @@ class RaceInsightDirector:
         topic, message = insight
         self.used_topics.add(topic)
         self.last_green_insight_lap = current_lap
+        self.long_green_insight_count += 1
         return RaceInsight(
             message=message,
             category=f"race_insight:{topic}",
@@ -200,9 +204,10 @@ class RaceInsightDirector:
         front_name = front_driver.get("name", f"Car {front_idx}")
         front_number = front_driver.get("number", "?")
         message = (
-            f"The closest battle on track right now is around {self.ordinal(position)}. "
+            f"Good battle going on around {self.ordinal(position)}. "
             f"{chasing_name} in the number {chasing_number} is only {gap:.1f} seconds "
-            f"behind {front_name} in the number {front_number}, so this is one to watch."
+            f"behind {front_name} in the number {front_number}; let's stay with this "
+            "for a moment and see how it unfolds."
         )
         self.mark_sent(key, current_lap)
         return RaceInsight(
@@ -262,8 +267,8 @@ class RaceInsightDirector:
             )
 
         message = (
-            f"Here is a little more on {name} in the number {number}, currently "
-            f"shown {self.ordinal(position)}. {context['message']}{movement_line}"
+            f"Let's put a little spotlight on {name} in the number {number}, "
+            f"running {self.ordinal(position)}. {context['message']}{movement_line}"
         )
         self.mark_sent(key, current_lap)
         return RaceInsight(

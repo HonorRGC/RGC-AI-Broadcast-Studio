@@ -152,6 +152,13 @@ class PromptBuilder:
             "If a position-gain fact is included, use it as supporting context, not the whole call."
         )
         lines.append(
+            "Restraint: do not add tire wear, fuel mileage, patience, strategy, "
+            "or racecraft reasoning to every routine battle or driver update. "
+            "Many good calls should be simple: identify the battle, name the "
+            "drivers, include one useful stat or driver note if available, and "
+            "let the camera breathe."
+        )
+        lines.append(
             "Booth chemistry: if it sounds natural, make this feel like part of a "
             "team broadcast. Continue the previous thought, add a reason, answer "
             "the implied question, or connect strategy back to the race story. "
@@ -216,7 +223,8 @@ class PromptBuilder:
         if speaker == "jeff":
             return (
                 "Give one sharp analyst-style observation. "
-                "Explain why this matters or what the driver did well. "
+                "Explain why this matters only when the story needs it; "
+                "otherwise add a quick observation and let the race breathe. "
                 "It is okay to sound like you are answering the lead call or "
                 "adding onto the previous thought when that fits the assignment. "
                 "If verified league driver notes are provided, use at most one "
@@ -227,7 +235,8 @@ class PromptBuilder:
         if speaker == "sarah":
             return (
                 "Give a short pit-road or strategy-style update. "
-                "Focus on race strategy, timing, or consequences. "
+                "Focus on race strategy, timing, or consequences when the "
+                "assignment is a pit or strategy item; otherwise keep it factual. "
                 "It is okay to connect your update back to what the booth just "
                 "framed, as long as the information stays specific. "
                 "If verified league driver notes are provided, use at most one "

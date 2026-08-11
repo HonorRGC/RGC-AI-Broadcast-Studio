@@ -23,7 +23,7 @@ class BoothFollowupDirector:
 
     def __init__(self):
         self.last_follow_up_by_key = {}
-        self.minimum_repeat_seconds = 75
+        self.minimum_repeat_seconds = 120
 
     def follow_up_for(self, item, race_state=None):
         if not item:
@@ -67,31 +67,28 @@ class BoothFollowupDirector:
                     "right back into it."
                 )
             return (
-                "That changes the shape of this run. Clean air matters, "
-                "but now the question is whether the pace holds up over the next "
-                "few laps."
+                "That is a nice little swing in the race. Now we get to see "
+                "whether the leader can stretch it out or if this stays close."
             )
 
         if story_type in {"battle", "battle_for_top_five", "battle_for_top_ten"}:
             return (
-                "This is the kind of fight that can pull more cars into "
-                "the picture. If they stay close too long, the pack behind them "
-                "starts getting a run."
+                "This is a good one to stay with for a moment. Both drivers "
+                "are close enough that one clean corner can decide the spot."
             )
 
         if story_type in {"side_by_side", "three_car_battle"}:
             return (
-                "When they are packed together like that, the next corner "
-                "matters as much as the straightaway. A driver can gain the "
-                "spot with a clean exit, or lose all that momentum if they get "
-                "pinched in traffic."
+                "No need to overtalk this one; the picture tells the story. "
+                "They are close enough that the next mistake or the next clean "
+                "exit can change the order."
             )
 
         if story_type in {"biggest_mover", "top_five_charge", "momentum"}:
             return (
-                "That is real forward progress. The next test is whether "
-                "that pace is still there once the tires and traffic start to "
-                "even everything back out."
+                "That is real forward progress, and it deserves a little camera "
+                "time. Sometimes the best story is not out front; it is the "
+                "driver quietly working through the field."
             )
 
         return None

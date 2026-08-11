@@ -36,11 +36,15 @@ def test_long_green_insights_do_not_repeat_topics():
     )
 
     first = director.long_green_insight(state, current_lap=20)
-    second = director.long_green_insight(state, current_lap=28)
+    too_soon = director.long_green_insight(state, current_lap=28)
+    second = director.long_green_insight(state, current_lap=36)
+    third = director.long_green_insight(state, current_lap=52)
 
     assert first is not None
+    assert too_soon is None
     assert second is not None
     assert first.category != second.category
+    assert third is None
 
 
 def test_late_caution_insight_explains_short_run_sprint():
@@ -101,7 +105,8 @@ def test_race_stat_filler_finds_closest_battle():
 
     assert insight is not None
     assert insight.category.startswith("race_stat:closest_battle")
-    assert "closest battle" in insight.message.lower()
+    assert "good battle" in insight.message.lower()
+    assert "let's stay with this" in insight.message.lower()
     assert insight.camera_target_car_idx == 2
     assert insight.participant_car_indices == (1, 2)
 
