@@ -39,6 +39,19 @@ def test_commentary_cleaner_removes_scoring_disclaimer_without_prefix():
     assert "pass looks complete" not in cleaned
 
 
+def test_commentary_cleaner_removes_completed_move_instruction_leak():
+    cleaner = CommentaryCleaner()
+
+    cleaned = cleaner.clean(
+        "Parker Johnston is pressuring Jared Philpott for 13th. "
+        "Call it as a completed move only if it still matches the live picture; "
+        "otherwise make it a pressure battle for that spot."
+    )
+
+    assert cleaned == "Parker Johnston is pressuring Jared Philpott for 13th."
+    assert "completed move only" not in cleaned
+
+
 def test_commentary_cleaner_removes_broadcaster_script_prefixes():
     cleaner = CommentaryCleaner()
 

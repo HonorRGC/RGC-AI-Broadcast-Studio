@@ -53,7 +53,7 @@ class BroadcastStoryProducer:
                 "Mention possible handling, tire falloff, traffic, or rhythm only as possibilities."
             )
 
-        if story_type in {"battle_for_lead", "lead_change", "live_pass_clear"}:
+        if story_type in {"battle_for_lead", "lead_change", "live_pass_clear", "live_pressure_battle"}:
             notes.append(
                 "Make the leader story feel important. Discuss pressure, gap, "
                 "clean air, lap traffic, or what the challenger must do next."
@@ -64,7 +64,7 @@ class BroadcastStoryProducer:
                     "as the stakes for why this position matters."
                 )
 
-        if story_type in {"live_side_by_side", "live_three_wide", "live_pass_clear"}:
+        if story_type in {"live_side_by_side", "live_three_wide", "live_pass_clear", "live_pressure_battle"}:
             notes.append(
                 "This is a live on-track battle read. Unless the summary says "
                 "one driver worked past another driver, describe it as pressure or a close battle "
@@ -183,7 +183,7 @@ class BroadcastStoryProducer:
             return "car or run trend is going the wrong direction"
         if story_type in {"battle_for_lead", "lead_change"}:
             return "fight for control of the race"
-        if story_type in {"battle_for_top_five", "battle_for_top_ten", "side_by_side", "three_car_battle", "live_side_by_side", "live_pass_clear"}:
+        if story_type in {"battle_for_top_five", "battle_for_top_ten", "side_by_side", "three_car_battle", "live_side_by_side", "live_pass_clear", "live_pressure_battle"}:
             return "localized battle with consequences"
         if story_type == "live_three_wide":
             return "tight three-car live battle building"

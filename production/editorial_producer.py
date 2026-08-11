@@ -299,6 +299,7 @@ class EditorialProducer:
             "live_side_by_side",
             "live_three_wide",
             "live_pass_clear",
+            "live_pressure_battle",
         ]:
             return 0
 
@@ -337,6 +338,7 @@ class EditorialProducer:
             "live_side_by_side",
             "live_three_wide",
             "live_pass_clear",
+            "live_pressure_battle",
         }
         if item.story_type in leader_story_types:
             return False

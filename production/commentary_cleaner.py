@@ -84,6 +84,7 @@ class CommentaryCleaner:
             r"\bBroadcast Angle:\s*[^.?!]+[.?!]?",
             r"\bUse confident but careful wording:\s*[^.?!]+[.?!]?",
             r"\bUse confident but careful language\.?",
+            r"\bCall it as a completed move only if it still matches the live picture;?\s*otherwise make it a pressure battle for that spot\.?",
             r"\bconfident but careful wording[:,]?\s*",
             r"\bconfident but careful language[:,]?\s*",
             r"\bwithout mentioning telemetry, confidence, leaderboard delay, or official scoring delay\.?",

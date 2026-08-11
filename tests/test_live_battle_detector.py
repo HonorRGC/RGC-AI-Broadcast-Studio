@@ -73,10 +73,11 @@ def test_confident_clear_requires_three_consecutive_ticks():
     second = detector.analyze(**payload)
     third = detector.analyze(**payload)
 
-    assert not any(story.story_type == "live_pass_clear" for story in first)
-    assert not any(story.story_type == "live_pass_clear" for story in second)
-    clear_story = next(story for story in third if story.story_type == "live_pass_clear")
-    assert "worked past" in clear_story.summary
+    assert not any(story.story_type == "live_pressure_battle" for story in first)
+    assert not any(story.story_type == "live_pressure_battle" for story in second)
+    clear_story = next(story for story in third if story.story_type == "live_pressure_battle")
+    assert "pressuring" in clear_story.summary
+    assert "worked past" not in clear_story.summary
     assert "pass looks complete" not in clear_story.summary
     assert "appears to have cleared" not in clear_story.summary
 

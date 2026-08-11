@@ -73,6 +73,7 @@ class PromptBuilder:
             "live_side_by_side",
             "live_three_wide",
             "live_pass_clear",
+            "live_pressure_battle",
         ):
             lines.append(
                 "Accuracy: Use only the stated relationship. Unless the assignment "

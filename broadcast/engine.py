@@ -3094,7 +3094,7 @@ class BroadcastEngine:
     @staticmethod
     def editorial_queue_expiry_seconds(item):
         story_type = str(getattr(item, "story_type", "") or "")
-        if story_type in {"live_side_by_side", "live_three_wide", "live_pass_clear"}:
+        if story_type in {"live_side_by_side", "live_three_wide", "live_pass_clear", "live_pressure_battle"}:
             return 8
         if story_type in {"side_by_side", "three_car_battle"}:
             return 12
