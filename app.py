@@ -2923,6 +2923,10 @@ def show_post_race_winner_card(overlay_server, source, engine=None):
         camera_decision,
         duration=300.0,
         engine=engine,
+        position_override={
+            "position": 1,
+            "interval": "Winner",
+        },
     )
 
 
@@ -2938,6 +2942,7 @@ def update_overlay_focused_driver(
     opening_intro=False,
     number_only_card=False,
     engine=None,
+    position_override=None,
 ):
     if camera_decision is None:
         return
@@ -2976,6 +2981,23 @@ def update_overlay_focused_driver(
         use_position_as_start=opening_intro,
         include_interval=not opening_intro,
     )
+    if position_override:
+        position_info = dict(position_info)
+        position_info.update(
+            {
+                key: value
+                for key, value in dict(position_override).items()
+                if value is not None
+            }
+        )
+        if (
+            safe_int(position_info.get("starting_position"), 0) > 0
+            and safe_int(position_info.get("position"), 0) > 0
+        ):
+            position_info["position_delta"] = (
+                safe_int(position_info.get("starting_position"), 0)
+                - safe_int(position_info.get("position"), 0)
+            )
     overlay_server.show_featured_driver(
         car_number=car_number,
         driver_name=driver_name,

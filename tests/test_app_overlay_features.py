@@ -497,6 +497,50 @@ def test_post_race_overlay_shows_end_cap_summary():
     assert panel["rows"][6]["value"] == "+9"
 
 
+def test_post_race_winner_card_forces_winner_position_even_with_stale_live_row():
+    overlay = OverlaySpy()
+    engine = SimpleNamespace(
+        race_intelligence=SimpleNamespace(
+            get_race_state=lambda: SimpleNamespace(
+                current_lap=80,
+                total_laps=80,
+                caution_count=0,
+            ),
+            get_biggest_movers=lambda limit=1: [],
+        ),
+        lead_change_count=0,
+        fastest_lap_tracker=SimpleNamespace(fastest_car_idx=None, fastest_time=0.0),
+    )
+    source = SimpleNamespace(
+        get_results=lambda: [
+            {
+                "CarIdx": 7,
+                "Position": 7,
+                "StartingPosition": 7,
+                "LapsComplete": 80,
+                "LapsLed": 40,
+            }
+        ],
+        get_driver_lookup=lambda: {
+            7: {"name": "Winner Driver", "number": "7"},
+        },
+    )
+
+    show_overlay_feature(
+        item(category="post_race", target=None),
+        overlay,
+        source=source,
+        engine=engine,
+    )
+
+    featured = overlay.featured[0]
+    assert featured["driver_name"] == "Winner Driver"
+    assert featured["position"] == 1
+    assert featured["starting_position"] == 7
+    assert featured["position_delta"] == 6
+    assert featured["interval"] == "Winner"
+
+
 def test_producer_pit_road_rows_include_service_guess_and_tire_age():
     pit_state = SimpleNamespace(
         car_idx=4,
