@@ -93,15 +93,24 @@ class LiveBattleDetector:
                 continue
             names = [self.driver_label(driver_lookup, car["car_idx"]) for car in group]
             position = group[0]["position"]
+            summary = self.variant(
+                "three_wide",
+                tuple(car["car_idx"] for car in group),
+                (
+                    f"{names[0]}, {names[1]}, and {names[2]} have been stacked "
+                    f"together around {self.ordinal(position)}. Keep the call to "
+                    "a tight battle for position without claiming a lane or a completed pass.",
+                    f"Three cars are giving us something to watch around {self.ordinal(position)}: "
+                    f"{names[0]}, {names[1]}, and {names[2]}. Call the tension, not a completed pass.",
+                    f"Let's keep an eye on {self.ordinal(position)}. {names[0]}, "
+                    f"{names[1]}, and {names[2]} are close enough to make this one of the better fights on track.",
+                ),
+            )
             self.mark_called(key)
             return LiveBattleStory(
                 story_type="live_three_wide",
                 headline=f"Three-car battle near {self.ordinal(position)}.",
-                summary=(
-                    f"{names[0]}, {names[1]}, and {names[2]} have been stacked "
-                    f"together around {self.ordinal(position)}. Call it as a "
-                    "tight battle for position without claiming a lane or a completed pass."
-                ),
+                summary=summary,
                 importance=self.importance_for_position(position, total_laps, current_lap) + 1,
                 primary_car_idx=group[1]["car_idx"],
                 participant_car_indices=tuple(car["car_idx"] for car in group),
@@ -139,15 +148,28 @@ class LiveBattleDetector:
 
         first_label = self.driver_label(driver_lookup, first["car_idx"])
         second_label = self.driver_label(driver_lookup, second["car_idx"])
+        summary = self.variant(
+            "side_by_side",
+            (first["car_idx"], second["car_idx"], best_position),
+            (
+                f"{first_label} and {second_label} have been battling for "
+                f"{self.ordinal(best_position)}. The spot is not settled yet, "
+                "so describe the pressure without declaring a completed pass.",
+                f"Good race developing for {self.ordinal(best_position)} between "
+                f"{first_label} and {second_label}. Stay with the battle and do "
+                "not claim a completed pass unless the assignment says it.",
+                f"{first_label} and {second_label} are close enough around "
+                f"{self.ordinal(best_position)} that the picture can carry some "
+                "of the call. Keep it conversational and avoid overexplaining.",
+                f"This is the kind of mid-pack fight that deserves a look: "
+                f"{first_label} and {second_label} for {self.ordinal(best_position)}.",
+            ),
+        )
         self.mark_called(key)
         return LiveBattleStory(
             story_type="live_side_by_side",
             headline=f"Close battle for {self.ordinal(best_position)}.",
-            summary=(
-                f"{first_label} and {second_label} have been battling for "
-                f"{self.ordinal(best_position)}. The spot is not settled yet, "
-                "so describe the pressure without declaring a completed pass."
-            ),
+            summary=summary,
             importance=self.importance_for_position(best_position, total_laps, current_lap),
             primary_car_idx=second["car_idx"],
             participant_car_indices=(first["car_idx"], second["car_idx"]),
@@ -178,14 +200,28 @@ class LiveBattleDetector:
                 continue
             challenger_label = self.driver_label(driver_lookup, challenger["car_idx"])
             leader_label = self.driver_label(driver_lookup, leader["car_idx"])
+            summary = self.variant(
+                "pressure",
+                (challenger["car_idx"], leader["car_idx"], position),
+                (
+                    f"{challenger_label} is pressuring {leader_label} "
+                    f"for {self.ordinal(position)} on track.",
+                    f"{challenger_label} has made this a battle for "
+                    f"{self.ordinal(position)} with {leader_label}; keep it as a "
+                    "pressure call, not a confirmed scoring change.",
+                    f"Put the camera on {challenger_label} and {leader_label} "
+                    f"around {self.ordinal(position)}. This is a good battle "
+                    "to let breathe for a moment.",
+                    f"{leader_label} has company for {self.ordinal(position)}. "
+                    f"{challenger_label} is close enough to make the next few "
+                    "corners worth watching.",
+                ),
+            )
             self.mark_called(key)
             best_story = LiveBattleStory(
                 story_type="live_pressure_battle",
                 headline=f"{challenger_label} is pressuring for {self.ordinal(position)}.",
-                summary=(
-                    f"{challenger_label} is pressuring {leader_label} "
-                    f"for {self.ordinal(position)} on track."
-                ),
+                summary=summary,
                 importance=self.importance_for_position(position, total_laps, current_lap) + 1,
                 primary_car_idx=challenger["car_idx"],
                 participant_car_indices=(leader["car_idx"], challenger["car_idx"]),
@@ -289,6 +325,11 @@ class LiveBattleDetector:
         if position % 100 not in (11, 12, 13):
             suffix = {1: "st", 2: "nd", 3: "rd"}.get(position % 10, "th")
         return f"{position}{suffix}"
+
+    @staticmethod
+    def variant(label, values, options):
+        seed = sum(int(value or 0) for value in values) + len(str(label or ""))
+        return options[seed % len(options)]
 
     @staticmethod
     def integer(value, default):

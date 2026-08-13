@@ -203,11 +203,14 @@ class RaceInsightDirector:
         chasing_number = chasing_driver.get("number", "?")
         front_name = front_driver.get("name", f"Car {front_idx}")
         front_number = front_driver.get("number", "?")
-        message = (
-            f"Good battle going on around {self.ordinal(position)}. "
-            f"{chasing_name} in the number {chasing_number} is only {gap:.1f} seconds "
-            f"behind {front_name} in the number {front_number}; let's stay with this "
-            "for a moment and see how it unfolds."
+        message = self.battle_message_variant(
+            position=position,
+            chasing_name=chasing_name,
+            chasing_number=chasing_number,
+            front_name=front_name,
+            front_number=front_number,
+            gap=gap,
+            seed=chasing_idx,
         )
         self.mark_sent(key, current_lap)
         return RaceInsight(
@@ -558,6 +561,47 @@ class RaceInsightDirector:
         if chasing_gap <= 0:
             return 0.0
         return max(0.0, chasing_gap - max(front_gap, 0.0))
+
+    def battle_message_variant(
+        self,
+        position,
+        chasing_name,
+        chasing_number,
+        front_name,
+        front_number,
+        gap,
+        seed=0,
+    ):
+        position_text = self.ordinal(position)
+        options = [
+            (
+                f"Good battle going on around {position_text}. {chasing_name} in "
+                f"the number {chasing_number} is only {gap:.1f} seconds behind "
+                f"{front_name} in the number {front_number}; let's stay with this "
+                "for a moment and see how it unfolds."
+            ),
+            (
+                f"Let's give some airtime to the fight for {position_text}. "
+                f"{front_name} in the number {front_number} has {chasing_name} "
+                f"in the number {chasing_number} right there with them."
+            ),
+            (
+                f"This is one of those battles that can get missed if we only "
+                f"watch the front. Around {position_text}, {front_name} and "
+                f"{chasing_name} are putting on a good show."
+            ),
+            (
+                f"Keep an eye on {position_text}. {chasing_name} in the number "
+                f"{chasing_number} is close enough to {front_name} in the number "
+                f"{front_number} that one clean lap could change the order."
+            ),
+            (
+                f"Nice little race developing around {position_text}. "
+                f"{front_name} and {chasing_name} have been close enough that "
+                "this deserves a camera for a few corners."
+            ),
+        ]
+        return options[(self.safe_int(seed, 0) + self.safe_int(position, 0)) % len(options)]
 
     def was_recently_sent(self, key, current_lap, lap_window):
         last_lap = self.sent_stat_keys.get(key)

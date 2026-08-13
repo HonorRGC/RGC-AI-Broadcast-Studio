@@ -105,8 +105,10 @@ def test_race_stat_filler_finds_closest_battle():
 
     assert insight is not None
     assert insight.category.startswith("race_stat:closest_battle")
-    assert "good battle" in insight.message.lower()
-    assert "let's stay with this" in insight.message.lower()
+    assert any(
+        phrase in insight.message.lower()
+        for phrase in ("good battle", "airtime", "putting on a good show", "keep an eye", "deserves a camera")
+    )
     assert insight.camera_target_car_idx == 2
     assert insight.participant_car_indices == (1, 2)
 

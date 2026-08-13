@@ -117,11 +117,43 @@ class BattleDetector:
         chasing_name = chasing_info.get("name", f"Car {chasing_car_idx}")
         chasing_number = chasing_info.get("number", "?")
 
-        summary = (
-            f"{chasing_name} in the number {chasing_number} is right there "
-            f"behind {lead_name} in the number {lead_number}, with the gap "
-            f"around {gap:.2f} seconds."
-        )
+        position_text = self.ordinal(position)
+        variants = [
+            (
+                f"This is a good fight for {position_text}. {lead_name} in the "
+                f"number {lead_number} has {chasing_name} in the number "
+                f"{chasing_number} close enough that the camera should stay with it."
+            ),
+            (
+                f"Not every good race is for the lead. Around {position_text}, "
+                f"{lead_name} in the number {lead_number} and {chasing_name} in "
+                f"the number {chasing_number} are putting together a nice battle."
+            ),
+            (
+                f"{chasing_name} in the number {chasing_number} is keeping "
+                f"{lead_name} in the number {lead_number} honest for "
+                f"{position_text}; the gap is about {gap:.2f} seconds."
+            ),
+            (
+                f"Let's put some attention on {position_text}. {lead_name} in "
+                f"the number {lead_number} and {chasing_name} in the number "
+                f"{chasing_number} have been close enough to make this worth watching."
+            ),
+            (
+                f"The fight around {position_text} has some life to it. "
+                f"{chasing_name} in the number {chasing_number} is hanging with "
+                f"{lead_name} in the number {lead_number} without needing this "
+                "to become a full strategy lesson."
+            ),
+        ]
+        summary = variants[
+            (
+                self.safe_int(lead_car_idx)
+                + self.safe_int(chasing_car_idx)
+                + self.safe_int(position)
+            )
+            % len(variants)
+        ]
 
         return BattleStory(
             story_type=story_type,
@@ -149,3 +181,15 @@ class BattleDetector:
             return float(value)
         except Exception:
             return 999.0
+
+    @staticmethod
+    def ordinal(value):
+        try:
+            number = int(value)
+        except (TypeError, ValueError):
+            return "that position"
+        if 10 <= number % 100 <= 20:
+            suffix = "th"
+        else:
+            suffix = {1: "st", 2: "nd", 3: "rd"}.get(number % 10, "th")
+        return f"{number}{suffix}"

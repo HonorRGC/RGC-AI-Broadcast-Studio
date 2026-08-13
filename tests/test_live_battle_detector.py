@@ -32,7 +32,11 @@ def test_detects_live_side_by_side_without_declaring_pass():
 
     assert first == []
     assert stories[0].story_type == "live_side_by_side"
-    assert "not settled" in stories[0].summary
+    assert "completed pass" not in stories[0].summary.lower()
+    assert any(
+        phrase in stories[0].summary.lower()
+        for phrase in ("not settled", "good race", "picture can carry", "deserves a look")
+    )
     assert stories[0].participant_car_indices == (0, 1)
 
 
@@ -76,7 +80,10 @@ def test_confident_clear_requires_three_consecutive_ticks():
     assert not any(story.story_type == "live_pressure_battle" for story in first)
     assert not any(story.story_type == "live_pressure_battle" for story in second)
     clear_story = next(story for story in third if story.story_type == "live_pressure_battle")
-    assert "pressuring" in clear_story.summary
+    assert any(
+        phrase in clear_story.summary.lower()
+        for phrase in ("pressuring", "battle", "company", "worth watching")
+    )
     assert "worked past" not in clear_story.summary
     assert "pass looks complete" not in clear_story.summary
     assert "appears to have cleared" not in clear_story.summary

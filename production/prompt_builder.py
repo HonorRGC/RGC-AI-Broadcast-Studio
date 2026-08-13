@@ -158,6 +158,23 @@ class PromptBuilder:
             "drivers, include one useful stat or driver note if available, and "
             "let the camera breathe."
         )
+        if getattr(assignment, "story_type", "") in (
+            "battle",
+            "battle_for_top_five",
+            "battle_for_top_ten",
+            "side_by_side",
+            "three_car_battle",
+            "live_side_by_side",
+            "live_three_wide",
+            "live_pressure_battle",
+        ):
+            lines.append(
+                "Battle variety: do not make this the same gap-and-pressure call "
+                "every time. Choose one angle: spotlight under-covered drivers, "
+                "tell viewers this is worth watching for a few corners, connect "
+                "one verified driver stat if available, or simply let the pictures "
+                "carry the moment. Avoid adding a generic lesson at the end."
+            )
         lines.append(
             "Booth chemistry: if it sounds natural, make this feel like part of a "
             "team broadcast. Continue the previous thought, add a reason, answer "

@@ -77,6 +77,12 @@ class BroadcastStoryProducer:
                 "call it naturally as an on-track move without mentioning scoring "
                 "systems or internal confidence language."
             )
+            notes.append(
+                "Do not use the same structure for every battle. Sometimes make "
+                "it a simple watch-this call, sometimes mention why the driver "
+                "matters, sometimes say this is a mid-pack fight worth showing, "
+                "and sometimes say very little so the camera can carry it."
+            )
 
         if story_type.startswith("formation_"):
             notes.append(
