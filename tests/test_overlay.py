@@ -747,7 +747,7 @@ def test_overlay_has_optional_ticker_leaderboard_and_compact_lap_bar():
 
 def test_overlay_supports_points_standings_stat_panel():
     assert ".stat-panel.points_standings" in OVERLAY_HTML
-    assert 'panel.kind === "points_standings" ? 20 : 7' in OVERLAY_HTML
+    assert 'panel.kind === "points_standings" ? 20 : panel.kind === "caution_pit" ? 12 : 7' in OVERLAY_HTML
     assert "Championship Standings" not in OVERLAY_HTML
 
 

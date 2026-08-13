@@ -4501,6 +4501,34 @@ OVERLAY_HTML = r"""<!doctype html>
       border-left-color: #ffd400;
     }
 
+    .stat-panel.caution_pit {
+      width: 540px;
+      right: 34px;
+      bottom: 66px;
+      border-left-color: #ffd400;
+      background: linear-gradient(90deg, rgba(12, 10, 5, 0.97), rgba(42, 32, 10, 0.94));
+    }
+
+    .stat-panel.caution_pit .stat-panel-row {
+      padding: 6px 12px;
+      grid-template-columns: minmax(0, 1fr) 132px;
+      gap: 8px;
+    }
+
+    .stat-panel.caution_pit .stat-panel-label {
+      font-size: 12px;
+    }
+
+    .stat-panel.caution_pit .stat-panel-value {
+      color: #ffd400;
+      font-size: 13px;
+      text-align: right;
+    }
+
+    .stat-panel.caution_pit .stat-panel-detail {
+      font-size: 10px;
+    }
+
     .stat-panel.race_end_cap {
       right: 34px;
       bottom: 74px;
@@ -5287,7 +5315,7 @@ OVERLAY_HTML = r"""<!doctype html>
       setText("stat-panel-subtitle", panel.subtitle || "");
       const rows = document.getElementById("stat-panel-rows");
       rows.innerHTML = "";
-      const maxRows = panel.kind === "points_standings" ? 20 : 7;
+      const maxRows = panel.kind === "points_standings" ? 20 : panel.kind === "caution_pit" ? 12 : 7;
       for (const row of (panel.rows || []).slice(0, maxRows)) {
         const item = document.createElement("div");
         item.className = "stat-panel-row";

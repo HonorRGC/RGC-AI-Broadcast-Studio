@@ -7,6 +7,7 @@ from app import (
     build_featured_driver_story,
     build_featured_driver_image,
     build_featured_driver_render_info,
+    build_caution_pit_summary_rows,
     featured_driver_position_info,
     update_overlay_featured_driver,
     update_overlay_focused_driver,
@@ -232,17 +233,93 @@ def item(category="race_story", target=24, message="Driver has gained positions.
     )
 
 
-def test_pit_updates_do_not_show_overlay_graphic():
+def test_individual_pit_updates_do_not_show_overlay_graphic():
     overlay = OverlaySpy()
 
     show_overlay_feature(
-        item(category="caution_pit_summary", target=None),
+        item(category="pit_strategy", target=None),
         overlay,
         source=SimpleNamespace(get_results=lambda: []),
         engine=SimpleNamespace(),
     )
 
     assert overlay.stat_panels == []
+
+
+def test_caution_pit_summary_shows_service_graphic():
+    overlay = OverlaySpy()
+    states = {
+        4: SimpleNamespace(
+            car_idx=4,
+            car_number="24",
+            driver_name="Dean Marsh",
+            last_pit_lap=30,
+            pit_entry_position=8,
+            pit_exit_position=5,
+            last_pit_position_gain=3,
+            on_pit_road=False,
+            last_pit_lane_seconds=38.0,
+            last_pit_stop_seconds=6.5,
+        ),
+        5: SimpleNamespace(
+            car_idx=5,
+            car_number="5",
+            driver_name="Damage Driver",
+            last_pit_lap=30,
+            pit_entry_position=4,
+            pit_exit_position=18,
+            last_pit_position_gain=0,
+            on_pit_road=False,
+            last_pit_lane_seconds=70.0,
+            last_pit_stop_seconds=31.0,
+        ),
+    }
+    engine = SimpleNamespace(
+        pit_strategy_detector=SimpleNamespace(driver_states=states)
+    )
+    source = SimpleNamespace(
+        get_lap=lambda: 31,
+        get_results=lambda: [
+            {"CarIdx": 4, "Position": 4},
+            {"CarIdx": 5, "Position": 17},
+        ],
+    )
+
+    show_overlay_feature(
+        item(category="caution_pit_summary", target=None, message="Pit road is busy."),
+        overlay,
+        source=source,
+        engine=engine,
+    )
+
+    panel = overlay.stat_panels[0]
+    assert panel["kind"] == "caution_pit"
+    assert panel["title"] == "Caution Pit Road"
+    assert panel["rows"][0]["value"] == "Possible damage"
+    assert panel["rows"][1]["value"] == "Track position"
+    assert "stop 31.0s" in panel["rows"][0]["detail"]
+    assert "+3 on pit road" in panel["rows"][1]["detail"]
+
+
+def test_caution_pit_summary_rows_ignore_old_stops():
+    state = SimpleNamespace(
+        car_idx=4,
+        car_number="24",
+        driver_name="Dean Marsh",
+        last_pit_lap=20,
+        on_pit_road=False,
+        last_pit_lane_seconds=38.0,
+        last_pit_stop_seconds=6.5,
+    )
+    engine = SimpleNamespace(
+        pit_strategy_detector=SimpleNamespace(driver_states={4: state})
+    )
+    source = SimpleNamespace(
+        get_lap=lambda: 31,
+        get_results=lambda: [{"CarIdx": 4, "Position": 4}],
+    )
+
+    assert build_caution_pit_summary_rows(source, engine) == []
 
 
 def test_green_pit_cycle_update_shows_recent_stop_overlay():

@@ -1638,6 +1638,23 @@ def show_overlay_feature(item, overlay_server, source=None, engine=None):
             )
         return
 
+    if category == "caution_pit_summary":
+        rows = build_caution_pit_summary_rows(source, engine)
+        if rows:
+            overlay_server.show_stat_panel(
+                kind="caution_pit",
+                title="Caution Pit Road",
+                subtitle="Likely service based on stop time",
+                rows=rows,
+                duration=18.0,
+                dedupe_key=str(
+                    getattr(item, "dedupe_key", "")
+                    or f"caution_pit:{latest_pit_lap(engine)}"
+                ),
+                minimum_interval=8.0,
+            )
+        return
+
     if category == "race_recap":
         rows = build_race_recap_rows(source, engine)
         if rows:
@@ -1681,7 +1698,7 @@ def show_overlay_feature(item, overlay_server, source=None, engine=None):
             )
         return
 
-    if category in ("pit_strategy", "caution_pit_summary"):
+    if category == "pit_strategy":
         return
 
     if should_show_movers_graphic(item, engine):
@@ -2570,6 +2587,97 @@ def build_pit_update_rows(source, engine, limit=5):
             }
         )
     return rows
+
+
+def build_caution_pit_summary_rows(source, engine, limit=12):
+    if not source or not engine:
+        return []
+    current_lap = best_current_lap(source)
+    current_positions = build_current_position_lookup(source.get_results())
+    states = list(getattr(engine.pit_strategy_detector, "driver_states", {}).values())
+    rows = []
+    for state in states:
+        last_pit_lap = safe_int(getattr(state, "last_pit_lap", 0), 0)
+        on_pit_road = bool(getattr(state, "on_pit_road", False))
+        if not on_pit_road and last_pit_lap <= 0:
+            continue
+        if (
+            not on_pit_road
+            and current_lap > 0
+            and last_pit_lap > 0
+            and current_lap - last_pit_lap > 5
+        ):
+            continue
+
+        stop_seconds = (
+            float(getattr(state, "current_pit_stop_seconds", 0.0) or 0.0)
+            if on_pit_road
+            else float(getattr(state, "last_pit_stop_seconds", 0.0) or 0.0)
+        )
+        lane_seconds = (
+            float(getattr(state, "current_pit_lane_seconds", 0.0) or 0.0)
+            if on_pit_road
+            else float(getattr(state, "last_pit_lane_seconds", 0.0) or 0.0)
+        )
+        position_detail = pit_position_summary(
+            state,
+            current_positions.get(getattr(state, "car_idx", None), 0),
+        )
+        timing_parts = []
+        if stop_seconds > 0:
+            timing_parts.append(f"stop {format_seconds(stop_seconds)}")
+        if lane_seconds > 0:
+            timing_parts.append(f"lane {format_seconds(lane_seconds)}")
+        if position_detail:
+            timing_parts.append(position_detail)
+
+        rows.append(
+            {
+                "sort_on_pit": 0 if on_pit_road else 1,
+                "sort_position": (
+                    safe_int(getattr(state, "pit_entry_position", 999), 999)
+                    or current_positions.get(getattr(state, "car_idx", None), 999)
+                    or 999
+                ),
+                "sort_lap": last_pit_lap,
+                "label": f"#{getattr(state, 'car_number', '')} {getattr(state, 'driver_name', '')}".strip(),
+                "value": caution_pit_service_label(state, on_pit_road),
+                "detail": " | ".join(timing_parts) or "Timing still developing",
+            }
+        )
+
+    rows.sort(
+        key=lambda row: (
+            row.pop("sort_on_pit", 1),
+            row.pop("sort_position", 999),
+            -row.pop("sort_lap", 0),
+            row.get("label", ""),
+        )
+    )
+    return rows[:limit]
+
+
+def caution_pit_service_label(state, on_pit_road=False):
+    if on_pit_road:
+        return "Pitting now"
+    lane_seconds = float(getattr(state, "last_pit_lane_seconds", 0.0) or 0.0)
+    stop_seconds = float(getattr(state, "last_pit_stop_seconds", 0.0) or 0.0)
+    gain = safe_int(getattr(state, "last_pit_position_gain", 0), 0)
+    if stop_seconds >= 25.0 or lane_seconds >= 65.0:
+        return "Possible damage"
+    if stop_seconds >= 12.0:
+        return "Likely 4 tires"
+    if stop_seconds >= 8.0:
+        return "Likely 2 tires"
+    if stop_seconds > 0 and gain >= 2:
+        return "Track position"
+    if 0 < stop_seconds < 4.0:
+        return "Fuel only?"
+    if stop_seconds > 0:
+        return "Short service"
+    if lane_seconds > 0:
+        return "Service unclear"
+    return "Unknown"
 
 
 def build_producer_pit_road_rows(source, engine, limit=12):
