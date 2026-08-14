@@ -3426,13 +3426,19 @@ PRODUCER_HTML = r"""<!doctype html>
     function setupVolumeSlider(sliderId, labelId, target) {
       const slider = document.getElementById(sliderId);
       if (!slider) return;
+      let pendingTimer = null;
       const send = () => {
         const volume = Math.max(0, Math.min(100, Number(slider.value || 0)));
         text(labelId, `${Math.round(volume)}%`);
         sendProducerCommand("set_audio_volume", { target, volume });
       };
+      const sendSoon = () => {
+        if (pendingTimer) clearTimeout(pendingTimer);
+        pendingTimer = setTimeout(send, 120);
+      };
       slider.addEventListener("input", () => {
         text(labelId, `${Math.round(Number(slider.value || 0))}%`);
+        sendSoon();
       });
       slider.addEventListener("change", send);
       slider.addEventListener("pointerup", send);

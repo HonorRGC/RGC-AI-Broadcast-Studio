@@ -995,6 +995,8 @@ def test_producer_assist_html_reads_overlay_state():
     assert 'id="broadcaster-volume-slider"' in PRODUCER_HTML
     assert 'id="music-volume-slider"' in PRODUCER_HTML
     assert 'sendProducerCommand("set_audio_volume"' in PRODUCER_HTML
+    assert "slider.addEventListener(\"input\"" in PRODUCER_HTML
+    assert "sendSoon();" in PRODUCER_HTML
     assert '"leaderboard_flo"' in PRODUCER_HTML
     assert "Leaderboard: Flo Top" in PRODUCER_HTML
     assert "Move Camera to Driver" in PRODUCER_HTML

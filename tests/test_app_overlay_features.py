@@ -933,6 +933,30 @@ def test_producer_command_can_switch_leaderboard_style():
     assert overlay.styles[-1] == "flo"
 
 
+def test_producer_music_volume_reaches_practice_and_qualifying_music():
+    overlay = ProducerOverlaySpy()
+    practice = SimpleNamespace(volumes=[])
+    qualifying = SimpleNamespace(volumes=[])
+    practice.set_music_volume = practice.volumes.append
+    qualifying.set_music_volume = qualifying.volumes.append
+
+    handle_producer_command(
+        "set_audio_volume",
+        {"target": "music", "volume": 32},
+        overlay,
+        source=None,
+        engine=None,
+        booth=None,
+        camera_director=None,
+        practice_presentation_director=practice,
+        anthem_director=qualifying,
+    )
+
+    assert practice.volumes == [32]
+    assert qualifying.volumes == [32]
+    assert overlay.events[-1]["message"] == "Music volume set to 32%."
+
+
 def test_manual_camera_follow_disables_auto_camera():
     overlay = ProducerOverlaySpy()
     camera = CameraSpy()
