@@ -751,6 +751,13 @@ def test_overlay_supports_points_standings_stat_panel():
     assert "Championship Standings" not in OVERLAY_HTML
 
 
+def test_overlay_hides_caution_sponsor_while_pit_summary_is_active():
+    assert "function effectiveSpecialPresentation(state)" in OVERLAY_HTML
+    assert 'panel.kind === "caution_pit"' in OVERLAY_HTML
+    assert '["race_sponsors", "sponsor_bug"].includes(presentation.kind)' in OVERLAY_HTML
+    assert "const presentation = effectiveSpecialPresentation(state);" in OVERLAY_HTML
+
+
 def test_overlay_title_branding_is_larger_and_more_polished():
     assert "max-width: 220px" in OVERLAY_HTML
     assert "max-height: 58px" in OVERLAY_HTML

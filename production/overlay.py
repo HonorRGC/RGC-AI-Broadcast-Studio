@@ -5083,8 +5083,9 @@ OVERLAY_HTML = r"""<!doctype html>
       renderLapHistory(state.lap_history || []);
       renderTickerLeaderboard(state.producer_leaderboard || state.leaderboard || [], leaderboardStyle);
       renderFloLeaderboard(state, leaderboardStyle);
-      renderSpecialPresentation(state.special_presentation);
-      renderDriverCard(shouldHideDriverCardForPresentation(state.special_presentation) ? null : state.featured_driver);
+      const presentation = effectiveSpecialPresentation(state);
+      renderSpecialPresentation(presentation);
+      renderDriverCard(shouldHideDriverCardForPresentation(presentation) ? null : state.featured_driver);
       renderStatPanel(state.stat_panel);
 
       const rows = document.getElementById("leaderboard-rows");
@@ -5234,6 +5235,19 @@ OVERLAY_HTML = r"""<!doctype html>
     }
 
     let commercialClearRequested = false;
+
+    function effectiveSpecialPresentation(state) {
+      const presentation = state.special_presentation || null;
+      const panel = state.stat_panel || {};
+      if (
+        panel.kind === "caution_pit" &&
+        presentation &&
+        ["race_sponsors", "sponsor_bug"].includes(presentation.kind)
+      ) {
+        return null;
+      }
+      return presentation;
+    }
 
     function renderSpecialPresentation(presentation) {
       const layer = document.getElementById("special-presentation");
