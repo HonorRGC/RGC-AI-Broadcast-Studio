@@ -192,7 +192,7 @@ class RaceInsightDirector:
         front, chasing, gap = best
         chasing_idx = chasing.get("CarIdx")
         front_idx = front.get("CarIdx")
-        key = ("closest_battle", chasing_idx, front_idx)
+        key = ("closest_battle", tuple(sorted(idx for idx in (chasing_idx, front_idx) if idx is not None)))
         if self.was_recently_sent(key, current_lap, 10):
             return None
 
@@ -575,15 +575,16 @@ class RaceInsightDirector:
         position_text = self.ordinal(position)
         options = [
             (
-                f"Good battle going on around {position_text}. {chasing_name} in "
+                f"There is a good fight building around {position_text}. {chasing_name} in "
                 f"the number {chasing_number} is only {gap:.1f} seconds behind "
-                f"{front_name} in the number {front_number}; let's stay with this "
-                "for a moment and see how it unfolds."
+                f"{front_name} in the number {front_number}, and this is worth "
+                "a camera for a few corners."
             ),
             (
-                f"Let's give some airtime to the fight for {position_text}. "
+                f"The battle for {position_text} has some life to it. "
                 f"{front_name} in the number {front_number} has {chasing_name} "
-                f"in the number {chasing_number} right there with them."
+                f"in the number {chasing_number} right there, close enough to "
+                "keep the pressure on."
             ),
             (
                 f"This is one of those battles that can get missed if we only "
@@ -591,9 +592,9 @@ class RaceInsightDirector:
                 f"{chasing_name} are putting on a good show."
             ),
             (
-                f"Keep an eye on {position_text}. {chasing_name} in the number "
+                f"Another spot to watch is {position_text}. {chasing_name} in the number "
                 f"{chasing_number} is close enough to {front_name} in the number "
-                f"{front_number} that one clean lap could change the order."
+                f"{front_number} that this could become a move if the run keeps building."
             ),
             (
                 f"Nice little race developing around {position_text}. "

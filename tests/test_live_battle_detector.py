@@ -33,6 +33,7 @@ def test_detects_live_side_by_side_without_declaring_pass():
     assert first == []
     assert stories[0].story_type == "live_side_by_side"
     assert "completed pass" not in stories[0].summary.lower()
+    assert "keep an eye" not in stories[0].summary.lower()
     assert any(
         phrase in stories[0].summary.lower()
         for phrase in ("not settled", "good race", "picture can carry", "deserves a look")
@@ -57,6 +58,7 @@ def test_detects_live_three_wide_before_two_wide():
 
     assert first == []
     assert stories[0].story_type == "live_three_wide"
+    assert "keep an eye" not in stories[0].summary.lower()
     assert stories[0].importance >= 9
     assert stories[0].participant_car_indices == (0, 1, 2)
 
@@ -64,10 +66,10 @@ def test_detects_live_three_wide_before_two_wide():
 def test_confident_clear_requires_three_consecutive_ticks():
     detector = LiveBattleDetector()
     payload = dict(
-        results=results(3),
-        driver_lookup=drivers(3),
-        lap_dist_pct_status=[0.5000, 0.5060, 0.5300],
-        pit_road_status=[False] * 3,
+        results=results(2),
+        driver_lookup=drivers(2),
+        lap_dist_pct_status=[0.5000, 0.5060],
+        pit_road_status=[False] * 2,
         current_lap=18,
         total_laps=50,
         green_lap_count=6,
@@ -87,6 +89,41 @@ def test_confident_clear_requires_three_consecutive_ticks():
     assert "worked past" not in clear_story.summary
     assert "pass looks complete" not in clear_story.summary
     assert "appears to have cleared" not in clear_story.summary
+
+
+def test_pressure_battle_does_not_immediately_repeat_for_same_pair_reversed():
+    detector = LiveBattleDetector()
+    first_payload = dict(
+        results=results(3),
+        driver_lookup=drivers(3),
+        lap_dist_pct_status=[0.5000, 0.5060, 0.5300],
+        pit_road_status=[False] * 3,
+        current_lap=18,
+        total_laps=50,
+        green_lap_count=6,
+    )
+
+    detector.analyze(**first_payload)
+    detector.analyze(**first_payload)
+    first_story = next(
+        story
+        for story in detector.analyze(**first_payload)
+        if story.story_type == "live_pressure_battle"
+    )
+
+    reversed_payload = dict(first_payload)
+    reversed_payload["results"] = [
+        {"CarIdx": 1, "Position": 0, "LapsComplete": 12},
+        {"CarIdx": 0, "Position": 1, "LapsComplete": 12},
+    ]
+    reversed_payload["lap_dist_pct_status"] = [0.5120, 0.5060]
+
+    detector.analyze(**reversed_payload)
+    detector.analyze(**reversed_payload)
+    repeated = detector.analyze(**reversed_payload)
+
+    assert first_story.participant_car_indices == (0, 1)
+    assert not any(story.story_type == "live_pressure_battle" for story in repeated)
 
 
 def test_detector_stays_quiet_under_caution_or_pit_road():

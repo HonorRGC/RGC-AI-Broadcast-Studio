@@ -80,5 +80,6 @@ def test_side_by_side_followup_avoids_generic_patience_warning():
 
     assert "patience gets tested" not in follow_up
     assert "mistimed move" not in follow_up
-    assert "clean exit" in follow_up
-    assert "No need to overtalk" in follow_up
+    assert "No need to overtalk" not in follow_up
+    assert "picture tells the story" not in follow_up
+    assert "every spot matters" in follow_up

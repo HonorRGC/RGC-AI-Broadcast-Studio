@@ -73,15 +73,15 @@ class BoothFollowupDirector:
 
         if story_type in {"battle", "battle_for_top_five", "battle_for_top_ten"}:
             return (
-                "This is a good one to stay with for a moment. Both drivers "
-                "are close enough that one clean corner can decide the spot."
+                "That is the kind of fight that makes the middle of a run matter. "
+                "Neither driver has to force it yet, but the pressure is starting "
+                "to build."
             )
 
         if story_type in {"side_by_side", "three_car_battle"}:
             return (
-                "No need to overtalk this one; the picture tells the story. "
-                "They are close enough that the next mistake or the next clean "
-                "exit can change the order."
+                "That is exactly why you show these battles. It may not be for "
+                "the lead, but every spot matters when the field is this tight."
             )
 
         if story_type in {"biggest_mover", "top_five_charge", "momentum"}:

@@ -102,8 +102,9 @@ class LiveBattleDetector:
                     "a tight battle for position without claiming a lane or a completed pass.",
                     f"Three cars are giving us something to watch around {self.ordinal(position)}: "
                     f"{names[0]}, {names[1]}, and {names[2]}. Call the tension, not a completed pass.",
-                    f"Let's keep an eye on {self.ordinal(position)}. {names[0]}, "
-                    f"{names[1]}, and {names[2]} are close enough to make this one of the better fights on track.",
+                    f"That pack around {self.ordinal(position)} is alive right now: "
+                    f"{names[0]}, {names[1]}, and {names[2]} are close enough "
+                    "that the camera has a real story to follow.",
                 ),
             )
             self.mark_called(key)
@@ -156,8 +157,8 @@ class LiveBattleDetector:
                 f"{self.ordinal(best_position)}. The spot is not settled yet, "
                 "so describe the pressure without declaring a completed pass.",
                 f"Good race developing for {self.ordinal(best_position)} between "
-                f"{first_label} and {second_label}. Stay with the battle and do "
-                "not claim a completed pass unless the assignment says it.",
+                f"{first_label} and {second_label}. Give the viewers the fight, "
+                "but do not claim a completed pass unless the assignment says it.",
                 f"{first_label} and {second_label} are close enough around "
                 f"{self.ordinal(best_position)} that the picture can carry some "
                 "of the call. Keep it conversational and avoid overexplaining.",
@@ -198,6 +199,12 @@ class LiveBattleDetector:
                 continue
             if not self.cooldown_ready(key, current_lap, total_laps):
                 continue
+            pair_key = (
+                "pair_battle",
+                tuple(sorted([challenger["car_idx"], leader["car_idx"]])),
+            )
+            if not self.cooldown_ready(pair_key, current_lap, total_laps):
+                continue
             challenger_label = self.driver_label(driver_lookup, challenger["car_idx"])
             leader_label = self.driver_label(driver_lookup, leader["car_idx"])
             summary = self.variant(
@@ -218,6 +225,7 @@ class LiveBattleDetector:
                 ),
             )
             self.mark_called(key)
+            self.mark_called(pair_key)
             best_story = LiveBattleStory(
                 story_type="live_pressure_battle",
                 headline=f"{challenger_label} is pressuring for {self.ordinal(position)}.",
