@@ -96,6 +96,8 @@ class BroadcastEngine:
         self.green_pit_cycle_announced = False
         self.green_pit_cycle_last_update_lap = 0
         self.green_pit_cycle_update_count = 0
+        self.green_pit_cycle_active_until_lap = 0
+        self.green_pit_cycle_last_activity_lap = 0
         self.story_variant_counts = {}
         self.crank_it_up_sent_this_green_run = False
         self.booth_conversation_active_until = 0.0
@@ -261,11 +263,13 @@ class BroadcastEngine:
                 self.field_rundown_director.cancel_active()
                 self.clear_closing_lap_features()
 
+            green_pit_cycle_active = self.is_green_pit_cycle_active(current_lap)
+
             mandatory_rundown_due = self.field_rundown_director.is_due_or_active(
                 current_lap,
                 total_laps,
                 race_state.green_lap_count,
-            ) if not closing_feature_blocked else False
+            ) if not closing_feature_blocked and not green_pit_cycle_active else False
             if mandatory_rundown_due:
                 if self.has_pending_race_control():
                     return self.broadcast_queue.next_item()
@@ -281,7 +285,7 @@ class BroadcastEngine:
                 return None
 
             queued_quarter_rundown = False
-            if not closing_feature_blocked:
+            if not closing_feature_blocked and not green_pit_cycle_active:
                 queued_quarter_rundown = self._queue_mandatory_field_rundown(
                     results,
                     driver_lookup,
@@ -340,6 +344,9 @@ class BroadcastEngine:
                 race_state.green_lap_count,
             )
             if queued_restart_launch and not self.has_pending_race_control():
+                return self.broadcast_queue.next_item()
+            if green_pit_cycle_active:
+                self.clear_green_pit_cycle_sensitive_editorials()
                 return self.broadcast_queue.next_item()
             queued_crank_it_up = self._queue_crank_it_up(
                 story_results,
@@ -1754,6 +1761,7 @@ class BroadcastEngine:
         laps_remaining = self.safe_int(getattr(race_state, "laps_remaining", 999), 999)
         if 0 < laps_remaining <= 5:
             return False
+        self.reset_green_pit_cycle_if_settled(current_lap)
         if (
             self.green_pit_cycle_update_count >= 3
             or current_lap - self.green_pit_cycle_last_update_lap < 4
@@ -1807,6 +1815,7 @@ class BroadcastEngine:
         if not self.green_pit_cycle_announced:
             if len(on_pit_road) < 2 and len(new_green_entries) < 2:
                 return False
+            self.mark_green_pit_cycle_activity(current_lap)
             message = self.rotate_story_variant(
                 "green_pit_cycle_start",
                 self.green_pit_cycle_start_messages(track_info),
@@ -1823,6 +1832,7 @@ class BroadcastEngine:
                 "green_pit_cycle_update",
                 self.green_pit_cycle_update_messages(pitted_count, track_info),
             )
+            self.mark_green_pit_cycle_activity(current_lap)
 
         self.broadcast_queue.add(
             message,
@@ -1837,6 +1847,59 @@ class BroadcastEngine:
         self.green_pit_cycle_last_update_lap = current_lap
         self.green_pit_cycle_update_count += 1
         return True
+
+    def mark_green_pit_cycle_activity(self, current_lap):
+        self.green_pit_cycle_last_activity_lap = max(
+            self.safe_int(current_lap),
+            self.green_pit_cycle_last_activity_lap,
+        )
+        self.green_pit_cycle_active_until_lap = max(
+            self.green_pit_cycle_active_until_lap,
+            self.safe_int(current_lap) + 6,
+        )
+
+    def reset_green_pit_cycle_if_settled(self, current_lap):
+        current_lap = self.safe_int(current_lap)
+        if (
+            self.green_pit_cycle_announced
+            and self.green_pit_cycle_active_until_lap > 0
+            and current_lap > self.green_pit_cycle_active_until_lap
+        ):
+            self.green_pit_cycle_announced = False
+            self.green_pit_cycle_last_update_lap = 0
+            self.green_pit_cycle_update_count = 0
+            self.green_pit_cycle_active_until_lap = 0
+            self.green_pit_cycle_last_activity_lap = 0
+
+    def is_green_pit_cycle_active(self, current_lap):
+        return self.safe_int(current_lap) <= self.safe_int(
+            self.green_pit_cycle_active_until_lap
+        )
+
+    def clear_green_pit_cycle_sensitive_editorials(self):
+        sensitive_story_types = {
+            "pass",
+            "top_five_pass",
+            "lead_change",
+            "biggest_mover",
+            "top_five_charge",
+            "momentum",
+            "fading_driver",
+            "battle_for_lead",
+            "battle_for_top_five",
+            "battle_for_top_ten",
+            "side_by_side",
+            "three_car_battle",
+            "live_side_by_side",
+            "live_three_wide",
+            "live_pass_clear",
+            "live_pressure_battle",
+            "race_leader",
+        }
+        self.editorial_producer.items = [
+            item for item in self.editorial_producer.items
+            if getattr(item, "story_type", "") not in sensitive_story_types
+        ]
 
     def looks_like_parked_race_control_car(self, car, state, pit_road_status, current_lap):
         car_idx = car.get("CarIdx") if car else None
@@ -1856,25 +1919,25 @@ class BroadcastEngine:
     def green_pit_cycle_start_messages(self, track_info):
         if is_true_pack_drafting_track(track_info):
             return [
-                f"Green flag stops are starting, and {PIT_BROADCASTER_NAME} will be watching who can save fuel, keep a drafting partner, and blend back into a pack.",
-                "Pit road is opening under green. On this kind of draft track, the stop matters, but who you leave pit road with can matter just as much.",
-                "The first wave of green flag stops is underway. Fuel saving and finding help on exit could decide who cycles out with track position.",
+                f"Green flag stops are starting, and {PIT_BROADCASTER_NAME} will be watching who can save fuel, keep a drafting partner, and blend back into a pack. Do not trust the leaderboard completely until this cycles through.",
+                "Pit road is opening under green. On this kind of draft track, the stop matters, but who you leave pit road with can matter just as much, so the order may look shuffled for a few laps.",
+                "The first wave of green flag stops is underway. Fuel saving and finding help on exit could decide who cycles out with track position once everyone has made service.",
             ]
         if is_long_straight_draft_assist_track(track_info):
             return [
-                f"Green flag stops are starting. {PIT_BROADCASTER_NAME} is watching fuel numbers, pit timing, and who gets back up to speed cleanly on the long straights.",
-                "The first wave of green flag pit stops is underway. The undercut can help, but the out-lap has to be clean for it to pay off.",
+                f"Green flag stops are starting. {PIT_BROADCASTER_NAME} is watching fuel numbers, pit timing, and who gets back up to speed cleanly on the long straights before we call who gained.",
+                "The first wave of green flag pit stops is underway. The undercut can help, but the out-lap has to be clean for it to pay off, and the leaderboard will not settle right away.",
                 "Pit road is starting to open under green, and this cycle may briefly shuffle the lead before everyone has made their stop.",
             ]
         if is_road_course(track_info):
             return [
                 f"Green flag stops are starting. {PIT_BROADCASTER_NAME} is watching the in-laps and out-laps now, because one mistake in the pit window can swing the order.",
-                "The pit cycle is beginning under green. This is where the undercut, traffic, and a clean pit exit can change the race.",
+                "The pit cycle is beginning under green. This is where the undercut, traffic, and a clean pit exit can change the race, but the true order comes after the field cycles.",
                 "The first cars are coming to pit road under green, and the running order may not make sense again until this cycle is complete.",
             ]
         return [
-            f"Green flag pit stops are starting. {PIT_BROADCASTER_NAME} will be watching who short-pits for fresh tires, who stretches the run, and how tire age splits the field.",
-            f"{PIT_BROADCASTER_NAME} is watching the pit cycle begin under green. On this type of oval, tires can change the pace quickly once the first group commits.",
+            f"Green flag pit stops are starting. {PIT_BROADCASTER_NAME} will be watching who short-pits for fresh tires, who stretches the run, and how tire age splits the field once the cycle is complete.",
+            f"{PIT_BROADCASTER_NAME} is watching the pit cycle begin under green. On this type of oval, tires can change the pace quickly once the first group commits, but we need everyone to cycle before calling the winners and losers.",
             "The first wave of green flag stops is underway. Now we watch who takes the early grip and who tries to stretch the run a few laps longer.",
         ]
 
@@ -1883,7 +1946,7 @@ class BroadcastEngine:
             return [
                 f"{PIT_BROADCASTER_NAME} has {pitted_count} cars logged with recent green flag stops. The key now is whether they blend back into help or get stranded between packs.",
                 f"{pitted_count} cars have already been through pit road in this cycle. On a draft track, the running order can look strange until the groups reform.",
-                f"Green flag pit cycle update: {pitted_count} cars have stopped recently, and some lead changes may be strategy until the last group cycles through.",
+                f"{pitted_count} cars have stopped recently under green, and some lead changes may be strategy noise until the last group cycles through.",
             ]
         if is_long_straight_draft_assist_track(track_info):
             return [
@@ -1898,7 +1961,7 @@ class BroadcastEngine:
                 f"The green flag pit cycle is still unfolding, with {pitted_count} cars already through pit road.",
             ]
         return [
-            f"Green flag pit cycle update: {pitted_count} cars have made stops in the last few laps. The early takers may have grip now, but tire age could matter later.",
+            f"{pitted_count} cars have made green flag stops in the last few laps. The early takers may have grip now, but tire age could matter later.",
             f"{PIT_BROADCASTER_NAME} has {pitted_count} cars logged with recent stops. The question now is whether fresh tires beat the longer run.",
             f"{pitted_count} cars have been through pit road in this cycle, and the field may not look settled until the last group makes its stop.",
         ]

@@ -815,6 +815,7 @@ def test_green_flag_pit_cycle_update_starts_when_multiple_cars_pit():
     assert item.category == "green_pit_cycle_update"
     assert item.speaker == "sarah"
     assert "Green flag pit stops are starting" in item.message
+    assert engine.is_green_pit_cycle_active(35) is True
 
 
 def test_green_flag_pit_cycle_update_reports_recent_stops_after_start():
@@ -838,7 +839,74 @@ def test_green_flag_pit_cycle_update_reports_recent_stops_after_start():
 
     assert queued is True
     item = engine.broadcast_queue.next_item()
-    assert "2 cars have made stops" in item.message
+    assert "2 cars have made green flag stops" in item.message
+
+
+def test_single_green_flag_pit_stop_does_not_start_full_cycle_mode():
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    engine.race_director.phase = RacePhase.GREEN
+    engine.race_intelligence.race_state.laps_remaining = 40
+
+    queued = engine._queue_green_pit_cycle_update(
+        [SimpleNamespace(event_type="PIT_STOP", under_caution=False, car_idx=0)],
+        [{"CarIdx": 0, "Position": 1}, {"CarIdx": 1, "Position": 2}],
+        {},
+        [True, False],
+        current_lap=25,
+    )
+
+    assert queued is False
+    assert engine.is_green_pit_cycle_active(25) is False
+
+
+def test_green_flag_pit_cycle_reset_allows_second_cycle():
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    engine.race_director.phase = RacePhase.GREEN
+    engine.race_intelligence.race_state.laps_remaining = 70
+    engine.green_pit_cycle_announced = True
+    engine.green_pit_cycle_update_count = 3
+    engine.green_pit_cycle_last_update_lap = 40
+    engine.green_pit_cycle_active_until_lap = 46
+
+    queued = engine._queue_green_pit_cycle_update(
+        [
+            SimpleNamespace(event_type="PIT_STOP", under_caution=False, car_idx=0),
+            SimpleNamespace(event_type="PIT_STOP", under_caution=False, car_idx=1),
+        ],
+        [{"CarIdx": 0, "Position": 1}, {"CarIdx": 1, "Position": 2}],
+        {},
+        [True, True],
+        current_lap=50,
+    )
+
+    assert queued is True
+    item = engine.broadcast_queue.next_item()
+    assert item.category == "green_pit_cycle_update"
+    assert "Green flag pit stops are starting" in item.message
+
+
+def test_green_flag_pit_cycle_clears_scoring_sensitive_editorials():
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    engine.editorial_producer.submit_story(
+        story_type="pass",
+        headline="Pass",
+        summary="A pass happened.",
+    )
+    engine.editorial_producer.submit_story(
+        story_type="live_pressure_battle",
+        headline="Battle",
+        summary="A battle happened.",
+    )
+    engine.editorial_producer.submit_story(
+        story_type="pit_strategy_context",
+        headline="Pit strategy",
+        summary="Strategy story.",
+    )
+
+    engine.clear_green_pit_cycle_sensitive_editorials()
+
+    remaining = [item.story_type for item in engine.editorial_producer.items]
+    assert remaining == ["pit_strategy_context"]
 
 
 def test_green_flag_pit_cycle_uses_draft_track_strategy_language():
