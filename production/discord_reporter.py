@@ -109,12 +109,15 @@ class DiscordRaceReporter:
             openai_director=openai_director,
         )
         top_ten = self.format_top_finishers(ordered, driver_lookup, limit=10)
+        awards = self.format_race_awards(ordered, driver_lookup)
         movers = self.format_biggest_movers(ordered, driver_lookup, limit=5)
         stats = self.format_race_stats(ordered, driver_lookup, total_laps, race_state)
 
         fields = [
             {"name": "Top 10", "value": top_ten or "Finishing order was not available.", "inline": False},
         ]
+        if awards:
+            fields.append({"name": "Race Awards", "value": awards, "inline": False})
         if movers:
             fields.append({"name": "Biggest Movers", "value": movers, "inline": False})
         if stats:
@@ -433,6 +436,31 @@ class DiscordRaceReporter:
             for mover in movers
         )
 
+    def format_race_awards(self, ordered, driver_lookup):
+        awards = []
+        fastest = self.fastest_lap(ordered, driver_lookup)
+        if fastest:
+            awards.append(
+                f"Fastest lap: {fastest['label']} - {self.format_lap_time(fastest['time'])}"
+            )
+
+        led = self.most_laps_led(ordered, driver_lookup)
+        if led:
+            awards.append(f"Most laps led: {led['label']} - {led['laps']} laps")
+
+        movers = self.biggest_movers(ordered, driver_lookup, limit=1)
+        if movers:
+            mover = movers[0]
+            awards.append(f"Biggest mover: {mover['label']} ({mover['delta']:+d})")
+
+        lead_lap = self.lead_lap_finishers(ordered)
+        if lead_lap:
+            awards.append(
+                f"Lead-lap finishers: {lead_lap['lead_lap']}/{lead_lap['starters']}"
+            )
+
+        return "\n".join(awards)
+
     def biggest_movers(self, ordered, driver_lookup, limit=5):
         movers = []
         for car in ordered:
@@ -452,6 +480,66 @@ class DiscordRaceReporter:
         movers.sort(key=lambda item: abs(item["delta"]), reverse=True)
         return movers[:limit]
 
+    def fastest_lap(self, ordered, driver_lookup):
+        best = None
+        for car in ordered:
+            lap_time = self.fastest_lap_time(car)
+            if lap_time <= 0:
+                continue
+            candidate = {
+                "time": lap_time,
+                "label": self.driver_label(car, driver_lookup),
+            }
+            if best is None or candidate["time"] < best["time"]:
+                best = candidate
+        return best
+
+    def fastest_lap_time(self, car):
+        for key in (
+            "FastestTime",
+            "BestLapTime",
+            "FastestLapTime",
+            "BestTime",
+            "fastest_lap_time",
+            "fastest_lap",
+        ):
+            value = self.safe_float(car.get(key, 0))
+            if value > 0:
+                return value
+        return 0.0
+
+    def most_laps_led(self, ordered, driver_lookup):
+        best = None
+        for car in ordered:
+            laps_led = self.safe_int(car.get("LapsLed", car.get("laps_led", 0)))
+            if laps_led <= 0:
+                continue
+            candidate = {
+                "laps": laps_led,
+                "label": self.driver_label(car, driver_lookup),
+            }
+            if best is None or candidate["laps"] > best["laps"]:
+                best = candidate
+        return best
+
+    def lead_lap_finishers(self, ordered):
+        starters = len([car for car in ordered if car.get("CarIdx") is not None])
+        if starters <= 0:
+            return {}
+        winner_laps = 0
+        if ordered:
+            winner_laps = self.safe_int(
+                ordered[0].get("LapsComplete", ordered[0].get("num_laps", 0))
+            )
+        if winner_laps <= 0:
+            return {}
+        lead_lap = 0
+        for car in ordered:
+            laps = self.safe_int(car.get("LapsComplete", car.get("num_laps", 0)))
+            if laps >= winner_laps:
+                lead_lap += 1
+        return {"lead_lap": lead_lap, "starters": starters}
+
     def format_race_stats(self, ordered, driver_lookup, total_laps, race_state):
         stats = []
         if self.safe_int(total_laps) > 0:
@@ -466,14 +554,6 @@ class DiscordRaceReporter:
         if caution_count > 0:
             stats.append(f"Cautions tracked: {caution_count}")
 
-        led = []
-        for car in ordered:
-            laps_led = self.safe_int(car.get("LapsLed", car.get("laps_led", 0)))
-            if laps_led > 0:
-                led.append((laps_led, self.driver_label(car, driver_lookup)))
-        led.sort(reverse=True)
-        if led:
-            stats.append(f"Most laps led in results: {led[0][1]} ({led[0][0]})")
         return "\n".join(stats)
 
     def driver_label(self, car, driver_lookup):
@@ -526,3 +606,20 @@ class DiscordRaceReporter:
             return int(value)
         except (TypeError, ValueError):
             return default
+
+    @staticmethod
+    def safe_float(value, default=0.0):
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return default
+
+    @staticmethod
+    def format_lap_time(seconds):
+        try:
+            value = float(seconds)
+        except (TypeError, ValueError):
+            value = 0.0
+        if value <= 0:
+            return "--"
+        return f"{value:.3f}s"

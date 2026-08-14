@@ -33,9 +33,28 @@ def test_discord_race_report_builds_payload_with_top_ten_and_movers(tmp_path, mo
         race_schedule_csv=str(schedule),
     )
     results = [
-        {"CarIdx": 1, "Position": 0, "StartingPosition": 5, "LapsLed": 10},
-        {"CarIdx": 2, "Position": 1, "StartingPosition": 1},
-        {"CarIdx": 3, "Position": 2, "StartingPosition": 10},
+        {
+            "CarIdx": 1,
+            "Position": 0,
+            "StartingPosition": 5,
+            "LapsLed": 10,
+            "FastestTime": 31.250,
+            "LapsComplete": 100,
+        },
+        {
+            "CarIdx": 2,
+            "Position": 1,
+            "StartingPosition": 1,
+            "FastestTime": 31.100,
+            "LapsComplete": 100,
+        },
+        {
+            "CarIdx": 3,
+            "Position": 2,
+            "StartingPosition": 10,
+            "FastestTime": 31.500,
+            "LapsComplete": 99,
+        },
     ]
     drivers = {
         1: {"name": "Winner Driver", "number": "34"},
@@ -55,13 +74,19 @@ def test_discord_race_report_builds_payload_with_top_ten_and_movers(tmp_path, mo
     assert "WFO Trucks - Autism Awareness 100" in embed["title"]
     assert "Winner Driver takes the win" in embed["description"]
     assert "1st - #34 Winner Driver" in embed["fields"][0]["value"]
-    assert "#88 Mover Driver: +8 spots" in embed["fields"][1]["value"]
-    assert "Scheduled distance: 100 laps" in embed["fields"][2]["value"]
-    assert "Green-flag laps" not in embed["fields"][2]["value"]
-    assert "Caution laps tracked: 12" in embed["fields"][2]["value"]
-    assert "Race results" in embed["fields"][3]["value"]
-    assert "schedule_id=356761" in embed["fields"][3]["value"]
-    assert "Championship standings" in embed["fields"][3]["value"]
+    assert embed["fields"][1]["name"] == "Race Awards"
+    assert "Fastest lap: #2 Pole Driver - 31.100s" in embed["fields"][1]["value"]
+    assert "Most laps led: #34 Winner Driver - 10 laps" in embed["fields"][1]["value"]
+    assert "Biggest mover: #88 Mover Driver (+8)" in embed["fields"][1]["value"]
+    assert "Lead-lap finishers: 2/3" in embed["fields"][1]["value"]
+    assert "#88 Mover Driver: +8 spots" in embed["fields"][2]["value"]
+    assert "Scheduled distance: 100 laps" in embed["fields"][3]["value"]
+    assert "Green-flag laps" not in embed["fields"][3]["value"]
+    assert "Caution laps tracked: 12" in embed["fields"][3]["value"]
+    assert "Most laps led in results" not in embed["fields"][3]["value"]
+    assert "Race results" in embed["fields"][4]["value"]
+    assert "schedule_id=356761" in embed["fields"][4]["value"]
+    assert "Championship standings" in embed["fields"][4]["value"]
 
 
 def test_discord_race_report_auto_uses_sim_racer_hub_schedule_csv(tmp_path, monkeypatch):
