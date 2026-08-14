@@ -142,7 +142,7 @@ class BroadcastQueue:
 
     def estimate_gap_seconds(self, category=""):
         if category.startswith("opening_field_rundown"):
-            return 0.04
+            return 0.12
         if category.startswith(
             ("quarter_field_rundown", "three_quarter_field_rundown", "long_green_field_rundown")
         ):
@@ -160,7 +160,7 @@ class BroadcastQueue:
         if getattr(item, "silent", False):
             return 0.0
         if item.category.startswith("opening_field_rundown"):
-            return 0.02
+            return 0.04
         return self.voice_tail_padding_seconds
 
     def has_pending_booth_follow_up(self, now):

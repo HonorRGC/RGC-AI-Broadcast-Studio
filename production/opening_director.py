@@ -591,10 +591,10 @@ class OpeningDirector:
     def format_lineup_entry(self, position, number, name, location=""):
         location = f" from {location}" if location else ""
         if position == 1:
-            return f"Pole: the {number} of {name}{location}."
+            return f"Pole, the {number} of {name}{location}."
         if position == 2:
-            return f"Second: the {number} of {name}{location}."
-        return f"{self.ordinal(position).capitalize()}: the {number} of {name}{location}."
+            return f"Second, the {number} of {name}{location}."
+        return f"{self.ordinal(position).capitalize()}, the {number} of {name}{location}."
 
     def driver_location(self, driver_info):
         profile = (driver_info or {}).get("league_profile") or driver_info or {}
