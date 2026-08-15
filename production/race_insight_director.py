@@ -225,7 +225,7 @@ class RaceInsightDirector:
         )
 
     def driver_context_insight(self, ordered, driver_lookup, current_lap):
-        """Use league notes/stats as human-style filler during calm green runs."""
+        """Use league profiles/stats as human-style filler during calm green runs."""
 
         candidates = []
         for car in ordered[:16]:
@@ -313,9 +313,13 @@ class RaceInsightDirector:
         if career_message:
             return {"key": "career_stats", "message": career_message}
 
-        note = str((profile or {}).get("notes", "") or "").strip()
-        if note:
-            return {"key": "driver_note", "message": note}
+        about = str(
+            (profile or {}).get("about")
+            or (profile or {}).get("notes")
+            or ""
+        ).strip()
+        if about:
+            return {"key": "driver_about", "message": about}
         return None
 
     def scoped_stats(self, stats_by_scope, scope):
@@ -365,7 +369,7 @@ class RaceInsightDirector:
         location = str((profile or {}).get("location", "") or "").strip()
         sponsor = str((profile or {}).get("sponsor", "") or "").strip()
         if style:
-            pieces.append(f"the league notes describe them as {style}")
+            pieces.append(f"the league profile describes them as {style}")
         if location:
             pieces.append(f"from {location}")
         if sponsor:

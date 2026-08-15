@@ -138,7 +138,7 @@ class PromptBuilder:
 
             league_driver_context = race_knowledge.get("league_driver_context") or []
             if league_driver_context:
-                lines.append("Verified League Driver Notes:")
+                lines.append("Verified League Driver Profiles:")
                 for context_line in league_driver_context[:3]:
                     lines.append(f"- {context_line}")
 
@@ -186,7 +186,7 @@ class PromptBuilder:
         league_driver_context = (race_knowledge or {}).get("league_driver_context") or []
         if league_driver_context:
             lines.append(
-                "League-stat priority: when verified league notes include track "
+                "League-stat priority: when verified league profiles include track "
                 "starts, track wins, best track finish, previous race finish, "
                 "points position, season wins, or career starts, prefer one "
                 "naturally fitting stat over another generic track-style comment. "
@@ -244,7 +244,7 @@ class PromptBuilder:
                 "otherwise add a quick observation and let the race breathe. "
                 "It is okay to sound like you are answering the lead call or "
                 "adding onto the previous thought when that fits the assignment. "
-                "If verified league driver notes are provided, use at most one "
+                "If verified league driver profiles are provided, use at most one "
                 "naturally fitting detail and do not force it. "
                 "Limit it to 1 or 2 sentences."
             )
@@ -256,7 +256,7 @@ class PromptBuilder:
                 "assignment is a pit or strategy item; otherwise keep it factual. "
                 "It is okay to connect your update back to what the booth just "
                 "framed, as long as the information stays specific. "
-                "If verified league driver notes are provided, use at most one "
+                "If verified league driver profiles are provided, use at most one "
                 "naturally fitting detail and do not force it. "
                 "Limit it to 1 or 2 sentences."
             )
@@ -266,7 +266,7 @@ class PromptBuilder:
             "Make it exciting but not overdone. "
             "When a story needs analysis or pit context, you may set up a "
             "short natural handoff without naming another broadcaster. "
-            "If verified league driver notes are provided, use at most one "
+            "If verified league driver profiles are provided, use at most one "
             "naturally fitting detail and do not force it. "
             "Limit it to 1 or 2 sentences."
         )

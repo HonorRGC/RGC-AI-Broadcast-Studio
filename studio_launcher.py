@@ -72,7 +72,7 @@ DRIVER_PROFILE_FIELDS = [
     "country",
     "driving_style",
     "sponsor",
-    "notes",
+    "about",
     "car_image",
 ]
 
@@ -238,8 +238,8 @@ BROADCAST_FIELD_LABELS = {
     "DISCORD_RACE_REPORT_ENABLED": "Discord Race Report",
     "DISCORD_RACE_REPORT_WEBHOOK_URL": "Race Report Webhook URL",
     "DISCORD_RACE_REPORT_USE_OPENAI": "Use OpenAI Race Recap",
-    "USE_LEAGUE_DRIVER_NOTES": "Use League Driver Notes",
-    "LEAGUE_DRIVERS_CSV": "Driver Notes CSV",
+    "USE_LEAGUE_DRIVER_NOTES": "Use League Driver Profiles",
+    "LEAGUE_DRIVERS_CSV": "Driver Profiles CSV",
     "LEAGUE_SEASON_STATS_CSV": "Season Stats CSV",
     "LEAGUE_CAREER_STATS_CSV": "Career Stats CSV",
     "STAGE_END_LAPS": "Stage End Laps",
@@ -308,8 +308,8 @@ BROADCAST_FIELD_HELP = {
     "DISCORD_RACE_REPORT_ENABLED": "Posts an automatic post-race recap to a Discord webhook after the finish order stabilizes.",
     "DISCORD_RACE_REPORT_WEBHOOK_URL": "Required when Discord Race Report is true. Create this webhook in the Discord results channel.",
     "DISCORD_RACE_REPORT_USE_OPENAI": "Uses OpenAI for a more natural race recap. If off, the Studio posts a simpler generated recap.",
-    "USE_LEAGUE_DRIVER_NOTES": "Turns on league driver notes, season stats, career stats, teams, sponsors, hometowns, and driving styles.",
-    "LEAGUE_DRIVERS_CSV": "Driver profile CSV used for manual notes and league-specific info.",
+    "USE_LEAGUE_DRIVER_NOTES": "Turns on league driver profiles, about stories, season stats, career stats, teams, sponsors, hometowns, and driving styles.",
+    "LEAGUE_DRIVERS_CSV": "Driver profile CSV used for About stories and league-specific info.",
     "LEAGUE_SEASON_STATS_CSV": "Current-season stats CSV imported from Sim Racer Hub.",
     "LEAGUE_CAREER_STATS_CSV": "Career/all-season stats CSV imported from Sim Racer Hub.",
     "STAGE_END_LAPS": "Optional comma-separated stage end laps. Example: 30,60.",
@@ -581,6 +581,8 @@ def load_driver_profile_rows(csv_path):
         reader = csv.DictReader(csv_file)
         for row in reader:
             normalized = {field: str(row.get(field, "") or "").strip() for field in DRIVER_PROFILE_FIELDS}
+            if not normalized.get("about"):
+                normalized["about"] = str(row.get("notes", "") or "").strip()
             if normalized["name"] or normalized["car_number"]:
                 rows.append(normalized)
     return rows
@@ -812,7 +814,7 @@ def build_health_status(values, root=ROOT, broadcast_running=False):
         if missing_files:
             rows.append(
                 (
-                    "League Notes",
+                    "League Profiles",
                     "Needs files",
                     f"Missing {', '.join(missing_files)} CSV file(s).",
                     "warn",
@@ -821,14 +823,14 @@ def build_health_status(values, root=ROOT, broadcast_running=False):
         else:
             rows.append(
                 (
-                    "League Notes",
+                    "League Profiles",
                     "Ready",
                     "Driver, season stats, and career stats CSV files found.",
                     "ok",
                 )
             )
     else:
-        rows.append(("League Notes", "Off", "League driver context disabled.", "off"))
+        rows.append(("League Profiles", "Off", "League driver context disabled.", "off"))
 
     if values.get("PRACTICE_MUSIC_PLAYLIST"):
         songs = [
@@ -903,7 +905,7 @@ def build_first_time_setup_checklist(
         "OpenAI",
         "ElevenLabs",
         "SIMRacingApps",
-        "League Notes",
+        "League Profiles",
         "Practice Music",
         "Discord Race Report",
         "Remote Producer Assist",
@@ -1562,7 +1564,7 @@ def run_gui():
     ).pack(anchor="w")
     label(
         header_text,
-        text="Configure your broadcast, league notes, stats, voices, and overlay.",
+        text="Configure your broadcast, league profiles, stats, voices, and overlay.",
         font=("Segoe UI", 9),
         fg=MUTED_FG,
         anchor="w",
@@ -2790,7 +2792,7 @@ def build_league_tab(
         ("Country", "country"),
         ("Driving Style", "driving_style"),
         ("Sponsor", "sponsor"),
-        ("Notes", "notes"),
+        ("About / Driver Story", "about"),
         ("Car Image", "car_image"),
     ]
 
@@ -3259,7 +3261,7 @@ def build_help_tab(
         """
         For official race testing, league files are optional. For league races, use the League / Sim Racer Hub tab.
         A clean Sim Racer Hub URL can be https://simracerhub.com, then fill in League ID, Series ID, and Season ID.
-        Preview imports first. Driver imports preserve manual notes like hometown, sponsor, team, and driving style.
+        Preview imports first. Driver imports preserve manual About stories like hometown, sponsor, team, and driving style.
         If schedule import finds no rows, add the first race schedule_id in First Race Schedule ID and import again.
         Race Schedule CSV maps track_name to schedule_id for every race in the season. The post-race Discord report uses the
         current iRacing track, Season ID, and imported schedule to add Sim Racer Hub race results and standings automatically.

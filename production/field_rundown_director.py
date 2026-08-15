@@ -447,18 +447,18 @@ class FieldRundownDirector:
         style = self.clean(profile.get("driving_style"))
         hometown = self.location_phrase(profile)
         sponsor = self.clean(profile.get("sponsor"))
-        notes = self.clean(profile.get("notes"))
+        about = self.clean(profile.get("about") or profile.get("notes"))
 
         if style and hometown:
-            return f"League notes list them as {style}, representing {hometown}."
+            return f"League profile lists them as {style}, representing {hometown}."
         if style:
-            return f"League notes describe them as {style}."
+            return f"League profile describes them as {style}."
         if hometown:
             return f"They represent {hometown}."
         if sponsor:
             return f"Their listed sponsor is {sponsor}."
-        if notes:
-            return self.trim_sentence(notes)
+        if about:
+            return self.trim_sentence(about)
         return ""
 
     def location_phrase(self, profile):

@@ -16,7 +16,7 @@ def test_action_prompt_forbids_unverified_lane_claims():
     assert "three-wide formation" in prompt["user"]
 
 
-def test_prompt_includes_verified_league_driver_notes():
+def test_prompt_includes_verified_league_driver_profiles():
     assignment = EditorialItem(
         story_type="battle",
         headline="Austin Peterson is under pressure",
@@ -36,7 +36,7 @@ def test_prompt_includes_verified_league_driver_notes():
         },
     )
 
-    assert "Verified League Driver Notes:" in prompt["user"]
+    assert "Verified League Driver Profiles:" in prompt["user"]
     assert "RGC Motorsports" in prompt["user"]
     assert "use at most one" in prompt["user"]
 
@@ -61,7 +61,7 @@ def test_prompt_includes_verified_league_stats():
         },
     )
 
-    assert "Verified League Driver Notes:" in prompt["user"]
+    assert "Verified League Driver Profiles:" in prompt["user"]
     assert "season wins: 4" in prompt["user"]
     assert "track wins: 2" in prompt["user"]
 

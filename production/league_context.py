@@ -19,7 +19,7 @@ class DriverProfile:
     country: str = ""
     driving_style: str = ""
     sponsor: str = ""
-    notes: str = ""
+    about: str = ""
     car_image: str = ""
 
     def location(self):
@@ -35,7 +35,8 @@ class DriverProfile:
             "country": self.country,
             "driving_style": self.driving_style,
             "sponsor": self.sponsor,
-            "notes": self.notes,
+            "about": self.about,
+            "notes": self.about,
             "car_image": self.car_image,
             "location": self.location(),
         }
@@ -49,8 +50,8 @@ class DriverProfile:
             details.append(f"driving style: {self.driving_style}")
         if self.sponsor:
             details.append(f"sponsor: {self.sponsor}")
-        if self.notes:
-            details.append(f"note: {self.notes}")
+        if self.about:
+            details.append(f"about: {self.about}")
 
         if not details:
             return ""
@@ -155,7 +156,7 @@ class DriverStats:
 
 class LeagueContext:
     """
-    Loads optional league-supplied driver notes.
+    Loads optional league-supplied driver profiles and About stories.
 
     This is intentionally CSV-first so a league admin can edit the file in
     Excel, Google Sheets, or a plain text editor without adding a database.
@@ -255,7 +256,7 @@ class LeagueContext:
             country=self.clean(row.get("country")),
             driving_style=self.clean(row.get("driving_style") or row.get("style")),
             sponsor=self.clean(row.get("sponsor")),
-            notes=self.clean(row.get("notes")),
+            about=self.clean(row.get("about") or row.get("notes")),
             car_image=self.clean(row.get("car_image") or row.get("car_image_url")),
         )
 

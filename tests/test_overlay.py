@@ -322,6 +322,7 @@ def test_producer_leaderboard_includes_league_stats_for_clicked_driver():
                     "country": "United States",
                     "sponsor": "RGC Motorsports",
                     "driving_style": "patient tire saver",
+                    "about": "Runs well when the race turns into a long green-flag run",
                     "location": "Richmond, Virginia, United States",
                 },
                 "league_stats": {
@@ -807,6 +808,7 @@ def test_producer_driver_detail_has_broadcaster_league_stats_panel():
     assert ".league-stat-grid" in PRODUCER_HTML
     assert "renderLeagueStatGrid(driver)" in PRODUCER_HTML
     assert "buildBroadcasterDriverNote(driver, state, lap)" in PRODUCER_HTML
+    assert "profile.about ? `About: ${profile.about}.`" in PRODUCER_HTML
     assert '["Points", season.points_position' in PRODUCER_HTML
     assert '["Career", compactRecordLine(career)]' in PRODUCER_HTML
     assert '["Track", compactTrackLine(season)' in PRODUCER_HTML

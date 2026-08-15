@@ -37,7 +37,7 @@ DRIVER_FIELDS = [
     "country",
     "driving_style",
     "sponsor",
-    "notes",
+    "about",
     "car_image",
 ]
 
@@ -395,7 +395,7 @@ def summarize_driver_roster(
                 "country": country_name(driver_info.get("flair_country_code")),
                 "driving_style": "",
                 "sponsor": "",
-                "notes": "",
+                "about": "",
                 "car_image": "",
             }
         )
@@ -819,7 +819,10 @@ def merge_driver_roster(output_path, new_rows):
         with output_path.open(newline="", encoding="utf-8-sig") as csv_file:
             reader = csv.DictReader(csv_file)
             for row in reader:
-                existing_rows.append({field: row.get(field, "") for field in DRIVER_FIELDS})
+                existing = {field: row.get(field, "") for field in DRIVER_FIELDS}
+                if not existing.get("about"):
+                    existing["about"] = row.get("notes", "")
+                existing_rows.append(existing)
 
     merged_by_name = {}
     order = []

@@ -2981,6 +2981,7 @@ PRODUCER_HTML = r"""<!doctype html>
         profile.location ? `Driver info: from ${profile.location}.` : driver.country ? `Driver info: ${driver.country}.` : "",
         profile.sponsor ? `Sponsor: ${profile.sponsor}.` : "",
         profile.driving_style ? `Style: ${profile.driving_style}.` : "",
+        profile.about ? `About: ${profile.about}.` : profile.notes ? `About: ${profile.notes}.` : "",
         season.points_position ? `Points story: ${ordinal(season.points_position)} in season points${season.points_to_next ? `, ${season.points_to_next} points to the next spot` : ""}.` : "",
         season.last_finish ? `Last race: finished ${ordinal(season.last_finish)}.` : "",
         season.track_starts ? `Track history: ${season.track_starts} starts${season.track_wins ? `, ${season.track_wins} wins` : ""}${season.best_track_finish ? `, best finish ${ordinal(season.best_track_finish)}` : ""}.` : "",

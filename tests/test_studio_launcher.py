@@ -510,7 +510,7 @@ def test_launcher_health_reports_league_files_ready(tmp_path):
     rows = build_health_status(values, root=tmp_path, broadcast_running=False)
     row_map = {name: (state, detail, level) for name, state, detail, level in rows}
 
-    assert row_map["League Notes"][0] == "Ready"
+    assert row_map["League Profiles"][0] == "Ready"
 
 
 def test_launcher_migrates_old_practice_music_volume_to_studio_volume():
@@ -904,7 +904,7 @@ def test_studio_driver_profile_rows_round_trip(tmp_path):
                 "country": "USA",
                 "driving_style": "patient",
                 "sponsor": "RGC Motorsports",
-                "notes": "Strong on long runs",
+                "about": "Strong on long runs",
                 "car_image": "cars/tj.png",
             }
         ],
@@ -921,10 +921,26 @@ def test_studio_driver_profile_rows_round_trip(tmp_path):
             "country": "USA",
             "driving_style": "patient",
             "sponsor": "RGC Motorsports",
-            "notes": "Strong on long runs",
+            "about": "Strong on long runs",
             "car_image": "cars/tj.png",
         }
     ]
+
+
+def test_studio_driver_profile_rows_migrate_legacy_notes_to_about(tmp_path):
+    from studio_launcher import load_driver_profile_rows
+
+    path = tmp_path / "drivers.csv"
+    path.write_text(
+        "name,car_number,hometown,state,country,driving_style,sponsor,notes,car_image\n"
+        "T.J. Lee,34,Richmond,VA,USA,patient,RGC Motorsports,Strong on long runs,cars/tj.png\n",
+        encoding="utf-8",
+    )
+
+    rows = load_driver_profile_rows(path)
+
+    assert rows[0]["about"] == "Strong on long runs"
+    assert "notes" not in rows[0]
 
 
 def test_studio_can_create_empty_driver_profile_csv(tmp_path):
@@ -934,6 +950,7 @@ def test_studio_can_create_empty_driver_profile_csv(tmp_path):
 
     assert path.exists()
     assert path.read_text(encoding="utf-8").splitlines()[0].endswith(",car_image")
+    assert ",about," in path.read_text(encoding="utf-8").splitlines()[0]
 
 
 def test_studio_can_create_empty_race_schedule_csv(tmp_path):

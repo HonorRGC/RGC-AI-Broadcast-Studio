@@ -7,7 +7,7 @@ def write_drivers_csv(tmp_path):
     csv_path.write_text(
         "\n".join(
             [
-                "name,car_number,hometown,state,country,driving_style,sponsor,notes,car_image",
+                "name,car_number,hometown,state,country,driving_style,sponsor,about,car_image",
                 (
                     "Austin Peterson,77,Nashville,TN,USA,aggressive on restarts,"
                     "RGC Motorsports,Usually strong when clean air matters,cars/austin.png"
@@ -54,8 +54,30 @@ def test_league_context_enriches_driver_lookup_by_name(tmp_path):
 
     assert enriched[4]["hometown"] == "Nashville"
     assert enriched[4]["sponsor"] == "RGC Motorsports"
+    assert enriched[4]["about"] == "Usually strong when clean air matters"
+    assert enriched[4]["notes"] == "Usually strong when clean air matters"
     assert enriched[4]["car_image"] == "cars/austin.png"
     assert "aggressive on restarts" in enriched[4]["league_context_summary"]
+    assert "about:" in enriched[4]["league_context_summary"]
+
+
+def test_league_context_reads_legacy_notes_as_about(tmp_path):
+    csv_path = tmp_path / "drivers.csv"
+    csv_path.write_text(
+        "\n".join(
+            [
+                "name,car_number,hometown,state,country,driving_style,sponsor,notes,car_image",
+                "T.J. Lee,34,Richmond,VA,USA,patient,RGC Motorsports,Strong on long runs,cars/tj.png",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    context = LeagueContext(csv_path, enabled=True)
+
+    enriched = context.enrich_driver_lookup({34: {"name": "T.J. Lee", "number": "34"}})
+
+    assert enriched[34]["about"] == "Strong on long runs"
+    assert enriched[34]["notes"] == "Strong on long runs"
 
 
 def test_league_context_enriches_driver_lookup_with_stats(tmp_path):

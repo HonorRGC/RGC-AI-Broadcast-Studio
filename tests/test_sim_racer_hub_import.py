@@ -334,7 +334,7 @@ def test_summarize_driver_roster_from_bulk_page():
     assert [row["name"] for row in rows] == ["Justin Gledhill", "T.J. Lee"]
     assert rows[0]["country"] == "USA"
     assert rows[0]["driving_style"] == ""
-    assert rows[0]["notes"] == ""
+    assert rows[0]["about"] == ""
     assert rows[0]["car_image"] == ""
 
 
@@ -357,7 +357,7 @@ def test_merge_driver_roster_preserves_manual_notes(tmp_path):
                 "country": "USA",
                 "driving_style": "",
                 "sponsor": "",
-                "notes": "",
+                "about": "",
                 "car_image": "",
             },
             {
@@ -368,7 +368,7 @@ def test_merge_driver_roster_preserves_manual_notes(tmp_path):
                 "country": "USA",
                 "driving_style": "",
                 "sponsor": "",
-                "notes": "",
+                "about": "",
                 "car_image": "",
             },
         ],
@@ -381,7 +381,8 @@ def test_merge_driver_roster_preserves_manual_notes(tmp_path):
     assert rows[0]["car_number"] == "51"
     assert rows[0]["driving_style"] == "tire saver"
     assert rows[0]["sponsor"] == "RGC Motorsports"
-    assert rows[0]["notes"] == "Great on long runs"
+    assert rows[0]["about"] == "Great on long runs"
+    assert "notes" not in rows[0]
     assert rows[0]["car_image"] == "cars/richard.png"
     assert rows[1]["name"] == "T.J. Lee"
     assert rows[1]["car_number"] == "34"
