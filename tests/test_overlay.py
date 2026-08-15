@@ -837,6 +837,7 @@ def test_featured_driver_card_includes_position_line():
     }
     assert "buildDriverCardPositionLine" in OVERLAY_HTML
     assert "pieces.push(driver.speed)" not in OVERLAY_HTML
+    assert "pieces.push(`Running ${ordinal(position)}`)" not in OVERLAY_HTML
     assert "buildDriverCardRankLine" in OVERLAY_HTML
     assert 'id="driver-card-position"' in OVERLAY_HTML
     assert 'id="driver-card-country"' in OVERLAY_HTML

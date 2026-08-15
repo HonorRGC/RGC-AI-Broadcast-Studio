@@ -5587,7 +5587,6 @@ OVERLAY_HTML = r"""<!doctype html>
       if (classPosition > 0) {
         pieces.push(`${driver.class_name || "Class"} ${ordinal(classPosition)}${driver.class_size ? ` of ${driver.class_size}` : ""}`);
       }
-      if (position > 0) pieces.push(`Running ${ordinal(position)}`);
       if (start > 0) pieces.push(`Started ${ordinal(start)}`);
       if (start > 0 && delta !== 0) {
         const sign = delta > 0 ? "+" : "";
