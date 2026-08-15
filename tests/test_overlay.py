@@ -707,8 +707,14 @@ def test_overlay_has_optional_ticker_leaderboard_and_compact_lap_bar():
     assert "inset 0 0 0 2px rgba(255, 212, 0, 0.74)" in OVERLAY_HTML
     assert 'id="flo-row-second"' in OVERLAY_HTML
     assert 'id="flo-row-cycle" class="flo-row flo-row-cycle"' in OVERLAY_HTML
+    assert 'id="flo-race-bar" class="flo-race-bar hidden"' in OVERLAY_HTML
+    assert "renderFloRaceBar(state.lap_history || [])" in OVERLAY_HTML
+    assert "renderFloRaceBar([])" in OVERLAY_HTML
+    assert ".flo-race-bar" in OVERLAY_HTML
+    assert "top: calc(100% + 12px)" in OVERLAY_HTML
+    assert "grid-template-columns: minmax(94px, auto) minmax(0, 1fr)" in OVERLAY_HTML
     assert "flo-row-cycle .flo-entry" in OVERLAY_HTML
-    assert 'content: "CYCLE"' in OVERLAY_HTML
+    assert 'content: "CYCLE"' not in OVERLAY_HTML
     assert "ticker-reset" in OVERLAY_HTML
     assert "Back to Leader" in OVERLAY_HTML
     assert "#d7bd55" not in OVERLAY_HTML

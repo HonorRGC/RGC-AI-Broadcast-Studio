@@ -3998,9 +3998,10 @@ OVERLAY_HTML = r"""<!doctype html>
     .flo-lap-box {
       position: absolute;
       left: 0;
-      top: 100%;
+      top: calc(100% + 12px);
+      width: 100%;
       display: grid;
-      grid-template-columns: auto 62px;
+      grid-template-columns: minmax(94px, auto) minmax(0, 1fr);
       align-items: stretch;
       height: 36px;
       border: 1px solid rgba(255, 255, 255, 0.20);
@@ -4027,12 +4028,33 @@ OVERLAY_HTML = r"""<!doctype html>
       color: #06110a;
       font-size: 22px;
       font-weight: 950;
-      min-width: 62px;
+      min-width: 0;
+      padding: 0 12px;
+      white-space: nowrap;
     }
 
     .flo-leaderboard.caution .flo-lap-value {
       background: #ffd400;
       color: #16130a;
+    }
+
+    .flo-race-bar {
+      position: absolute;
+      left: 210px;
+      right: 210px;
+      top: 100%;
+      display: flex;
+      gap: 0;
+      height: 11px;
+      background: rgba(0, 0, 0, 0.42);
+      border-top: 1px solid rgba(255, 255, 255, 0.16);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+      overflow: hidden;
+      box-shadow: 0 7px 16px rgba(0, 0, 0, 0.32);
+    }
+
+    .flo-race-bar.hidden {
+      display: none;
     }
 
     .flo-grid {
@@ -4052,20 +4074,6 @@ OVERLAY_HTML = r"""<!doctype html>
       box-shadow:
         inset 0 3px 0 rgba(255, 255, 255, 0.78),
         inset 0 -3px 0 rgba(7, 9, 13, 0.38);
-    }
-
-    .flo-row-cycle::before {
-      content: "CYCLE";
-      position: absolute;
-      left: 0;
-      bottom: -18px;
-      padding: 3px 9px;
-      background: rgba(255, 255, 255, 0.92);
-      color: #111;
-      font-size: 10px;
-      font-weight: 950;
-      letter-spacing: 0.12em;
-      border-radius: 0 0 5px 5px;
     }
 
     .flo-entry {
@@ -4992,6 +5000,7 @@ OVERLAY_HTML = r"""<!doctype html>
         <div id="flo-lap-value" class="flo-lap-value">--</div>
       </div>
     </div>
+    <div id="flo-race-bar" class="flo-race-bar hidden"></div>
     <div class="flo-grid">
       <div id="flo-row-top" class="flo-row flo-row-top"></div>
       <div id="flo-row-second" class="flo-row flo-row-second"></div>
@@ -5151,6 +5160,7 @@ OVERLAY_HTML = r"""<!doctype html>
         document.getElementById("flo-row-top").innerHTML = "";
         document.getElementById("flo-row-second").innerHTML = "";
         document.getElementById("flo-row-cycle").innerHTML = "";
+        renderFloRaceBar([]);
         return;
       }
 
@@ -5165,6 +5175,7 @@ OVERLAY_HTML = r"""<!doctype html>
       seriesImage.src = seriesLogo || "";
       setText("flo-series-text", event.series || event.sponsor || "RGC AI");
       renderFloLapBox(state);
+      renderFloRaceBar(state.lap_history || []);
 
       const topFive = leaderboard.slice(0, 5);
       const secondFive = leaderboard.slice(5, 10);
@@ -5218,6 +5229,24 @@ OVERLAY_HTML = r"""<!doctype html>
       }
       label.textContent = "Lap";
       value.textContent = lap ? String(lap) : "--";
+    }
+
+    function renderFloRaceBar(history) {
+      const bar = document.getElementById("flo-race-bar");
+      const active = !!(history && history.length);
+      bar.classList.toggle("hidden", !active);
+      bar.innerHTML = "";
+      if (!active) return;
+      const compacted = compactLapHistoryRuns(history);
+      for (const lap of compacted) {
+        const segment = document.createElement("span");
+        segment.className = `lap-history-segment ${lap.status || "pending"}`;
+        segment.style.flexGrow = String(lap.count || 1);
+        segment.title = lap.start === lap.end
+          ? `Lap ${lap.start}: ${lap.status || "pending"}`
+          : `Laps ${lap.start}-${lap.end}: ${lap.status || "pending"}`;
+        bar.appendChild(segment);
+      }
     }
 
     function numberStyleAttribute(style) {
