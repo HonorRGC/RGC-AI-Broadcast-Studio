@@ -41,7 +41,7 @@ from production.non_race_presentation import (
     QualifyingCameraDirector,
 )
 from production.live_broadcast_validator import LiveBroadcastValidator
-from production.overlay import OverlayServer
+from production.overlay import OverlayServer, OverlayStateBuilder
 from production.multiclass import build_multiclass_context
 from production.car_paint_preview import ensure_preview_file
 from production.iracing_render_cache import build_iracing_render_image_url
@@ -3391,6 +3391,7 @@ def main():
     overlay_server = OverlayServer(
         host=args.overlay_host,
         port=args.overlay_port,
+        state_builder=OverlayStateBuilder(league_context=engine.league_context),
     ) if args.overlay else None
     if overlay_server:
         booth.producer_sink = overlay_server.add_producer_event

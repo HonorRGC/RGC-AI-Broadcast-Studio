@@ -113,6 +113,13 @@ class LeaderboardEntry:
     last_pit_lane_seconds: float = 0.0
     on_pit_road: bool = False
     producer_note: str = ""
+    country: str = ""
+    league_profile: dict[str, Any] = field(default_factory=dict)
+    league_stats: dict[str, Any] = field(default_factory=dict)
+    league_stats_by_scope: list[dict[str, Any]] = field(default_factory=list)
+    league_context_summary: str = ""
+    league_stats_summary: str = ""
+    league_stats_summaries: list[str] = field(default_factory=list)
 
     def to_dict(self):
         return {
@@ -137,6 +144,13 @@ class LeaderboardEntry:
             "last_pit_lane_seconds": self.last_pit_lane_seconds,
             "on_pit_road": self.on_pit_road,
             "producer_note": self.producer_note,
+            "country": self.country,
+            "league_profile": dict(self.league_profile or {}),
+            "league_stats": dict(self.league_stats or {}),
+            "league_stats_by_scope": list(self.league_stats_by_scope or []),
+            "league_context_summary": self.league_context_summary,
+            "league_stats_summary": self.league_stats_summary,
+            "league_stats_summaries": list(self.league_stats_summaries or []),
         }
 
 
@@ -374,12 +388,14 @@ class OverlayStateBuilder:
         fixed_entries=15,
         cycle_interval_seconds=8,
         clock=None,
+        league_context=None,
     ):
         self.event_config = event_config or OverlayEventConfig()
         self.max_entries = int(max_entries)
         self.fixed_entries = int(fixed_entries)
         self.cycle_interval_seconds = max(1, int(cycle_interval_seconds))
         self.clock = clock or time.monotonic
+        self.league_context = league_context
         self.last_leaderboard = []
         self.lap_status_by_lap = {}
         self.starting_positions_by_car_idx = {}
@@ -388,6 +404,7 @@ class OverlayStateBuilder:
     def build_from_telemetry(self, telemetry):
         results = telemetry.get_results()
         driver_lookup = telemetry.get_driver_lookup()
+        driver_lookup = self.enrich_driver_lookup(driver_lookup)
         track_info = telemetry.get_track_info()
         session_type_reader = getattr(telemetry, "get_session_type", None)
         session_type = session_type_reader() if session_type_reader else "Unknown"
@@ -431,6 +448,15 @@ class OverlayStateBuilder:
             producer_leaderboard=full_leaderboard,
             lap_history=self.build_lap_history(self.safe_int(telemetry.get_total_laps())),
         )
+
+    def enrich_driver_lookup(self, driver_lookup):
+        enricher = getattr(self.league_context, "enrich_driver_lookup", None)
+        if not callable(enricher):
+            return driver_lookup
+        try:
+            return enricher(driver_lookup)
+        except Exception:
+            return driver_lookup
 
     def best_race_lap(self, results, telemetry_lap=0):
         laps = [self.safe_int(telemetry_lap)]
@@ -534,6 +560,13 @@ class OverlayStateBuilder:
                         on_pit_road=on_pit_road,
                         fastest_lap=fastest_lap,
                     ),
+                    country=str(driver.get("country") or ""),
+                    league_profile=dict(driver.get("league_profile") or {}),
+                    league_stats=dict(driver.get("league_stats") or {}),
+                    league_stats_by_scope=list(driver.get("league_stats_by_scope") or []),
+                    league_context_summary=str(driver.get("league_context_summary") or ""),
+                    league_stats_summary=str(driver.get("league_stats_summary") or ""),
+                    league_stats_summaries=list(driver.get("league_stats_summaries") or []),
                 )
             )
         return leaderboard
@@ -2040,13 +2073,44 @@ PRODUCER_HTML = r"""<!doctype html>
     }
 
     .story-box {
-      padding: 12px;
+      padding: 15px;
       border-radius: 14px;
       border: 1px solid rgba(83, 167, 255, 0.28);
       background: rgba(83, 167, 255, 0.09);
       color: #dcecff;
-      line-height: 1.35;
+      line-height: 1.42;
+      font-size: 15px;
       grid-column: 1 / -1;
+    }
+
+    .league-stat-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+      grid-column: 1 / -1;
+    }
+
+    .league-stat-card {
+      padding: 9px;
+      min-height: 54px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.09);
+      background: rgba(255, 255, 255, 0.045);
+    }
+
+    .league-stat-card .label {
+      color: var(--muted);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+    }
+
+    .league-stat-card .value {
+      margin-top: 3px;
+      color: #fff;
+      font-size: 18px;
+      font-weight: 950;
+      line-height: 1.1;
     }
 
     .button-row {
@@ -2515,6 +2579,8 @@ PRODUCER_HTML = r"""<!doctype html>
           <div class="detail-item"><div class="label">Pit Time</div><div class="value" id="detail-pit-time">--</div></div>
         </div>
 
+        <div class="league-stat-grid" id="league-stat-grid"></div>
+
         <div class="story-box" id="story-box">
           Producer note: pick a driver from the leaderboard. This panel is built to become the broadcaster control room.
         </div>
@@ -2874,18 +2940,82 @@ PRODUCER_HTML = r"""<!doctype html>
       const pitStop = formatSeconds(driver.last_pit_stop_seconds);
       const laneTime = formatSeconds(driver.last_pit_lane_seconds);
       text("detail-pit-time", pitStop !== "--" || laneTime !== "--" ? `${pitStop} / ${laneTime}` : "--");
+      renderLeagueStatGrid(driver);
 
       const lap = formatLap(state);
-      const note = [
+      const note = buildBroadcasterDriverNote(driver, state, lap);
+      text("story-box", note);
+    }
+
+    function renderLeagueStatGrid(driver) {
+      const grid = document.getElementById("league-stat-grid");
+      const profile = driver.league_profile || {};
+      const season = leagueStatsByScope(driver, "season") || driver.league_stats || {};
+      const career = leagueStatsByScope(driver, "career") || {};
+      const location = profile.location || [profile.hometown, profile.state, profile.country || driver.country].filter(Boolean).join(", ");
+      const cards = [
+        ["Points", season.points_position ? `${ordinal(season.points_position)}${season.points_to_next ? ` • ${season.points_to_next} pts to next` : ""}` : "--"],
+        ["Season", compactRecordLine(season)],
+        ["Career", compactRecordLine(career)],
+        ["Track", compactTrackLine(season) || compactTrackLine(career) || "--"],
+        ["Last Race", season.last_finish ? ordinal(season.last_finish) : career.last_finish ? ordinal(career.last_finish) : "--"],
+        ["Avg Finish", season.avg_finish || career.avg_finish || "--"],
+        ["Home", location || driver.country || "--"],
+        ["Sponsor / Style", [profile.sponsor, profile.driving_style].filter(Boolean).join(" • ") || "--"],
+      ];
+      grid.innerHTML = cards.map(([label, value]) => `
+        <div class="league-stat-card">
+          <div class="label">${escapeHtml(label)}</div>
+          <div class="value">${escapeHtml(value)}</div>
+        </div>
+      `).join("");
+    }
+
+    function buildBroadcasterDriverNote(driver, state, lap) {
+      const profile = driver.league_profile || {};
+      const season = leagueStatsByScope(driver, "season") || driver.league_stats || {};
+      const career = leagueStatsByScope(driver, "career") || {};
+      const notes = [
         driver.producer_note || `${driver.driver_name || "This driver"} is currently ${ordinal(driver.position)} in the running order.`,
         driver.starting_position ? `Started ${ordinal(driver.starting_position)}; ${formatPositionDelta(driver.position_delta)} from the start.` : "",
+        profile.location ? `Driver info: from ${profile.location}.` : driver.country ? `Driver info: ${driver.country}.` : "",
+        profile.sponsor ? `Sponsor: ${profile.sponsor}.` : "",
+        profile.driving_style ? `Style: ${profile.driving_style}.` : "",
+        season.points_position ? `Points story: ${ordinal(season.points_position)} in season points${season.points_to_next ? `, ${season.points_to_next} points to the next spot` : ""}.` : "",
+        season.last_finish ? `Last race: finished ${ordinal(season.last_finish)}.` : "",
+        season.track_starts ? `Track history: ${season.track_starts} starts${season.track_wins ? `, ${season.track_wins} wins` : ""}${season.best_track_finish ? `, best finish ${ordinal(season.best_track_finish)}` : ""}.` : "",
+        season.wins ? `Season stats: ${season.wins} wins, ${season.top_fives || 0} top fives, ${season.top_tens || 0} top tens.` : "",
+        career.starts ? `Career stats: ${career.starts} starts, ${career.wins || 0} wins, ${career.top_fives || 0} top fives, ${career.top_tens || 0} top tens.` : "",
         driver.laps_led ? `Laps led: ${driver.laps_led}.` : "",
         driver.interval ? `Interval shown: ${driver.interval}.` : "",
         driver.fastest_lap ? `Fastest lap: ${driver.fastest_lap}.` : "",
         driver.class_position ? `Class position: ${ordinal(driver.class_position)} in ${driver.class_name || "class"}.` : "",
         `Race status: ${state.caution ? "under caution" : state.green ? "green flag" : "not green yet"} on lap ${lap}.`
-      ].filter(Boolean).join(" ");
-      text("story-box", note);
+      ].filter(Boolean);
+      return notes.join(" ");
+    }
+
+    function leagueStatsByScope(driver, wantedScope) {
+      const stats = driver.league_stats_by_scope || [];
+      const wanted = String(wantedScope || "").toLowerCase();
+      return stats.find(item => String(item.stats_scope || "").toLowerCase().replace(/\s+/g, "_") === wanted) || null;
+    }
+
+    function compactRecordLine(stats) {
+      if (!stats || !Object.keys(stats).length) return "--";
+      const starts = stats.starts || "--";
+      const wins = stats.wins || "0";
+      const top5 = stats.top_fives || "0";
+      const top10 = stats.top_tens || "0";
+      return `${starts} starts • ${wins} W • ${top5} T5 • ${top10} T10`;
+    }
+
+    function compactTrackLine(stats) {
+      if (!stats || !stats.track_starts) return "";
+      const pieces = [`${stats.track_starts} starts`];
+      if (stats.track_wins) pieces.push(`${stats.track_wins} wins`);
+      if (stats.best_track_finish) pieces.push(`best ${ordinal(stats.best_track_finish)}`);
+      return pieces.join(" • ");
     }
 
     function renderFeatured(state) {

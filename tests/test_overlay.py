@@ -309,6 +309,72 @@ def test_overlay_remembers_starting_grid_for_producer_stats():
     assert entry["position_delta"] == -1
 
 
+def test_producer_leaderboard_includes_league_stats_for_clicked_driver():
+    class FakeLeagueContext:
+        def enrich_driver_lookup(self, lookup):
+            updated = dict(lookup)
+            updated[7] = {
+                **lookup[7],
+                "country": "United States",
+                "league_profile": {
+                    "hometown": "Richmond",
+                    "state": "Virginia",
+                    "country": "United States",
+                    "sponsor": "RGC Motorsports",
+                    "driving_style": "patient tire saver",
+                    "location": "Richmond, Virginia, United States",
+                },
+                "league_stats": {
+                    "stats_scope": "season",
+                    "starts": "12",
+                    "wins": "2",
+                    "top_fives": "7",
+                    "top_tens": "10",
+                    "last_finish": "3",
+                    "points_position": "4",
+                    "points_to_next": "8",
+                    "track_starts": "3",
+                    "track_wins": "1",
+                    "best_track_finish": "1",
+                },
+                "league_stats_by_scope": [
+                    {
+                        "stats_scope": "season",
+                        "starts": "12",
+                        "wins": "2",
+                        "top_fives": "7",
+                        "top_tens": "10",
+                        "last_finish": "3",
+                        "points_position": "4",
+                        "points_to_next": "8",
+                        "track_starts": "3",
+                        "track_wins": "1",
+                        "best_track_finish": "1",
+                    },
+                    {
+                        "stats_scope": "career",
+                        "starts": "90",
+                        "wins": "9",
+                        "top_fives": "35",
+                        "top_tens": "60",
+                    },
+                ],
+                "league_context_summary": "T.J. Lee: from Richmond, Virginia",
+                "league_stats_summary": "T.J. Lee stats: championship points: 4th",
+            }
+            return updated
+
+    state = OverlayStateBuilder(
+        league_context=FakeLeagueContext()
+    ).build_from_telemetry(OverlayTelemetry()).to_dict()
+    entry = next(driver for driver in state["producer_leaderboard"] if driver["car_idx"] == 7)
+
+    assert entry["country"] == "United States"
+    assert entry["league_profile"]["sponsor"] == "RGC Motorsports"
+    assert entry["league_stats"]["points_position"] == "4"
+    assert entry["league_stats_by_scope"][1]["stats_scope"] == "career"
+
+
 def test_overlay_uses_qualifying_as_late_start_fallback_for_producer_stats():
     class LateStartTelemetry(OverlayTelemetry):
         def get_lap(self):
@@ -734,6 +800,17 @@ def test_overlay_has_optional_ticker_leaderboard_and_compact_lap_bar():
     assert 'setText("ticker-label", "Leaderboard")' in OVERLAY_HTML
     assert "animation: tickerScroll 62s linear infinite" in OVERLAY_HTML
     assert "font-size: 14px;" in OVERLAY_HTML
+
+
+def test_producer_driver_detail_has_broadcaster_league_stats_panel():
+    assert 'id="league-stat-grid"' in PRODUCER_HTML
+    assert ".league-stat-grid" in PRODUCER_HTML
+    assert "renderLeagueStatGrid(driver)" in PRODUCER_HTML
+    assert "buildBroadcasterDriverNote(driver, state, lap)" in PRODUCER_HTML
+    assert '["Points", season.points_position' in PRODUCER_HTML
+    assert '["Career", compactRecordLine(career)]' in PRODUCER_HTML
+    assert '["Track", compactTrackLine(season)' in PRODUCER_HTML
+    assert "leagueStatsByScope(driver, \"career\")" in PRODUCER_HTML
     assert "min-width: 50px;" in OVERLAY_HTML
     assert "border-left: 0;" in OVERLAY_HTML
     assert "background: transparent;" in OVERLAY_HTML
