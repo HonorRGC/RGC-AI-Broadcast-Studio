@@ -65,16 +65,24 @@ class OpeningDirector:
             # read and pace-car call before the green.
             self.race_outlook_sent = True
 
-        if not self.pit_report_sent:
-            segments.append(self.build_pit_report(track_info))
-            self.pit_report_sent = True
-
         if not self.lineup_sent and self.has_valid_lineup(results):
             self.lineup_ready_ticks += 1
             if self.lineup_ready_ticks < 5:
                 return segments
             total_laps_reader = getattr(telemetry, "get_total_laps", None)
             total_laps = total_laps_reader() if total_laps_reader else 0
+            segments.append(
+                self.build_lineup_handoff(
+                    track_name=track_info.get("track_name", "the speedway"),
+                    field_size=len(
+                        [
+                            car
+                            for car in results or []
+                            if car.get("CarIdx") is not None
+                        ]
+                    ),
+                )
+            )
             segments.extend(
                 self.build_field_rundown(
                     results,
@@ -84,6 +92,10 @@ class OpeningDirector:
                 )
             )
             self.lineup_sent = True
+            if not self.pit_report_sent:
+                segments.append(self.build_pit_handoff())
+                segments.append(self.build_pit_report(track_info))
+                self.pit_report_sent = True
             if not self.hype_sent:
                 segments.append(self.build_hype())
                 self.hype_sent = True
@@ -300,25 +312,25 @@ class OpeningDirector:
         length_miles = self.track_length_miles(track_info.get("track_length"))
         if length_miles and length_miles <= 1.0:
             message = (
-                f"I'm {self.pit_name} down here on pit road. Track position is going to be precious. "
+                f"Thanks, {self.lead_name}. I'm {self.pit_name} down here on pit road. Track position is going to be precious. "
                 "If cautions bunch this field up, a clean stop can keep a driver "
                 "out of the hornet's nest."
             )
         elif self.is_drafting_track(track_info):
             message = (
-                f"I'm {self.pit_name} down on pit road, and this could become a team exercise tonight. If fuel strategy "
+                f"Thanks, {self.lead_name}. I'm {self.pit_name} down on pit road, and this could become a team exercise tonight. If fuel strategy "
                 "comes into play, getting in and out with the right group may be "
                 "just as important as the stop itself."
             )
         elif is_road_course(track_info):
             message = (
-                f"I'm {self.pit_name} down here on pit road. Road-course strategy is all about the "
+                f"Thanks, {self.lead_name}. I'm {self.pit_name} down here on pit road. Road-course strategy is all about the "
                 "window. A clean in-lap, a clean out-lap, and avoiding pit-road "
                 "speeding can make the undercut or overcut work."
             )
         else:
             message = (
-                f"I'm {self.pit_name} on pit road. It should be quiet early, but once tires start to fall off, "
+                f"Thanks, {self.lead_name}. I'm {self.pit_name} on pit road. It should be quiet early, but once tires start to fall off, "
                 "the first stop can tell us who is playing track position and who "
                 "is thinking about the long run."
             )
@@ -327,6 +339,32 @@ class OpeningDirector:
             priority=8,
             speaker="sarah",
             category="opening_pit_report",
+        )
+
+    def build_lineup_handoff(self, track_name="", field_size=0):
+        field_text = f"The {field_size}-car field is ready to roll" if field_size else "The field is ready to roll"
+        track_text = f" at {track_name}" if track_name else ""
+        return OpeningSegment(
+            (
+                f"We have set the stage{track_text}. {field_text}, so let's "
+                f"send it over to {self.color_name} for the first ten in the "
+                "starting lineup."
+            ),
+            priority=9,
+            speaker="lead",
+            category="opening_lineup_handoff",
+        )
+
+    def build_pit_handoff(self):
+        return OpeningSegment(
+            (
+                f"That is the starting grid. Before we get the green, let's check "
+                f"in with {self.pit_name} on pit road for what could shape this race."
+            ),
+            priority=8,
+            speaker="lead",
+            category="opening_pit_handoff",
+            delay_seconds=1.2,
         )
 
     def build_hype(self):
@@ -523,9 +561,9 @@ class OpeningDirector:
                 )
             if start > 0 and start % 10 == 0:
                 intro = (
-                    f"{self.lead_name} picks it up from here. "
+                    "Continuing with the next ten in the lineup, "
                     if speaker == "lead"
-                    else f"Back to {self.color_name} for the next group. "
+                    else f"Back to {self.color_name} for the next ten in the lineup. "
                 )
             closing = ""
             is_final_segment = start + self.LINEUP_GROUP_SIZE >= len(entries)
