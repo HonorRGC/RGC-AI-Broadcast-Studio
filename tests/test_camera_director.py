@@ -351,6 +351,40 @@ def test_story_shot_returns_to_leader_on_tv_mixed_after_ten_seconds():
     assert telemetry.switches == [("14", 4, 0), ("77", 5, 0)]
 
 
+def test_battle_story_holds_camera_longer_before_returning_home():
+    telemetry = CameraTelemetry()
+    times = iter([100.0, 111.0, 115.0])
+    director = CameraDirector(mode="auto", clock=lambda: next(times))
+    battle = target_item(3)
+    battle.message = "A good battle is building for fourth place."
+
+    story = director.follow(battle, telemetry)
+    held = director.update(telemetry)
+    home = director.update(telemetry)
+
+    assert story.status == "switched"
+    assert held.status == "held"
+    assert home.status == "switched"
+    assert telemetry.switches == [("14", 4, 0), ("77", 5, 0)]
+
+
+def test_battle_story_blocks_fast_switch_to_another_story():
+    telemetry = CameraTelemetry()
+    times = iter([100.0, 110.0, 112.0])
+    director = CameraDirector(mode="auto", clock=lambda: next(times))
+    battle = target_item(3)
+    battle.message = "They are in a tight battle for position."
+
+    first = director.follow(battle, telemetry)
+    too_soon = director.follow(target_item(4), telemetry)
+    later = director.follow(target_item(4), telemetry)
+
+    assert first.status == "switched"
+    assert too_soon.status == "held"
+    assert later.status == "switched"
+    assert telemetry.switches == [("14", 4, 0), ("24", 4, 0)]
+
+
 def test_green_flag_forces_camera_back_to_leader():
     telemetry = CameraTelemetry()
     times = iter([100.0, 101.0])
@@ -577,7 +611,7 @@ def test_crank_fixed_holds_static_camera_for_full_feature_when_available():
     assert first.group_name == "TV Fixed"
     assert held.status == "held"
     assert home.role == "home"
-    assert telemetry.switches == [("14", 7, 0), ("77", 5, 0)]
+    assert telemetry.switches == [("24", 7, 0), ("77", 5, 0)]
 
 
 def test_manual_camera_control_blocks_replay_return_home_until_released():

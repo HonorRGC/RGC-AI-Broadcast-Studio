@@ -47,6 +47,7 @@ class CameraDirector:
         self.current_group_number = None
         self.current_role = ""
         self.last_switch_at = None
+        self.current_minimum_hold_seconds = self.minimum_hold_seconds
         self.return_home_at = None
         self.live_edge_initialized = False
         self.last_live_sync_at = None
@@ -224,11 +225,12 @@ class CameraDirector:
             now,
             role="story",
             force=force,
+            minimum_hold_seconds=self.story_minimum_hold_seconds(item),
         )
         if decision.status in ("suggested", "switched") or (
             decision.status == "held" and car_idx == self.current_car_idx
         ):
-            self.return_home_at = now + self.return_after_seconds
+            self.return_home_at = now + self.story_return_after_seconds(item)
         return decision
 
     def begin_replay(self):
@@ -375,11 +377,22 @@ class CameraDirector:
         force=False,
         camera_number=0,
         force_switch=False,
+        minimum_hold_seconds=None,
     ):
+        hold_seconds = (
+            self.minimum_hold_seconds
+            if minimum_hold_seconds is None
+            else float(minimum_hold_seconds)
+        )
+        active_hold_seconds = float(
+            getattr(self, "current_minimum_hold_seconds", self.minimum_hold_seconds)
+            or self.minimum_hold_seconds
+        )
+        hold_seconds = max(hold_seconds, active_hold_seconds)
         if (
             not force
             and self.last_switch_at is not None
-            and now - self.last_switch_at < self.minimum_hold_seconds
+            and now - self.last_switch_at < hold_seconds
             and car_idx != self.current_car_idx
         ):
             return CameraDecision(
@@ -423,6 +436,11 @@ class CameraDirector:
 
         if car_idx == self.current_car_idx and group_number == self.current_group_number:
             self.current_role = role
+            self.current_minimum_hold_seconds = (
+                self.minimum_hold_seconds
+                if minimum_hold_seconds is None
+                else float(minimum_hold_seconds)
+            )
             return CameraDecision(
                 "held",
                 "The requested shot is already active.",
@@ -453,6 +471,11 @@ class CameraDirector:
         self.current_car_idx = car_idx
         self.current_group_number = group_number
         self.current_role = role
+        self.current_minimum_hold_seconds = (
+            self.minimum_hold_seconds
+            if minimum_hold_seconds is None
+            else float(minimum_hold_seconds)
+        )
         self.last_switch_at = now
         return CameraDecision(
             status,
@@ -505,8 +528,11 @@ class CameraDirector:
         if self.find_crank_static_group(groups):
             # A true static/fixed camera needs time to breathe. Holding one
             # position lets more of the pack roar past for the Crank It Up
-            # moment instead of cutting away just as the field arrives.
-            return sequence[:1]
+            # moment instead of cutting away just as the field arrives. Key
+            # the shot from the middle of the front group so the fixed camera
+            # usually lands closer to traffic arriving.
+            target_index = min(len(sequence) - 1, max(0, len(sequence) // 2))
+            return (sequence[target_index],)
 
         onboard_groups = self.available_crank_onboard_groups(groups)
         if not onboard_groups:
@@ -573,6 +599,35 @@ class CameraDirector:
         words = len(str(getattr(item, "message", "")).split())
         speech_seconds = max(5.0, min(45.0, words / 2.45))
         return max(3.0, speech_seconds / max(len(sequence), 1))
+
+    def story_minimum_hold_seconds(self, item):
+        if self.is_battle_story(item):
+            return max(self.minimum_hold_seconds, 11.5)
+        return self.minimum_hold_seconds
+
+    def story_return_after_seconds(self, item):
+        if self.is_battle_story(item):
+            return max(self.return_after_seconds, 14.0)
+        return self.return_after_seconds
+
+    def is_battle_story(self, item):
+        category = str(getattr(item, "category", "") or "").casefold()
+        story_type = str(getattr(item, "story_type", "") or "").casefold()
+        dedupe_key = str(getattr(item, "dedupe_key", "") or "").casefold()
+        message = str(getattr(item, "message", "") or "").casefold()
+        haystack = " ".join((category, story_type, dedupe_key, message))
+        battle_terms = (
+            "battle",
+            "side by side",
+            "three wide",
+            "pressure",
+            "fight for",
+            "race for",
+            "closing in",
+            "right on",
+            "bumper",
+        )
+        return any(term in haystack for term in battle_terms)
 
     def resolve_camera_group(self, groups, group_name=None):
         wanted = str(group_name or self.preferred_group).casefold()
