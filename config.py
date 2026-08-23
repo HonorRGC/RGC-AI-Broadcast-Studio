@@ -79,6 +79,9 @@ LEAGUE_DRIVERS_CSV = os.getenv("LEAGUE_DRIVERS_CSV", "league/drivers.csv")
 LEAGUE_SEASON_STATS_CSV = os.getenv("LEAGUE_SEASON_STATS_CSV", "league/season.csv")
 LEAGUE_CAREER_STATS_CSV = os.getenv("LEAGUE_CAREER_STATS_CSV", "league/career.csv")
 STAGE_END_LAPS = env_int_list("STAGE_END_LAPS", "")
+LEAGUE_FUEL_PERCENT = os.getenv("LEAGUE_FUEL_PERCENT", "").strip()
+LEAGUE_ENGINE_POWER_PERCENT = os.getenv("LEAGUE_ENGINE_POWER_PERCENT", "").strip()
+LEAGUE_TIRE_SETS = os.getenv("LEAGUE_TIRE_SETS", "").strip()
 RACE_ADMIN_MODE = os.getenv("RACE_ADMIN_MODE", "false").lower() == "true"
 RACE_ADMIN_SEND_MODE = os.getenv("RACE_ADMIN_SEND_MODE", "clipboard").strip().lower()
 

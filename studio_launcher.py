@@ -140,6 +140,9 @@ LAUNCHER_FIELDS = [
     ("LEAGUE_SEASON_STATS_CSV", "league/season.csv"),
     ("LEAGUE_CAREER_STATS_CSV", "league/career.csv"),
     ("STAGE_END_LAPS", ""),
+    ("LEAGUE_FUEL_PERCENT", ""),
+    ("LEAGUE_ENGINE_POWER_PERCENT", ""),
+    ("LEAGUE_TIRE_SETS", ""),
 ]
 
 SIM_RACER_HUB_FIELDS = [
@@ -243,6 +246,9 @@ BROADCAST_FIELD_LABELS = {
     "LEAGUE_SEASON_STATS_CSV": "Season Stats CSV",
     "LEAGUE_CAREER_STATS_CSV": "Career Stats CSV",
     "STAGE_END_LAPS": "Stage End Laps",
+    "LEAGUE_FUEL_PERCENT": "Fuel Percent",
+    "LEAGUE_ENGINE_POWER_PERCENT": "Engine Power Percent",
+    "LEAGUE_TIRE_SETS": "Tire Sets",
 }
 
 BROADCAST_FIELD_SECTIONS = {
@@ -254,6 +260,7 @@ BROADCAST_FIELD_SECTIONS = {
     "RACE_ADMIN_MODE": "Race Control",
     "DISCORD_RACE_REPORT_ENABLED": "Discord Race Report",
     "USE_LEAGUE_DRIVER_NOTES": "League Data",
+    "LEAGUE_FUEL_PERCENT": "League Race Package",
 }
 
 BROADCAST_FIELD_HELP = {
@@ -313,6 +320,9 @@ BROADCAST_FIELD_HELP = {
     "LEAGUE_SEASON_STATS_CSV": "Current-season stats CSV imported from Sim Racer Hub.",
     "LEAGUE_CAREER_STATS_CSV": "Career/all-season stats CSV imported from Sim Racer Hub.",
     "STAGE_END_LAPS": "Optional comma-separated stage end laps. Example: 30,60.",
+    "LEAGUE_FUEL_PERCENT": "Optional league race setting. Example: 65 means Mike can mention fuel is set at 65 percent during the opening.",
+    "LEAGUE_ENGINE_POWER_PERCENT": "Optional league race setting. Example: 90 means Mike can mention engine power is set at 90 percent.",
+    "LEAGUE_TIRE_SETS": "Optional league race tire limit. Example: 3 means Mike can mention three tire sets are available.",
 }
 
 IMPORTANT_SETUP_FIELDS = {
@@ -361,6 +371,9 @@ INLINE_HELP_FIELDS = {
     "DISCORD_RACE_REPORT_WEBHOOK_URL",
     "USE_LEAGUE_DRIVER_NOTES",
     "STAGE_END_LAPS",
+    "LEAGUE_FUEL_PERCENT",
+    "LEAGUE_ENGINE_POWER_PERCENT",
+    "LEAGUE_TIRE_SETS",
 }
 
 BOOLEAN_SETTING_KEYS = {

@@ -7,6 +7,9 @@ from production.track_style import (
 )
 from config import (
     COLOR_BROADCASTER_NAME,
+    LEAGUE_ENGINE_POWER_PERCENT,
+    LEAGUE_FUEL_PERCENT,
+    LEAGUE_TIRE_SETS,
     LEAD_BROADCASTER_NAME,
     PIT_BROADCASTER_NAME,
 )
@@ -32,10 +35,16 @@ class OpeningDirector:
         lead_name=LEAD_BROADCASTER_NAME,
         color_name=COLOR_BROADCASTER_NAME,
         pit_name=PIT_BROADCASTER_NAME,
+        fuel_percent=LEAGUE_FUEL_PERCENT,
+        engine_power_percent=LEAGUE_ENGINE_POWER_PERCENT,
+        tire_sets=LEAGUE_TIRE_SETS,
     ):
         self.lead_name = self.clean_broadcaster_name(lead_name, "Mike")
         self.color_name = self.clean_broadcaster_name(color_name, "Jeff")
         self.pit_name = self.clean_broadcaster_name(pit_name, "Sarah")
+        self.fuel_percent = str(fuel_percent or "").strip()
+        self.engine_power_percent = str(engine_power_percent or "").strip()
+        self.tire_sets = str(tire_sets or "").strip()
         self.welcome_sent = False
         self.track_info_sent = False
         self.race_outlook_sent = False
@@ -131,6 +140,9 @@ class OpeningDirector:
         track_description = self.track_description(track_info)
         if track_description:
             details.append(track_description)
+        race_package = self.race_package_note()
+        if race_package:
+            details.append(race_package)
         conditions = self.build_weather_summary(track_info)
         if conditions:
             details.append(conditions)
@@ -235,6 +247,64 @@ class OpeningDirector:
         if track_length:
             return f"{track_name} measures {track_length}."
         return ""
+
+    def race_package_note(self):
+        parts = []
+        fuel = self.percent_phrase(self.fuel_percent)
+        power = self.percent_phrase(self.engine_power_percent)
+        tire_sets = self.tire_sets_phrase(self.tire_sets)
+
+        if fuel:
+            parts.append(f"fuel set at {fuel}")
+        if power:
+            parts.append(f"engine power set at {power}")
+        if tire_sets:
+            parts.append(tire_sets)
+
+        if not parts:
+            return ""
+        return f"Tonight's league race package has {self.join_list(parts)}."
+
+    @staticmethod
+    def percent_phrase(value):
+        text = str(value or "").strip()
+        if not text:
+            return ""
+        cleaned = text.rstrip("%").strip()
+        try:
+            number = float(cleaned)
+        except (TypeError, ValueError):
+            return text
+        if number <= 0:
+            return ""
+        if number.is_integer():
+            return f"{int(number)} percent"
+        return f"{number:g} percent"
+
+    @staticmethod
+    def tire_sets_phrase(value):
+        text = str(value or "").strip()
+        if not text:
+            return ""
+        try:
+            number = int(float(text))
+        except (TypeError, ValueError):
+            return f"the tire rule listed as {text}"
+        if number <= 0:
+            return ""
+        unit = "set" if number == 1 else "sets"
+        return f"{number} tire {unit} available"
+
+    @staticmethod
+    def join_list(parts):
+        parts = [str(part).strip() for part in parts or [] if str(part).strip()]
+        if not parts:
+            return ""
+        if len(parts) == 1:
+            return parts[0]
+        if len(parts) == 2:
+            return f"{parts[0]} and {parts[1]}"
+        return f"{', '.join(parts[:-1])}, and {parts[-1]}"
 
     def build_track_info(self, track_info):
         track_name = track_info.get("track_name", "the speedway")

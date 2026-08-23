@@ -648,6 +648,63 @@ def test_engine_allows_long_green_field_rundown_at_thirteen_to_go():
     assert item.protected is True
 
 
+def test_green_pit_cycle_can_start_with_one_green_flag_pitter():
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    engine.session_tracker.update("Race")
+    engine.race_director.race_started = True
+    engine.race_director.phase = RacePhase.GREEN
+    results = [
+        {"CarIdx": index, "Position": index + 1, "LapsComplete": 25}
+        for index in range(8)
+    ]
+    drivers = {
+        index: {"name": f"Driver {index + 1}", "number": str(index + 1)}
+        for index in range(8)
+    }
+    pit_road_status = [False] * 8
+    pit_road_status[4] = True
+
+    queued = engine._queue_green_pit_cycle_update(
+        events=[],
+        results=results,
+        driver_lookup=drivers,
+        pit_road_status=pit_road_status,
+        current_lap=25,
+        track_info={"track_name": "Michigan International Speedway"},
+    )
+
+    assert queued is True
+    assert engine.broadcast_queue.items[0].category == "green_pit_cycle_update"
+    assert "Green flag" in engine.broadcast_queue.items[0].message
+
+
+def test_green_pit_cycle_lockout_can_air_ready_pit_strategy_story():
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    pit_event = SimpleNamespace(
+        event_type="PIT_STOP",
+        driver_name="Sarah Pitter",
+        car_number="44",
+        car_idx=4,
+        message="Sarah Pitter has committed to pit road under green.",
+        importance=9,
+    )
+    item = engine.editorial_producer.submit_pit_event(pit_event)
+    story = engine.editorial_producer.timeline.stories[
+        engine.editorial_producer.build_story_id(item)
+    ]
+    story.created_time -= 10
+
+    queued = engine._queue_ready_pit_strategy_story(
+        race_state=SimpleNamespace(laps_remaining=40),
+        race_knowledge={},
+        driver_lookup={4: {"name": "Sarah Pitter", "number": "44"}},
+    )
+
+    assert queued is True
+    assert engine.broadcast_queue.items[0].category == "pit_strategy"
+    assert "Sarah Pitter has committed to pit road under green" in engine.broadcast_queue.items[0].message
+
+
 def test_engine_queues_silent_crank_it_up_after_ten_green_laps():
     results = [
         {"CarIdx": index, "Position": index + 1, "LapsComplete": 10}
@@ -842,7 +899,7 @@ def test_green_flag_pit_cycle_update_reports_recent_stops_after_start():
     assert "2 cars have made green flag stops" in item.message
 
 
-def test_single_green_flag_pit_stop_does_not_start_full_cycle_mode():
+def test_single_green_flag_pit_stop_can_start_cycle_awareness():
     engine = BroadcastEngine(openai_director=SilentOpenAI())
     engine.race_director.phase = RacePhase.GREEN
     engine.race_intelligence.race_state.laps_remaining = 40
@@ -855,8 +912,8 @@ def test_single_green_flag_pit_stop_does_not_start_full_cycle_mode():
         current_lap=25,
     )
 
-    assert queued is False
-    assert engine.is_green_pit_cycle_active(25) is False
+    assert queued is True
+    assert engine.is_green_pit_cycle_active(25) is True
 
 
 def test_green_flag_pit_cycle_reset_allows_second_cycle():
@@ -932,7 +989,31 @@ def test_green_flag_pit_cycle_uses_draft_track_strategy_language():
     assert "draft" in item.message.lower()
 
 
-def test_green_flag_pit_cycle_ignores_parked_race_control_car():
+def test_green_flag_pit_cycle_ignores_parked_race_control_car_by_itself():
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    engine.race_director.phase = RacePhase.GREEN
+    engine.race_intelligence.race_state.laps_remaining = 40
+    engine.pit_strategy_detector.driver_states = {
+        0: SimpleNamespace(car_idx=0, started_from_pit_road=True, last_pit_exit_lap=0),
+    }
+
+    queued = engine._queue_green_pit_cycle_update(
+        [
+            SimpleNamespace(event_type="PIT_STOP", under_caution=False, car_idx=0),
+        ],
+        [
+            {"CarIdx": 0, "Position": 1, "LapsComplete": 0},
+        ],
+        {},
+        [True],
+        current_lap=12,
+        track_info={"track_name": "Charlotte Motor Speedway"},
+    )
+
+    assert queued is False
+
+
+def test_green_flag_pit_cycle_can_continue_when_real_car_pits_near_parked_admin():
     engine = BroadcastEngine(openai_director=SilentOpenAI())
     engine.race_director.phase = RacePhase.GREEN
     engine.race_intelligence.race_state.laps_remaining = 40
@@ -956,7 +1037,7 @@ def test_green_flag_pit_cycle_ignores_parked_race_control_car():
         track_info={"track_name": "Charlotte Motor Speedway"},
     )
 
-    assert queued is False
+    assert queued is True
 
 
 def test_due_field_rundown_blocks_normal_stories_until_booth_is_clear():

@@ -82,4 +82,21 @@ def test_side_by_side_followup_avoids_generic_patience_warning():
     assert "mistimed move" not in follow_up
     assert "No need to overtalk" not in follow_up
     assert "picture tells the story" not in follow_up
-    assert "every spot matters" in follow_up
+    assert any(
+        phrase in follow_up
+        for phrase in ("worth staying with", "traffic", "pressure building")
+    )
+
+
+def test_side_by_side_followups_rotate_to_avoid_canned_repeats():
+    director = BoothFollowupDirector()
+    lines = [
+        director.build_line(
+            "side_by_side",
+            race_state=SimpleNamespace(laps_remaining=35),
+        )
+        for _ in range(3)
+    ]
+
+    assert len(set(lines)) == 3
+    assert all("That is exactly why you show these battles" not in line for line in lines)

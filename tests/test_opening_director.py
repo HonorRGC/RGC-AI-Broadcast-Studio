@@ -233,6 +233,32 @@ def test_opening_expands_state_abbreviations_in_track_location():
     assert "Lincoln, AL" not in segment.message
 
 
+def test_opening_can_include_league_race_package_settings():
+    director = OpeningDirector(
+        fuel_percent="65",
+        engine_power_percent="90%",
+        tire_sets="3",
+    )
+
+    segment = director.build_welcome(
+        {
+            "track_name": "Michigan International Speedway",
+            "track_city": "Brooklyn",
+            "track_state": "MI",
+            "track_length": "2.0 mi",
+            "track_type": "oval",
+            "skies": "clear",
+            "air_temp": 27.0,
+            "track_temp": 33.0,
+            "rain_chance": 0,
+        }
+    )
+
+    assert "fuel set at 65 percent" in segment.message
+    assert "engine power set at 90 percent" in segment.message
+    assert "3 tire sets available" in segment.message
+
+
 def test_track_info_explains_cool_night_race_grip():
     director = OpeningDirector()
     segment = director.build_track_info(

@@ -104,6 +104,15 @@ class PitStrategyDetector:
             if on_pit_road and not state.on_pit_road:
                 self.start_pit_timer(state, session_time, current_position, lap_pct)
                 state.last_pit_lap = current_lap
+                if not under_caution:
+                    event = self.build_pit_entry_event(
+                        state=state,
+                        current_lap=current_lap,
+                        under_caution=under_caution,
+                    )
+                    if event and self.can_report(state):
+                        events.append(event)
+                        state.last_reported_at = time.time()
             elif on_pit_road:
                 self.update_pit_timer(state, session_time, lap_pct)
             elif state.on_pit_road and not on_pit_road:

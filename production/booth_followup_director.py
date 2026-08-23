@@ -24,6 +24,7 @@ class BoothFollowupDirector:
     def __init__(self):
         self.last_follow_up_by_key = {}
         self.minimum_repeat_seconds = 120
+        self._phrase_counts = {}
 
     def follow_up_for(self, item, race_state=None):
         if not item:
@@ -72,16 +73,46 @@ class BoothFollowupDirector:
             )
 
         if story_type in {"battle", "battle_for_top_five", "battle_for_top_ten"}:
-            return (
-                "That is the kind of fight that makes the middle of a run matter. "
-                "Neither driver has to force it yet, but the pressure is starting "
-                "to build."
+            return self.rotate_phrase(
+                "battle",
+                [
+                    (
+                        "That is a good fight to stay with for a moment. It may "
+                        "not decide the race right now, but it can shape the next "
+                        "restart, the next stop, or the next lane choice."
+                    ),
+                    (
+                        "This is where a driver can make somebody uncomfortable "
+                        "without forcing the issue. The longer that pressure stays "
+                        "there, the harder it is to hit every mark."
+                    ),
+                    (
+                        "Those are the battles that tell you who has balance and "
+                        "who is starting to chase the car. Sometimes the pass is "
+                        "only half the story."
+                    ),
+                ],
             )
 
         if story_type in {"side_by_side", "three_car_battle"}:
-            return (
-                "That is exactly why you show these battles. It may not be for "
-                "the lead, but every spot matters when the field is this tight."
+            return self.rotate_phrase(
+                "tight_battle",
+                [
+                    (
+                        "That is worth staying with, because one small bobble "
+                        "can turn a tight fight into a position change in a hurry."
+                    ),
+                    (
+                        "This is the kind of traffic that can pull a driver out "
+                        "of rhythm. Even if the spot does not change right away, "
+                        "it changes how they have to run the next lap."
+                    ),
+                    (
+                        "You can feel the pressure building there. Nobody wants "
+                        "to give up the lane, but nobody wants to be the one who "
+                        "uses up too much car either."
+                    ),
+                ],
             )
 
         if story_type in {"biggest_mover", "top_five_charge", "momentum"}:
@@ -92,6 +123,13 @@ class BoothFollowupDirector:
             )
 
         return None
+
+    def rotate_phrase(self, key, phrases):
+        if not phrases:
+            return ""
+        index = self._phrase_counts.get(key, 0)
+        self._phrase_counts[key] = index + 1
+        return phrases[index % len(phrases)]
 
     @staticmethod
     def story_key(item):

@@ -347,6 +347,11 @@ class BroadcastEngine:
                 return self.broadcast_queue.next_item()
             if green_pit_cycle_active:
                 self.clear_green_pit_cycle_sensitive_editorials()
+                self._queue_ready_pit_strategy_story(
+                    race_state,
+                    race_knowledge,
+                    driver_lookup,
+                )
                 return self.broadcast_queue.next_item()
             queued_crank_it_up = self._queue_crank_it_up(
                 story_results,
@@ -1813,7 +1818,7 @@ class BroadcastEngine:
         ]
 
         if not self.green_pit_cycle_announced:
-            if len(on_pit_road) < 2 and len(new_green_entries) < 2:
+            if len(on_pit_road) < 1 and len(new_green_entries) < 1:
                 return False
             self.mark_green_pit_cycle_activity(current_lap)
             message = self.rotate_story_variant(
@@ -1846,6 +1851,52 @@ class BroadcastEngine:
         self.green_pit_cycle_announced = True
         self.green_pit_cycle_last_update_lap = current_lap
         self.green_pit_cycle_update_count += 1
+        return True
+
+    def _queue_ready_pit_strategy_story(self, race_state, race_knowledge, driver_lookup):
+        if self.broadcast_queue.items:
+            return False
+
+        timeline = getattr(self.editorial_producer, "timeline", None)
+        if not timeline:
+            return False
+        timeline.update()
+
+        candidates = []
+        for story in getattr(timeline, "stories", {}).values():
+            status = getattr(getattr(story, "status", None), "value", "")
+            if status not in {"READY", "FOLLOW_UP"}:
+                continue
+            item = self.editorial_producer.find_item_for_timeline_story(story)
+            if not item or getattr(item, "category", "") != "pit_strategy":
+                continue
+            if not self.editorial_producer.can_air(item):
+                continue
+            candidates.append((story, item))
+
+        if not candidates:
+            return False
+
+        candidates.sort(key=lambda pair: (-pair[1].priority, pair[0].created_time))
+        story, item = candidates[0]
+        story.status = getattr(story.status.__class__, "AIRED", story.status)
+        story.last_aired = time.time()
+        story.air_count += 1
+        item.aired_count += 1
+        item.last_aired_at = time.time()
+        if item.headline:
+            self.editorial_producer.recent_headlines[item.headline] = time.time()
+        if item.driver_name:
+            self.editorial_producer.recent_driver_mentions[
+                item.driver_name.casefold()
+            ] = time.time()
+
+        self._queue_editorial_item(
+            item,
+            race_state=race_state,
+            race_knowledge=race_knowledge,
+            driver_lookup=driver_lookup,
+        )
         return True
 
     def mark_green_pit_cycle_activity(self, current_lap):
@@ -3120,7 +3171,16 @@ class BroadcastEngine:
         if decision.decision_type != EditorialDecisionType.AIR_NOW or not decision.item:
             return
 
-        item = decision.item
+        self._queue_editorial_item(
+            decision.item,
+            race_state=race_state,
+            race_knowledge=race_knowledge,
+            driver_lookup=driver_lookup,
+        )
+
+    def _queue_editorial_item(self, item, race_state, race_knowledge, driver_lookup):
+        if not item:
+            return False
         self.broadcast_story_producer.frame(
             item,
             race_state=race_state,
@@ -3153,6 +3213,7 @@ class BroadcastEngine:
             participant_car_indices=item.participant_car_indices,
         )
         self._queue_booth_follow_up(item, race_state)
+        return True
 
     @staticmethod
     def editorial_queue_expiry_seconds(item):

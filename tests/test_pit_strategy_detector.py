@@ -63,7 +63,9 @@ def test_green_flag_pit_stop_waits_until_stop_is_complete():
         under_caution=False,
     )
 
-    assert entry_events == []
+    assert len(entry_events) == 1
+    assert entry_events[0].event_type == "PIT_STOP"
+    assert "pit road under green" in entry_events[0].message.lower()
 
     events = detector.analyze(
         results=results,
