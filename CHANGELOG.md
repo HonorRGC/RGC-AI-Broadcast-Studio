@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+## Version 1.0.1 - Early Access Build Refresh
+
+### Added
+- Flo-style leaderboard track label and improved green/yellow race-state presentation
+- Road-course and multiclass readiness hooks for v1.0 testing
+- More league context in race storytelling, including standings and track-history prompts when imported data is available
+
+### Changed
+- Tightened green-flag pit-cycle detection so one early retirement or isolated stop does not put the broadcast into pit-cycle mode
+- Improved live battle wording so uncertain side-by-side or three-wide moments are described more carefully
+- Reduced repetitive draft-track and long-green-run phrasing
+- Refreshed overlay sponsor placement, driver-card details, and Producer Assist polish for early access testers
+
+### Fixed
+- Corrected several position-normalization issues that could affect driver cards, biggest movers, and mid-race rundown overlays
+- Avoided stale pass prompts leaking internal guidance into spoken commentary
+- Rebuilt the Windows installer as a v1.0.1 early-access refresh
+
 ## Version 1.0.0 - First Public Release Candidate
 
 ### Added

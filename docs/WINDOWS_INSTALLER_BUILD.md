@@ -9,7 +9,7 @@ The installer path is separate from broadcast development. Building the installe
 The goal is a normal Windows setup file:
 
 ```text
-RGC-AI-Broadcast-Studio-Setup-1.0.0.exe
+RGC-AI-Broadcast-Studio-Setup-1.0.1.exe
 ```
 
 The setup file installs the studio into the user profile:
@@ -60,7 +60,7 @@ The script does two things:
 2. If Inno Setup is installed, builds:
 
    ```text
-   dist\RGC-AI-Broadcast-Studio-Setup-1.0.0.exe
+   dist\RGC-AI-Broadcast-Studio-Setup-1.0.1.exe
    ```
 
 If Inno Setup is not installed, the script still prepares the clean installer source and tells you what to install next.
