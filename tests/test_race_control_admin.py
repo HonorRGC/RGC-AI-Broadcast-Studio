@@ -18,9 +18,24 @@ class SourceSpy:
 class OverlaySpy:
     def __init__(self):
         self.events = []
+        self.special = None
 
     def add_producer_event(self, **kwargs):
         self.events.append(kwargs)
+
+    def show_special_presentation(self, **kwargs):
+        self.special = kwargs
+
+    def clear_special_presentation(self):
+        self.special = None
+
+    def current_state_dict(self):
+        return {
+            "event": {
+                "sponsor_graphics": ["/assets/rgc.png"],
+                "graphics": ["/assets/fallback.png"],
+            }
+        }
 
 
 def test_race_control_builder_formats_global_commands():
@@ -203,3 +218,35 @@ def test_producer_can_toggle_race_admin_mode():
 
     assert service.enabled is True
     assert "enabled" in overlay.events[0]["message"]
+
+
+def test_producer_can_show_and_clear_caution_review_slate():
+    overlay = OverlaySpy()
+
+    handle_producer_command(
+        "caution_review_slate_on",
+        {},
+        overlay,
+        source=SimpleNamespace(),
+        engine=None,
+        booth=None,
+        camera_director=SimpleNamespace(),
+    )
+
+    assert overlay.special["kind"] == "caution_review_slate"
+    assert overlay.special["title"] == "Caution Review"
+    assert overlay.special["graphics"] == ["/assets/rgc.png"]
+    assert "review slate is live" in overlay.events[0]["message"].lower()
+
+    handle_producer_command(
+        "caution_review_slate_off",
+        {},
+        overlay,
+        source=SimpleNamespace(),
+        engine=None,
+        booth=None,
+        camera_director=SimpleNamespace(),
+    )
+
+    assert overlay.special is None
+    assert "cleared" in overlay.events[1]["message"].lower()

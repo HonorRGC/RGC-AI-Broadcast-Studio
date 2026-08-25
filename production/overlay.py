@@ -2648,6 +2648,8 @@ PRODUCER_HTML = r"""<!doctype html>
           <div class="button-row control-grid" style="margin-top: 10px;">
             <button class="control-button warn" id="manual-crank-it-up-button">Play Crank It Up</button>
             <button class="control-button" id="manual-sponsor-button">Play Next Sponsor</button>
+            <button class="control-button warn" id="caution-review-slate-button">Show Caution Review Slate</button>
+            <button class="control-button" id="clear-caution-review-slate-button">Clear Review Slate</button>
             <button class="control-button sponsor-slot-button" data-sponsor-slot="1">Sponsor 1</button>
             <button class="control-button sponsor-slot-button" data-sponsor-slot="2">Sponsor 2</button>
             <button class="control-button sponsor-slot-button" data-sponsor-slot="3">Sponsor 3</button>
@@ -3505,6 +3507,12 @@ PRODUCER_HTML = r"""<!doctype html>
     });
     document.getElementById("manual-sponsor-button").addEventListener("click", () => {
       sendProducerCommand("producer_sponsor_commercial");
+    });
+    document.getElementById("caution-review-slate-button").addEventListener("click", () => {
+      sendProducerCommand("caution_review_slate_on");
+    });
+    document.getElementById("clear-caution-review-slate-button").addEventListener("click", () => {
+      sendProducerCommand("caution_review_slate_off");
     });
     for (const button of document.querySelectorAll(".sponsor-slot-button")) {
       button.addEventListener("click", () => {
@@ -4843,6 +4851,19 @@ OVERLAY_HTML = r"""<!doctype html>
       animation: none;
     }
 
+    .special-presentation.caution_review_slate {
+      inset: 0;
+      width: auto;
+      height: auto;
+      z-index: 78;
+      background:
+        radial-gradient(circle at 18% 18%, rgba(215, 25, 32, 0.22), transparent 34%),
+        radial-gradient(circle at 82% 72%, rgba(0, 158, 255, 0.18), transparent 34%),
+        linear-gradient(135deg, rgba(4, 6, 10, 0.96), rgba(14, 19, 30, 0.94) 56%, rgba(38, 8, 16, 0.92));
+      justify-content: center;
+      animation: none;
+    }
+
     .special-presentation.hidden {
       display: none;
     }
@@ -4897,6 +4918,20 @@ OVERLAY_HTML = r"""<!doctype html>
       z-index: 2;
     }
 
+    .special-presentation.caution_review_slate .ceremony-card {
+      grid-template-columns: 260px 1fr;
+      gap: 36px;
+      width: min(1040px, calc(100% - 160px));
+      min-height: 250px;
+      padding: 34px 44px;
+      border-left-width: 8px;
+      border-top: 1px solid rgba(255, 255, 255, 0.2);
+      background:
+        linear-gradient(90deg, rgba(7, 9, 13, 0.95), rgba(24, 30, 42, 0.9)),
+        repeating-linear-gradient(135deg, rgba(255,255,255,0.04) 0 8px, transparent 8px 18px);
+      box-shadow: 0 28px 70px rgba(0, 0, 0, 0.68);
+    }
+
     .ceremony-logo {
       width: 210px;
       height: 116px;
@@ -4919,6 +4954,11 @@ OVERLAY_HTML = r"""<!doctype html>
       height: 46px;
     }
 
+    .special-presentation.caution_review_slate .ceremony-logo {
+      width: 250px;
+      height: 150px;
+    }
+
     .ceremony-title {
       font-size: 40px;
       font-weight: 950;
@@ -4938,6 +4978,11 @@ OVERLAY_HTML = r"""<!doctype html>
     .special-presentation.sponsor_commercial .ceremony-title {
       font-size: 20px;
       letter-spacing: 0.04em;
+    }
+
+    .special-presentation.caution_review_slate .ceremony-title {
+      font-size: 54px;
+      letter-spacing: 0.07em;
     }
 
     .ceremony-subtitle {
@@ -4965,6 +5010,15 @@ OVERLAY_HTML = r"""<!doctype html>
       margin-top: 3px;
       font-size: 11px;
       letter-spacing: 0.05em;
+    }
+
+    .special-presentation.caution_review_slate .ceremony-subtitle {
+      margin-top: 18px;
+      color: #d8e6f5;
+      font-size: 22px;
+      line-height: 1.35;
+      letter-spacing: 0.035em;
+      max-width: 640px;
     }
 
     .commercial-video {
@@ -5433,6 +5487,7 @@ OVERLAY_HTML = r"""<!doctype html>
       layer.classList.toggle("race_sponsors", active && presentation.kind === "race_sponsors");
       layer.classList.toggle("sponsor_bug", active && presentation.kind === "sponsor_bug");
       layer.classList.toggle("sponsor_commercial", active && presentation.kind === "sponsor_commercial");
+      layer.classList.toggle("caution_review_slate", active && presentation.kind === "caution_review_slate");
       if (!active) {
         setCrankSideGraphic("crank-speaker-left", "");
         setCrankSideGraphic("crank-speaker-right", "");
@@ -5455,7 +5510,7 @@ OVERLAY_HTML = r"""<!doctype html>
     }
 
     function shouldHideDriverCardForPresentation(presentation) {
-      return !!(presentation && presentation.kind === "crank_it_up");
+      return !!(presentation && ["crank_it_up", "caution_review_slate"].includes(presentation.kind));
     }
 
     function setCommercialVideo(src) {

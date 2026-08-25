@@ -1118,6 +1118,47 @@ def handle_producer_command(
         )
         return
 
+    if command == "caution_review_slate_on":
+        graphics = []
+        state_reader = getattr(overlay_server, "current_state_dict", None)
+        state = state_reader() if callable(state_reader) else {}
+        event = state.get("event", {}) if isinstance(state, dict) else {}
+        if isinstance(event, dict):
+            graphics = list(
+                event.get("sponsor_graphics")
+                or event.get("graphics")
+                or ([event.get("series_logo")] if event.get("series_logo") else [])
+                or []
+            )
+        shower = getattr(overlay_server, "show_special_presentation", None)
+        if shower:
+            shower(
+                kind="caution_review_slate",
+                title="Caution Review",
+                subtitle="Race control is reviewing the incident. We will show it as soon as the angle is ready.",
+                duration=1800,
+                graphics=graphics,
+            )
+        publish_producer_event(
+            overlay_server,
+            "warning",
+            "Caution Review Slate",
+            "Full-screen review slate is live. Viewers will not see manual camera or replay searching.",
+        )
+        return
+
+    if command == "caution_review_slate_off":
+        clearer = getattr(overlay_server, "clear_special_presentation", None)
+        if clearer:
+            clearer()
+        publish_producer_event(
+            overlay_server,
+            "info",
+            "Caution Review Slate",
+            "Review slate cleared. Overlay is back to the race picture.",
+        )
+        return
+
     if command == "producer_note_add":
         message = str(payload.get("message", "") or "").strip()
         if message and hasattr(overlay_server, "add_producer_note"):

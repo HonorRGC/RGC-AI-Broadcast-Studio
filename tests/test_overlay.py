@@ -1082,10 +1082,14 @@ def test_producer_assist_html_reads_overlay_state():
     assert "Manual Show Features" in PRODUCER_HTML
     assert 'id="manual-crank-it-up-button"' in PRODUCER_HTML
     assert 'id="manual-sponsor-button"' in PRODUCER_HTML
+    assert 'id="caution-review-slate-button"' in PRODUCER_HTML
+    assert 'id="clear-caution-review-slate-button"' in PRODUCER_HTML
     assert 'data-sponsor-slot="1"' in PRODUCER_HTML
     assert 'data-sponsor-slot="5"' in PRODUCER_HTML
     assert 'sendProducerCommand("producer_crank_it_up")' in PRODUCER_HTML
     assert 'sendProducerCommand("producer_sponsor_commercial")' in PRODUCER_HTML
+    assert 'sendProducerCommand("caution_review_slate_on")' in PRODUCER_HTML
+    assert 'sendProducerCommand("caution_review_slate_off")' in PRODUCER_HTML
     assert "sponsor_slot: Number(button.dataset.sponsorSlot || 0)" in PRODUCER_HTML
     assert 'id="leaderboard-style-button"' in PRODUCER_HTML
     assert 'id="broadcaster-volume-slider"' in PRODUCER_HTML
