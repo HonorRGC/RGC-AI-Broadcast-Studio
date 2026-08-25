@@ -373,12 +373,21 @@ def run_source(
         if overlay_server and should_update_overlay_for_camera_update(
             camera_update_decision
         ):
+            camera_category = str(getattr(camera_update_decision, "category", "") or "")
             update_overlay_focused_driver(
                 overlay_server,
                 source,
                 camera_update_decision,
                 duration=9.0,
-                opening_intro=getattr(camera_update_decision, "role", "") == "lineup",
+                opening_intro=camera_category.startswith("opening_field_rundown"),
+                number_only_card=camera_category.startswith(
+                    (
+                        "opening_field_rundown",
+                        "quarter_field_rundown",
+                        "three_quarter_field_rundown",
+                        "long_green_field_rundown",
+                    )
+                ),
                 engine=engine,
             )
         non_race_camera_decision = qualifying_camera_director.update(

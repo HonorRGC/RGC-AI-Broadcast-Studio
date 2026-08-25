@@ -4126,6 +4126,20 @@ OVERLAY_HTML = r"""<!doctype html>
       text-shadow: 0 2px 8px rgba(0, 0, 0, 0.62);
     }
 
+    .flo-track-text {
+      color: rgba(255, 255, 255, 0.82);
+      font-size: 10px;
+      font-weight: 850;
+      letter-spacing: 0.04em;
+      text-align: center;
+      line-height: 1.1;
+      max-width: 184px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.62);
+    }
+
     .flo-lap-box {
       position: absolute;
       left: 0;
@@ -5140,6 +5154,7 @@ OVERLAY_HTML = r"""<!doctype html>
     <div class="flo-series">
       <img id="flo-series-logo" alt="" />
       <div id="flo-series-text" class="flo-series-text"></div>
+      <div id="flo-track-text" class="flo-track-text"></div>
     </div>
   </section>
 
@@ -5305,6 +5320,7 @@ OVERLAY_HTML = r"""<!doctype html>
       seriesImage.classList.toggle("hidden", !seriesLogo);
       seriesImage.src = seriesLogo || "";
       setText("flo-series-text", event.series || event.sponsor || "RGC AI");
+      setText("flo-track-text", state.track_name || "");
       renderFloLapBox(state);
       renderFloRaceBar(state.lap_history || []);
 

@@ -11,6 +11,7 @@ class CameraDecision:
     group_number: int | None = None
     group_name: str = ""
     role: str = ""
+    category: str = ""
 
 
 class CameraDirector:
@@ -85,6 +86,7 @@ class CameraDirector:
                     role="lineup",
                     force=True,
                     camera_number=camera_number,
+                    category=getattr(self, "sequence_category", ""),
                 )
             if self.current_role == "lineup":
                 self.clear_sequence()
@@ -188,6 +190,7 @@ class CameraDirector:
             sequence = self.resolve_special_sequence(item, sequence, telemetry)
             self.return_home_at = None
             self.sequence = sequence
+            self.sequence_category = str(getattr(item, "category", "") or "")
             self.sequence_return_home = bool(
                 getattr(item, "camera_return_home_after_sequence", False)
             )
@@ -203,6 +206,7 @@ class CameraDirector:
                 role="lineup",
                 force=True,
                 camera_number=camera_number,
+                category=self.sequence_category,
             )
 
         car_idx = getattr(item, "camera_target_car_idx", None)
@@ -378,6 +382,7 @@ class CameraDirector:
         camera_number=0,
         force_switch=False,
         minimum_hold_seconds=None,
+        category="",
     ):
         hold_seconds = (
             self.minimum_hold_seconds
@@ -400,6 +405,7 @@ class CameraDirector:
                 "The minimum camera hold is still active.",
                 car_idx=car_idx,
                 role=role,
+                category=category,
             )
 
         driver = telemetry.get_driver_lookup().get(car_idx, {})
@@ -449,6 +455,7 @@ class CameraDirector:
                 group_number=group_number,
                 group_name=resolved_name,
                 role=role,
+                category=category,
             )
 
         status = "suggested"
@@ -485,6 +492,7 @@ class CameraDirector:
             group_number=group_number,
             group_name=resolved_name,
             role=role,
+            category=category,
         )
 
     def get_leader_car_idx(self, telemetry):
@@ -503,6 +511,7 @@ class CameraDirector:
         self.sequence_index = 0
         self.sequence_interval = 0.0
         self.next_sequence_at = None
+        self.sequence_category = ""
 
     def build_sequence_steps(self, item):
         detailed_steps = tuple(getattr(item, "camera_sequence_steps", ()) or ())

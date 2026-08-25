@@ -41,6 +41,53 @@ def test_detects_live_side_by_side_without_declaring_pass():
     assert stories[0].participant_car_indices == (0, 1)
 
 
+def test_live_side_by_side_rejects_large_scoring_gap():
+    detector = LiveBattleDetector()
+    payload = dict(
+        results=[
+            {"CarIdx": 0, "Position": 0, "LapsComplete": 12, "Time": 0.0},
+            {"CarIdx": 1, "Position": 1, "LapsComplete": 12, "Time": 1.4},
+            {"CarIdx": 2, "Position": 2, "LapsComplete": 12, "Time": 4.0},
+        ],
+        driver_lookup=drivers(3),
+        lap_dist_pct_status=[0.5000, 0.5012, 0.5400],
+        pit_road_status=[False] * 3,
+        current_lap=12,
+        total_laps=50,
+        green_lap_count=4,
+    )
+
+    detector.analyze(**payload)
+    stories = detector.analyze(**payload)
+
+    assert not any(story.story_type == "live_side_by_side" for story in stories)
+
+
+def test_side_by_side_pair_blocks_immediate_pressure_repeat():
+    detector = LiveBattleDetector()
+    side_payload = dict(
+        results=results(2),
+        driver_lookup=drivers(2),
+        lap_dist_pct_status=[0.5000, 0.5012],
+        pit_road_status=[False] * 2,
+        current_lap=12,
+        total_laps=50,
+        green_lap_count=4,
+    )
+
+    detector.analyze(**side_payload)
+    side_stories = detector.analyze(**side_payload)
+    pressure_payload = dict(side_payload)
+    pressure_payload["lap_dist_pct_status"] = [0.5000, 0.5060]
+
+    detector.analyze(**pressure_payload)
+    detector.analyze(**pressure_payload)
+    pressure_stories = detector.analyze(**pressure_payload)
+
+    assert any(story.story_type == "live_side_by_side" for story in side_stories)
+    assert not any(story.story_type == "live_pressure_battle" for story in pressure_stories)
+
+
 def test_detects_live_three_wide_before_two_wide():
     detector = LiveBattleDetector()
     payload = dict(

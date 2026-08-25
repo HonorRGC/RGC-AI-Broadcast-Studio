@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 import random
 
+from production.track_style import is_true_pack_drafting_track
+
 
 @dataclass(frozen=True)
 class RaceInsight:
@@ -24,7 +26,7 @@ class RaceInsightDirector:
         self.sent_stat_keys = {}
         self.points_standings_sent = False
 
-    def long_green_insight(self, race_state, current_lap):
+    def long_green_insight(self, race_state, current_lap, track_info=None):
         if not race_state or not race_state.is_green:
             return None
         if race_state.green_lap_count < 12:
@@ -55,13 +57,16 @@ class RaceInsightDirector:
                 "at the end of the straightaway, roll speed through the center, and save fuel "
                 "without giving up much lap time if they keep the car free and tidy.",
             ),
-            (
-                "fuel_save_draft",
-                "If fuel mileage becomes part of this, the draft matters. Tucking in behind "
-                "another car can let a driver breathe the throttle slightly, save a little fuel, "
-                "and still keep touch with the pack.",
-            ),
         ]
+        if is_true_pack_drafting_track(track_info or {}):
+            candidates.append(
+                (
+                    "fuel_save_draft",
+                    "If fuel mileage becomes part of this, the draft matters. Tucking in behind "
+                    "another car can let a driver breathe the throttle slightly, save a little fuel, "
+                    "and still keep touch with the pack.",
+                )
+            )
         insight = self.pick_unused(candidates)
         if not insight:
             return None
@@ -577,6 +582,27 @@ class RaceInsightDirector:
         seed=0,
     ):
         position_text = self.ordinal(position)
+        if self.safe_float(gap, 0.0) > 0.45:
+            options = [
+                (
+                    f"There is a good fight building around {position_text}. {chasing_name} in "
+                    f"the number {chasing_number} is {gap:.1f} seconds behind "
+                    f"{front_name} in the number {front_number}, and this is worth "
+                    "watching for a few corners."
+                ),
+                (
+                    f"The race around {position_text} has some life to it. "
+                    f"{front_name} in the number {front_number} has {chasing_name} "
+                    f"in the number {chasing_number} within reach if the run keeps building."
+                ),
+                (
+                    f"This is one of those developing battles that can get missed if we only "
+                    f"watch the front. Around {position_text}, {front_name} and "
+                    f"{chasing_name} are close enough to keep an eye on."
+                ),
+            ]
+            return options[(self.safe_int(seed, 0) + self.safe_int(position, 0)) % len(options)]
+
         options = [
             (
                 f"There is a good fight building around {position_text}. {chasing_name} in "

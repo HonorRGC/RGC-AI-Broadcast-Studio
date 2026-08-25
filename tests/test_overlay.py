@@ -788,6 +788,9 @@ def test_overlay_has_optional_ticker_leaderboard_and_compact_lap_bar():
     assert "grid-template-columns: 210px minmax(0, 1fr) 210px" in OVERLAY_HTML
     assert "max-width: 184px" in OVERLAY_HTML
     assert 'setText("flo-series-text", event.series || event.sponsor || "RGC AI")' in OVERLAY_HTML
+    assert 'id="flo-track-text"' in OVERLAY_HTML
+    assert 'setText("flo-track-text", state.track_name || "")' in OVERLAY_HTML
+    assert ".flo-track-text" in OVERLAY_HTML
     assert 'id="ticker-label"' in OVERLAY_HTML
     assert 'id="leaderboard-series"' in OVERLAY_HTML
     assert 'id="cause-line"' in OVERLAY_HTML

@@ -47,6 +47,51 @@ def test_long_green_insights_do_not_repeat_topics():
     assert third is None
 
 
+def test_non_draft_long_green_insight_does_not_use_draft_fuel_save():
+    director = RaceInsightDirector(seed=10)
+    director.used_topics.update(
+        {"tire_wear_entry", "tire_wear_exit", "fuel_save_lift"}
+    )
+    state = RaceState(
+        current_lap=20,
+        total_laps=80,
+        laps_remaining=60,
+        green_lap_count=20,
+        is_green=True,
+    )
+
+    insight = director.long_green_insight(
+        state,
+        current_lap=20,
+        track_info={"track_name": "Martinsville Speedway"},
+    )
+
+    assert insight is None
+
+
+def test_draft_track_long_green_insight_can_use_draft_fuel_save():
+    director = RaceInsightDirector(seed=10)
+    director.used_topics.update(
+        {"tire_wear_entry", "tire_wear_exit", "fuel_save_lift"}
+    )
+    state = RaceState(
+        current_lap=20,
+        total_laps=80,
+        laps_remaining=60,
+        green_lap_count=20,
+        is_green=True,
+    )
+
+    insight = director.long_green_insight(
+        state,
+        current_lap=20,
+        track_info={"track_name": "Daytona International Speedway"},
+    )
+
+    assert insight is not None
+    assert insight.category == "race_insight:fuel_save_draft"
+
+
 def test_late_caution_insight_explains_short_run_sprint():
     director = RaceInsightDirector(seed=3)
     state = RaceState(

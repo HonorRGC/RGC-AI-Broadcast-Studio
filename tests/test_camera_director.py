@@ -422,6 +422,26 @@ def test_lineup_sequence_advances_to_each_named_driver():
     assert telemetry.switches == [("14", 4, 1), ("24", 4, 1)]
 
 
+def test_lineup_sequence_decisions_keep_original_rundown_category():
+    telemetry = CameraTelemetry()
+    times = iter([100.0, 105.0])
+    director = CameraDirector(mode="auto", clock=lambda: next(times))
+    lineup = SimpleNamespace(
+        camera_target_car_idx=None,
+        camera_sequence=(3, 4),
+        camera_sequence_steps=(),
+        dedupe_key="long_green_field_rundown_1",
+        category="long_green_field_rundown_1",
+        message="Long green top ten rundown.",
+    )
+
+    first = director.follow(lineup, telemetry)
+    second = director.update(telemetry)
+
+    assert first.category == "long_green_field_rundown_1"
+    assert second.category == "long_green_field_rundown_1"
+
+
 def test_custom_sequence_can_switch_tv1_then_cockpit_for_same_driver():
     telemetry = CameraTelemetry()
     times = iter([100.0, 103.0])

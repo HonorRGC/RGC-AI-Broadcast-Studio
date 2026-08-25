@@ -111,13 +111,17 @@ class RaceIntelligence:
         if not results:
             return
 
+        zero_based_positions = any(
+            self.safe_int(car.get("Position", 999)) == 0 for car in results or []
+        )
         for car in results:
             car_idx = car.get("CarIdx")
 
             if car_idx is None:
                 continue
 
-            position = self.safe_int(car.get("Position", 0))
+            raw_position = self.safe_int(car.get("Position", 0))
+            position = raw_position + 1 if zero_based_positions else raw_position
 
             if position <= 0:
                 continue

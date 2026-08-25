@@ -474,6 +474,38 @@ def test_engine_uses_recovered_qualifying_grid_when_joining_mid_race():
     assert biggest_mover.positions_gained == 5
 
 
+def test_race_intelligence_normalizes_zero_based_live_positions_for_movers():
+    grid = [
+        {"CarIdx": 0, "Position": 0},
+        {"CarIdx": 1, "Position": 1},
+        {"CarIdx": 2, "Position": 2},
+    ]
+    running_order = [
+        {"CarIdx": 1, "Position": 0},
+        {"CarIdx": 0, "Position": 1},
+        {"CarIdx": 2, "Position": 2},
+    ]
+    drivers = {
+        0: {"name": "Pole Driver", "number": "1"},
+        1: {"name": "Mover Driver", "number": "2"},
+        2: {"name": "Third Driver", "number": "3"},
+    }
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+
+    engine.race_intelligence.seed_starting_positions(grid, drivers)
+    engine.race_intelligence.update(
+        running_order,
+        drivers,
+        current_lap=5,
+    )
+
+    mover = engine.race_intelligence.get_biggest_movers(1)[0]
+    assert mover.car_idx == 1
+    assert mover.starting_position == 2
+    assert mover.current_position == 1
+    assert mover.positions_gained == 1
+
+
 def test_engine_preserves_camera_target_for_close_action():
     results = [
         {"CarIdx": index, "Position": index, "LapsComplete": 4}
@@ -648,7 +680,7 @@ def test_engine_allows_long_green_field_rundown_at_thirteen_to_go():
     assert item.protected is True
 
 
-def test_green_pit_cycle_can_start_with_one_green_flag_pitter():
+def test_green_pit_cycle_does_not_start_with_one_green_flag_pitter():
     engine = BroadcastEngine(openai_director=SilentOpenAI())
     engine.session_tracker.update("Race")
     engine.race_director.race_started = True
@@ -673,9 +705,8 @@ def test_green_pit_cycle_can_start_with_one_green_flag_pitter():
         track_info={"track_name": "Michigan International Speedway"},
     )
 
-    assert queued is True
-    assert engine.broadcast_queue.items[0].category == "green_pit_cycle_update"
-    assert "Green flag" in engine.broadcast_queue.items[0].message
+    assert queued is False
+    assert engine.broadcast_queue.items == []
 
 
 def test_green_pit_cycle_lockout_can_air_ready_pit_strategy_story():
@@ -899,7 +930,7 @@ def test_green_flag_pit_cycle_update_reports_recent_stops_after_start():
     assert "2 cars have made green flag stops" in item.message
 
 
-def test_single_green_flag_pit_stop_can_start_cycle_awareness():
+def test_single_green_flag_pit_stop_does_not_start_cycle_awareness():
     engine = BroadcastEngine(openai_director=SilentOpenAI())
     engine.race_director.phase = RacePhase.GREEN
     engine.race_intelligence.race_state.laps_remaining = 40
@@ -909,6 +940,26 @@ def test_single_green_flag_pit_stop_can_start_cycle_awareness():
         [{"CarIdx": 0, "Position": 1}, {"CarIdx": 1, "Position": 2}],
         {},
         [True, False],
+        current_lap=25,
+    )
+
+    assert queued is False
+    assert engine.is_green_pit_cycle_active(25) is False
+
+
+def test_multiple_green_flag_pit_stops_start_cycle_awareness():
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    engine.race_director.phase = RacePhase.GREEN
+    engine.race_intelligence.race_state.laps_remaining = 40
+
+    queued = engine._queue_green_pit_cycle_update(
+        [
+            SimpleNamespace(event_type="PIT_STOP", under_caution=False, car_idx=0),
+            SimpleNamespace(event_type="PIT_STOP", under_caution=False, car_idx=1),
+        ],
+        [{"CarIdx": 0, "Position": 1}, {"CarIdx": 1, "Position": 2}],
+        {},
+        [True, True],
         current_lap=25,
     )
 
@@ -1020,19 +1071,22 @@ def test_green_flag_pit_cycle_can_continue_when_real_car_pits_near_parked_admin(
     engine.pit_strategy_detector.driver_states = {
         0: SimpleNamespace(car_idx=0, started_from_pit_road=True, last_pit_exit_lap=0),
         1: SimpleNamespace(car_idx=1, started_from_pit_road=False, last_pit_exit_lap=0),
+        2: SimpleNamespace(car_idx=2, started_from_pit_road=False, last_pit_exit_lap=0),
     }
 
     queued = engine._queue_green_pit_cycle_update(
         [
             SimpleNamespace(event_type="PIT_STOP", under_caution=False, car_idx=0),
             SimpleNamespace(event_type="PIT_STOP", under_caution=False, car_idx=1),
+            SimpleNamespace(event_type="PIT_STOP", under_caution=False, car_idx=2),
         ],
         [
             {"CarIdx": 0, "Position": 1, "LapsComplete": 0},
             {"CarIdx": 1, "Position": 2, "LapsComplete": 12},
+            {"CarIdx": 2, "Position": 3, "LapsComplete": 12},
         ],
         {},
-        [True, True],
+        [True, True, True],
         current_lap=12,
         track_info={"track_name": "Charlotte Motor Speedway"},
     )

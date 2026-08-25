@@ -127,6 +127,8 @@ class LiveBattleDetector:
             position = min(first["position"], second["position"])
             if position > self.PACK_MAX_POSITION:
                 continue
+            if self.scoring_gap_between(first, second) > 0.95:
+                continue
             if abs(first["progress"] - second["progress"]) > self.ALONGSIDE_DELTA:
                 continue
             if position < best_position:
@@ -138,6 +140,10 @@ class LiveBattleDetector:
             return None
         first, second = best_pair
         key = ("side_by_side", tuple(sorted([first["car_idx"], second["car_idx"]])))
+        pair_key = (
+            "pair_battle",
+            tuple(sorted([first["car_idx"], second["car_idx"]])),
+        )
         if not self.stable_for_ticks(
             self.pending_side_by_side,
             key,
@@ -145,6 +151,8 @@ class LiveBattleDetector:
         ):
             return None
         if not self.cooldown_ready(key, current_lap, total_laps):
+            return None
+        if not self.cooldown_ready(pair_key, current_lap, total_laps):
             return None
 
         first_label = self.driver_label(driver_lookup, first["car_idx"])
@@ -167,6 +175,7 @@ class LiveBattleDetector:
             ),
         )
         self.mark_called(key)
+        self.mark_called(pair_key)
         return LiveBattleStory(
             story_type="live_side_by_side",
             headline=f"Close battle for {self.ordinal(best_position)}.",
@@ -187,6 +196,8 @@ class LiveBattleDetector:
             leader = by_position.get(position)
             challenger = by_position.get(position + 1)
             if not leader or not challenger:
+                continue
+            if self.scoring_gap_between(leader, challenger) > 1.05:
                 continue
             delta = challenger["progress"] - leader["progress"]
             key = ("clear", challenger["car_idx"], leader["car_idx"], position)
@@ -271,9 +282,23 @@ class LiveBattleDetector:
                     "car_idx": car_idx,
                     "position": position,
                     "progress": lap + distance,
+                    "time": self.safe_float(
+                        car.get("Time", car.get("Gap", 999.0)),
+                        999.0,
+                    ),
                 }
             )
         return sorted(cars, key=lambda car: car["position"])
+
+    @staticmethod
+    def scoring_gap_between(front, chasing):
+        front_time = LiveBattleDetector.safe_float(front.get("time", 999.0), 999.0)
+        chasing_time = LiveBattleDetector.safe_float(chasing.get("time", 999.0), 999.0)
+        if front_time >= 999.0 or chasing_time >= 999.0:
+            return 0.0
+        if chasing_time <= 0:
+            return 0.0
+        return max(0.0, chasing_time - max(front_time, 0.0))
 
     def cooldown_ready(self, key, current_lap, total_laps):
         last = self.last_story_at.get(key, 0.0)
@@ -343,5 +368,12 @@ class LiveBattleDetector:
     def integer(value, default):
         try:
             return int(value)
+        except (TypeError, ValueError):
+            return default
+
+    @staticmethod
+    def safe_float(value, default):
+        try:
+            return float(value)
         except (TypeError, ValueError):
             return default

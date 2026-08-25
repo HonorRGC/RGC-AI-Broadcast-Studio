@@ -364,6 +364,7 @@ class BroadcastEngine:
             queued_insight = self._queue_long_green_insight(
                 race_state,
                 current_lap,
+                track_info,
             )
             if queued_insight:
                 return self.broadcast_queue.next_item()
@@ -1816,9 +1817,24 @@ class BroadcastEngine:
             and not getattr(event, "under_caution", False)
             and getattr(event, "car_idx", None) in active_car_indices
         ]
+        green_cycle_car_indices = {
+            car.get("CarIdx")
+            for car in on_pit_road
+            if car.get("CarIdx") is not None
+        }
+        green_cycle_car_indices.update(
+            getattr(event, "car_idx", None)
+            for event in new_green_entries
+            if getattr(event, "car_idx", None) is not None
+        )
+        green_cycle_car_indices.update(
+            getattr(state, "car_idx", None)
+            for state in recent_states
+            if getattr(state, "car_idx", None) is not None
+        )
 
         if not self.green_pit_cycle_announced:
-            if len(on_pit_road) < 1 and len(new_green_entries) < 1:
+            if len(green_cycle_car_indices) < 2:
                 return False
             self.mark_green_pit_cycle_activity(current_lap)
             message = self.rotate_story_variant(
@@ -2123,12 +2139,13 @@ class BroadcastEngine:
             return False
         return max(total_laps - current_lap, 0) <= 2
 
-    def _queue_long_green_insight(self, race_state, current_lap):
+    def _queue_long_green_insight(self, race_state, current_lap, track_info=None):
         if self.broadcast_queue.items:
             return False
         insight = self.race_insight_director.long_green_insight(
             race_state,
             current_lap,
+            track_info=track_info,
         )
         if not insight:
             return False
