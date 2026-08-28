@@ -366,6 +366,7 @@ class ProducerControlRoomItem:
 @dataclass
 class OverlayState:
     event: OverlayEventConfig = field(default_factory=OverlayEventConfig)
+    league_mode: bool = False
     session_type: str = "Unknown"
     track_name: str = ""
     lap: int = 0
@@ -393,6 +394,7 @@ class OverlayState:
                 "sponsor_options": list(self.event.sponsor_options),
                 "series_logo": self.event.series_logo,
             },
+            "league_mode": self.league_mode,
             "session_type": self.session_type,
             "track_name": self.track_name,
             "lap": self.lap,
@@ -474,6 +476,7 @@ class OverlayStateBuilder:
 
         return OverlayState(
             event=self.event_config,
+            league_mode=self.is_league_mode(),
             session_type=session_type,
             track_name=(track_info or {}).get("track_name", ""),
             lap=lap,
@@ -485,6 +488,15 @@ class OverlayStateBuilder:
             producer_leaderboard=full_leaderboard,
             lap_history=self.build_lap_history(self.safe_int(telemetry.get_total_laps())),
         )
+
+    def is_league_mode(self):
+        checker = getattr(self.league_context, "is_configured", None)
+        if not callable(checker):
+            return False
+        try:
+            return bool(checker())
+        except Exception:
+            return False
 
     def enrich_driver_lookup(self, driver_lookup):
         enricher = getattr(self.league_context, "enrich_driver_lookup", None)
@@ -5748,7 +5760,7 @@ OVERLAY_HTML = r"""<!doctype html>
       setText("stat-panel-subtitle", panel.subtitle || "");
       const rows = document.getElementById("stat-panel-rows");
       rows.innerHTML = "";
-      const maxRows = panel.kind === "points_standings" ? 20 : panel.kind === "caution_pit" ? 12 : 7;
+      const maxRows = panel.kind === "points_standings" ? 20 : panel.kind === "caution_pit" ? 12 : panel.kind === "race_end_cap" ? 9 : 7;
       for (const row of (panel.rows || []).slice(0, maxRows)) {
         const item = document.createElement("div");
         item.className = "stat-panel-row";

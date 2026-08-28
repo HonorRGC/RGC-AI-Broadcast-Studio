@@ -1,4 +1,5 @@
 import argparse
+import re
 import time
 from pathlib import Path
 from types import SimpleNamespace
@@ -367,6 +368,7 @@ def run_source(
             anthem_director.update(source.get_session_type(), overlay_server),
             overlay_server,
         )
+        maybe_show_league_points_panel(overlay_server, source, engine)
         report_replay_decision(replay_director.update(source, camera_director), overlay_server)
         camera_update_decision = camera_director.update(source)
         report_camera_decision(camera_update_decision, overlay_server)
@@ -1803,6 +1805,45 @@ def build_points_standings_rows(source=None, engine=None, limit=20):
     ]
 
 
+def is_league_broadcast(engine):
+    league_context = getattr(engine, "league_context", None) if engine else None
+    checker = getattr(league_context, "is_configured", None)
+    if not callable(checker):
+        return False
+    try:
+        return bool(checker())
+    except Exception:
+        return False
+
+
+def maybe_show_league_points_panel(overlay_server, source, engine):
+    if not overlay_server or not source or not is_league_broadcast(engine):
+        return False
+
+    session_type = str(getattr(source, "get_session_type", lambda: "")() or "")
+    session_key = session_type.strip().casefold()
+    if "race" in session_key:
+        return False
+    if not any(token in session_key for token in ("practice", "qual", "warmup")):
+        return False
+
+    rows = build_points_standings_rows(source, engine)
+    if not rows:
+        return False
+
+    title = "Championship Standings"
+    subtitle = f"Top 20 entering this race • {session_type or 'Pre-race'}"
+    return overlay_server.show_stat_panel(
+        kind="points_standings",
+        title=title,
+        subtitle=subtitle,
+        rows=rows,
+        duration=24.0,
+        dedupe_key=f"points_standings:pre_race:{session_key or 'session'}",
+        minimum_interval=120.0,
+    )
+
+
 def preferred_season_stats(driver):
     stats_by_scope = (driver or {}).get("league_stats_by_scope") or []
     if isinstance(stats_by_scope, dict):
@@ -2337,6 +2378,9 @@ def build_race_recap_rows(source, engine):
             }
         )
 
+    if is_league_broadcast(engine):
+        rows.extend(build_points_watch_rows(source, engine, limit=2))
+
     caution_count = safe_int(getattr(race_state, "caution_count", 0), 0)
     rows.append(
         {
@@ -2491,7 +2535,97 @@ def build_race_end_cap_rows(source, engine):
             }
         )
 
-    return rows[:7]
+    if is_league_broadcast(engine):
+        rows.extend(build_projected_points_rows(source, engine, limit=2))
+
+    return rows[:9]
+
+
+def build_points_watch_rows(source=None, engine=None, limit=2):
+    standings = build_points_standings_rows(source, engine, limit=20)
+    if not standings:
+        return []
+
+    rows = []
+    leader = standings[0]
+    rows.append(
+        {
+            "label": "Points Leader",
+            "value": leader["value"],
+            "detail": f"{leader['label']} entering tonight",
+        }
+    )
+
+    closest = None
+    for row in standings[1:]:
+        points_to_next = points_to_next_from_detail(row.get("detail", ""))
+        if points_to_next <= 0:
+            continue
+        if closest is None or points_to_next < closest[0]:
+            closest = (points_to_next, row)
+    if closest:
+        points_to_next, row = closest
+        rows.append(
+            {
+                "label": "Points Battle",
+                "value": f"{points_to_next} pts",
+                "detail": f"{row['label']} to the next spot",
+            }
+        )
+
+    return rows[:limit]
+
+
+def build_projected_points_rows(source=None, engine=None, limit=3):
+    if not source or not is_league_broadcast(engine):
+        return []
+    results = sorted_results_by_position(source.get_results() if source else [])
+    if not results:
+        return []
+
+    drivers = source.get_driver_lookup() if source else {}
+    if engine and getattr(engine, "league_context", None):
+        drivers = engine.league_context.enrich_driver_lookup(drivers)
+
+    rows = []
+    for result in results[:limit]:
+        car_idx = result.get("CarIdx")
+        driver = drivers.get(car_idx, {}) if drivers else {}
+        stats = preferred_season_stats(driver)
+        points_position = safe_int((stats or {}).get("points_position"), 0)
+        if points_position <= 0:
+            continue
+        finish_position = normalized_result_position(result, results)
+        name = str(driver.get("name") or (stats or {}).get("name") or f"Car {car_idx}")
+        number = str(driver.get("number") or (stats or {}).get("car_number") or "?")
+        rows.append(
+            {
+                "label": "Points Projection",
+                "value": ordinal(points_position),
+                "detail": (
+                    f"#{number} {name} entered there; unofficial finish "
+                    f"{ordinal(finish_position)} tonight"
+                ),
+            }
+        )
+    if rows:
+        rows.insert(
+            0,
+            {
+                "label": "Projected Points",
+                "value": "Unofficial",
+                "detail": "Pending Sim Racer Hub scoring and bonus points",
+            },
+        )
+    return rows[: limit + 1]
+
+
+def points_to_next_from_detail(detail):
+    text = str(detail or "")
+    match = re.search(r"(\d+)\s+pts?\s+to\s+next", text, flags=re.IGNORECASE)
+    if not match:
+        return 0
+    return safe_int(match.group(1), 0)
 
 
 def race_end_most_laps_led_row(results, drivers, engine):

@@ -932,6 +932,7 @@ class BroadcastEngine:
         fastest_text = self.fastest_lap_recap_text(driver_lookup)
         mover_text = self.mover_recap_text()
         tone_text = self.race_tone_text(race_state, caution_count)
+        points_text = self.points_recap_text(driver_lookup)
 
         lap_text = f"lap {current_lap} of {total_laps}"
         parts = [
@@ -944,7 +945,37 @@ class BroadcastEngine:
             parts.append(mover_text)
         if tone_text:
             parts.append(tone_text)
+        if points_text:
+            parts.append(points_text)
         return " ".join(parts)
+
+    def points_recap_text(self, driver_lookup):
+        if not self.league_context.is_configured():
+            return ""
+        standings = self.race_insight_director.points_standings_rows(driver_lookup)
+        if len(standings) < 2:
+            return ""
+
+        leader = standings[0]
+        nearest = None
+        for row in standings[1:6]:
+            gap = self.safe_int(row.get("points_to_next"), 0)
+            if gap <= 0:
+                continue
+            if nearest is None or gap < nearest.get("points_to_next", 9999):
+                nearest = row
+
+        text = (
+            "On the championship side, "
+            f"{leader['name']} entered tonight leading the points"
+        )
+        if nearest:
+            text += (
+                f", and {nearest['name']} came in only "
+                f"{nearest['points_to_next']} points from the next spot"
+            )
+        text += ", so the finishing order tonight still matters beyond the trophy."
+        return text
 
     def race_recap_caution_text(self, caution_count):
         caution_count = self.safe_int(caution_count)

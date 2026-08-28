@@ -7,8 +7,11 @@ from app import (
     build_featured_driver_story,
     build_featured_driver_image,
     build_featured_driver_render_info,
+    build_projected_points_rows,
     build_caution_pit_summary_rows,
+    build_race_recap_rows,
     featured_driver_position_info,
+    maybe_show_league_points_panel,
     update_overlay_featured_driver,
     update_overlay_focused_driver,
     build_producer_pit_road_rows,
@@ -679,6 +682,123 @@ def test_points_standings_story_shows_top_twenty_graphic():
     assert panel["rows"][0]["value"] == "1st"
     assert panel["rows"][0]["label"] == "#1 Driver 1"
     assert "2 pts to next" in panel["rows"][0]["detail"]
+
+
+def test_league_points_panel_shows_during_practice_without_race_story():
+    overlay = OverlaySpy()
+    source = SimpleNamespace(
+        get_session_type=lambda: "Practice",
+        get_driver_lookup=lambda: {
+            1: {
+                "name": "Points Leader",
+                "number": "11",
+                "league_stats_by_scope": [
+                    {
+                        "stats_scope": "season",
+                        "points_position": "1",
+                        "points_to_next": "0",
+                    }
+                ],
+            },
+        },
+    )
+    engine = SimpleNamespace(
+        league_context=SimpleNamespace(
+            is_configured=lambda: True,
+            enrich_driver_lookup=lambda lookup: lookup,
+        )
+    )
+
+    assert maybe_show_league_points_panel(overlay, source, engine) is True
+
+    panel = overlay.stat_panels[0]
+    assert panel["kind"] == "points_standings"
+    assert panel["subtitle"] == "Top 20 entering this race • Practice"
+    assert panel["dedupe_key"] == "points_standings:pre_race:practice"
+
+
+def test_league_race_recap_adds_points_watch_rows():
+    race_state = SimpleNamespace(current_lap=75, total_laps=100, caution_count=1)
+    source = SimpleNamespace(
+        get_driver_lookup=lambda: {
+            1: {
+                "name": "Points Leader",
+                "number": "11",
+                "league_stats_by_scope": [
+                    {
+                        "stats_scope": "season",
+                        "points_position": "1",
+                        "points_to_next": "0",
+                    }
+                ],
+            },
+            2: {
+                "name": "Chaser Driver",
+                "number": "22",
+                "league_stats_by_scope": [
+                    {
+                        "stats_scope": "season",
+                        "points_position": "2",
+                        "points_to_next": "4",
+                    }
+                ],
+            },
+        }
+    )
+    engine = SimpleNamespace(
+        league_context=SimpleNamespace(
+            is_configured=lambda: True,
+            enrich_driver_lookup=lambda lookup: lookup,
+        ),
+        race_intelligence=SimpleNamespace(
+            get_race_state=lambda: race_state,
+            get_biggest_movers=lambda limit=1: [],
+            get_fading_drivers=lambda limit=1: [],
+        ),
+        lead_change_count=2,
+        fastest_lap_tracker=SimpleNamespace(
+            fastest_car_idx=None,
+            fastest_time=None,
+        ),
+    )
+
+    rows = build_race_recap_rows(source, engine)
+
+    labels = [row["label"] for row in rows]
+    assert "Points Leader" in labels
+    assert "Points Battle" in labels
+
+
+def test_post_race_projection_rows_are_labeled_unofficial():
+    source = SimpleNamespace(
+        get_results=lambda: [
+            {"CarIdx": 7, "Position": 1},
+        ],
+        get_driver_lookup=lambda: {
+            7: {
+                "name": "Winner Driver",
+                "number": "7",
+                "league_stats_by_scope": [
+                    {
+                        "stats_scope": "season",
+                        "points_position": "3",
+                    }
+                ],
+            }
+        },
+    )
+    engine = SimpleNamespace(
+        league_context=SimpleNamespace(
+            is_configured=lambda: True,
+            enrich_driver_lookup=lambda lookup: lookup,
+        )
+    )
+
+    rows = build_projected_points_rows(source, engine)
+
+    assert rows[0]["label"] == "Projected Points"
+    assert rows[0]["value"] == "Unofficial"
+    assert "Winner Driver" in rows[1]["detail"]
 
 
 def test_race_event_log_records_pass_with_session_lap_and_camera():

@@ -835,8 +835,25 @@ def test_producer_driver_detail_has_broadcaster_league_stats_panel():
 
 def test_overlay_supports_points_standings_stat_panel():
     assert ".stat-panel.points_standings" in OVERLAY_HTML
-    assert 'panel.kind === "points_standings" ? 20 : panel.kind === "caution_pit" ? 12 : 7' in OVERLAY_HTML
+    assert 'panel.kind === "race_end_cap" ? 9 : 7' in OVERLAY_HTML
     assert "Championship Standings" not in OVERLAY_HTML
+
+
+def test_overlay_state_marks_league_mode_when_league_context_is_configured():
+    builder = OverlayStateBuilder(
+        league_context=type(
+            "LeagueContextStub",
+            (),
+            {
+                "is_configured": lambda self: True,
+                "enrich_driver_lookup": lambda self, lookup: lookup,
+            },
+        )()
+    )
+
+    state = builder.build_from_telemetry(OverlayTelemetry()).to_dict()
+
+    assert state["league_mode"] is True
 
 
 def test_overlay_hides_caution_sponsor_while_pit_summary_is_active():
