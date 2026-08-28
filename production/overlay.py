@@ -18,8 +18,19 @@ from config import (
     OVERLAY_RACE_SPONSOR,
     OVERLAY_SERIES_LOGO,
     OVERLAY_SERIES_NAME,
+    RACE_SPONSOR_1_LOGO,
+    RACE_SPONSOR_1_NAME,
+    RACE_SPONSOR_2_LOGO,
+    RACE_SPONSOR_2_NAME,
+    RACE_SPONSOR_3_LOGO,
+    RACE_SPONSOR_3_NAME,
+    RACE_SPONSOR_4_LOGO,
+    RACE_SPONSOR_4_NAME,
+    RACE_SPONSOR_5_LOGO,
+    RACE_SPONSOR_5_NAME,
     RACE_SPONSOR_LOGOS,
     SPONSOR_READ_CAUSE_NAME,
+    SPONSOR_READ_CAUSE_LOGO,
 )
 from production.sim_racing_apps import (
     build_sim_racing_apps_car_debug_info,
@@ -30,6 +41,30 @@ from production.multiclass import build_multiclass_context
 
 
 MAX_IRACING_RENDER_BYTES = 5 * 1024 * 1024
+
+
+def configured_overlay_sponsor_options():
+    options = []
+    seen = set()
+    for slot, name, logo in (
+        (1, RACE_SPONSOR_1_NAME, RACE_SPONSOR_1_LOGO),
+        (2, RACE_SPONSOR_2_NAME, RACE_SPONSOR_2_LOGO),
+        (3, RACE_SPONSOR_3_NAME, RACE_SPONSOR_3_LOGO),
+        (4, RACE_SPONSOR_4_NAME, RACE_SPONSOR_4_LOGO),
+        (5, RACE_SPONSOR_5_NAME, RACE_SPONSOR_5_LOGO),
+    ):
+        clean_name = str(name or "").strip()
+        clean_logo = str(logo or "").strip()
+        key = clean_name.lower() or clean_logo.lower()
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        options.append({"slot": slot, "name": clean_name, "logo": clean_logo})
+    cause_name = str(SPONSOR_READ_CAUSE_NAME or "").strip()
+    cause_logo = str(SPONSOR_READ_CAUSE_LOGO or "").strip()
+    if cause_name and cause_name.lower() not in seen:
+        options.append({"slot": "cause", "name": cause_name, "logo": cause_logo})
+    return options
 
 
 def is_safe_iracing_render_url(url):
@@ -87,6 +122,7 @@ class OverlayEventConfig:
     leaderboard_style: str = OVERLAY_LEADERBOARD_STYLE
     graphics: list[str] = field(default_factory=lambda: list(OVERLAY_BRAND_GRAPHICS))
     sponsor_graphics: list[str] = field(default_factory=lambda: list(RACE_SPONSOR_LOGOS))
+    sponsor_options: list[dict[str, Any]] = field(default_factory=configured_overlay_sponsor_options)
     series_logo: str = OVERLAY_SERIES_LOGO
 
 
@@ -354,6 +390,7 @@ class OverlayState:
                 "leaderboard_style": self.event.leaderboard_style,
                 "graphics": list(self.event.graphics),
                 "sponsor_graphics": list(self.event.sponsor_graphics),
+                "sponsor_options": list(self.event.sponsor_options),
                 "series_logo": self.event.series_logo,
             },
             "session_type": self.session_type,
@@ -1215,6 +1252,47 @@ class OverlayServer:
             self.special_presentation = None
             self.state.special_presentation = None
 
+    def show_caution_review_slate(self, sponsor_name="", sponsor_slot=""):
+        graphics = self.caution_review_slate_graphics(sponsor_name, sponsor_slot)
+        title = "Caution Review"
+        subtitle = (
+            "Race control is reviewing the incident. "
+            "We will show it as soon as the angle is ready."
+        )
+        self.show_special_presentation(
+            kind="caution_review_slate",
+            title=title,
+            subtitle=subtitle,
+            duration=1800,
+            graphics=graphics,
+        )
+        return {
+            "ok": True,
+            "kind": "caution_review_slate",
+            "title": title,
+            "sponsor_name": str(sponsor_name or "").strip(),
+            "graphics": graphics,
+        }
+
+    def caution_review_slate_graphics(self, sponsor_name="", sponsor_slot=""):
+        sponsor_name = str(sponsor_name or "").strip()
+        sponsor_slot = str(sponsor_slot or "").strip()
+        options = list(self.state.event.sponsor_options or [])
+        if sponsor_name or sponsor_slot:
+            for option in options:
+                option_name = str((option or {}).get("name", "") or "").strip()
+                option_slot = str((option or {}).get("slot", "") or "").strip()
+                if (
+                    sponsor_name
+                    and option_name
+                    and option_name.lower() == sponsor_name.lower()
+                ) or (sponsor_slot and option_slot == sponsor_slot):
+                    logo = str((option or {}).get("logo", "") or "").strip()
+                    if logo:
+                        return [logo]
+                    break
+        return list(self.state.event.sponsor_graphics or self.state.event.graphics or [])
+
     def show_stat_panel(
         self,
         kind,
@@ -1618,17 +1696,18 @@ class OverlayServer:
                     self.send_json({"ok": True})
                     return
 
+                if self.path == "/overlay/caution-review-slate":
+                    data = self.read_json_body()
+                    self.send_json(
+                        server.show_caution_review_slate(
+                            sponsor_name=data.get("sponsor_name", ""),
+                            sponsor_slot=data.get("sponsor_slot", ""),
+                        )
+                    )
+                    return
+
                 if self.path == "/producer/command":
-                    try:
-                        length = int(self.headers.get("Content-Length", "0") or 0)
-                    except ValueError:
-                        length = 0
-                    raw_body = self.rfile.read(max(0, length))
-                    try:
-                        data = json.loads(raw_body.decode("utf-8") or "{}")
-                    except json.JSONDecodeError:
-                        self.send_json({"ok": False, "error": "Invalid JSON"})
-                        return
+                    data = self.read_json_body()
                     command = str(data.get("command", "") or "")
                     payload = data.get("payload", {}) or {}
                     if not command:
@@ -1639,6 +1718,17 @@ class OverlayServer:
                     return
 
                 self.send_error(404)
+
+            def read_json_body(self):
+                try:
+                    length = int(self.headers.get("Content-Length", "0") or 0)
+                except ValueError:
+                    length = 0
+                raw_body = self.rfile.read(max(0, length))
+                try:
+                    return json.loads(raw_body.decode("utf-8") or "{}")
+                except json.JSONDecodeError:
+                    return {}
 
             def send_json(self, data: dict[str, Any]):
                 body = json.dumps(data).encode("utf-8")
@@ -2157,6 +2247,26 @@ PRODUCER_HTML = r"""<!doctype html>
       font-weight: 900;
     }
 
+    .slate-control-row {
+      display: grid;
+      grid-template-columns: minmax(190px, 1fr) repeat(2, minmax(150px, 0.7fr));
+      gap: 8px;
+      margin-top: 10px;
+      grid-column: 1 / -1;
+    }
+
+    .camera-explain {
+      grid-column: 1 / -1;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(88, 169, 255, 0.28);
+      background: rgba(23, 46, 78, 0.34);
+      color: #dbe9ff;
+      font-size: 12px;
+      font-weight: 850;
+      line-height: 1.35;
+    }
+
     .replay-deck-row {
       display: grid;
       grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -2610,6 +2720,10 @@ PRODUCER_HTML = r"""<!doctype html>
           <button class="control-button" id="leader-camera-button">Back to Leader</button>
         </div>
 
+        <div class="camera-explain" id="camera-explain">
+          Camera readout: waiting for the first camera move.
+        </div>
+
         <div class="camera-shot-row">
           <select class="camera-shot-select" id="manual-camera-group-select" title="Manual camera shot">
             <option value="TV1">TV1</option>
@@ -2645,11 +2759,16 @@ PRODUCER_HTML = r"""<!doctype html>
         <div class="panel full">
           <h3>Manual Show Features</h3>
           <div class="small">Use these when the race needs energy, a sponsor hit, or a manual commercial break.</div>
+          <div class="slate-control-row">
+            <select class="camera-shot-select" id="caution-review-sponsor-select" title="Caution review slate sponsor">
+              <option value="">Review Slate Sponsor: Auto</option>
+            </select>
+            <button class="control-button warn" id="caution-review-slate-button">Show Review Slate</button>
+            <button class="control-button" id="clear-caution-review-slate-button">Clear Review Slate</button>
+          </div>
           <div class="button-row control-grid" style="margin-top: 10px;">
             <button class="control-button warn" id="manual-crank-it-up-button">Play Crank It Up</button>
             <button class="control-button" id="manual-sponsor-button">Play Next Sponsor</button>
-            <button class="control-button warn" id="caution-review-slate-button">Show Caution Review Slate</button>
-            <button class="control-button" id="clear-caution-review-slate-button">Clear Review Slate</button>
             <button class="control-button sponsor-slot-button" data-sponsor-slot="1">Sponsor 1</button>
             <button class="control-button sponsor-slot-button" data-sponsor-slot="2">Sponsor 2</button>
             <button class="control-button sponsor-slot-button" data-sponsor-slot="3">Sponsor 3</button>
@@ -3350,6 +3469,22 @@ PRODUCER_HTML = r"""<!doctype html>
       for (const button of document.querySelectorAll(".camera-shot-button")) {
         button.disabled = heldByOther;
       }
+      renderCameraExplain(state);
+    }
+
+    function renderCameraExplain(state) {
+      const element = document.getElementById("camera-explain");
+      if (!element) return;
+      const latestCamera = (state.producer_feed || []).find(item => item.kind === "camera");
+      const focus = state.featured_driver || {};
+      if (latestCamera) {
+        const target = focus.driver_name
+          ? ` Current overlay focus: #${focus.car_number || "--"} ${focus.driver_name}.`
+          : "";
+        element.textContent = `Camera readout: ${latestCamera.message || latestCamera.title || "Camera moved."}${target}`;
+        return;
+      }
+      element.textContent = "Camera readout: waiting for the first camera move.";
     }
 
     function renderControlButtons(state) {
@@ -3380,6 +3515,25 @@ PRODUCER_HTML = r"""<!doctype html>
       leaderboardButton.className = `control-button ${leaderboardStyle !== "side" ? "good" : ""}`;
       renderAudioSliders(state, broadcasterSlider, musicSlider);
       renderRaceControl(state);
+      renderCautionReviewSponsorSelect(state);
+    }
+
+    function renderCautionReviewSponsorSelect(state) {
+      const select = document.getElementById("caution-review-sponsor-select");
+      if (!select) return;
+      const current = select.value;
+      const options = ((state.event || {}).sponsor_options || []).filter(item => item && (item.name || item.logo));
+      select.innerHTML = '<option value="">Review Slate Sponsor: Auto</option>';
+      for (const option of options) {
+        const node = document.createElement("option");
+        node.value = String(option.slot || option.name || "");
+        node.textContent = `Review Slate Sponsor: ${option.name || `Sponsor ${option.slot}`}`;
+        node.dataset.sponsorName = option.name || "";
+        select.appendChild(node);
+      }
+      if ([...select.options].some(option => option.value === current)) {
+        select.value = current;
+      }
     }
 
     function renderAudioSliders(state, broadcasterSlider, musicSlider) {
@@ -3442,6 +3596,34 @@ PRODUCER_HTML = r"""<!doctype html>
         });
       } catch (error) {
         console.warn("Producer command failed", command, error);
+      }
+    }
+
+    async function showCautionReviewSlate() {
+      const select = document.getElementById("caution-review-sponsor-select");
+      const selected = select ? select.options[select.selectedIndex] : null;
+      const payload = {
+        sponsor_slot: select ? select.value : "",
+        sponsor_name: selected ? selected.dataset.sponsorName || "" : ""
+      };
+      try {
+        await fetch("/overlay/caution-review-slate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+      } catch (error) {
+        console.warn("Immediate review slate failed; falling back to producer queue.", error);
+        sendProducerCommand("caution_review_slate_on", payload);
+      }
+    }
+
+    async function clearCautionReviewSlate() {
+      try {
+        await fetch("/overlay/clear-special-presentation", { method: "POST" });
+      } catch (error) {
+        console.warn("Immediate review slate clear failed; falling back to producer queue.", error);
+        sendProducerCommand("caution_review_slate_off");
       }
     }
 
@@ -3509,10 +3691,10 @@ PRODUCER_HTML = r"""<!doctype html>
       sendProducerCommand("producer_sponsor_commercial");
     });
     document.getElementById("caution-review-slate-button").addEventListener("click", () => {
-      sendProducerCommand("caution_review_slate_on");
+      showCautionReviewSlate();
     });
     document.getElementById("clear-caution-review-slate-button").addEventListener("click", () => {
-      sendProducerCommand("caution_review_slate_off");
+      clearCautionReviewSlate();
     });
     for (const button of document.querySelectorAll(".sponsor-slot-button")) {
       button.addEventListener("click", () => {
@@ -4852,14 +5034,14 @@ OVERLAY_HTML = r"""<!doctype html>
     }
 
     .special-presentation.caution_review_slate {
-      inset: 0;
+      inset: -4px;
       width: auto;
       height: auto;
-      z-index: 78;
+      z-index: 120;
       background:
         radial-gradient(circle at 18% 18%, rgba(215, 25, 32, 0.22), transparent 34%),
         radial-gradient(circle at 82% 72%, rgba(0, 158, 255, 0.18), transparent 34%),
-        linear-gradient(135deg, rgba(4, 6, 10, 0.96), rgba(14, 19, 30, 0.94) 56%, rgba(38, 8, 16, 0.92));
+        linear-gradient(135deg, #04060a, #0e131e 56%, #260810);
       justify-content: center;
       animation: none;
     }
@@ -4919,11 +5101,11 @@ OVERLAY_HTML = r"""<!doctype html>
     }
 
     .special-presentation.caution_review_slate .ceremony-card {
-      grid-template-columns: 260px 1fr;
+      grid-template-columns: 300px 1fr;
       gap: 36px;
-      width: min(1040px, calc(100% - 160px));
-      min-height: 250px;
-      padding: 34px 44px;
+      width: min(1220px, calc(100% - 96px));
+      min-height: 315px;
+      padding: 42px 54px;
       border-left-width: 8px;
       border-top: 1px solid rgba(255, 255, 255, 0.2);
       background:
@@ -4955,8 +5137,8 @@ OVERLAY_HTML = r"""<!doctype html>
     }
 
     .special-presentation.caution_review_slate .ceremony-logo {
-      width: 250px;
-      height: 150px;
+      width: 290px;
+      height: 180px;
     }
 
     .ceremony-title {
@@ -4981,7 +5163,7 @@ OVERLAY_HTML = r"""<!doctype html>
     }
 
     .special-presentation.caution_review_slate .ceremony-title {
-      font-size: 54px;
+      font-size: 66px;
       letter-spacing: 0.07em;
     }
 

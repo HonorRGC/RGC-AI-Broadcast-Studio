@@ -1082,14 +1082,18 @@ def test_producer_assist_html_reads_overlay_state():
     assert "Manual Show Features" in PRODUCER_HTML
     assert 'id="manual-crank-it-up-button"' in PRODUCER_HTML
     assert 'id="manual-sponsor-button"' in PRODUCER_HTML
+    assert 'id="caution-review-sponsor-select"' in PRODUCER_HTML
+    assert "showCautionReviewSlate" in PRODUCER_HTML
+    assert 'fetch("/overlay/caution-review-slate"' in PRODUCER_HTML
+    assert 'fetch("/overlay/clear-special-presentation"' in PRODUCER_HTML
+    assert 'id="camera-explain"' in PRODUCER_HTML
+    assert "renderCameraExplain" in PRODUCER_HTML
     assert 'id="caution-review-slate-button"' in PRODUCER_HTML
     assert 'id="clear-caution-review-slate-button"' in PRODUCER_HTML
     assert 'data-sponsor-slot="1"' in PRODUCER_HTML
     assert 'data-sponsor-slot="5"' in PRODUCER_HTML
     assert 'sendProducerCommand("producer_crank_it_up")' in PRODUCER_HTML
     assert 'sendProducerCommand("producer_sponsor_commercial")' in PRODUCER_HTML
-    assert 'sendProducerCommand("caution_review_slate_on")' in PRODUCER_HTML
-    assert 'sendProducerCommand("caution_review_slate_off")' in PRODUCER_HTML
     assert "sponsor_slot: Number(button.dataset.sponsorSlot || 0)" in PRODUCER_HTML
     assert 'id="leaderboard-style-button"' in PRODUCER_HTML
     assert 'id="broadcaster-volume-slider"' in PRODUCER_HTML
@@ -1272,3 +1276,27 @@ def test_overlay_server_can_override_leaderboard_style_from_producer():
     assert selected == "flo"
     assert state["event"]["leaderboard_style"] == "flo"
     assert state["control_state"]["leaderboard_style"] == "flo"
+
+
+def test_overlay_server_can_show_caution_review_slate_with_selected_sponsor():
+    from production.overlay import OverlayEventConfig, OverlayServer, OverlayStateBuilder
+
+    event_config = OverlayEventConfig(
+        sponsor_graphics=["/assets/auto.png"],
+        sponsor_options=[
+            {"slot": 1, "name": "RGC Motorsports", "logo": "/assets/rgc.png"},
+            {"slot": 2, "name": "Autism Awareness", "logo": "/assets/autism.png"},
+        ],
+    )
+    server = OverlayServer(state_builder=OverlayStateBuilder(event_config=event_config))
+
+    response = server.show_caution_review_slate(sponsor_slot="2")
+    state = server.current_state_dict()
+
+    assert response["ok"] is True
+    assert state["special_presentation"]["kind"] == "caution_review_slate"
+    assert state["special_presentation"]["graphics"] == ["/assets/autism.png"]
+
+    server.clear_special_presentation()
+
+    assert server.current_state_dict()["special_presentation"] is None

@@ -26,6 +26,14 @@ class OverlaySpy:
     def show_special_presentation(self, **kwargs):
         self.special = kwargs
 
+    def show_caution_review_slate(self, **kwargs):
+        self.show_special_presentation(
+            kind="caution_review_slate",
+            title="Caution Review",
+            graphics=["/assets/rgc.png"],
+            **kwargs,
+        )
+
     def clear_special_presentation(self):
         self.special = None
 

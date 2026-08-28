@@ -1119,25 +1119,11 @@ def handle_producer_command(
         return
 
     if command == "caution_review_slate_on":
-        graphics = []
-        state_reader = getattr(overlay_server, "current_state_dict", None)
-        state = state_reader() if callable(state_reader) else {}
-        event = state.get("event", {}) if isinstance(state, dict) else {}
-        if isinstance(event, dict):
-            graphics = list(
-                event.get("sponsor_graphics")
-                or event.get("graphics")
-                or ([event.get("series_logo")] if event.get("series_logo") else [])
-                or []
-            )
-        shower = getattr(overlay_server, "show_special_presentation", None)
+        shower = getattr(overlay_server, "show_caution_review_slate", None)
         if shower:
             shower(
-                kind="caution_review_slate",
-                title="Caution Review",
-                subtitle="Race control is reviewing the incident. We will show it as soon as the angle is ready.",
-                duration=1800,
-                graphics=graphics,
+                sponsor_name=payload.get("sponsor_name", ""),
+                sponsor_slot=payload.get("sponsor_slot", ""),
             )
         publish_producer_event(
             overlay_server,
