@@ -4531,10 +4531,10 @@ OVERLAY_HTML = r"""<!doctype html>
       left: 10px;
       right: 10px;
       top: 10px;
-      height: 142px;
+      height: 146px;
       display: grid;
-      grid-template-columns: 246px minmax(0, 1fr) 274px;
-      grid-template-rows: 36px 52px 32px 14px;
+      grid-template-columns: 260px minmax(0, 1fr) 286px;
+      grid-template-rows: 36px 48px 44px 14px;
       gap: 4px;
       text-transform: uppercase;
       z-index: 23;
@@ -4565,9 +4565,9 @@ OVERLAY_HTML = r"""<!doctype html>
       align-items: center;
       padding: 0 16px;
       color: #ffffff;
-      font-size: 17px;
+      font-size: 15px;
       font-weight: 950;
-      letter-spacing: 0.075em;
+      letter-spacing: 0.055em;
       text-shadow: 0 2px 8px rgba(0, 0, 0, 0.72);
     }
 
@@ -4631,10 +4631,10 @@ OVERLAY_HTML = r"""<!doctype html>
     }
 
     .brazen-status {
-      grid-column: 1;
-      grid-row: 3;
+      grid-column: 3;
+      grid-row: 1;
       display: grid;
-      grid-template-columns: minmax(0, 1fr) 76px;
+      grid-template-columns: minmax(0, 1fr) 94px;
       align-items: center;
     }
 
@@ -4644,7 +4644,7 @@ OVERLAY_HTML = r"""<!doctype html>
 
     .brazen-status-label {
       color: #ffffff;
-      font-size: 14px;
+      font-size: 16px;
       font-weight: 950;
       letter-spacing: 0.035em;
       line-height: 1.05;
@@ -4652,7 +4652,7 @@ OVERLAY_HTML = r"""<!doctype html>
 
     .brazen-status-lap {
       color: rgba(255, 255, 255, 0.92);
-      font-size: 12px;
+      font-size: 14px;
       font-weight: 900;
       line-height: 1.15;
     }
@@ -4691,12 +4691,12 @@ OVERLAY_HTML = r"""<!doctype html>
 
     .brazen-series {
       grid-column: 3;
-      grid-row: 1 / span 3;
+      grid-row: 2;
     }
 
     .brazen-sponsor img {
       max-width: 206px;
-      max-height: 34px;
+      max-height: 48px;
       object-fit: contain;
       filter:
         drop-shadow(0 8px 14px rgba(0, 0, 0, 0.76))
@@ -4705,7 +4705,7 @@ OVERLAY_HTML = r"""<!doctype html>
 
     .brazen-series img {
       max-width: 214px;
-      max-height: 52px;
+      max-height: 44px;
       object-fit: contain;
       filter:
         drop-shadow(0 8px 14px rgba(0, 0, 0, 0.76))
@@ -4713,22 +4713,12 @@ OVERLAY_HTML = r"""<!doctype html>
     }
 
     .brazen-series-text {
-      margin-top: 4px;
-      color: #ffffff;
-      font-size: 13px;
-      font-weight: 950;
-      letter-spacing: 0.075em;
-      text-align: center;
-      line-height: 1.08;
-      max-width: 232px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      display: none;
     }
 
     .brazen-field-window {
       grid-column: 2;
-      grid-row: 2 / span 2;
+      grid-row: 2;
       display: grid;
       align-content: stretch;
       overflow: hidden;
@@ -4744,6 +4734,7 @@ OVERLAY_HTML = r"""<!doctype html>
     .brazen-field-row {
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
+      height: 48px;
       min-width: 0;
     }
 
@@ -4752,7 +4743,7 @@ OVERLAY_HTML = r"""<!doctype html>
       grid-template-columns: auto auto minmax(0, 1fr) auto;
       align-items: center;
       gap: 8px;
-      padding: 0 12px;
+      padding: 0 10px;
       min-width: 0;
       border-left: 1px solid rgba(255, 255, 255, 0.18);
       background:
@@ -4805,10 +4796,11 @@ OVERLAY_HTML = r"""<!doctype html>
     }
 
     .brazen-race-bar {
-      grid-column: 1 / -1;
-      grid-row: 4;
+      grid-column: 2;
+      grid-row: 3;
       display: flex;
       height: 14px;
+      align-self: end;
       background: rgba(0, 0, 0, 0.42);
       border: 1px solid rgba(190, 142, 255, 0.34);
       overflow: hidden;
