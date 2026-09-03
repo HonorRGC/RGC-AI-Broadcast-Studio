@@ -4746,7 +4746,7 @@ OVERLAY_HTML = r"""<!doctype html>
       min-width: 0;
       height: 100%;
       width: max-content;
-      animation: brazen-scroll 34s linear infinite;
+      animation: brazen-scroll 46s linear infinite;
     }
 
     .brazen-field-row {
@@ -4823,7 +4823,8 @@ OVERLAY_HTML = r"""<!doctype html>
       grid-row: 3;
       display: flex;
       height: 14px;
-      align-self: end;
+      align-self: start;
+      margin-top: -2px;
       background: rgba(0, 0, 0, 0.42);
       border: 1px solid rgba(190, 142, 255, 0.34);
       overflow: hidden;
