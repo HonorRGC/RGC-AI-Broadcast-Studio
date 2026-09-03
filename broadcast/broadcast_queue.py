@@ -1,6 +1,6 @@
 import time
 from dataclasses import dataclass, field
-from typing import List
+from typing import List, Tuple
 
 
 @dataclass
@@ -11,18 +11,41 @@ class ScheduledBroadcast:
     protected: bool = False
     speaker: str = "lead"
     delay_seconds: float = 0.0
+    expires_after: float = 90.0
+    dedupe_key: str = ""
+    camera_target_car_idx: int | None = None
+    participant_car_indices: Tuple[int, ...] = ()
+    camera_focus_incident: bool = False
+    camera_incident_group: str = "Far Chase"
+    camera_sequence: Tuple[int, ...] = ()
+    camera_sequence_steps: Tuple[tuple, ...] = ()
+    replay_session_num: int | None = None
+    replay_session_time: float | None = None
+    replay_incident_delta: int = 0
+    replay_multi_angle: bool = False
+    replay_use_incident_marker: bool = False
+    replay_marker_pre_roll_frames: int | None = None
+    camera_return_home_after_sequence: bool = False
+    silent: bool = False
+    feature_duration_seconds: float = 0.0
     created_at: float = field(default_factory=time.time)
 
     @property
     def ready_at(self):
         return self.created_at + self.delay_seconds
 
+    def is_expired(self, now):
+        return self.expires_after > 0 and now > self.created_at + self.expires_after
+
 
 class BroadcastQueue:
     def __init__(self):
         self.items: List[ScheduledBroadcast] = []
         self.busy_until = 0.0
+        self.active_category = ""
+        self.active_dedupe_key = ""
         self.minimum_gap_seconds = 2.5
+        self.voice_tail_padding_seconds = 0.55
 
     def add(
         self,
@@ -32,8 +55,29 @@ class BroadcastQueue:
         protected=False,
         speaker="lead",
         delay_seconds=0.0,
+        expires_after=90.0,
+        dedupe_key="",
+        camera_target_car_idx=None,
+        participant_car_indices=(),
+        camera_focus_incident=False,
+        camera_incident_group="Far Chase",
+        camera_sequence=(),
+        camera_sequence_steps=(),
+        replay_session_num=None,
+        replay_session_time=None,
+        replay_incident_delta=0,
+        replay_multi_angle=False,
+        replay_use_incident_marker=False,
+        replay_marker_pre_roll_frames=None,
+        camera_return_home_after_sequence=False,
+        silent=False,
+        feature_duration_seconds=0.0,
     ):
-        if not commentary:
+        if not commentary and not silent:
+            return
+
+        key = dedupe_key or f"{category}:{speaker}:{str(commentary).strip().lower()}"
+        if any(item.dedupe_key == key for item in self.items):
             return
 
         self.items.append(
@@ -44,59 +88,190 @@ class BroadcastQueue:
                 protected=protected,
                 speaker=speaker,
                 delay_seconds=delay_seconds,
+                expires_after=expires_after,
+                dedupe_key=key,
+                camera_target_car_idx=camera_target_car_idx,
+                participant_car_indices=tuple(participant_car_indices),
+                camera_focus_incident=bool(camera_focus_incident),
+                camera_incident_group=str(camera_incident_group or "Far Chase"),
+                camera_sequence=tuple(camera_sequence),
+                camera_sequence_steps=tuple(camera_sequence_steps),
+                replay_session_num=replay_session_num,
+                replay_session_time=replay_session_time,
+                replay_incident_delta=replay_incident_delta,
+                replay_multi_angle=bool(replay_multi_angle),
+                replay_use_incident_marker=bool(replay_use_incident_marker),
+                replay_marker_pre_roll_frames=replay_marker_pre_roll_frames,
+                camera_return_home_after_sequence=bool(
+                    camera_return_home_after_sequence
+                ),
+                silent=bool(silent),
+                feature_duration_seconds=float(feature_duration_seconds or 0.0),
             )
         )
 
-    def has_items(self):
-        return len(self.items) > 0
+    def can_speak(self, now=None):
+        now = time.time() if now is None else now
+        return now >= self.busy_until
 
-    def can_speak(self):
-        return time.time() >= self.busy_until
-
-    def estimate_speech_seconds(self, message):
+    def estimate_speech_seconds(self, message, category=""):
+        if category == "crank_it_up":
+            return 50.0
+        if category == "booth_conversation":
+            return max(4.4, min(12.0, len(str(message).split()) / 2.9))
+        if category == "final_lap_finish_focus":
+            return max(3.0, min(7.0, len(str(message).split()) / 3.7))
         words = len(str(message).split())
+        if category == "race_control" and self.is_short_lap_call(message):
+            return max(1.2, words / 3.6)
+        if category.startswith("opening_field_rundown"):
+            return max(0.85, min(6.0, words / 4.7))
+        if category.startswith(
+            ("quarter_field_rundown", "three_quarter_field_rundown", "long_green_field_rundown")
+        ):
+            return max(3.0, min(16.0, words / 2.85))
         return max(5.0, min(45.0, words / 2.45))
 
-    def next_item(self):
-        if not self.items or not self.can_speak():
+    @staticmethod
+    def is_short_lap_call(message):
+        text = str(message or "").strip().lower()
+        return text in {
+            "two laps to go.",
+            "white flag. one lap to go.",
+        }
+
+    def estimate_gap_seconds(self, category=""):
+        if category.startswith("opening_field_rundown"):
+            return 0.12
+        if category.startswith(
+            ("quarter_field_rundown", "three_quarter_field_rundown", "long_green_field_rundown")
+        ):
+            return 1.0
+        return self.minimum_gap_seconds
+
+    def estimate_item_gap_seconds(self, item):
+        if item.category == "race_control" and self.is_short_lap_call(item.message):
+            return 0.6
+        if item.category == "booth_conversation":
+            return 0.2
+        return self.estimate_gap_seconds(item.category)
+
+    def estimate_tail_padding_seconds(self, item):
+        if getattr(item, "silent", False):
+            return 0.0
+        if item.category.startswith("opening_field_rundown"):
+            return 0.04
+        return self.voice_tail_padding_seconds
+
+    def has_pending_booth_follow_up(self, now):
+        return any(
+            item.category == "race_story_follow_up" and item.ready_at <= now
+            for item in self.items
+        )
+
+    def has_pending_booth_conversation(self):
+        return any(item.category == "booth_conversation" for item in self.items)
+
+    def tight_handoff_speech_seconds(self, message, category, default_seconds):
+        if category != "race_story":
+            return default_seconds
+
+        words = len(str(message).split())
+        return min(default_seconds, max(3.6, words / 3.25))
+
+    def next_item(self, now=None):
+        now = time.time() if now is None else now
+        if not self.items:
             return None
 
-        now = time.time()
+        self.items = [item for item in self.items if not item.is_expired(now)]
+        if not self.can_speak(now):
+            ready_camera_previews = [
+                item
+                for item in self.items
+                if item.ready_at <= now
+                and item.silent
+                and item.category == "incident_camera_preview"
+            ]
+            if not ready_camera_previews:
+                return None
+            ready_camera_previews.sort(
+                key=lambda item: (item.priority, -item.created_at),
+                reverse=True,
+            )
+            selected = ready_camera_previews[0]
+            self.items.remove(selected)
+            return selected
+
         ready_items = [item for item in self.items if item.ready_at <= now]
 
         if not ready_items:
             return None
 
-        protected_ready = [item for item in ready_items if item.protected]
-
-        if protected_ready:
-            selected = protected_ready[0]
-        else:
-            ready_items.sort(key=lambda item: item.priority, reverse=True)
-            selected = ready_items[0]
+        ready_items.sort(
+            key=lambda item: (item.protected, item.priority, -item.created_at),
+            reverse=True,
+        )
+        selected = ready_items[0]
 
         self.items.remove(selected)
+        self.active_category = selected.category
+        self.active_dedupe_key = selected.dedupe_key
 
-        speech_time = self.estimate_speech_seconds(selected.message)
-        self.busy_until = now + speech_time + self.minimum_gap_seconds
+        if selected.silent and selected.category == "incident_camera_preview":
+            return selected
+
+        speech_time = (
+            selected.feature_duration_seconds
+            if selected.feature_duration_seconds > 0
+            else self.estimate_speech_seconds(selected.message, selected.category)
+        )
+        if self.has_pending_booth_follow_up(now):
+            speech_time = self.tight_handoff_speech_seconds(
+                selected.message,
+                selected.category,
+                speech_time,
+            )
+            gap_time = 0.15
+        else:
+            gap_time = self.estimate_item_gap_seconds(selected)
+        tail_padding = self.estimate_tail_padding_seconds(selected)
+        self.busy_until = now + speech_time + gap_time + tail_padding
 
         return selected
 
-    def next_commentary(self):
-        item = self.next_item()
-        if item:
-            return item.message
-        return None
+    def mark_actual_playback_started(self, item, playback_seconds, now=None):
+        """Replace the word-count estimate with generated voice duration."""
+        try:
+            playback_seconds = float(playback_seconds or 0.0)
+        except (TypeError, ValueError):
+            playback_seconds = 0.0
+        if playback_seconds <= 0 or getattr(item, "silent", False):
+            return
+        now = time.time() if now is None else now
+        gap_time = self.estimate_item_gap_seconds(item)
+        tail_padding = self.estimate_tail_padding_seconds(item)
+        self.busy_until = now + playback_seconds + gap_time + tail_padding
 
-    def clear_unprotected(self):
-        self.items = [item for item in self.items if item.protected]
+    def reserve_busy_seconds(self, seconds, now=None):
+        try:
+            seconds = float(seconds or 0.0)
+        except (TypeError, ValueError):
+            seconds = 0.0
+        if seconds <= 0:
+            return
+        now = time.time() if now is None else now
+        self.busy_until = max(self.busy_until, now + seconds)
 
-    def clear_category(self, category):
-        self.items = [
-            item for item in self.items
-            if item.category != category or item.protected
-        ]
+    def has_pending_category(self, category):
+        return any(item.category == category for item in self.items)
 
-    def clear_race_chatter(self):
-        self.clear_category("race_commentary")
-        self.clear_category("color_commentary")
+    def is_busy_with_category(self, category, now=None):
+        now = time.time() if now is None else now
+        return self.active_category == category and now < self.busy_until
+
+    def clear_for_race_control(self, preserve_categories=(), reset_busy=True):
+        preserved = set(preserve_categories)
+        self.items = [item for item in self.items if item.category in preserved]
+        if reset_busy:
+            self.busy_until = 0.0
