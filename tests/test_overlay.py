@@ -811,10 +811,12 @@ def test_overlay_has_brazen_leaderboard_style():
     assert 'id="brazen-sponsor-logo"' in OVERLAY_HTML
     assert 'id="brazen-series-logo"' in OVERLAY_HTML
     assert 'id="brazen-leader-name"' in OVERLAY_HTML
+    assert 'id="brazen-leader-fastest"' in OVERLAY_HTML
     assert 'id="brazen-status-label"' in OVERLAY_HTML
+    assert "Waiting for starting grid" in OVERLAY_HTML
     assert 'id="brazen-race-bar" class="brazen-race-bar hidden"' in OVERLAY_HTML
     assert ".brazen-leaderboard.caution" in OVERLAY_HTML
-    assert ".brazen-leaderboard.green" in OVERLAY_HTML
+    assert ".brazen-flag-rail" in OVERLAY_HTML
     assert "renderBrazenLeaderboard(state, leaderboardStyle)" in OVERLAY_HTML
     assert "renderBrazenRaceBar(state.lap_history || [])" in OVERLAY_HTML
     assert "countCautionRuns(state.lap_history || [])" in OVERLAY_HTML

@@ -465,6 +465,15 @@ class OverlayStateBuilder:
         )
 
         full_leaderboard = self.build_leaderboard(results, driver_lookup, session_type)
+        if not full_leaderboard:
+            grid_reader = getattr(telemetry, "get_starting_grid", None)
+            grid = grid_reader() if callable(grid_reader) else []
+            if grid:
+                full_leaderboard = self.build_leaderboard(
+                    grid,
+                    driver_lookup,
+                    session_type,
+                )
         if full_leaderboard:
             self.last_leaderboard = full_leaderboard
         elif self.is_race_session(session_type) and self.last_leaderboard:
@@ -4522,10 +4531,10 @@ OVERLAY_HTML = r"""<!doctype html>
       left: 10px;
       right: 10px;
       top: 10px;
-      height: 146px;
+      height: 142px;
       display: grid;
-      grid-template-columns: 260px minmax(0, 1fr) 286px;
-      grid-template-rows: 44px 58px 32px 12px;
+      grid-template-columns: 246px minmax(0, 1fr) 274px;
+      grid-template-rows: 36px 52px 32px 14px;
       gap: 4px;
       text-transform: uppercase;
       z-index: 23;
@@ -4541,11 +4550,12 @@ OVERLAY_HTML = r"""<!doctype html>
       overflow: hidden;
       border: 2px solid rgba(255, 255, 255, 0.22);
       background:
-        linear-gradient(180deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.02) 45%, rgba(0, 0, 0, 0.38)),
-        rgba(5, 7, 10, 0.94);
+        linear-gradient(180deg, rgba(200, 150, 255, 0.18), rgba(83, 34, 126, 0.18) 45%, rgba(0, 0, 0, 0.42)),
+        rgba(10, 7, 18, 0.95);
       box-shadow:
         inset 0 1px 0 rgba(255, 255, 255, 0.20),
-        inset 0 -10px 18px rgba(0, 0, 0, 0.22);
+        inset 0 -10px 18px rgba(0, 0, 0, 0.28),
+        0 0 20px rgba(134, 76, 255, 0.16);
     }
 
     .brazen-title {
@@ -4555,7 +4565,7 @@ OVERLAY_HTML = r"""<!doctype html>
       align-items: center;
       padding: 0 16px;
       color: #ffffff;
-      font-size: 19px;
+      font-size: 17px;
       font-weight: 950;
       letter-spacing: 0.075em;
       text-shadow: 0 2px 8px rgba(0, 0, 0, 0.72);
@@ -4565,7 +4575,7 @@ OVERLAY_HTML = r"""<!doctype html>
       grid-column: 2;
       grid-row: 1;
       display: grid;
-      grid-template-columns: 98px minmax(190px, 1fr) 116px 92px;
+      grid-template-columns: 92px minmax(190px, 1fr) 126px 92px;
       align-items: stretch;
     }
 
@@ -4588,7 +4598,7 @@ OVERLAY_HTML = r"""<!doctype html>
     }
 
     .brazen-leader-main,
-    .brazen-leader-gap,
+    .brazen-leader-fastest,
     .brazen-leader-led {
       display: grid;
       align-content: center;
@@ -4605,7 +4615,7 @@ OVERLAY_HTML = r"""<!doctype html>
     }
 
     .brazen-leader-name,
-    .brazen-leader-gap-value,
+    .brazen-leader-fastest-value,
     .brazen-leader-led-value {
       color: #ffffff;
       font-size: 18px;
@@ -4621,20 +4631,20 @@ OVERLAY_HTML = r"""<!doctype html>
     }
 
     .brazen-status {
-      grid-column: 3;
-      grid-row: 1;
+      grid-column: 1;
+      grid-row: 3;
       display: grid;
-      grid-template-columns: minmax(0, 1fr) 104px;
+      grid-template-columns: minmax(0, 1fr) 76px;
       align-items: center;
     }
 
     .brazen-status-left {
-      padding: 0 14px;
+      padding: 0 12px;
     }
 
     .brazen-status-label {
       color: #ffffff;
-      font-size: 18px;
+      font-size: 14px;
       font-weight: 950;
       letter-spacing: 0.035em;
       line-height: 1.05;
@@ -4642,7 +4652,7 @@ OVERLAY_HTML = r"""<!doctype html>
 
     .brazen-status-lap {
       color: rgba(255, 255, 255, 0.92);
-      font-size: 15px;
+      font-size: 12px;
       font-weight: 900;
       line-height: 1.15;
     }
@@ -4668,29 +4678,38 @@ OVERLAY_HTML = r"""<!doctype html>
 
     .brazen-sponsor,
     .brazen-series {
-      grid-row: 2 / span 2;
       display: grid;
       align-content: center;
       justify-items: center;
-      padding: 10px 18px;
+      padding: 8px 16px;
     }
 
     .brazen-sponsor {
       grid-column: 1;
+      grid-row: 2;
     }
 
     .brazen-series {
       grid-column: 3;
+      grid-row: 1 / span 3;
     }
 
-    .brazen-sponsor img,
-    .brazen-series img {
-      max-width: 214px;
-      max-height: 70px;
+    .brazen-sponsor img {
+      max-width: 206px;
+      max-height: 34px;
       object-fit: contain;
       filter:
         drop-shadow(0 8px 14px rgba(0, 0, 0, 0.76))
-        drop-shadow(0 0 12px rgba(255, 255, 255, 0.12));
+        drop-shadow(0 0 12px rgba(185, 124, 255, 0.20));
+    }
+
+    .brazen-series img {
+      max-width: 214px;
+      max-height: 52px;
+      object-fit: contain;
+      filter:
+        drop-shadow(0 8px 14px rgba(0, 0, 0, 0.76))
+        drop-shadow(0 0 12px rgba(185, 124, 255, 0.20));
     }
 
     .brazen-series-text {
@@ -4717,7 +4736,6 @@ OVERLAY_HTML = r"""<!doctype html>
 
     .brazen-field-track {
       display: grid;
-      grid-template-rows: 1fr 1fr;
       min-width: 0;
       height: 100%;
       transition: opacity 0.2s ease;
@@ -4741,20 +4759,6 @@ OVERLAY_HTML = r"""<!doctype html>
         linear-gradient(180deg, rgba(255, 255, 255, 0.10), rgba(0, 0, 0, 0.22));
     }
 
-    .brazen-leaderboard.green .brazen-field-entry,
-    .brazen-leaderboard.green .brazen-title,
-    .brazen-leaderboard.green .brazen-status {
-      border-color: rgba(21, 200, 95, 0.62);
-      box-shadow: inset 0 -3px 0 rgba(21, 200, 95, 0.62);
-    }
-
-    .brazen-leaderboard.caution .brazen-field-entry,
-    .brazen-leaderboard.caution .brazen-title,
-    .brazen-leaderboard.caution .brazen-status {
-      border-color: rgba(255, 212, 0, 0.76);
-      box-shadow: inset 0 -3px 0 rgba(255, 212, 0, 0.70);
-    }
-
     .brazen-position {
       min-width: 30px;
       height: 25px;
@@ -4762,7 +4766,7 @@ OVERLAY_HTML = r"""<!doctype html>
       align-items: center;
       justify-content: center;
       background: rgba(0, 0, 0, 0.42);
-      border: 1px solid rgba(255, 255, 255, 0.28);
+      border: 1px solid rgba(190, 142, 255, 0.48);
       color: #fff;
       font-size: 14px;
       font-weight: 950;
@@ -4793,13 +4797,20 @@ OVERLAY_HTML = r"""<!doctype html>
       white-space: nowrap;
     }
 
+    .brazen-field-placeholder {
+      grid-column: 1 / -1;
+      justify-content: center;
+      color: rgba(255, 255, 255, 0.72);
+      letter-spacing: 0.08em;
+    }
+
     .brazen-race-bar {
-      grid-column: 2;
+      grid-column: 1 / -1;
       grid-row: 4;
       display: flex;
-      height: 12px;
+      height: 14px;
       background: rgba(0, 0, 0, 0.42);
-      border: 1px solid rgba(255, 255, 255, 0.18);
+      border: 1px solid rgba(190, 142, 255, 0.34);
       overflow: hidden;
     }
 
@@ -5726,9 +5737,9 @@ OVERLAY_HTML = r"""<!doctype html>
         <div class="brazen-mini-label">Leader</div>
         <div id="brazen-leader-name" class="brazen-leader-name">--</div>
       </div>
-      <div class="brazen-leader-gap">
-        <div class="brazen-mini-label">Gap</div>
-        <div id="brazen-leader-gap" class="brazen-leader-gap-value">--</div>
+      <div class="brazen-leader-fastest">
+        <div class="brazen-mini-label">Fastest Lap</div>
+        <div id="brazen-leader-fastest" class="brazen-leader-fastest-value">--</div>
       </div>
       <div class="brazen-leader-led">
         <div class="brazen-mini-label">Laps Led</div>
@@ -5944,7 +5955,7 @@ OVERLAY_HTML = r"""<!doctype html>
     function renderBrazenLeaderboard(state, leaderboardStyle) {
       const layer = document.getElementById("brazen-leaderboard");
       const leaderboard = state.producer_leaderboard || state.leaderboard || [];
-      const active = leaderboardStyle === "brazen" && leaderboard.length;
+      const active = leaderboardStyle === "brazen";
       layer.classList.toggle("hidden", !active);
       if (!active) {
         document.getElementById("brazen-field-track").innerHTML = "";
@@ -5953,14 +5964,11 @@ OVERLAY_HTML = r"""<!doctype html>
       }
 
       const event = state.event || {};
-      const leader = leaderboard[0] || {};
       setText("brazen-title", event.title || "RGC AI Broadcast");
-      setText("brazen-leader-name", brazenDriverLabel(leader));
-      setText("brazen-leader-gap", leader.interval || "--");
-      setText("brazen-leader-led", leader.laps_led ? String(leader.laps_led) : "--");
       setText("brazen-status-label", brazenStatusLabel(state));
       setText("brazen-status-lap", brazenLapLine(state));
       setText("brazen-cautions", String(countCautionRuns(state.lap_history || [])));
+      renderBrazenRaceBar(state.lap_history || []);
 
       const sponsorLogo = pickRotatingGraphic(event.sponsor_graphics || event.graphics || [], 4.5);
       const sponsorImage = document.getElementById("brazen-sponsor-logo");
@@ -5972,19 +5980,31 @@ OVERLAY_HTML = r"""<!doctype html>
       seriesImage.classList.toggle("hidden", !seriesLogo);
       seriesImage.src = seriesLogo || "";
       setText("brazen-series-text", event.series || event.sponsor || "RGC AI");
-      renderBrazenRaceBar(state.lap_history || []);
 
-      const field = leaderboard.slice(1, 41);
-      const pageSize = 8;
-      const pageCount = Math.max(1, Math.ceil(field.length / pageSize));
-      const pageIndex = field.length > pageSize ? Math.floor(Date.now() / 6500) % pageCount : 0;
-      const page = field.slice(pageIndex * pageSize, pageIndex * pageSize + pageSize);
-      const topRow = page.slice(0, 4).map(renderBrazenEntry).join("");
-      const bottomRow = page.slice(4, 8).map(renderBrazenEntry).join("");
-      document.getElementById("brazen-field-track").innerHTML = `
-        <div class="brazen-field-row">${topRow}</div>
-        <div class="brazen-field-row">${bottomRow}</div>
-      `;
+      if (!leaderboard.length) {
+        setText("brazen-leader-name", "Waiting for scoring");
+        setText("brazen-leader-fastest", "--");
+        setText("brazen-leader-led", "--");
+        document.getElementById("brazen-field-track").innerHTML = `
+          <div class="brazen-field-row">
+            <div class="brazen-field-entry brazen-field-placeholder">Waiting for starting grid</div>
+          </div>
+        `;
+      } else {
+        const leader = leaderboard[0] || {};
+        setText("brazen-leader-name", brazenDriverLabel(leader));
+        setText("brazen-leader-fastest", leader.fastest_lap || "--");
+        setText("brazen-leader-led", leader.laps_led ? String(leader.laps_led) : "--");
+
+        const field = leaderboard.slice(1, 41);
+        const pageSize = 4;
+        const pageCount = Math.max(1, Math.ceil(field.length / pageSize));
+        const pageIndex = field.length > pageSize ? Math.floor(Date.now() / 6500) % pageCount : 0;
+        const page = field.slice(pageIndex * pageSize, pageIndex * pageSize + pageSize);
+        document.getElementById("brazen-field-track").innerHTML = `
+          <div class="brazen-field-row">${page.map(renderBrazenEntry).join("")}</div>
+        `;
+      }
     }
 
     function renderBrazenEntry(entry) {
@@ -6468,7 +6488,9 @@ OVERLAY_HTML = r"""<!doctype html>
 
     function buildDriverCardRankLine(driver) {
       const position = Number(driver.position || 0);
-      return position > 0 ? `P${position}` : "P--";
+      const start = Number(driver.starting_position || 0);
+      const fallback = position > 0 ? position : start;
+      return fallback > 0 ? `P${fallback}` : "P--";
     }
 
     function buildDriverCardPositionLine(driver) {
