@@ -4538,11 +4538,24 @@ OVERLAY_HTML = r"""<!doctype html>
       gap: 4px;
       text-transform: uppercase;
       z-index: 23;
+      padding: 3px;
+      border: 2px solid rgba(183, 120, 255, 0.50);
+      border-radius: 4px;
+      background: rgba(12, 4, 24, 0.22);
       filter: drop-shadow(0 14px 26px rgba(0, 0, 0, 0.58));
+      box-shadow: 0 0 24px rgba(140, 68, 255, 0.22);
     }
 
     .brazen-leaderboard.hidden {
       display: none;
+    }
+
+    .brazen-leaderboard.caution {
+      border-color: rgba(255, 212, 0, 0.92);
+      background: rgba(44, 34, 0, 0.22);
+      box-shadow:
+        0 0 20px rgba(255, 212, 0, 0.36),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.12);
     }
 
     .brazen-cell {
