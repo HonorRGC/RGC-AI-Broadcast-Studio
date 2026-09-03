@@ -4539,11 +4539,10 @@ OVERLAY_HTML = r"""<!doctype html>
       text-transform: uppercase;
       z-index: 23;
       padding: 3px;
-      border: 2px solid rgba(183, 120, 255, 0.50);
-      border-radius: 4px;
-      background: rgba(12, 4, 24, 0.22);
+      border: 0;
+      background: transparent;
       filter: drop-shadow(0 14px 26px rgba(0, 0, 0, 0.58));
-      box-shadow: 0 0 24px rgba(140, 68, 255, 0.22);
+      box-shadow: none;
     }
 
     .brazen-leaderboard.hidden {
@@ -4551,17 +4550,15 @@ OVERLAY_HTML = r"""<!doctype html>
     }
 
     .brazen-leaderboard.caution {
-      border-color: rgba(255, 212, 0, 0.92);
-      background: rgba(44, 34, 0, 0.22);
-      box-shadow:
-        0 0 20px rgba(255, 212, 0, 0.36),
-        inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+      filter:
+        drop-shadow(0 14px 26px rgba(0, 0, 0, 0.58))
+        drop-shadow(0 0 14px rgba(255, 212, 0, 0.32));
     }
 
     .brazen-cell {
       min-width: 0;
       overflow: hidden;
-      border: 2px solid rgba(255, 255, 255, 0.22);
+      border: 2px solid rgba(183, 120, 255, 0.48);
       background:
         linear-gradient(180deg, rgba(200, 150, 255, 0.18), rgba(83, 34, 126, 0.18) 45%, rgba(0, 0, 0, 0.42)),
         rgba(10, 7, 18, 0.95);
@@ -4569,6 +4566,11 @@ OVERLAY_HTML = r"""<!doctype html>
         inset 0 1px 0 rgba(255, 255, 255, 0.20),
         inset 0 -10px 18px rgba(0, 0, 0, 0.28),
         0 0 20px rgba(134, 76, 255, 0.16);
+    }
+
+    .brazen-leaderboard.caution .brazen-cell,
+    .brazen-leaderboard.caution .brazen-race-bar {
+      border-color: rgba(255, 212, 0, 0.90);
     }
 
     .brazen-title {
