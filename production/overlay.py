@@ -1166,6 +1166,8 @@ class OverlayServer:
             return "ticker"
         if style in ("flo", "flo_top", "flo-top", "top_grid"):
             return "flo"
+        if style in ("brazen", "brazen_top", "brazen-top", "leader_top"):
+            return "brazen"
         return "side"
 
     def apply_runtime_overrides(self, state):
@@ -3420,6 +3422,7 @@ PRODUCER_HTML = r"""<!doctype html>
       const style = String(controlStyle || eventStyle || "side").toLowerCase().trim();
       if (["ticker", "scroll", "top"].includes(style)) return "ticker";
       if (["flo", "flo_top", "flo-top", "top_grid"].includes(style)) return "flo";
+      if (["brazen", "brazen_top", "brazen-top", "leader_top"].includes(style)) return "brazen";
       return "side";
     }
 
@@ -3519,6 +3522,7 @@ PRODUCER_HTML = r"""<!doctype html>
       leaderboardButton.textContent =
         leaderboardStyle === "ticker" ? "Leaderboard: Ticker" :
         leaderboardStyle === "flo" ? "Leaderboard: Flo Top" :
+        leaderboardStyle === "brazen" ? "Leaderboard: Brazen" :
         "Leaderboard: Side";
       autoButton.className = `control-button ${autoOn ? "good" : "danger"}`;
       openAiButton.className = `control-button ${openAiOn ? "good" : "danger"}`;
@@ -3736,6 +3740,7 @@ PRODUCER_HTML = r"""<!doctype html>
       const nextCommand =
         style === "side" ? "leaderboard_ticker" :
         style === "ticker" ? "leaderboard_flo" :
+        style === "flo" ? "leaderboard_brazen" :
         "leaderboard_side";
       sendProducerCommand(nextCommand);
     });
@@ -3960,6 +3965,14 @@ OVERLAY_HTML = r"""<!doctype html>
       top: 188px;
     }
 
+    body.leaderboard-brazen-mode .top-banner {
+      display: none;
+    }
+
+    body.leaderboard-brazen-mode .session-center {
+      top: 186px;
+    }
+
     .caution-status {
       position: absolute;
       left: 50%;
@@ -3992,6 +4005,10 @@ OVERLAY_HTML = r"""<!doctype html>
 
     body.leaderboard-flo-mode .caution-status {
       top: 204px;
+    }
+
+    body.leaderboard-brazen-mode .caution-status {
+      top: 188px;
     }
 
     @keyframes cautionStatusPulse {
@@ -4131,6 +4148,10 @@ OVERLAY_HTML = r"""<!doctype html>
     }
 
     body.leaderboard-flo-mode .leaderboard {
+      display: none;
+    }
+
+    body.leaderboard-brazen-mode .leaderboard {
       display: none;
     }
 
@@ -4496,6 +4517,296 @@ OVERLAY_HTML = r"""<!doctype html>
       white-space: nowrap;
     }
 
+    .brazen-leaderboard {
+      position: absolute;
+      left: 10px;
+      right: 10px;
+      top: 10px;
+      height: 146px;
+      display: grid;
+      grid-template-columns: 260px minmax(0, 1fr) 286px;
+      grid-template-rows: 44px 58px 32px 12px;
+      gap: 4px;
+      text-transform: uppercase;
+      z-index: 23;
+      filter: drop-shadow(0 14px 26px rgba(0, 0, 0, 0.58));
+    }
+
+    .brazen-leaderboard.hidden {
+      display: none;
+    }
+
+    .brazen-cell {
+      min-width: 0;
+      overflow: hidden;
+      border: 2px solid rgba(255, 255, 255, 0.22);
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.02) 45%, rgba(0, 0, 0, 0.38)),
+        rgba(5, 7, 10, 0.94);
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.20),
+        inset 0 -10px 18px rgba(0, 0, 0, 0.22);
+    }
+
+    .brazen-title {
+      grid-column: 1;
+      grid-row: 1;
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      color: #ffffff;
+      font-size: 19px;
+      font-weight: 950;
+      letter-spacing: 0.075em;
+      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.72);
+    }
+
+    .brazen-leader {
+      grid-column: 2;
+      grid-row: 1;
+      display: grid;
+      grid-template-columns: 98px minmax(190px, 1fr) 116px 92px;
+      align-items: stretch;
+    }
+
+    .brazen-flag-rail {
+      background: #15c85f;
+      border-right: 2px solid rgba(255, 255, 255, 0.36);
+      box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.12), 0 0 18px rgba(21, 200, 95, 0.42);
+    }
+
+    .brazen-leaderboard.caution .brazen-flag-rail {
+      background: #ffd400;
+      box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.16), 0 0 18px rgba(255, 212, 0, 0.55);
+    }
+
+    .brazen-leaderboard.checkered .brazen-flag-rail {
+      background:
+        linear-gradient(45deg, #fff 0 25%, #05070b 25% 50%, #fff 50% 75%, #05070b 75%),
+        #ffffff;
+      background-size: 18px 18px;
+    }
+
+    .brazen-leader-main,
+    .brazen-leader-gap,
+    .brazen-leader-led {
+      display: grid;
+      align-content: center;
+      padding: 0 14px;
+      border-left: 1px solid rgba(255, 255, 255, 0.16);
+    }
+
+    .brazen-mini-label {
+      color: rgba(255, 255, 255, 0.68);
+      font-size: 11px;
+      font-weight: 850;
+      letter-spacing: 0.08em;
+      line-height: 1;
+    }
+
+    .brazen-leader-name,
+    .brazen-leader-gap-value,
+    .brazen-leader-led-value {
+      color: #ffffff;
+      font-size: 18px;
+      font-weight: 950;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      line-height: 1.25;
+    }
+
+    .brazen-leader-name {
+      font-size: 19px;
+    }
+
+    .brazen-status {
+      grid-column: 3;
+      grid-row: 1;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 104px;
+      align-items: center;
+    }
+
+    .brazen-status-left {
+      padding: 0 14px;
+    }
+
+    .brazen-status-label {
+      color: #ffffff;
+      font-size: 18px;
+      font-weight: 950;
+      letter-spacing: 0.035em;
+      line-height: 1.05;
+    }
+
+    .brazen-status-lap {
+      color: rgba(255, 255, 255, 0.92);
+      font-size: 15px;
+      font-weight: 900;
+      line-height: 1.15;
+    }
+
+    .brazen-cautions {
+      height: 100%;
+      display: grid;
+      align-content: center;
+      justify-items: end;
+      padding: 0 12px;
+      border-left: 1px solid rgba(255, 255, 255, 0.16);
+      color: #ffd400;
+      font-size: 11px;
+      font-weight: 950;
+      letter-spacing: 0.055em;
+    }
+
+    .brazen-caution-value {
+      color: #ffffff;
+      font-size: 19px;
+      line-height: 1.0;
+    }
+
+    .brazen-sponsor,
+    .brazen-series {
+      grid-row: 2 / span 2;
+      display: grid;
+      align-content: center;
+      justify-items: center;
+      padding: 10px 18px;
+    }
+
+    .brazen-sponsor {
+      grid-column: 1;
+    }
+
+    .brazen-series {
+      grid-column: 3;
+    }
+
+    .brazen-sponsor img,
+    .brazen-series img {
+      max-width: 214px;
+      max-height: 70px;
+      object-fit: contain;
+      filter:
+        drop-shadow(0 8px 14px rgba(0, 0, 0, 0.76))
+        drop-shadow(0 0 12px rgba(255, 255, 255, 0.12));
+    }
+
+    .brazen-series-text {
+      margin-top: 4px;
+      color: #ffffff;
+      font-size: 13px;
+      font-weight: 950;
+      letter-spacing: 0.075em;
+      text-align: center;
+      line-height: 1.08;
+      max-width: 232px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .brazen-field-window {
+      grid-column: 2;
+      grid-row: 2 / span 2;
+      display: grid;
+      align-content: stretch;
+      overflow: hidden;
+    }
+
+    .brazen-field-track {
+      display: grid;
+      grid-template-rows: 1fr 1fr;
+      min-width: 0;
+      height: 100%;
+      transition: opacity 0.2s ease;
+    }
+
+    .brazen-field-row {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      min-width: 0;
+    }
+
+    .brazen-field-entry {
+      display: grid;
+      grid-template-columns: auto auto minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 8px;
+      padding: 0 12px;
+      min-width: 0;
+      border-left: 1px solid rgba(255, 255, 255, 0.18);
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.10), rgba(0, 0, 0, 0.22));
+    }
+
+    .brazen-leaderboard.green .brazen-field-entry,
+    .brazen-leaderboard.green .brazen-title,
+    .brazen-leaderboard.green .brazen-status {
+      border-color: rgba(21, 200, 95, 0.62);
+      box-shadow: inset 0 -3px 0 rgba(21, 200, 95, 0.62);
+    }
+
+    .brazen-leaderboard.caution .brazen-field-entry,
+    .brazen-leaderboard.caution .brazen-title,
+    .brazen-leaderboard.caution .brazen-status {
+      border-color: rgba(255, 212, 0, 0.76);
+      box-shadow: inset 0 -3px 0 rgba(255, 212, 0, 0.70);
+    }
+
+    .brazen-position {
+      min-width: 30px;
+      height: 25px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.42);
+      border: 1px solid rgba(255, 255, 255, 0.28);
+      color: #fff;
+      font-size: 14px;
+      font-weight: 950;
+    }
+
+    .brazen-number {
+      color: #ffffff;
+      font-size: 18px;
+      font-weight: 950;
+      white-space: nowrap;
+    }
+
+    .brazen-name {
+      min-width: 0;
+      color: #ffffff;
+      font-size: 18px;
+      font-weight: 950;
+      letter-spacing: 0.045em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .brazen-gap {
+      color: rgba(255, 255, 255, 0.82);
+      font-size: 13px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .brazen-race-bar {
+      grid-column: 2;
+      grid-row: 4;
+      display: flex;
+      height: 12px;
+      background: rgba(0, 0, 0, 0.42);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      overflow: hidden;
+    }
+
+    .brazen-race-bar.hidden {
+      display: none;
+    }
+
     .ticker-leaderboard.green {
       border-bottom-color: #15c85f;
       box-shadow: inset 0 -9px 16px rgba(21, 200, 95, 0.20), 0 12px 30px rgba(0, 0, 0, 0.38);
@@ -4830,7 +5141,8 @@ OVERLAY_HTML = r"""<!doctype html>
     }
 
     body.leaderboard-ticker-mode .studio-stamp,
-    body.leaderboard-flo-mode .studio-stamp {
+    body.leaderboard-flo-mode .studio-stamp,
+    body.leaderboard-brazen-mode .studio-stamp {
       left: 20px;
       bottom: 16px;
     }
@@ -5406,6 +5718,46 @@ OVERLAY_HTML = r"""<!doctype html>
     </div>
   </section>
 
+  <section id="brazen-leaderboard" class="brazen-leaderboard hidden">
+    <div id="brazen-title" class="brazen-cell brazen-title">RGC AI Broadcast</div>
+    <div class="brazen-cell brazen-leader">
+      <div id="brazen-flag-rail" class="brazen-flag-rail"></div>
+      <div class="brazen-leader-main">
+        <div class="brazen-mini-label">Leader</div>
+        <div id="brazen-leader-name" class="brazen-leader-name">--</div>
+      </div>
+      <div class="brazen-leader-gap">
+        <div class="brazen-mini-label">Gap</div>
+        <div id="brazen-leader-gap" class="brazen-leader-gap-value">--</div>
+      </div>
+      <div class="brazen-leader-led">
+        <div class="brazen-mini-label">Laps Led</div>
+        <div id="brazen-leader-led" class="brazen-leader-led-value">--</div>
+      </div>
+    </div>
+    <div class="brazen-cell brazen-status">
+      <div class="brazen-status-left">
+        <div id="brazen-status-label" class="brazen-status-label">Green Flag</div>
+        <div id="brazen-status-lap" class="brazen-status-lap">Lap --</div>
+      </div>
+      <div class="brazen-cautions">
+        <div>Cautions</div>
+        <div id="brazen-cautions" class="brazen-caution-value">0</div>
+      </div>
+    </div>
+    <div class="brazen-cell brazen-sponsor">
+      <img id="brazen-sponsor-logo" alt="" />
+    </div>
+    <div class="brazen-cell brazen-field-window">
+      <div id="brazen-field-track" class="brazen-field-track"></div>
+    </div>
+    <div class="brazen-cell brazen-series">
+      <img id="brazen-series-logo" alt="" />
+      <div id="brazen-series-text" class="brazen-series-text"></div>
+    </div>
+    <div id="brazen-race-bar" class="brazen-race-bar hidden"></div>
+  </section>
+
   <section id="driver-card" class="driver-card hidden">
     <div class="driver-card-position-rank">
       <div id="driver-card-position-rank" class="rank">P--</div>
@@ -5474,6 +5826,7 @@ OVERLAY_HTML = r"""<!doctype html>
       const leaderboardStyle = normalizeLeaderboardStyle(event.leaderboard_style);
       document.body.classList.toggle("leaderboard-ticker-mode", leaderboardStyle === "ticker");
       document.body.classList.toggle("leaderboard-flo-mode", leaderboardStyle === "flo");
+      document.body.classList.toggle("leaderboard-brazen-mode", leaderboardStyle === "brazen");
       document.getElementById("top-banner").classList.toggle("caution", !!state.caution);
       document.getElementById("caution-status").classList.toggle("hidden", !state.caution);
       document.getElementById("leaderboard").classList.toggle("green", !!state.green);
@@ -5482,10 +5835,14 @@ OVERLAY_HTML = r"""<!doctype html>
       document.getElementById("ticker-leaderboard").classList.toggle("caution", !!state.caution);
       document.getElementById("flo-leaderboard").classList.toggle("green", !!state.green);
       document.getElementById("flo-leaderboard").classList.toggle("caution", !!state.caution);
+      document.getElementById("brazen-leaderboard").classList.toggle("green", !!state.green);
+      document.getElementById("brazen-leaderboard").classList.toggle("caution", !!state.caution);
+      document.getElementById("brazen-leaderboard").classList.toggle("checkered", isCheckeredState(state));
       renderBrandGraphic(event.graphics || [], state.session_type);
       renderLapHistory(state.lap_history || []);
       renderTickerLeaderboard(state.producer_leaderboard || state.leaderboard || [], leaderboardStyle);
       renderFloLeaderboard(state, leaderboardStyle);
+      renderBrazenLeaderboard(state, leaderboardStyle);
       const presentation = effectiveSpecialPresentation(state);
       renderSpecialPresentation(presentation);
       renderDriverCard(shouldHideDriverCardForPresentation(presentation) ? null : state.featured_driver);
@@ -5511,6 +5868,7 @@ OVERLAY_HTML = r"""<!doctype html>
       const style = String(value || "side").toLowerCase().trim();
       if (["ticker", "scroll", "top"].includes(style)) return "ticker";
       if (["flo", "flo_top", "flo-top", "top_grid"].includes(style)) return "flo";
+      if (["brazen", "brazen_top", "brazen-top", "leader_top"].includes(style)) return "brazen";
       return "side";
     }
 
@@ -5581,6 +5939,116 @@ OVERLAY_HTML = r"""<!doctype html>
       document.getElementById("flo-row-top").innerHTML = topFive.map(renderFloEntry).join("");
       document.getElementById("flo-row-second").innerHTML = secondFive.map(renderFloEntry).join("");
       document.getElementById("flo-row-cycle").innerHTML = cyclingFive.map(renderFloEntry).join("");
+    }
+
+    function renderBrazenLeaderboard(state, leaderboardStyle) {
+      const layer = document.getElementById("brazen-leaderboard");
+      const leaderboard = state.producer_leaderboard || state.leaderboard || [];
+      const active = leaderboardStyle === "brazen" && leaderboard.length;
+      layer.classList.toggle("hidden", !active);
+      if (!active) {
+        document.getElementById("brazen-field-track").innerHTML = "";
+        renderBrazenRaceBar([]);
+        return;
+      }
+
+      const event = state.event || {};
+      const leader = leaderboard[0] || {};
+      setText("brazen-title", event.title || "RGC AI Broadcast");
+      setText("brazen-leader-name", brazenDriverLabel(leader));
+      setText("brazen-leader-gap", leader.interval || "--");
+      setText("brazen-leader-led", leader.laps_led ? String(leader.laps_led) : "--");
+      setText("brazen-status-label", brazenStatusLabel(state));
+      setText("brazen-status-lap", brazenLapLine(state));
+      setText("brazen-cautions", String(countCautionRuns(state.lap_history || [])));
+
+      const sponsorLogo = pickRotatingGraphic(event.sponsor_graphics || event.graphics || [], 4.5);
+      const sponsorImage = document.getElementById("brazen-sponsor-logo");
+      sponsorImage.classList.toggle("hidden", !sponsorLogo);
+      sponsorImage.src = sponsorLogo || "";
+
+      const seriesLogo = event.series_logo || "";
+      const seriesImage = document.getElementById("brazen-series-logo");
+      seriesImage.classList.toggle("hidden", !seriesLogo);
+      seriesImage.src = seriesLogo || "";
+      setText("brazen-series-text", event.series || event.sponsor || "RGC AI");
+      renderBrazenRaceBar(state.lap_history || []);
+
+      const field = leaderboard.slice(1, 41);
+      const pageSize = 8;
+      const pageCount = Math.max(1, Math.ceil(field.length / pageSize));
+      const pageIndex = field.length > pageSize ? Math.floor(Date.now() / 6500) % pageCount : 0;
+      const page = field.slice(pageIndex * pageSize, pageIndex * pageSize + pageSize);
+      const topRow = page.slice(0, 4).map(renderBrazenEntry).join("");
+      const bottomRow = page.slice(4, 8).map(renderBrazenEntry).join("");
+      document.getElementById("brazen-field-track").innerHTML = `
+        <div class="brazen-field-row">${topRow}</div>
+        <div class="brazen-field-row">${bottomRow}</div>
+      `;
+    }
+
+    function renderBrazenEntry(entry) {
+      return `
+        <div class="brazen-field-entry">
+          <span class="brazen-position">${escapeHtml(entry.position || "")}</span>
+          <span class="brazen-number" style="${numberStyleAttribute(entry.number_style || {})}">${escapeHtml(entry.car_number || "?")}</span>
+          <span class="brazen-name">${escapeHtml(lastNameOrName(entry.driver_name || "Unknown"))}</span>
+          <span class="brazen-gap">${escapeHtml(entry.class_position ? `${entry.class_name || "CLS"} ${ordinal(entry.class_position)}` : entry.interval || "")}</span>
+        </div>
+      `;
+    }
+
+    function brazenDriverLabel(entry) {
+      if (!entry || !entry.driver_name) return "--";
+      const number = entry.car_number ? `#${entry.car_number} ` : "";
+      return `${number}${entry.driver_name}`;
+    }
+
+    function brazenStatusLabel(state) {
+      if (isCheckeredState(state)) return "Checkered Flag";
+      if (state.caution) return "Yellow Flag";
+      if (state.green) return "Green Flag";
+      return sessionLabel(state.session_type || "Waiting");
+    }
+
+    function brazenLapLine(state) {
+      if (isCheckeredState(state)) return `Laps Completed ${state.total_laps || state.lap || "--"}`;
+      return buildLapLine(state);
+    }
+
+    function isCheckeredState(state) {
+      const total = Number(state.total_laps || 0);
+      const lap = Number(state.lap || 0);
+      return total > 0 && lap >= total && !state.green && !state.caution;
+    }
+
+    function countCautionRuns(history) {
+      let count = 0;
+      let previousYellow = false;
+      for (const lap of history || []) {
+        const yellow = lap && lap.status === "yellow";
+        if (yellow && !previousYellow) count += 1;
+        previousYellow = yellow;
+      }
+      return count;
+    }
+
+    function renderBrazenRaceBar(history) {
+      const bar = document.getElementById("brazen-race-bar");
+      const active = !!(history && history.length);
+      bar.classList.toggle("hidden", !active);
+      bar.innerHTML = "";
+      if (!active) return;
+      const compacted = compactLapHistoryRuns(history);
+      for (const lap of compacted) {
+        const segment = document.createElement("span");
+        segment.className = `lap-history-segment ${lap.status || "pending"}`;
+        segment.style.flexGrow = String(lap.count || 1);
+        segment.title = lap.start === lap.end
+          ? `Lap ${lap.start}: ${lap.status || "pending"}`
+          : `Laps ${lap.start}-${lap.end}: ${lap.status || "pending"}`;
+        bar.appendChild(segment);
+      }
     }
 
     function renderFloEntry(entry) {

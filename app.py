@@ -1226,10 +1226,16 @@ def handle_producer_command(
             )
         return
 
-    if command in ("leaderboard_side", "leaderboard_ticker", "leaderboard_flo"):
+    if command in (
+        "leaderboard_side",
+        "leaderboard_ticker",
+        "leaderboard_flo",
+        "leaderboard_brazen",
+    ):
         style = {
             "leaderboard_ticker": "ticker",
             "leaderboard_flo": "flo",
+            "leaderboard_brazen": "brazen",
         }.get(command, "side")
         setter = getattr(overlay_server, "set_leaderboard_style", None)
         selected = setter(style) if setter else style

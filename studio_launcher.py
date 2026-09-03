@@ -278,7 +278,7 @@ BROADCAST_FIELD_HELP = {
     "OVERLAY_EVENT_TITLE": "Required for a polished overlay and Discord report title. Example: Autism Awareness 100.",
     "OVERLAY_SERIES_NAME": "League or series name. Example: WFO Wicked Wednesday Truck Series.",
     "OVERLAY_SERIES_LOGO": "Logo for the series. It can rotate in the title with sponsor and cause logos.",
-    "OVERLAY_LEADERBOARD_STYLE": "side keeps the NASCAR-style left leaderboard. ticker scrolls across the top under the title. flo uses a compact two-row top leaderboard with sponsor and series logos.",
+    "OVERLAY_LEADERBOARD_STYLE": "side keeps the NASCAR-style left leaderboard. ticker scrolls across the top under the title. flo uses a compact two-row top leaderboard. brazen uses a leader-focused top board with sponsor rotation, series logo, flag status, and a scrolling field row.",
     "OVERLAY_HOST": "Use 127.0.0.1 for this PC only. Use 0.0.0.0 when trusted helpers connect through Tailscale. The Producer Assist / Remote Admin Link is the link to send to trusted admins on your Tailscale network.",
     "USE_SIM_RACING_APPS": "Uses SIMRacingAppsServer for live 3D car renders and styled car numbers. If this is true, start SIMRacingAppsServer before the broadcast. If you are not using it, set this to false so the overlay does not waste time looking for it.",
     "USE_SPONSOR_READS": "Lets the AI work sponsor mentions into pre-race, caution, and race-update moments.",
@@ -1806,7 +1806,7 @@ def run_gui():
         if key == "OVERLAY_LEADERBOARD_STYLE":
             entry_widget = ttk.Combobox(
                 settings_frame,
-                values=("side", "ticker", "flo"),
+                values=("side", "ticker", "flo", "brazen"),
                 width=69,
                 state="readonly",
             )

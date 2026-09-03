@@ -806,6 +806,22 @@ def test_overlay_has_optional_ticker_leaderboard_and_compact_lap_bar():
     assert "font-size: 14px;" in OVERLAY_HTML
 
 
+def test_overlay_has_brazen_leaderboard_style():
+    assert 'id="brazen-leaderboard"' in OVERLAY_HTML
+    assert 'id="brazen-sponsor-logo"' in OVERLAY_HTML
+    assert 'id="brazen-series-logo"' in OVERLAY_HTML
+    assert 'id="brazen-leader-name"' in OVERLAY_HTML
+    assert 'id="brazen-status-label"' in OVERLAY_HTML
+    assert 'id="brazen-race-bar" class="brazen-race-bar hidden"' in OVERLAY_HTML
+    assert ".brazen-leaderboard.caution" in OVERLAY_HTML
+    assert ".brazen-leaderboard.green" in OVERLAY_HTML
+    assert "renderBrazenLeaderboard(state, leaderboardStyle)" in OVERLAY_HTML
+    assert "renderBrazenRaceBar(state.lap_history || [])" in OVERLAY_HTML
+    assert "countCautionRuns(state.lap_history || [])" in OVERLAY_HTML
+    assert 'leaderboardStyle === "brazen"' in OVERLAY_HTML
+    assert 'body.leaderboard-brazen-mode .top-banner' in OVERLAY_HTML
+
+
 def test_producer_driver_detail_has_broadcaster_league_stats_panel():
     assert 'id="league-stat-grid"' in PRODUCER_HTML
     assert ".league-stat-grid" in PRODUCER_HTML
@@ -1293,6 +1309,13 @@ def test_overlay_server_can_override_leaderboard_style_from_producer():
     assert selected == "flo"
     assert state["event"]["leaderboard_style"] == "flo"
     assert state["control_state"]["leaderboard_style"] == "flo"
+
+    selected = server.set_leaderboard_style("brazen")
+    state = server.current_state_dict()
+
+    assert selected == "brazen"
+    assert state["event"]["leaderboard_style"] == "brazen"
+    assert state["control_state"]["leaderboard_style"] == "brazen"
 
 
 def test_overlay_server_can_show_caution_review_slate_with_selected_sponsor():

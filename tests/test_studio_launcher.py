@@ -101,6 +101,7 @@ def test_broadcast_settings_have_friendly_labels_and_sections():
     assert BROADCAST_FIELD_LABELS["OVERLAY_EVENT_TITLE"] == "Overlay Event Title"
     assert BROADCAST_FIELD_LABELS["OVERLAY_LEADERBOARD_STYLE"] == "Leaderboard Style"
     assert "flo uses a compact two-row top leaderboard" in BROADCAST_FIELD_HELP["OVERLAY_LEADERBOARD_STYLE"]
+    assert "brazen uses a leader-focused top board" in BROADCAST_FIELD_HELP["OVERLAY_LEADERBOARD_STYLE"]
     assert BROADCAST_FIELD_LABELS["OVERLAY_HOST"] == "Remote Producer Assist Access"
     assert "trusted admins on your Tailscale network" in BROADCAST_FIELD_HELP["OVERLAY_HOST"]
     assert BROADCAST_FIELD_LABELS["USE_SIM_RACING_APPS"] == "Use SIMRacingApps Car Graphics"

@@ -1052,6 +1052,18 @@ def test_producer_command_can_switch_leaderboard_style():
 
     assert overlay.styles[-1] == "flo"
 
+    handle_producer_command(
+        "leaderboard_brazen",
+        {},
+        overlay,
+        source=None,
+        engine=None,
+        booth=None,
+        camera_director=None,
+    )
+
+    assert overlay.styles[-1] == "brazen"
+
 
 def test_producer_music_volume_reaches_practice_and_qualifying_music():
     overlay = ProducerOverlaySpy()
