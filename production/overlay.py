@@ -4531,10 +4531,10 @@ OVERLAY_HTML = r"""<!doctype html>
       left: 10px;
       right: 10px;
       top: 10px;
-      height: 146px;
+      height: 154px;
       display: grid;
       grid-template-columns: 260px minmax(0, 1fr) 286px;
-      grid-template-rows: 36px 48px 44px 14px;
+      grid-template-rows: 38px 56px 44px 14px;
       gap: 4px;
       text-transform: uppercase;
       z-index: 23;
@@ -4578,9 +4578,9 @@ OVERLAY_HTML = r"""<!doctype html>
       align-items: center;
       padding: 0 16px;
       color: #ffffff;
-      font-size: 15px;
+      font-size: 14px;
       font-weight: 950;
-      letter-spacing: 0.055em;
+      letter-spacing: 0.045em;
       text-shadow: 0 2px 8px rgba(0, 0, 0, 0.72);
     }
 
@@ -4699,17 +4699,19 @@ OVERLAY_HTML = r"""<!doctype html>
 
     .brazen-sponsor {
       grid-column: 1;
-      grid-row: 2;
+      grid-row: 2 / span 2;
+      clip-path: polygon(0 0, 100% 0, 100% 86%, 92% 100%, 0 100%);
     }
 
     .brazen-series {
       grid-column: 3;
-      grid-row: 2;
+      grid-row: 2 / span 2;
+      clip-path: polygon(0 0, 100% 0, 100% 100%, 8% 100%, 0 86%);
     }
 
     .brazen-sponsor img {
-      max-width: 206px;
-      max-height: 48px;
+      max-width: 222px;
+      max-height: 82px;
       object-fit: contain;
       filter:
         drop-shadow(0 8px 14px rgba(0, 0, 0, 0.76))
@@ -4717,8 +4719,8 @@ OVERLAY_HTML = r"""<!doctype html>
     }
 
     .brazen-series img {
-      max-width: 214px;
-      max-height: 44px;
+      max-width: 242px;
+      max-height: 82px;
       object-fit: contain;
       filter:
         drop-shadow(0 8px 14px rgba(0, 0, 0, 0.76))
@@ -4738,17 +4740,17 @@ OVERLAY_HTML = r"""<!doctype html>
     }
 
     .brazen-field-track {
-      display: grid;
+      display: flex;
       min-width: 0;
       height: 100%;
-      transition: opacity 0.2s ease;
+      width: max-content;
+      animation: brazen-scroll 34s linear infinite;
     }
 
     .brazen-field-row {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      height: 48px;
-      min-width: 0;
+      display: flex;
+      height: 56px;
+      min-width: max-content;
     }
 
     .brazen-field-entry {
@@ -4757,10 +4759,16 @@ OVERLAY_HTML = r"""<!doctype html>
       align-items: center;
       gap: 8px;
       padding: 0 10px;
-      min-width: 0;
+      width: 244px;
+      min-width: 244px;
       border-left: 1px solid rgba(255, 255, 255, 0.18);
       background:
         linear-gradient(180deg, rgba(255, 255, 255, 0.10), rgba(0, 0, 0, 0.22));
+    }
+
+    @keyframes brazen-scroll {
+      0% { transform: translateX(0); }
+      100% { transform: translateX(-50%); }
     }
 
     .brazen-position {
@@ -6002,12 +6010,10 @@ OVERLAY_HTML = r"""<!doctype html>
         setText("brazen-leader-led", leader.laps_led ? String(leader.laps_led) : "--");
 
         const field = leaderboard.slice(1, 41);
-        const pageSize = 4;
-        const pageCount = Math.max(1, Math.ceil(field.length / pageSize));
-        const pageIndex = field.length > pageSize ? Math.floor(Date.now() / 6500) % pageCount : 0;
-        const page = field.slice(pageIndex * pageSize, pageIndex * pageSize + pageSize);
+        const row = field.length ? field.map(renderBrazenEntry).join("") : "";
         document.getElementById("brazen-field-track").innerHTML = `
-          <div class="brazen-field-row">${page.map(renderBrazenEntry).join("")}</div>
+          <div class="brazen-field-row">${row}</div>
+          <div class="brazen-field-row" aria-hidden="true">${row}</div>
         `;
       }
     }
