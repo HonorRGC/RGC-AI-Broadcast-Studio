@@ -4572,15 +4572,17 @@ OVERLAY_HTML = r"""<!doctype html>
     }
 
     .brazen-title {
-      grid-column: 1;
+      grid-column: 3;
       grid-row: 1;
       display: flex;
       align-items: center;
-      padding: 0 16px;
+      justify-content: center;
+      padding: 0 12px;
       color: #ffffff;
-      font-size: 14px;
+      font-size: 13px;
       font-weight: 950;
-      letter-spacing: 0.045em;
+      letter-spacing: 0.035em;
+      text-align: center;
       text-shadow: 0 2px 8px rgba(0, 0, 0, 0.72);
     }
 
@@ -4644,7 +4646,7 @@ OVERLAY_HTML = r"""<!doctype html>
     }
 
     .brazen-status {
-      grid-column: 3;
+      grid-column: 1;
       grid-row: 1;
       display: grid;
       grid-template-columns: minmax(0, 1fr) 94px;
