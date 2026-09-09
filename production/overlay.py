@@ -3979,7 +3979,7 @@ OVERLAY_HTML = r"""<!doctype html>
     }
 
     body.leaderboard-brazen-mode .session-center {
-      top: 214px;
+      top: 228px;
     }
 
     .caution-status {
@@ -4531,10 +4531,10 @@ OVERLAY_HTML = r"""<!doctype html>
       left: 10px;
       right: 10px;
       top: 10px;
-      height: 182px;
+      height: 196px;
       display: grid;
       grid-template-columns: 286px minmax(0, 1fr) 312px;
-      grid-template-rows: 42px 68px 50px 14px;
+      grid-template-rows: 56px 68px 50px 14px;
       gap: 4px;
       text-transform: uppercase;
       z-index: 23;
@@ -4581,9 +4581,9 @@ OVERLAY_HTML = r"""<!doctype html>
       justify-content: center;
       padding: 0 12px;
       color: #ffffff;
-      font-size: 13px;
+      font-size: 15px;
       font-weight: 950;
-      letter-spacing: 0.035em;
+      letter-spacing: 0.045em;
       text-align: center;
       text-shadow: 0 2px 8px rgba(0, 0, 0, 0.72);
     }
@@ -4592,7 +4592,7 @@ OVERLAY_HTML = r"""<!doctype html>
       grid-column: 2;
       grid-row: 1;
       display: grid;
-      grid-template-columns: 104px minmax(220px, 1fr) 146px 108px;
+      grid-template-columns: 116px minmax(240px, 1fr) 158px 118px;
       align-items: stretch;
     }
 
@@ -4625,7 +4625,7 @@ OVERLAY_HTML = r"""<!doctype html>
 
     .brazen-mini-label {
       color: rgba(255, 255, 255, 0.68);
-      font-size: 11px;
+      font-size: 12px;
       font-weight: 850;
       letter-spacing: 0.08em;
       line-height: 1;
@@ -4635,7 +4635,7 @@ OVERLAY_HTML = r"""<!doctype html>
     .brazen-leader-fastest-value,
     .brazen-leader-led-value {
       color: #ffffff;
-      font-size: 20px;
+      font-size: 21px;
       font-weight: 950;
       white-space: nowrap;
       overflow: hidden;
@@ -4644,14 +4644,14 @@ OVERLAY_HTML = r"""<!doctype html>
     }
 
     .brazen-leader-name {
-      font-size: 21px;
+      font-size: 23px;
     }
 
     .brazen-status {
       grid-column: 1;
       grid-row: 1;
       display: grid;
-      grid-template-columns: minmax(0, 1fr) 104px;
+      grid-template-columns: minmax(0, 1fr) 112px;
       align-items: center;
     }
 
@@ -4661,7 +4661,7 @@ OVERLAY_HTML = r"""<!doctype html>
 
     .brazen-status-label {
       color: #ffffff;
-      font-size: 17px;
+      font-size: 19px;
       font-weight: 950;
       letter-spacing: 0.035em;
       line-height: 1.05;
@@ -4669,7 +4669,7 @@ OVERLAY_HTML = r"""<!doctype html>
 
     .brazen-status-lap {
       color: rgba(255, 255, 255, 0.92);
-      font-size: 15px;
+      font-size: 16px;
       font-weight: 900;
       line-height: 1.15;
     }
@@ -4689,7 +4689,7 @@ OVERLAY_HTML = r"""<!doctype html>
 
     .brazen-caution-value {
       color: #ffffff;
-      font-size: 21px;
+      font-size: 23px;
       line-height: 1.0;
     }
 
@@ -5361,7 +5361,7 @@ OVERLAY_HTML = r"""<!doctype html>
     body.leaderboard-brazen-mode .special-presentation.race_sponsors {
       left: auto;
       right: 54px;
-      top: 410px;
+      top: 424px;
       width: 286px;
       height: 286px;
     }
