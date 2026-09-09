@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+## Version 1.0.3 - OpenAI Model Selector
+
+### Added
+- Studio settings now include an editable OpenAI model dropdown for choosing the broadcast commentary model
+- Model choices include gpt-5.6-terra, gpt-5.6-luna, gpt-5.6-sol, gpt-5.5, gpt-5.1, gpt-5-mini, and gpt-4.1
+
+### Changed
+- Fresh installs now default OpenAI commentary to gpt-5.6-terra as the balanced quality/cost option
+- OpenAI model help text now explains when to choose Luna, Terra, or Sol
+
 ## Version 1.0.2 - Brazen Leaderboard and Sponsor Update
 
 ### Added
