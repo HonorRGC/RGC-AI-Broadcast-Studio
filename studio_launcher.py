@@ -2543,15 +2543,13 @@ def build_league_tab(
         value=setting_enabled(existing, "SIMRACERHUB_CAREER_MODE", "false")
     )
     sim_racer_hub_state["career_mode"] = career_mode
-    tk.Checkbutton(
+    label(
         form,
-        text="Career Mode: import all seasons in this series instead of one season",
-        variable=career_mode,
+        text="Use the separate Season and Career import buttons below. Season uses Season ID; Career pulls all seasons.",
+        anchor="w",
         bg=PANEL_BG,
-        fg=TEXT_FG,
-        activebackground=PANEL_BG,
-        activeforeground=TEXT_FG,
-        selectcolor=FIELD_BG,
+        fg=MUTED_FG,
+        wraplength=760,
     ).grid(row=len(rows), column=1, sticky="w", pady=(4, 8))
 
     buttons = frame(parent, bg=PANEL_BG)
@@ -2576,7 +2574,7 @@ def build_league_tab(
         output_box.delete("1.0", "end")
         output_box.insert("1.0", text)
 
-    def run_import(dry_run, drivers_only=False, schedule_only=False):
+    def run_import(dry_run, drivers_only=False, schedule_only=False, career_override=None):
         data = values()
         if not data["SIMRACERHUB_SOURCE"]:
             messagebox.showerror("Missing URL", "Paste a Sim Racer Hub URL first.")
@@ -2592,9 +2590,13 @@ def build_league_tab(
             )
             return
 
+        effective_career_mode = bool(career_override) if career_override is not None else career_mode.get()
+        if drivers_only or schedule_only:
+            effective_career_mode = False
+
         stats_output = (
             data["SIMRACERHUB_CAREER_STATS_OUTPUT"]
-            if career_mode.get()
+            if effective_career_mode
             else data["SIMRACERHUB_SEASON_STATS_OUTPUT"]
         )
         if drivers_only:
@@ -2615,7 +2617,7 @@ def build_league_tab(
             output=stats_output,
             drivers_output=data["SIMRACERHUB_DRIVERS_OUTPUT"],
             schedule_output=data["SIMRACERHUB_RACE_SCHEDULE_CSV"],
-            career_mode=False if schedule_only else career_mode.get(),
+            career_mode=effective_career_mode,
             dry_run=dry_run,
             drivers_only=drivers_only,
             schedule_only=schedule_only,
@@ -2626,7 +2628,7 @@ def build_league_tab(
         set_output(combined_output or "(No output)")
         if result.returncode == 0:
             action = "Previewed" if dry_run else "Imported"
-            mode = "career" if career_mode.get() else "season"
+            mode = "career" if effective_career_mode else "season"
             if schedule_only:
                 target = data["SIMRACERHUB_RACE_SCHEDULE_CSV"] or "league/race_schedule.csv"
             elif drivers_only:
@@ -2635,7 +2637,7 @@ def build_league_tab(
                     load_driver_profiles()
             else:
                 target = stats_output or (
-                    "league/career.csv" if career_mode.get() else "league/season.csv"
+                    "league/career.csv" if effective_career_mode else "league/season.csv"
                 )
             data_type = "race schedule" if schedule_only else ("driver roster" if drivers_only else "stats")
             suffix = "" if dry_run else f" to {target}"
@@ -2643,11 +2645,19 @@ def build_league_tab(
         else:
             status.set("Sim Racer Hub import failed. Check the output panel.")
 
-    button(buttons, text="Preview Stats", command=lambda: run_import(True), color="#334b64").pack(
+    button(buttons, text="Preview Season Stats", command=lambda: run_import(True, career_override=False), color="#334b64").pack(
         side="left",
         padx=4,
     )
-    button(buttons, text="Import Stats", command=lambda: run_import(False), color=GREEN).pack(
+    button(buttons, text="Import Season Stats", command=lambda: run_import(False, career_override=False), color=GREEN).pack(
+        side="left",
+        padx=4,
+    )
+    button(buttons, text="Preview Career Stats", command=lambda: run_import(True, career_override=True), color="#334b64").pack(
+        side="left",
+        padx=4,
+    )
+    button(buttons, text="Import Career Stats", command=lambda: run_import(False, career_override=True), color=GREEN).pack(
         side="left",
         padx=4,
     )
@@ -2669,7 +2679,7 @@ def build_league_tab(
     )
     label(
         buttons,
-        text="Tip: import the schedule once per season; use Career Mode for all-season driver stats.",
+        text="Tip: import the schedule once per season, then import Season Stats and Career Stats separately.",
         anchor="w",
         bg=PANEL_BG,
         fg=MUTED_FG,
