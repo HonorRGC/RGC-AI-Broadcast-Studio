@@ -3979,7 +3979,7 @@ OVERLAY_HTML = r"""<!doctype html>
     }
 
     body.leaderboard-brazen-mode .session-center {
-      top: 186px;
+      top: 214px;
     }
 
     .caution-status {
@@ -4531,10 +4531,10 @@ OVERLAY_HTML = r"""<!doctype html>
       left: 10px;
       right: 10px;
       top: 10px;
-      height: 154px;
+      height: 182px;
       display: grid;
-      grid-template-columns: 260px minmax(0, 1fr) 286px;
-      grid-template-rows: 38px 56px 44px 14px;
+      grid-template-columns: 286px minmax(0, 1fr) 312px;
+      grid-template-rows: 42px 68px 50px 14px;
       gap: 4px;
       text-transform: uppercase;
       z-index: 23;
@@ -4592,7 +4592,7 @@ OVERLAY_HTML = r"""<!doctype html>
       grid-column: 2;
       grid-row: 1;
       display: grid;
-      grid-template-columns: 92px minmax(190px, 1fr) 126px 92px;
+      grid-template-columns: 104px minmax(220px, 1fr) 146px 108px;
       align-items: stretch;
     }
 
@@ -4635,7 +4635,7 @@ OVERLAY_HTML = r"""<!doctype html>
     .brazen-leader-fastest-value,
     .brazen-leader-led-value {
       color: #ffffff;
-      font-size: 18px;
+      font-size: 20px;
       font-weight: 950;
       white-space: nowrap;
       overflow: hidden;
@@ -4644,14 +4644,14 @@ OVERLAY_HTML = r"""<!doctype html>
     }
 
     .brazen-leader-name {
-      font-size: 19px;
+      font-size: 21px;
     }
 
     .brazen-status {
       grid-column: 1;
       grid-row: 1;
       display: grid;
-      grid-template-columns: minmax(0, 1fr) 94px;
+      grid-template-columns: minmax(0, 1fr) 104px;
       align-items: center;
     }
 
@@ -4661,7 +4661,7 @@ OVERLAY_HTML = r"""<!doctype html>
 
     .brazen-status-label {
       color: #ffffff;
-      font-size: 16px;
+      font-size: 17px;
       font-weight: 950;
       letter-spacing: 0.035em;
       line-height: 1.05;
@@ -4669,7 +4669,7 @@ OVERLAY_HTML = r"""<!doctype html>
 
     .brazen-status-lap {
       color: rgba(255, 255, 255, 0.92);
-      font-size: 14px;
+      font-size: 15px;
       font-weight: 900;
       line-height: 1.15;
     }
@@ -4689,7 +4689,7 @@ OVERLAY_HTML = r"""<!doctype html>
 
     .brazen-caution-value {
       color: #ffffff;
-      font-size: 19px;
+      font-size: 21px;
       line-height: 1.0;
     }
 
@@ -4714,8 +4714,8 @@ OVERLAY_HTML = r"""<!doctype html>
     }
 
     .brazen-sponsor img {
-      max-width: 222px;
-      max-height: 82px;
+      max-width: 246px;
+      max-height: 100px;
       object-fit: contain;
       filter:
         drop-shadow(0 8px 14px rgba(0, 0, 0, 0.76))
@@ -4723,8 +4723,8 @@ OVERLAY_HTML = r"""<!doctype html>
     }
 
     .brazen-series img {
-      max-width: 242px;
-      max-height: 82px;
+      max-width: 270px;
+      max-height: 100px;
       object-fit: contain;
       filter:
         drop-shadow(0 8px 14px rgba(0, 0, 0, 0.76))
@@ -4753,7 +4753,7 @@ OVERLAY_HTML = r"""<!doctype html>
 
     .brazen-field-row {
       display: flex;
-      height: 56px;
+      height: 68px;
       min-width: max-content;
     }
 
@@ -4763,8 +4763,8 @@ OVERLAY_HTML = r"""<!doctype html>
       align-items: center;
       gap: 8px;
       padding: 0 10px;
-      width: 244px;
-      min-width: 244px;
+      width: 274px;
+      min-width: 274px;
       border-left: 1px solid rgba(255, 255, 255, 0.18);
       background:
         linear-gradient(180deg, rgba(255, 255, 255, 0.10), rgba(0, 0, 0, 0.22));
@@ -4790,7 +4790,7 @@ OVERLAY_HTML = r"""<!doctype html>
 
     .brazen-number {
       color: #ffffff;
-      font-size: 18px;
+      font-size: 20px;
       font-weight: 950;
       white-space: nowrap;
     }
@@ -4798,7 +4798,7 @@ OVERLAY_HTML = r"""<!doctype html>
     .brazen-name {
       min-width: 0;
       color: #ffffff;
-      font-size: 18px;
+      font-size: 20px;
       font-weight: 950;
       letter-spacing: 0.045em;
       white-space: nowrap;
@@ -5358,6 +5358,14 @@ OVERLAY_HTML = r"""<!doctype html>
       height: 264px;
     }
 
+    body.leaderboard-brazen-mode .special-presentation.race_sponsors {
+      left: auto;
+      right: 54px;
+      top: 410px;
+      width: 286px;
+      height: 286px;
+    }
+
     .special-presentation.sponsor_bug {
       left: auto;
       right: 52px;
@@ -5430,6 +5438,11 @@ OVERLAY_HTML = r"""<!doctype html>
       align-content: center;
     }
 
+    body.leaderboard-brazen-mode .special-presentation.race_sponsors .ceremony-card {
+      width: 286px;
+      height: 286px;
+    }
+
     .special-presentation.sponsor_bug .ceremony-card {
       grid-template-columns: 118px 1fr;
       gap: 14px;
@@ -5477,6 +5490,11 @@ OVERLAY_HTML = r"""<!doctype html>
     .special-presentation.race_sponsors .ceremony-logo {
       width: 186px;
       height: 112px;
+    }
+
+    body.leaderboard-brazen-mode .special-presentation.race_sponsors .ceremony-logo {
+      width: 204px;
+      height: 128px;
     }
 
     .special-presentation.sponsor_bug .ceremony-logo {
