@@ -27,8 +27,10 @@ ENV_PATH = ROOT / ".env"
 STATIC_ASSET_DIR = ROOT / "production" / "static"
 RUNTIME_DIR = ROOT / ".runtime"
 BROADCAST_PID_PATH = RUNTIME_DIR / "broadcast.pid"
+BROADCAST_LOG_PATH = ROOT / "logs" / "broadcast_latest.log"
 PROFILE_DIR = ROOT / "profiles"
 BROADCAST_PROCESS = None
+BROADCAST_LOG_FILE = None
 RGC_DISCORD_URL = "https://discord.gg/Axwwa8CUqt"
 RGC_WEBSITE_URL = "https://www.realisticgamingcrew.com"
 TAILSCALE_WINDOWS_DOWNLOAD_URL = "https://tailscale.com/download/windows"
@@ -1217,6 +1219,36 @@ def broadcast_command():
     ]
 
 
+def broadcast_creation_flags():
+    if os.name != "nt":
+        return 0
+    return getattr(subprocess, "CREATE_NO_WINDOW", 0)
+
+
+def broadcast_log_path(path=None):
+    return Path(path or BROADCAST_LOG_PATH)
+
+
+def open_broadcast_log(path=None):
+    path = broadcast_log_path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    log_file = path.open("w", encoding="utf-8", buffering=1)
+    log_file.write("RGC AI Broadcast Studio broadcast worker log\n")
+    log_file.write("=" * 56 + "\n")
+    log_file.write(f"Command: {' '.join(str(part) for part in broadcast_command())}\n\n")
+    return log_file
+
+
+def close_broadcast_log():
+    global BROADCAST_LOG_FILE
+    if BROADCAST_LOG_FILE:
+        try:
+            BROADCAST_LOG_FILE.close()
+        except Exception:
+            pass
+    BROADCAST_LOG_FILE = None
+
+
 def write_broadcast_pid(pid, path=BROADCAST_PID_PATH):
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -1380,12 +1412,21 @@ def run_sim_racer_hub_import(
 
 
 def launch_broadcast():
-    global BROADCAST_PROCESS
+    global BROADCAST_PROCESS, BROADCAST_LOG_FILE
     if is_process_running(BROADCAST_PROCESS):
         return BROADCAST_PROCESS
 
     env = os.environ.copy()
-    BROADCAST_PROCESS = subprocess.Popen(broadcast_command(), cwd=ROOT, env=env)
+    close_broadcast_log()
+    BROADCAST_LOG_FILE = open_broadcast_log()
+    BROADCAST_PROCESS = subprocess.Popen(
+        broadcast_command(),
+        cwd=ROOT,
+        env=env,
+        stdout=BROADCAST_LOG_FILE,
+        stderr=subprocess.STDOUT,
+        creationflags=broadcast_creation_flags(),
+    )
     write_broadcast_pid(BROADCAST_PROCESS.pid)
     return BROADCAST_PROCESS
 
@@ -1408,6 +1449,7 @@ def stop_broadcast():
 
     clear_broadcast_pid()
     BROADCAST_PROCESS = None
+    close_broadcast_log()
     return stopped_count
 
 

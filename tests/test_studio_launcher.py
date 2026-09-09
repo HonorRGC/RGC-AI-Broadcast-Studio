@@ -1,3 +1,4 @@
+import subprocess
 import sys
 from pathlib import Path
 from types import SimpleNamespace
@@ -19,7 +20,9 @@ from studio_launcher import (
     apply_audio_file_selection,
     build_first_time_setup_checklist,
     build_health_status,
+    broadcast_creation_flags,
     broadcast_command,
+    broadcast_log_path,
     clear_broadcast_pid,
     delete_profile,
     format_playlist_paths,
@@ -29,6 +32,7 @@ from studio_launcher import (
     install_overlay_commercial_video,
     is_newer_version,
     is_process_running,
+    launch_broadcast,
     driver_roster_import_target,
     league_csv_paths_for_profile,
     league_folder_slug,
@@ -765,6 +769,49 @@ def test_launcher_builds_default_broadcast_command():
     assert "--overlay" in command
     assert "--camera-mode" in command
     assert "--incident-replay" in command
+
+
+def test_launcher_uses_stable_broadcast_log_path():
+    path = broadcast_log_path()
+
+    assert path.name == "broadcast_latest.log"
+    assert path.parent.name == "logs"
+
+
+def test_launcher_can_hide_broadcast_console_on_windows():
+    flags = broadcast_creation_flags()
+
+    assert isinstance(flags, int)
+
+
+def test_launcher_launches_broadcast_with_output_log(tmp_path, monkeypatch):
+    calls = {}
+
+    class FakeProcess:
+        pid = 2468
+
+        def poll(self):
+            return None
+
+    def fake_popen(command, **kwargs):
+        calls["command"] = command
+        calls["kwargs"] = kwargs
+        return FakeProcess()
+
+    monkeypatch.setattr("studio_launcher.BROADCAST_PROCESS", None)
+    monkeypatch.setattr("studio_launcher.BROADCAST_LOG_FILE", None)
+    monkeypatch.setattr("studio_launcher.BROADCAST_LOG_PATH", tmp_path / "logs" / "broadcast_latest.log")
+    monkeypatch.setattr("studio_launcher.subprocess.Popen", fake_popen)
+    monkeypatch.setattr("studio_launcher.write_broadcast_pid", lambda pid: calls.setdefault("pid", pid))
+
+    process = launch_broadcast()
+
+    assert process.pid == 2468
+    assert calls["pid"] == 2468
+    assert calls["command"] == broadcast_command()
+    assert calls["kwargs"]["stdout"].name.endswith("broadcast_latest.log")
+    assert calls["kwargs"]["stderr"] is subprocess.STDOUT
+    assert "creationflags" in calls["kwargs"]
 
 
 def test_launcher_detects_running_process():
