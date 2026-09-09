@@ -12,6 +12,7 @@ from studio_launcher import (
     DEFAULT_PRODUCER_URL,
     IMPORTANT_SETUP_FIELDS,
     LAUNCHER_FIELDS,
+    OPENAI_MODEL_CHOICES,
     RGC_DISCORD_URL,
     RGC_WEBSITE_URL,
     TAILSCALE_WINDOWS_DOWNLOAD_URL,
@@ -98,6 +99,13 @@ def test_close_warning_explains_broadcast_related_process():
 
 def test_broadcast_settings_have_friendly_labels_and_sections():
     assert BROADCAST_FIELD_LABELS["USE_OPENAI"] == "Use OpenAI Commentary"
+    assert BROADCAST_FIELD_LABELS["OPENAI_MODEL"] == "OpenAI Model"
+    assert "gpt-5.6-terra" in BROADCAST_FIELD_HELP["OPENAI_MODEL"]
+    assert OPENAI_MODEL_CHOICES[:3] == (
+        "gpt-5.6-terra",
+        "gpt-5.6-luna",
+        "gpt-5.6-sol",
+    )
     assert BROADCAST_FIELD_LABELS["OVERLAY_EVENT_TITLE"] == "Overlay Event Title"
     assert BROADCAST_FIELD_LABELS["OVERLAY_LEADERBOARD_STYLE"] == "Leaderboard Style"
     assert "flo uses a compact two-row top leaderboard" in BROADCAST_FIELD_HELP["OVERLAY_LEADERBOARD_STYLE"]
@@ -131,6 +139,7 @@ def test_broadcast_settings_have_friendly_labels_and_sections():
     assert BROADCAST_FIELD_LABELS["DISCORD_RACE_REPORT_USE_OPENAI"] == "Use OpenAI Race Recap"
     assert "webhook" in BROADCAST_FIELD_HELP["DISCORD_RACE_REPORT_WEBHOOK_URL"].lower()
     assert "OPENAI_API_KEY" in IMPORTANT_SETUP_FIELDS
+    assert ("OPENAI_MODEL", "gpt-5.6-terra") in LAUNCHER_FIELDS
     assert "STUDIO_VOLUME" not in BROADCAST_FIELD_LABELS
     assert BROADCAST_FIELD_SECTIONS["USE_OPENAI"] == "AI Commentary"
     assert BROADCAST_FIELD_SECTIONS["OVERLAY_EVENT_TITLE"] == "Event Sponsors / Overlay Links"

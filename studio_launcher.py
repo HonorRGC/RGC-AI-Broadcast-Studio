@@ -64,6 +64,16 @@ ACCENT_HOVER = "#a72a3a"
 GREEN = "#158a4d"
 STOP_RED = "#b73535"
 
+OPENAI_MODEL_CHOICES = (
+    "gpt-5.6-terra",
+    "gpt-5.6-luna",
+    "gpt-5.6-sol",
+    "gpt-5.5",
+    "gpt-5.1",
+    "gpt-5-mini",
+    "gpt-4.1",
+)
+
 DRIVER_PROFILE_FIELDS = [
     "name",
     "car_number",
@@ -85,7 +95,7 @@ RACE_SCHEDULE_FIELDS = [
 LAUNCHER_FIELDS = [
     ("USE_OPENAI", "true"),
     ("OPENAI_API_KEY", ""),
-    ("OPENAI_MODEL", "gpt-5.5"),
+    ("OPENAI_MODEL", "gpt-5.6-terra"),
     ("USE_ELEVENLABS", "true"),
     ("ELEVENLABS_API_KEY", ""),
     ("LEAD_BROADCASTER_NAME", "Mike"),
@@ -266,7 +276,7 @@ BROADCAST_FIELD_SECTIONS = {
 BROADCAST_FIELD_HELP = {
     "USE_OPENAI": "Required for the full AI broadcast. Turn this off when a human broadcaster only wants prompts, cameras, and overlays.",
     "OPENAI_API_KEY": "Required when OpenAI commentary is on. Keep this private and never show it on stream.",
-    "OPENAI_MODEL": "Model used to write broadcast lines and Discord recaps. Leave the default unless you are testing another model.",
+    "OPENAI_MODEL": "Model used to write broadcast lines and Discord recaps. Recommended: gpt-5.6-terra. Use gpt-5.6-luna for lower cost/faster calls, or gpt-5.6-sol for the strongest quality. You can also type a custom OpenAI model ID.",
     "USE_ELEVENLABS": "Required for spoken AI broadcasters. Turn this off for silent producer prompts or a human-only broadcast.",
     "ELEVENLABS_API_KEY": "Required when ElevenLabs voices are on. Keep this private.",
     "LEAD_BROADCASTER_NAME": "Name used when the lead play-by-play broadcaster introduces themselves. Default: Mike.",
@@ -343,6 +353,7 @@ IMPORTANT_SETUP_FIELDS = {
 INLINE_HELP_FIELDS = {
     "USE_OPENAI",
     "OPENAI_API_KEY",
+    "OPENAI_MODEL",
     "USE_ELEVENLABS",
     "ELEVENLABS_API_KEY",
     "LEAD_BROADCASTER_NAME",
@@ -1811,6 +1822,13 @@ def run_gui():
                 state="readonly",
             )
             entry_widget.set(existing.get(key, "side") or "side")
+        elif key == "OPENAI_MODEL":
+            entry_widget = ttk.Combobox(
+                settings_frame,
+                values=OPENAI_MODEL_CHOICES,
+                width=69,
+            )
+            entry_widget.set(existing.get(key, "gpt-5.6-terra") or "gpt-5.6-terra")
         elif key == "OVERLAY_HOST":
             entry_widget = ttk.Combobox(
                 settings_frame,

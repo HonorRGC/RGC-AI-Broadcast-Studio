@@ -56,7 +56,7 @@ def unique_list(values):
 # OpenAI
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 USE_OPENAI = os.getenv("USE_OPENAI", "true").lower() == "true"
-OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-5.5")
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-5.6-terra")
 
 
 # ElevenLabs
