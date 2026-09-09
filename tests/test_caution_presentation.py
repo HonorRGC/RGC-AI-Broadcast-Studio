@@ -16,7 +16,11 @@ class OverlaySpy:
 
 class AudioBedSpy:
     def __init__(self):
+        self.plays = 0
         self.stops = 0
+
+    def play(self):
+        self.plays += 1
 
     def stop(self):
         self.stops += 1
@@ -59,9 +63,11 @@ def test_caution_presentation_stops_music_once_at_one_to_green():
     director = CautionPresentationDirector()
 
     director.update(RacePhase.CAUTION, audio_bed=audio)
+    director.update(RacePhase.CAUTION, audio_bed=audio)
     director.update(RacePhase.ONE_TO_GREEN, audio_bed=audio)
     director.update(RacePhase.ONE_TO_GREEN, audio_bed=audio)
 
+    assert audio.plays == 1
     assert audio.stops == 1
 
 

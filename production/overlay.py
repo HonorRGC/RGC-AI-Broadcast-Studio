@@ -67,6 +67,19 @@ def configured_overlay_sponsor_options():
     return options
 
 
+def leaderboard_sponsor_graphics():
+    graphics = []
+    seen = set()
+    for graphic in list(RACE_SPONSOR_LOGOS) + [SPONSOR_READ_CAUSE_LOGO]:
+        clean_graphic = str(graphic or "").strip()
+        key = clean_graphic.lower()
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        graphics.append(clean_graphic)
+    return graphics
+
+
 def is_safe_iracing_render_url(url):
     parsed = urlparse(str(url or ""))
     host = (parsed.hostname or "").lower()
@@ -121,7 +134,7 @@ class OverlayEventConfig:
     series: str = OVERLAY_SERIES_NAME
     leaderboard_style: str = OVERLAY_LEADERBOARD_STYLE
     graphics: list[str] = field(default_factory=lambda: list(OVERLAY_BRAND_GRAPHICS))
-    sponsor_graphics: list[str] = field(default_factory=lambda: list(RACE_SPONSOR_LOGOS))
+    sponsor_graphics: list[str] = field(default_factory=leaderboard_sponsor_graphics)
     sponsor_options: list[dict[str, Any]] = field(default_factory=configured_overlay_sponsor_options)
     series_logo: str = OVERLAY_SERIES_LOGO
 
@@ -5336,7 +5349,7 @@ OVERLAY_HTML = r"""<!doctype html>
     .special-presentation.race_sponsors {
       left: auto;
       right: 48px;
-      top: 166px;
+      top: 410px;
       width: 264px;
       height: 264px;
       justify-content: flex-end;
@@ -5345,7 +5358,7 @@ OVERLAY_HTML = r"""<!doctype html>
     body.leaderboard-ticker-mode .special-presentation.race_sponsors {
       left: auto;
       right: 48px;
-      top: 226px;
+      top: 410px;
       width: 264px;
       height: 264px;
     }
@@ -5353,7 +5366,7 @@ OVERLAY_HTML = r"""<!doctype html>
     body.leaderboard-flo-mode .special-presentation.race_sponsors {
       left: auto;
       right: 48px;
-      top: 242px;
+      top: 410px;
       width: 264px;
       height: 264px;
     }
@@ -5369,7 +5382,7 @@ OVERLAY_HTML = r"""<!doctype html>
     .special-presentation.sponsor_bug {
       left: auto;
       right: 52px;
-      top: 160px;
+      top: 410px;
       width: 360px;
       height: 104px;
       justify-content: flex-end;
@@ -5377,11 +5390,15 @@ OVERLAY_HTML = r"""<!doctype html>
     }
 
     body.leaderboard-ticker-mode .special-presentation.sponsor_bug {
-      top: 224px;
+      top: 410px;
     }
 
     body.leaderboard-flo-mode .special-presentation.sponsor_bug {
-      top: 242px;
+      top: 410px;
+    }
+
+    body.leaderboard-brazen-mode .special-presentation.sponsor_bug {
+      top: 424px;
     }
 
     .special-presentation.sponsor_commercial {

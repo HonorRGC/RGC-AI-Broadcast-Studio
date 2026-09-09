@@ -18,6 +18,7 @@ class CautionPresentationDirector:
         self.overlay_duration = float(overlay_duration)
         self.graphics = list(graphics if graphics is not None else CAUTION_PRESENTATION_GRAPHICS)
         self.presentation_shown = False
+        self.music_started_for_caution = False
         self.music_stopped_for_one_to_green = False
 
     def update(self, phase, overlay_server=None, audio_bed=None):
@@ -25,6 +26,7 @@ class CautionPresentationDirector:
 
         if phase == RacePhase.CAUTION:
             self.music_stopped_for_one_to_green = False
+            self.start_audio_once(audio_bed)
             if overlay_server and not self.presentation_shown:
                 overlay_server.show_special_presentation(
                     kind="race_sponsors",
@@ -43,10 +45,19 @@ class CautionPresentationDirector:
 
         if phase in (RacePhase.GREEN, RacePhase.CHECKERED, RacePhase.FORMATION):
             self.clear_overlay(overlay_server)
+            self.music_started_for_caution = False
             self.music_stopped_for_one_to_green = False
             return None
 
         return None
+
+    def start_audio_once(self, audio_bed):
+        if self.music_started_for_caution:
+            return
+        player = getattr(audio_bed, "play", None)
+        if player:
+            player()
+        self.music_started_for_caution = True
 
     def stop_audio_once(self, audio_bed):
         if self.music_stopped_for_one_to_green:

@@ -4,6 +4,7 @@ from production.overlay import (
     OverlayEventConfig,
     OverlayServer,
     OverlayStateBuilder,
+    leaderboard_sponsor_graphics,
 )
 import inspect
 
@@ -826,6 +827,27 @@ def test_overlay_has_brazen_leaderboard_style():
     assert 'body.leaderboard-brazen-mode .top-banner' in OVERLAY_HTML
 
 
+def test_leaderboard_sponsor_rotation_includes_cause_logo(monkeypatch):
+    import production.overlay as overlay_module
+
+    monkeypatch.setattr(
+        overlay_module,
+        "RACE_SPONSOR_LOGOS",
+        ["/assets/sponsor_one.png", "/assets/sponsor_two.png"],
+    )
+    monkeypatch.setattr(
+        overlay_module,
+        "SPONSOR_READ_CAUSE_LOGO",
+        "/assets/cause.png",
+    )
+
+    assert leaderboard_sponsor_graphics() == [
+        "/assets/sponsor_one.png",
+        "/assets/sponsor_two.png",
+        "/assets/cause.png",
+    ]
+
+
 def test_producer_driver_detail_has_broadcaster_league_stats_panel():
     assert 'id="league-stat-grid"' in PRODUCER_HTML
     assert ".league-stat-grid" in PRODUCER_HTML
@@ -845,12 +867,11 @@ def test_producer_driver_detail_has_broadcaster_league_stats_panel():
     assert "segment.style.flexGrow" in OVERLAY_HTML
     assert "min-width: 0;" in OVERLAY_HTML
     assert "body.leaderboard-ticker-mode .special-presentation.race_sponsors" in OVERLAY_HTML
-    assert "top: 226px" in OVERLAY_HTML
+    assert "top: 410px" in OVERLAY_HTML
     assert "body.leaderboard-flo-mode .special-presentation.race_sponsors" in OVERLAY_HTML
-    assert "top: 242px" in OVERLAY_HTML
     assert "body.leaderboard-ticker-mode .special-presentation.sponsor_bug" in OVERLAY_HTML
-    assert "top: 224px" in OVERLAY_HTML
     assert "body.leaderboard-flo-mode .special-presentation.sponsor_bug" in OVERLAY_HTML
+    assert "body.leaderboard-brazen-mode .special-presentation.sponsor_bug" in OVERLAY_HTML
 
 
 def test_overlay_supports_points_standings_stat_panel():
