@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+## Version 1.0.2 - Brazen Leaderboard and Sponsor Update
+
+### Added
+- Brazen leaderboard option with a larger top bar, bigger race status/title area, rotating sponsor logo area, locked series logo, leader focus, fastest lap, laps led, and scrolling field row
+- Cause/awareness logo now rotates with the race sponsor logos on supported leaderboard sponsor areas
+- Separate Sim Racer Hub buttons for season stats and career stats so admins do not accidentally import the wrong scope
+
+### Changed
+- Sponsor popup graphics now use a consistent middle-right position during race, caution, practice, and qualifying presentation
+- Brazen leaderboard spacing, sponsor placement, lap tracker position, and border shape have been polished for a more broadcast-style look
+
+### Fixed
+- Caution music now starts again when a caution begins and still stops at one-to-green
+- Season stats imports always use the Season ID, while career stats imports always pull all seasons for the selected series
+
 ## Version 1.0.1 - Early Access Build Refresh
 
 ### Added
