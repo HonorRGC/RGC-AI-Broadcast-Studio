@@ -4582,10 +4582,11 @@ OVERLAY_HTML = r"""<!doctype html>
       border: 0;
       background: transparent;
       overflow: hidden;
+      overflow: clip;
       clip-path: inset(0);
-      filter:
-        drop-shadow(0 14px 26px rgba(0, 0, 0, 0.62))
-        drop-shadow(0 0 10px rgba(126, 34, 206, 0.18));
+      contain: paint;
+      isolation: isolate;
+      filter: none;
       box-shadow: none;
     }
 
@@ -4594,9 +4595,7 @@ OVERLAY_HTML = r"""<!doctype html>
     }
 
     .brazen-leaderboard.caution {
-      filter:
-        drop-shadow(0 14px 26px rgba(0, 0, 0, 0.58))
-        drop-shadow(0 0 14px rgba(255, 212, 0, 0.32));
+      filter: none;
     }
 
     .brazen-cell {
