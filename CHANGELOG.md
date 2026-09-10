@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+## Version 1.0.4 - Producer Control and Brazen Polish
+
+### Added
+- Manual Producer Assist driver focus now brings up that driver's overlay card for human broadcaster callouts
+- Human producer camera control now holds AI broadcast calls until Return Live gives control back
+
+### Changed
+- Brazen leaderboard styling now keeps its purple effects inside the leaderboard boxes only
+- Brazen caution counter now updates as soon as the yellow comes out instead of waiting for lap-history tracking
+
+### Fixed
+- Removed the full-screen overlay background that could place purple/blue stripes over the main race camera view
+- Return Live and Auto Camera now clear the manual driver card before handing the broadcast back to automation
+
 ## Version 1.0.3 - OpenAI Model Selector
 
 ### Added
