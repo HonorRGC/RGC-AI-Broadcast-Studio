@@ -1278,6 +1278,11 @@ class OverlayServer:
             )
             self.state.featured_driver = self.featured_driver
 
+    def clear_featured_driver(self):
+        with self.lock:
+            self.featured_driver = None
+            self.state.featured_driver = None
+
     def show_special_presentation(
         self,
         kind,

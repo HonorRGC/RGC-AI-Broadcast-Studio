@@ -427,6 +427,12 @@ def run_source(
             engine,
             overlay_server,
         )
+        if item and producer_manual_camera_control_active(camera_director):
+            if hasattr(source, "next_snapshot"):
+                source.next_snapshot()
+            if tick_seconds > 0:
+                time.sleep(tick_seconds)
+            continue
         if item:
             validation = live_broadcast_validator.validate(item, source)
             if not validation.valid:
@@ -1257,6 +1263,7 @@ def handle_producer_command(
         if hasattr(camera_director, "end_manual_control"):
             camera_director.end_manual_control()
         camera_director.mode = "auto"
+        clear_overlay_featured_driver(overlay_server)
         publish_producer_event(overlay_server, "info", "Producer Control", "Auto camera enabled.")
         return
 
@@ -1329,6 +1336,14 @@ def handle_producer_command(
             source,
         )
         report_camera_decision(decision, overlay_server)
+        if overlay_server:
+            update_overlay_focused_driver(
+                overlay_server,
+                source,
+                decision,
+                duration=3600.0,
+                engine=engine,
+            )
         return
 
     if command == "race_event_review":
@@ -1408,6 +1423,7 @@ def handle_producer_command(
             camera_director.end_manual_control()
         camera_director.replay_active = False
         camera_director.mode = "auto"
+        clear_overlay_featured_driver(overlay_server)
         try:
             camera_decision = camera_director.manual_focus_home(source, lock_manual=False)
         except TypeError:
@@ -1549,6 +1565,7 @@ def begin_producer_camera_takeover(camera_director, replay_director=None):
         if hasattr(camera_director, "begin_manual_control"):
             camera_director.begin_manual_control()
         else:
+            camera_director.manual_control_active = True
             camera_director.mode = "off"
             camera_director.replay_active = False
             camera_director.return_home_at = None
@@ -1556,6 +1573,19 @@ def begin_producer_camera_takeover(camera_director, replay_director=None):
                 camera_director.clear_sequence()
     if replay_director and hasattr(replay_director, "begin_manual_control"):
         replay_director.begin_manual_control()
+
+
+def clear_overlay_featured_driver(overlay_server):
+    clearer = getattr(overlay_server, "clear_featured_driver", None)
+    if clearer:
+        try:
+            clearer()
+        except Exception:
+            pass
+
+
+def producer_manual_camera_control_active(camera_director):
+    return bool(getattr(camera_director, "manual_control_active", False))
 
 
 def set_producer_replay_speed(source, speed):
@@ -3210,7 +3240,8 @@ def update_overlay_focused_driver(
 
 
 def enriched_driver_lookup(source, engine=None):
-    raw_lookup = source.get_driver_lookup() if source else {}
+    lookup_reader = getattr(source, "get_driver_lookup", None) if source else None
+    raw_lookup = lookup_reader() if callable(lookup_reader) else {}
     league_context = getattr(engine, "league_context", None) if engine else None
     enricher = getattr(league_context, "enrich_driver_lookup", None)
     if enricher:
@@ -3222,6 +3253,8 @@ def enriched_driver_lookup(source, engine=None):
 
 
 def featured_driver_results(source, opening_intro=False):
+    if not source:
+        return []
     if opening_intro:
         grid_reader = getattr(source, "get_starting_grid", None)
         if callable(grid_reader):
@@ -3231,7 +3264,10 @@ def featured_driver_results(source, opening_intro=False):
                     return grid
             except Exception:
                 pass
-    return source.get_results()
+    results_reader = getattr(source, "get_results", None)
+    if callable(results_reader):
+        return results_reader()
+    return []
 
 
 def featured_driver_position_info(

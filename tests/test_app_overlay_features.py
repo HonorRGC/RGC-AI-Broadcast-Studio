@@ -18,6 +18,7 @@ from app import (
     find_brand_graphic_for_name,
     handle_producer_command,
     log_race_event_for_item,
+    producer_manual_camera_control_active,
     reserve_sponsor_commercial_if_needed,
     split_sponsor_names,
     should_show_movers_graphic,
@@ -90,6 +91,8 @@ class ProducerOverlaySpy:
         self.interviews = []
         self.race_control_audit = []
         self.race_event_log = []
+        self.featured = []
+        self.cleared_featured = 0
 
     def set_leaderboard_style(self, style):
         self.styles.append(style)
@@ -157,6 +160,12 @@ class ProducerOverlaySpy:
         )
         self.race_event_log.append(item)
         return item
+
+    def show_featured_driver(self, **kwargs):
+        self.featured.append(kwargs)
+
+    def clear_featured_driver(self):
+        self.cleared_featured += 1
 
     def update_control_room_item_status(self, collection_name, item_id, status):
         return SimpleNamespace(id=item_id, status=status)
@@ -1109,6 +1118,62 @@ def test_manual_camera_follow_disables_auto_camera():
     assert camera.focused == [(7, "TV1")]
     assert replay.manual_started == 1
     assert any("Auto camera disabled" in event["message"] for event in overlay.events)
+
+
+def test_manual_camera_follow_shows_driver_card_and_holds_ai_until_return_live():
+    overlay = ProducerOverlaySpy()
+    camera = CameraSpy()
+    replay = ReplaySpy()
+
+    source = SimpleNamespace(
+        get_driver_lookup=lambda: {
+            7: {
+                "name": "Manual Driver",
+                "number": "77",
+                "country": "United States",
+            }
+        },
+        get_results=lambda: [
+            {
+                "CarIdx": 7,
+                "Position": 4,
+                "StartingPosition": 10,
+                "Gap": 1.25,
+            }
+        ],
+        return_to_live=lambda: True,
+    )
+
+    handle_producer_command(
+        "camera_follow_driver",
+        {"car_idx": 7, "group_name": "TV1"},
+        overlay,
+        source=source,
+        engine=None,
+        booth=None,
+        camera_director=camera,
+        replay_director=replay,
+    )
+
+    assert producer_manual_camera_control_active(camera)
+    assert overlay.featured[-1]["driver_name"] == "Manual Driver"
+    assert overlay.featured[-1]["car_number"] == "77"
+    assert overlay.featured[-1]["position"] == 4
+    assert overlay.featured[-1]["duration"] == 3600.0
+
+    handle_producer_command(
+        "replay_return_live",
+        {},
+        overlay,
+        source=source,
+        engine=None,
+        booth=None,
+        camera_director=camera,
+        replay_director=replay,
+    )
+
+    assert camera.mode == "auto"
+    assert overlay.cleared_featured == 1
 
 
 def test_manual_camera_follow_is_blocked_when_another_producer_has_control():
