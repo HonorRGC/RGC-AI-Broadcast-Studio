@@ -3935,10 +3935,7 @@ OVERLAY_HTML = r"""<!doctype html>
       height: 100%;
       margin: 0;
       overflow: hidden;
-      background:
-        linear-gradient(120deg, rgba(124, 58, 237, 0.20) 0 18%, transparent 18% 31%, rgba(34, 211, 238, 0.14) 31% 33%, transparent 33% 64%, rgba(168, 85, 247, 0.16) 64% 66%, transparent 66%),
-        radial-gradient(circle at 12% 34%, rgba(168, 85, 247, 0.35), transparent 30%),
-        radial-gradient(circle at 88% 26%, rgba(34, 211, 238, 0.22), transparent 28%);
+      background: transparent;
       color: var(--rgc-text);
       font-family: "Segoe UI", Arial, sans-serif;
     }
