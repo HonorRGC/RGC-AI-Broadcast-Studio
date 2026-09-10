@@ -12,6 +12,8 @@ from urllib.parse import parse_qs, quote, unquote, urlparse
 from urllib.request import urlopen
 
 from config import (
+    CAUTION_REVIEW_SLATE_GRAPHIC,
+    CAUTION_REVIEW_SLATE_SPONSOR_NAME,
     OVERLAY_BRAND_GRAPHICS,
     OVERLAY_EVENT_TITLE,
     OVERLAY_LEADERBOARD_STYLE,
@@ -29,6 +31,10 @@ from config import (
     RACE_SPONSOR_5_LOGO,
     RACE_SPONSOR_5_NAME,
     RACE_SPONSOR_LOGOS,
+    STARTING_LINEUP_SPONSOR_LOGO,
+    STARTING_LINEUP_SPONSOR_NAME,
+    FINAL_RESULTS_SPONSOR_LOGO,
+    FINAL_RESULTS_SPONSOR_NAME,
     SPONSOR_READ_CAUSE_NAME,
     SPONSOR_READ_CAUSE_LOGO,
 )
@@ -52,6 +58,9 @@ def configured_overlay_sponsor_options():
         (3, RACE_SPONSOR_3_NAME, RACE_SPONSOR_3_LOGO),
         (4, RACE_SPONSOR_4_NAME, RACE_SPONSOR_4_LOGO),
         (5, RACE_SPONSOR_5_NAME, RACE_SPONSOR_5_LOGO),
+        ("lineup", STARTING_LINEUP_SPONSOR_NAME, STARTING_LINEUP_SPONSOR_LOGO),
+        ("results", FINAL_RESULTS_SPONSOR_NAME, FINAL_RESULTS_SPONSOR_LOGO),
+        ("review", CAUTION_REVIEW_SLATE_SPONSOR_NAME, CAUTION_REVIEW_SLATE_GRAPHIC),
     ):
         clean_name = str(name or "").strip()
         clean_logo = str(logo or "").strip()
@@ -70,7 +79,12 @@ def configured_overlay_sponsor_options():
 def leaderboard_sponsor_graphics():
     graphics = []
     seen = set()
-    for graphic in list(RACE_SPONSOR_LOGOS) + [SPONSOR_READ_CAUSE_LOGO]:
+    for graphic in list(RACE_SPONSOR_LOGOS) + [
+        SPONSOR_READ_CAUSE_LOGO,
+        STARTING_LINEUP_SPONSOR_LOGO,
+        FINAL_RESULTS_SPONSOR_LOGO,
+        CAUTION_REVIEW_SLATE_GRAPHIC,
+    ]:
         clean_graphic = str(graphic or "").strip()
         key = clean_graphic.lower()
         if not key or key in seen:
@@ -137,6 +151,8 @@ class OverlayEventConfig:
     sponsor_graphics: list[str] = field(default_factory=leaderboard_sponsor_graphics)
     sponsor_options: list[dict[str, Any]] = field(default_factory=configured_overlay_sponsor_options)
     series_logo: str = OVERLAY_SERIES_LOGO
+    caution_review_slate_graphic: str = CAUTION_REVIEW_SLATE_GRAPHIC
+    caution_review_slate_sponsor: str = CAUTION_REVIEW_SLATE_SPONSOR_NAME
 
 
 @dataclass
@@ -406,6 +422,8 @@ class OverlayState:
                 "sponsor_graphics": list(self.event.sponsor_graphics),
                 "sponsor_options": list(self.event.sponsor_options),
                 "series_logo": self.event.series_logo,
+                "caution_review_slate_graphic": self.event.caution_review_slate_graphic,
+                "caution_review_slate_sponsor": self.event.caution_review_slate_sponsor,
             },
             "league_mode": self.league_mode,
             "session_type": self.session_type,
@@ -1291,10 +1309,13 @@ class OverlayServer:
     def show_caution_review_slate(self, sponsor_name="", sponsor_slot=""):
         graphics = self.caution_review_slate_graphics(sponsor_name, sponsor_slot)
         title = "Caution Review"
+        sponsor_name = str(sponsor_name or self.state.event.caution_review_slate_sponsor or "").strip()
         subtitle = (
             "Race control is reviewing the incident. "
             "We will show it as soon as the angle is ready."
         )
+        if sponsor_name:
+            subtitle = f"{subtitle} Presented by {sponsor_name}."
         self.show_special_presentation(
             kind="caution_review_slate",
             title=title,
@@ -1327,6 +1348,9 @@ class OverlayServer:
                     if logo:
                         return [logo]
                     break
+        configured_graphic = str(self.state.event.caution_review_slate_graphic or "").strip()
+        if configured_graphic:
+            return [configured_graphic]
         return list(self.state.event.sponsor_graphics or self.state.event.graphics or [])
 
     def show_stat_panel(
@@ -3911,7 +3935,10 @@ OVERLAY_HTML = r"""<!doctype html>
       height: 100%;
       margin: 0;
       overflow: hidden;
-      background: transparent;
+      background:
+        linear-gradient(120deg, rgba(124, 58, 237, 0.20) 0 18%, transparent 18% 31%, rgba(34, 211, 238, 0.14) 31% 33%, transparent 33% 64%, rgba(168, 85, 247, 0.16) 64% 66%, transparent 66%),
+        radial-gradient(circle at 12% 34%, rgba(168, 85, 247, 0.35), transparent 30%),
+        radial-gradient(circle at 88% 26%, rgba(34, 211, 238, 0.22), transparent 28%);
       color: var(--rgc-text);
       font-family: "Segoe UI", Arial, sans-serif;
     }
@@ -4573,12 +4600,14 @@ OVERLAY_HTML = r"""<!doctype html>
       overflow: hidden;
       border: 2px solid rgba(183, 120, 255, 0.48);
       background:
-        linear-gradient(180deg, rgba(200, 150, 255, 0.18), rgba(83, 34, 126, 0.18) 45%, rgba(0, 0, 0, 0.42)),
-        rgba(10, 7, 18, 0.95);
+        linear-gradient(135deg, rgba(34, 211, 238, 0.10), transparent 28%),
+        linear-gradient(180deg, rgba(216, 180, 254, 0.20), rgba(88, 28, 135, 0.20) 45%, rgba(0, 0, 0, 0.48)),
+        rgba(12, 6, 28, 0.96);
       box-shadow:
         inset 0 1px 0 rgba(255, 255, 255, 0.20),
         inset 0 -10px 18px rgba(0, 0, 0, 0.28),
-        0 0 20px rgba(134, 76, 255, 0.16);
+        0 0 20px rgba(168, 85, 247, 0.18),
+        0 0 8px rgba(34, 211, 238, 0.10);
     }
 
     .brazen-leaderboard.caution .brazen-cell,
@@ -4612,7 +4641,10 @@ OVERLAY_HTML = r"""<!doctype html>
     .brazen-flag-rail {
       background: #15c85f;
       border-right: 2px solid rgba(255, 255, 255, 0.36);
-      box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.12), 0 0 18px rgba(21, 200, 95, 0.42);
+      box-shadow:
+        inset 0 0 0 2px rgba(255, 255, 255, 0.12),
+        inset 16px 0 18px rgba(255, 255, 255, 0.16),
+        0 0 18px rgba(21, 200, 95, 0.42);
     }
 
     .brazen-leaderboard.caution .brazen-flag-rail {
@@ -4780,7 +4812,8 @@ OVERLAY_HTML = r"""<!doctype html>
       min-width: 274px;
       border-left: 1px solid rgba(255, 255, 255, 0.18);
       background:
-        linear-gradient(180deg, rgba(255, 255, 255, 0.10), rgba(0, 0, 0, 0.22));
+        linear-gradient(135deg, rgba(34, 211, 238, 0.10), transparent 35%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.10), rgba(24, 10, 46, 0.34));
     }
 
     @keyframes brazen-scroll {

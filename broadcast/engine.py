@@ -6,6 +6,8 @@ from broadcaster.race_director import RaceDirector, RacePhase
 from config import (
     CRANK_IT_UP_SPONSOR_NAME,
     PIT_BROADCASTER_NAME,
+    STARTING_LINEUP_SPONSOR_NAME,
+    STARTING_LINEUP_SPONSOR_READ,
     STAGE_END_LAPS,
 )
 from production.commentary_cleaner import CommentaryCleaner
@@ -98,6 +100,7 @@ class BroadcastEngine:
         self.green_pit_cycle_update_count = 0
         self.green_pit_cycle_active_until_lap = 0
         self.green_pit_cycle_last_activity_lap = 0
+        self.starting_lineup_sponsor_read_queued = False
         self.story_variant_counts = {}
         self.crank_it_up_sent_this_green_run = False
         self.booth_conversation_active_until = 0.0
@@ -609,6 +612,11 @@ class BroadcastEngine:
             driver_lookup=driver_lookup,
             current_lap=current_lap,
         ):
+            if (
+                str(segment.category).startswith("opening_field_rundown")
+                and not self.starting_lineup_sponsor_read_queued
+            ):
+                self._queue_starting_lineup_sponsor_read()
             self.broadcast_queue.add(
                 segment.message,
                 priority=segment.priority,
@@ -629,6 +637,30 @@ class BroadcastEngine:
 
         if self.opening_director.is_complete():
             self._queue_opening_sponsor_read()
+
+    def _queue_starting_lineup_sponsor_read(self):
+        segment_reader = getattr(self.sponsor_read_director, "segment_read", None)
+        if not callable(segment_reader):
+            self.starting_lineup_sponsor_read_queued = True
+            return
+        message = segment_reader(
+            STARTING_LINEUP_SPONSOR_NAME,
+            STARTING_LINEUP_SPONSOR_READ,
+            "The starting lineup",
+        )
+        self.starting_lineup_sponsor_read_queued = True
+        if not message:
+            return
+        self.broadcast_queue.add(
+            message,
+            priority=10,
+            category="sponsor_read",
+            protected=True,
+            speaker="lead",
+            delay_seconds=0.2,
+            expires_after=180,
+            dedupe_key="sponsor_read:starting_lineup",
+        )
 
     def _queue_opening_sponsor_read(self):
         message = self.sponsor_read_director.opening_read()

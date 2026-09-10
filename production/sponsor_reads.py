@@ -75,6 +75,28 @@ class SponsorReadDirector:
             self.caution_laps_used.add(current_lap)
         return message
 
+    def segment_read(self, sponsor_name="", sponsor_script="", segment_label="this segment"):
+        if not self.enabled:
+            return ""
+
+        clean_sponsor = (sponsor_name or self.current_sponsor_name()).strip()
+        clean_segment = str(segment_label or "This segment").strip()
+        if clean_segment:
+            clean_segment = clean_segment[0].upper() + clean_segment[1:]
+
+        if sponsor_script:
+            return self.with_cause(
+                self.apply_custom_message_tokens(sponsor_script, clean_sponsor)
+            )
+
+        if clean_sponsor:
+            return self.with_cause(f"{clean_segment} is presented by {clean_sponsor}.")
+
+        if self.cause:
+            return self.with_cause(f"{clean_segment} is proud to support {self.cause}.")
+
+        return ""
+
     def build_message(self, opening=False, sponsor_name=None):
         if not self.enabled:
             return ""

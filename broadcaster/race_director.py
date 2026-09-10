@@ -5,12 +5,15 @@ from pathlib import Path
 from enum import Enum
 
 from config import (
+    FINAL_RESULTS_SPONSOR_NAME,
+    FINAL_RESULTS_SPONSOR_READ,
     POST_RACE_INTERVIEWS_ENABLED,
     SIMRACERHUB_RACE_SCHEDULE_CSV,
     SPONSOR_READ_CAUSE,
     USE_SPONSOR_READS,
 )
 from helpers.position_formatter import PositionFormatter
+from production.sponsor_reads import SponsorReadDirector
 
 
 class RacePhase(Enum):
@@ -48,6 +51,7 @@ class RaceDirector:
         self.post_race_interviews_enabled = bool(post_race_interviews_enabled)
         self.race_schedule_csv_path = Path(race_schedule_csv_path or "")
         self._race_schedule_rows = None
+        self.sponsor_read_director = SponsorReadDirector()
         self.reset()
 
     def reset(self):
@@ -435,13 +439,30 @@ class RaceDirector:
             dedupe_key="post_race:winner_story",
         )
 
+        final_results_sponsor_read = self.sponsor_read_director.segment_read(
+            FINAL_RESULTS_SPONSOR_NAME,
+            FINAL_RESULTS_SPONSOR_READ,
+            "The final race results",
+        )
+        if final_results_sponsor_read:
+            scheduler.add(
+                final_results_sponsor_read,
+                priority=10,
+                category="sponsor_read",
+                protected=True,
+                speaker="lead",
+                delay_seconds=6.0,
+                expires_after=180,
+                dedupe_key="sponsor_read:final_results",
+            )
+
         scheduler.add(
             self.build_finish_rundown(results, driver_lookup, max_cars=None),
             priority=9,
             category="post_race",
             protected=True,
             speaker="lead",
-            delay_seconds=8.0,
+            delay_seconds=10.0 if final_results_sponsor_read else 8.0,
             expires_after=180,
             dedupe_key="post_race:finish_rundown",
         )

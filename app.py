@@ -8,6 +8,8 @@ from config import (
     CRANK_IT_UP_ICON_GRAPHIC,
     CRANK_IT_UP_SPONSOR_NAME,
     CRANK_IT_UP_SPONSOR_GRAPHIC,
+    FINAL_RESULTS_SPONSOR_NAME,
+    FINAL_RESULTS_SPONSOR_LOGO,
     OVERLAY_BRAND_GRAPHICS,
     OVERLAY_HOST,
     OVERLAY_RACE_SPONSOR,
@@ -26,6 +28,8 @@ from config import (
     SPONSOR_READ_NAME,
     SPONSOR_READ_NAME_2,
     SPONSOR_READ_NAME_3,
+    STARTING_LINEUP_SPONSOR_NAME,
+    STARTING_LINEUP_SPONSOR_LOGO,
     STUDIO_VOLUME,
     USE_IRACING_RENDERED_CAR_IMAGES,
 )
@@ -2055,7 +2059,7 @@ def show_sponsor_mention_bug(item, overlay_server):
     if not mentions:
         return False
 
-    graphics = sponsor_graphics_for_mentions(mentions)
+    graphics = sponsor_graphics_for_item(item, mentions)
     overlay_server.show_special_presentation(
         kind="sponsor_bug",
         title=" / ".join(mentions),
@@ -2071,6 +2075,15 @@ def show_sponsor_mention_bug(item, overlay_server):
         f"Showing graphic for {' / '.join(mentions)}.",
     )
     return True
+
+
+def sponsor_graphics_for_item(item, mentions):
+    dedupe_key = str(getattr(item, "dedupe_key", "") or "")
+    if "starting_lineup" in dedupe_key and STARTING_LINEUP_SPONSOR_LOGO:
+        return [STARTING_LINEUP_SPONSOR_LOGO]
+    if "final_results" in dedupe_key and FINAL_RESULTS_SPONSOR_LOGO:
+        return [FINAL_RESULTS_SPONSOR_LOGO]
+    return sponsor_graphics_for_mentions(mentions)
 
 
 def show_sponsor_commercial_if_available(item, overlay_server):
@@ -2130,6 +2143,8 @@ def configured_sponsor_names():
         SPONSOR_READ_NAME_3,
         OVERLAY_RACE_SPONSOR,
         SPONSOR_READ_CAUSE_NAME,
+        STARTING_LINEUP_SPONSOR_NAME,
+        FINAL_RESULTS_SPONSOR_NAME,
         "RGC Motorsports",
         "Autism Awareness",
     ):

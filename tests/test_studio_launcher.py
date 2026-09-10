@@ -16,6 +16,7 @@ from studio_launcher import (
     OPENAI_MODEL_CHOICES,
     RGC_DISCORD_URL,
     RGC_WEBSITE_URL,
+    SAVED_FIELDS,
     TAILSCALE_WINDOWS_DOWNLOAD_URL,
     apply_audio_file_selection,
     build_first_time_setup_checklist,
@@ -53,6 +54,7 @@ from studio_launcher import (
     sanitize_video_asset_name,
     sanitize_profile_name,
     sim_racer_hub_import_command,
+    velocity_league_import_command,
     stop_broadcast_processes,
     update_status_from_release,
     version_parts,
@@ -151,22 +153,25 @@ def test_broadcast_settings_have_friendly_labels_and_sections():
     assert BROADCAST_FIELD_SECTIONS["PRACTICE_MUSIC_PLAYLIST"] == "Practice / Qualifying / Caution Music"
     assert BROADCAST_FIELD_SECTIONS["RACE_ADMIN_MODE"] == "Race Control"
     assert BROADCAST_FIELD_SECTIONS["DISCORD_RACE_REPORT_ENABLED"] == "Discord Race Report"
-    saved_keys = [key for key, _default in LAUNCHER_FIELDS]
-    assert "RACE_SPONSOR_5_VIDEO" in saved_keys
-    assert "CRANK_IT_UP_SPONSOR_NAME" in saved_keys
-    assert "USE_SIM_RACING_APPS" in saved_keys
-    assert "LEAD_BROADCASTER_NAME" in saved_keys
-    assert "COLOR_BROADCASTER_NAME" in saved_keys
-    assert "PIT_BROADCASTER_NAME" in saved_keys
-    assert "QUALIFYING_MUSIC_PLAYLIST" in saved_keys
-    assert "USE_NATIONAL_ANTHEM" not in saved_keys
-    assert "NATIONAL_ANTHEM_GRAPHICS" not in saved_keys
-    assert "CAUTION_PRESENTATION_GRAPHICS" not in saved_keys
-    assert "DISCORD_BOT_ENABLED" not in saved_keys
-    assert "DISCORD_RACE_REPORT_RESULTS_URL" not in saved_keys
-    assert "OVERLAY_BRAND_GRAPHICS" not in saved_keys
-    assert "DISCORD_RACE_REPORT_CHAMPIONSHIP_URL" not in saved_keys
-    assert "REMOTE_PRODUCER_ENABLED" not in saved_keys
+    launcher_keys = [key for key, _default in LAUNCHER_FIELDS]
+    saved_keys = [key for key, _default in SAVED_FIELDS]
+    assert "RACE_SPONSOR_5_VIDEO" in launcher_keys
+    assert "CRANK_IT_UP_SPONSOR_NAME" in launcher_keys
+    assert "USE_SIM_RACING_APPS" in launcher_keys
+    assert "LEAD_BROADCASTER_NAME" in launcher_keys
+    assert "COLOR_BROADCASTER_NAME" in launcher_keys
+    assert "PIT_BROADCASTER_NAME" in launcher_keys
+    assert "VELOCITY_LEAGUE_URL" in saved_keys
+    assert "VELOCITY_SERIES_NAME" in saved_keys
+    assert "QUALIFYING_MUSIC_PLAYLIST" in launcher_keys
+    assert "USE_NATIONAL_ANTHEM" not in launcher_keys
+    assert "NATIONAL_ANTHEM_GRAPHICS" not in launcher_keys
+    assert "CAUTION_PRESENTATION_GRAPHICS" not in launcher_keys
+    assert "DISCORD_BOT_ENABLED" not in launcher_keys
+    assert "DISCORD_RACE_REPORT_RESULTS_URL" not in launcher_keys
+    assert "OVERLAY_BRAND_GRAPHICS" not in launcher_keys
+    assert "DISCORD_RACE_REPORT_CHAMPIONSHIP_URL" not in launcher_keys
+    assert "REMOTE_PRODUCER_ENABLED" not in launcher_keys
 
 
 def test_studio_profile_buttons_use_clear_create_delete_language():
@@ -949,6 +954,32 @@ def test_launcher_builds_sim_racer_hub_schedule_command():
     assert ["--season-id", "29247"] == command[command.index("--season-id") : command.index("--season-id") + 2]
 
 
+def test_launcher_builds_velocity_league_import_command():
+    command = velocity_league_import_command(
+        url="https://www.velocityleague.gg/trrl",
+        series_name="Truck Series",
+        stats_output="league/season.csv",
+        drivers_output="league/drivers.csv",
+        schedule_output="league/race_schedule.csv",
+        dry_run=True,
+    )
+
+    assert command[0] == sys.executable
+    assert "tools\\velocity_league_import.py" in command[1] or "tools/velocity_league_import.py" in command[1]
+    assert command[2] == "https://www.velocityleague.gg/trrl"
+    assert ["--series", "Truck Series"] == command[command.index("--series") : command.index("--series") + 2]
+    assert ["--stats-output", "league/season.csv"] == command[
+        command.index("--stats-output") : command.index("--stats-output") + 2
+    ]
+    assert ["--drivers-output", "league/drivers.csv"] == command[
+        command.index("--drivers-output") : command.index("--drivers-output") + 2
+    ]
+    assert ["--schedule-output", "league/race_schedule.csv"] == command[
+        command.index("--schedule-output") : command.index("--schedule-output") + 2
+    ]
+    assert "--dry-run" in command
+
+
 def test_studio_driver_profile_rows_round_trip(tmp_path):
     from studio_launcher import load_driver_profile_rows, save_driver_profile_rows
 
@@ -1058,6 +1089,7 @@ def test_windows_installer_excludes_development_files():
     assert should_include_for_installer("README.md")
     assert should_include_for_installer("production/overlay.py")
     assert should_include_for_installer("tools/sim_racer_hub_import.py")
+    assert should_include_for_installer("tools/velocity_league_import.py")
 
     assert not should_include_for_installer("tests/test_overlay.py")
     assert not should_include_for_installer(".github/workflows/tests.yml")

@@ -820,6 +820,8 @@ def test_overlay_has_brazen_leaderboard_style():
     assert 'id="brazen-race-bar" class="brazen-race-bar hidden"' in OVERLAY_HTML
     assert ".brazen-leaderboard.caution" in OVERLAY_HTML
     assert ".brazen-flag-rail" in OVERLAY_HTML
+    assert "linear-gradient(120deg, rgba(124, 58, 237" in OVERLAY_HTML
+    assert "rgba(34, 211, 238" in OVERLAY_HTML
     assert "renderBrazenLeaderboard(state, leaderboardStyle)" in OVERLAY_HTML
     assert "renderBrazenRaceBar(state.lap_history || [])" in OVERLAY_HTML
     assert "countCautionRuns(state.lap_history || [])" in OVERLAY_HTML
@@ -866,6 +868,21 @@ def test_producer_driver_detail_has_broadcaster_league_stats_panel():
     assert "compactLapHistoryRuns" in OVERLAY_HTML
     assert "segment.style.flexGrow" in OVERLAY_HTML
     assert "min-width: 0;" in OVERLAY_HTML
+
+
+def test_caution_review_slate_uses_configured_default_graphic():
+    event_config = OverlayEventConfig(
+        caution_review_slate_graphic="/assets/review-slate.png",
+        caution_review_slate_sponsor="Review Co",
+        sponsor_graphics=["/assets/fallback.png"],
+    )
+    server = OverlayServer(state_builder=OverlayStateBuilder(event_config=event_config))
+
+    result = server.show_caution_review_slate()
+
+    assert result["graphics"] == ["/assets/review-slate.png"]
+    assert server.state.special_presentation.graphics == ["/assets/review-slate.png"]
+    assert "Presented by Review Co" in server.state.special_presentation.subtitle
     assert "body.leaderboard-ticker-mode .special-presentation.race_sponsors" in OVERLAY_HTML
     assert "top: 410px" in OVERLAY_HTML
     assert "body.leaderboard-flo-mode .special-presentation.race_sponsors" in OVERLAY_HTML

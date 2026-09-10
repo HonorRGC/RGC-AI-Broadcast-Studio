@@ -116,3 +116,22 @@ def test_sponsor_read_custom_script_supports_tokens():
         "Tonight's race is presented by RGC Motorsports, "
         "proudly supporting Autism Awareness."
     )
+
+
+def test_sponsor_read_can_build_segment_specific_read():
+    director = SponsorReadDirector(
+        sponsor_names=["RGC Motorsports"],
+        cause="Autism Awareness",
+        cause_read="Support understanding and acceptance.",
+    )
+
+    message = director.segment_read(
+        sponsor_name="Lineup Co",
+        sponsor_script="The starting lineup is brought to you by {sponsor}. {cause_read}",
+        segment_label="The starting lineup",
+    )
+
+    assert message == (
+        "The starting lineup is brought to you by Lineup Co. "
+        "Support understanding and acceptance."
+    )

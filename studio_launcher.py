@@ -137,6 +137,14 @@ LAUNCHER_FIELDS = [
     ("RACE_SPONSOR_5_READ", ""),
     ("RACE_SPONSOR_5_VIDEO", ""),
     ("CRANK_IT_UP_SPONSOR_NAME", ""),
+    ("STARTING_LINEUP_SPONSOR_NAME", ""),
+    ("STARTING_LINEUP_SPONSOR_LOGO", ""),
+    ("STARTING_LINEUP_SPONSOR_READ", ""),
+    ("FINAL_RESULTS_SPONSOR_NAME", ""),
+    ("FINAL_RESULTS_SPONSOR_LOGO", ""),
+    ("FINAL_RESULTS_SPONSOR_READ", ""),
+    ("CAUTION_REVIEW_SLATE_SPONSOR_NAME", ""),
+    ("CAUTION_REVIEW_SLATE_GRAPHIC", ""),
     ("PRACTICE_MUSIC_PLAYLIST", ""),
     ("QUALIFYING_MUSIC_PLAYLIST", ""),
     ("STUDIO_VOLUME", "65"),
@@ -172,6 +180,14 @@ SIM_RACER_HUB_FIELDS = [
     ("SIMRACERHUB_CAREER_MODE", "false"),
 ]
 
+VELOCITY_LEAGUE_FIELDS = [
+    ("VELOCITY_LEAGUE_URL", ""),
+    ("VELOCITY_SERIES_NAME", ""),
+    ("VELOCITY_STATS_OUTPUT", "league/season.csv"),
+    ("VELOCITY_DRIVERS_OUTPUT", "league/drivers.csv"),
+    ("VELOCITY_SCHEDULE_OUTPUT", "league/race_schedule.csv"),
+]
+
 LEGACY_SPONSOR_FIELDS = [
     (
         "OVERLAY_BRAND_GRAPHICS",
@@ -199,7 +215,12 @@ LEGACY_SPONSOR_FIELDS = [
     ("REMOTE_PRODUCER_PIN", ""),
 ]
 
-SAVED_FIELDS = LAUNCHER_FIELDS + LEGACY_SPONSOR_FIELDS + SIM_RACER_HUB_FIELDS
+SAVED_FIELDS = (
+    LAUNCHER_FIELDS
+    + LEGACY_SPONSOR_FIELDS
+    + SIM_RACER_HUB_FIELDS
+    + VELOCITY_LEAGUE_FIELDS
+)
 
 BROADCAST_FIELD_LABELS = {
     "USE_OPENAI": "Use OpenAI Commentary",
@@ -244,6 +265,14 @@ BROADCAST_FIELD_LABELS = {
     "RACE_SPONSOR_5_READ": "Sponsor 5 Spoken Read",
     "RACE_SPONSOR_5_VIDEO": "Sponsor 5 Commercial Video",
     "CRANK_IT_UP_SPONSOR_NAME": "Crank It Up Sponsor",
+    "STARTING_LINEUP_SPONSOR_NAME": "Starting Lineup Sponsor",
+    "STARTING_LINEUP_SPONSOR_LOGO": "Starting Lineup Sponsor Logo",
+    "STARTING_LINEUP_SPONSOR_READ": "Starting Lineup Sponsor Read",
+    "FINAL_RESULTS_SPONSOR_NAME": "Final Results Sponsor",
+    "FINAL_RESULTS_SPONSOR_LOGO": "Final Results Sponsor Logo",
+    "FINAL_RESULTS_SPONSOR_READ": "Final Results Sponsor Read",
+    "CAUTION_REVIEW_SLATE_SPONSOR_NAME": "Caution Review Slate Sponsor",
+    "CAUTION_REVIEW_SLATE_GRAPHIC": "Caution Review Slate Image",
     "PRACTICE_MUSIC_PLAYLIST": "Practice Music Playlist",
     "QUALIFYING_MUSIC_PLAYLIST": "Qualifying Music Playlist",
     "CAUTION_REPLAY_AUDIO": "Caution Replay Music",
@@ -261,6 +290,11 @@ BROADCAST_FIELD_LABELS = {
     "LEAGUE_FUEL_PERCENT": "Fuel Percent",
     "LEAGUE_ENGINE_POWER_PERCENT": "Engine Power Percent",
     "LEAGUE_TIRE_SETS": "Tire Sets",
+    "VELOCITY_LEAGUE_URL": "Velocity League URL",
+    "VELOCITY_SERIES_NAME": "Velocity Series Name",
+    "VELOCITY_STATS_OUTPUT": "Velocity Stats CSV",
+    "VELOCITY_DRIVERS_OUTPUT": "Velocity Drivers CSV",
+    "VELOCITY_SCHEDULE_OUTPUT": "Velocity Schedule CSV",
 }
 
 BROADCAST_FIELD_SECTIONS = {
@@ -318,6 +352,14 @@ BROADCAST_FIELD_HELP = {
     "RACE_SPONSOR_5_READ": "Optional exact spoken read for Sponsor 5.",
     "RACE_SPONSOR_5_VIDEO": "Optional commercial video path for Sponsor 5.",
     "CRANK_IT_UP_SPONSOR_NAME": "Sponsor name used when the Producer or AI fires Crank It Up. Leave blank to use Sponsor 1.",
+    "STARTING_LINEUP_SPONSOR_NAME": "Sponsor used for the pre-race starting lineup. Leave blank to use Sponsor 1.",
+    "STARTING_LINEUP_SPONSOR_LOGO": "Logo that pops up when the starting lineup sponsor is mentioned. Leave blank to use that sponsor's main logo.",
+    "STARTING_LINEUP_SPONSOR_READ": "Optional exact read for the starting lineup sponsor. Supports {sponsor}, {cause}, and {cause_read}.",
+    "FINAL_RESULTS_SPONSOR_NAME": "Sponsor used for the final race results. Leave blank to use Sponsor 1.",
+    "FINAL_RESULTS_SPONSOR_LOGO": "Logo that pops up when the final results sponsor is mentioned. Leave blank to use that sponsor's main logo.",
+    "FINAL_RESULTS_SPONSOR_READ": "Optional exact read for the final race results sponsor. Supports {sponsor}, {cause}, and {cause_read}.",
+    "CAUTION_REVIEW_SLATE_SPONSOR_NAME": "Default sponsor name shown on the full-screen caution review slate.",
+    "CAUTION_REVIEW_SLATE_GRAPHIC": "Default image shown on the full-screen caution review slate while the producer searches replay angles.",
     "PRACTICE_MUSIC_PLAYLIST": "Practice music playlist. Multiple songs are separated with semicolons and loop during practice.",
     "QUALIFYING_MUSIC_PLAYLIST": "Qualifying music playlist. Multiple songs are separated with semicolons and loop during qualifying. Sponsor graphics come from Sponsor 1-5 logos.",
     "CAUTION_REPLAY_AUDIO": "Music bed used during caution replay/presentation segments.",
@@ -335,6 +377,11 @@ BROADCAST_FIELD_HELP = {
     "LEAGUE_FUEL_PERCENT": "Optional league race setting. Example: 65 means Mike can mention fuel is set at 65 percent during the opening.",
     "LEAGUE_ENGINE_POWER_PERCENT": "Optional league race setting. Example: 90 means Mike can mention engine power is set at 90 percent.",
     "LEAGUE_TIRE_SETS": "Optional league race tire limit. Example: 3 means Mike can mention three tire sets are available.",
+    "VELOCITY_LEAGUE_URL": "Public Velocity League home URL. Example: https://www.velocityleague.gg/trrl.",
+    "VELOCITY_SERIES_NAME": "Optional Velocity series name filter. Leave blank to import the public league-wide standings that Velocity exposes.",
+    "VELOCITY_STATS_OUTPUT": "CSV where Velocity standings/stats are written. Usually league/season.csv.",
+    "VELOCITY_DRIVERS_OUTPUT": "CSV where Velocity driver names and numbers are written. Usually league/drivers.csv.",
+    "VELOCITY_SCHEDULE_OUTPUT": "CSV where Velocity schedule rows are written. Usually league/race_schedule.csv.",
 }
 
 IMPORTANT_SETUP_FIELDS = {
@@ -377,6 +424,14 @@ INLINE_HELP_FIELDS = {
     "RACE_SPONSOR_2_READ",
     "RACE_SPONSOR_2_VIDEO",
     "CRANK_IT_UP_SPONSOR_NAME",
+    "STARTING_LINEUP_SPONSOR_NAME",
+    "STARTING_LINEUP_SPONSOR_LOGO",
+    "STARTING_LINEUP_SPONSOR_READ",
+    "FINAL_RESULTS_SPONSOR_NAME",
+    "FINAL_RESULTS_SPONSOR_LOGO",
+    "FINAL_RESULTS_SPONSOR_READ",
+    "CAUTION_REVIEW_SLATE_SPONSOR_NAME",
+    "CAUTION_REVIEW_SLATE_GRAPHIC",
     "PRACTICE_MUSIC_PLAYLIST",
     "QUALIFYING_MUSIC_PLAYLIST",
     "POST_RACE_INTERVIEWS_ENABLED",
@@ -1411,6 +1466,56 @@ def run_sim_racer_hub_import(
     )
 
 
+def velocity_league_import_command(
+    url,
+    series_name="",
+    stats_output="league/season.csv",
+    drivers_output="league/drivers.csv",
+    schedule_output="league/race_schedule.csv",
+    dry_run=False,
+):
+    command = [
+        sys.executable,
+        str(ROOT / "tools" / "velocity_league_import.py"),
+        str(url),
+    ]
+    if series_name:
+        command.extend(["--series", str(series_name)])
+    if stats_output:
+        command.extend(["--stats-output", str(stats_output)])
+    if drivers_output:
+        command.extend(["--drivers-output", str(drivers_output)])
+    if schedule_output:
+        command.extend(["--schedule-output", str(schedule_output)])
+    if dry_run:
+        command.append("--dry-run")
+    return command
+
+
+def run_velocity_league_import(
+    url,
+    series_name="",
+    stats_output="league/season.csv",
+    drivers_output="league/drivers.csv",
+    schedule_output="league/race_schedule.csv",
+    dry_run=False,
+):
+    return subprocess.run(
+        velocity_league_import_command(
+            url=url,
+            series_name=series_name,
+            stats_output=stats_output,
+            drivers_output=drivers_output,
+            schedule_output=schedule_output,
+            dry_run=dry_run,
+        ),
+        cwd=ROOT,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+
 def launch_broadcast():
     global BROADCAST_PROCESS, BROADCAST_LOG_FILE
     if is_process_running(BROADCAST_PROCESS):
@@ -1791,7 +1896,7 @@ def run_gui():
 
     entries = {}
     settings_rows_by_key = {}
-    sim_racer_hub_state = {"entries": {}, "career_mode": None}
+    sim_racer_hub_state = {"entries": {}, "career_mode": None, "velocity_entries": {}}
     league_tab_state = {}
     settings_grid_row = 0
 
@@ -2170,6 +2275,34 @@ def run_gui():
                 ),
                 color="#334b64",
             ).grid(row=settings_rows_by_key[video_key], column=2, padx=(8, 0), sticky="w")
+    for graphic_key, title, label_text in (
+        (
+            "STARTING_LINEUP_SPONSOR_LOGO",
+            "Choose starting lineup sponsor logo",
+            "the starting lineup sponsor",
+        ),
+        (
+            "FINAL_RESULTS_SPONSOR_LOGO",
+            "Choose final results sponsor logo",
+            "the final results sponsor",
+        ),
+        (
+            "CAUTION_REVIEW_SLATE_GRAPHIC",
+            "Choose caution review slate image",
+            "the caution review slate",
+        ),
+    ):
+        if graphic_key in settings_rows_by_key:
+            button(
+                settings_frame,
+                text="Choose Image",
+                command=lambda key=graphic_key, picker_title=title, status_label=label_text: choose_single_graphic_for_field(
+                    key,
+                    picker_title,
+                    status_label,
+                ),
+                color="#334b64",
+            ).grid(row=settings_rows_by_key[graphic_key], column=2, padx=(8, 0), sticky="w")
     button(
         settings_frame,
         text="Choose Practice Music",
@@ -2220,6 +2353,8 @@ def run_gui():
         )
         for key, widget in sim_racer_hub_state["entries"].items():
             values[key] = widget.get().strip()
+        for key, widget in sim_racer_hub_state.get("velocity_entries", {}).items():
+            values[key] = widget.get().strip()
         career_mode = sim_racer_hub_state.get("career_mode")
         if career_mode is not None:
             values["SIMRACERHUB_CAREER_MODE"] = "true" if career_mode.get() else "false"
@@ -2234,6 +2369,9 @@ def run_gui():
                 widget.delete(0, "end")
                 widget.insert(0, values.get(key, ""))
         for key, widget in sim_racer_hub_state["entries"].items():
+            widget.delete(0, "end")
+            widget.insert(0, values.get(key, ""))
+        for key, widget in sim_racer_hub_state.get("velocity_entries", {}).items():
             widget.delete(0, "end")
             widget.insert(0, values.get(key, ""))
         career_mode = sim_racer_hub_state.get("career_mode")
@@ -2744,6 +2882,106 @@ def build_league_tab(
         bg=PANEL_BG,
         fg=MUTED_FG,
     ).pack(side="left", padx=12)
+
+    velocity_panel = frame(parent, bg="#0b1520")
+    velocity_panel.pack(fill="x", padx=14, pady=(8, 4))
+    label(
+        velocity_panel,
+        text="Velocity League Import",
+        bg="#0b1520",
+        fg=TEXT_FG,
+        font=("Segoe UI", 12, "bold"),
+        anchor="w",
+    ).pack(fill="x", padx=12, pady=(10, 3))
+    label(
+        velocity_panel,
+        text=(
+            "Optional: import public Velocity League standings, schedule, and driver numbers from a league URL "
+            "like https://www.velocityleague.gg/trrl. This writes to the same league CSV files the broadcaster already uses."
+        ),
+        bg="#0b1520",
+        fg=MUTED_FG,
+        justify="left",
+        wraplength=900,
+        anchor="w",
+    ).pack(fill="x", padx=12, pady=(0, 8))
+    velocity_form = frame(velocity_panel, bg="#0b1520")
+    velocity_form.pack(fill="x", padx=12)
+    velocity_defaults = {
+        key: existing.get(key, default)
+        for key, default in VELOCITY_LEAGUE_FIELDS
+    }
+    velocity_entries = {}
+    for row_number, (label_text, key) in enumerate(
+        (
+            ("Velocity League URL", "VELOCITY_LEAGUE_URL"),
+            ("Series Name", "VELOCITY_SERIES_NAME"),
+            ("Stats CSV", "VELOCITY_STATS_OUTPUT"),
+            ("Drivers CSV", "VELOCITY_DRIVERS_OUTPUT"),
+            ("Schedule CSV", "VELOCITY_SCHEDULE_OUTPUT"),
+        )
+    ):
+        label(velocity_form, text=label_text, anchor="w", width=22, bg="#0b1520", fg=MUTED_FG).grid(
+            row=row_number,
+            column=0,
+            sticky="w",
+            pady=3,
+        )
+        velocity_entry = entry(velocity_form, width=86)
+        velocity_entry.insert(0, velocity_defaults[key])
+        velocity_entry.grid(row=row_number, column=1, sticky="ew", pady=3)
+        velocity_entries[key] = velocity_entry
+    velocity_form.columnconfigure(1, weight=1)
+    sim_racer_hub_state["velocity_entries"] = velocity_entries
+
+    def velocity_values():
+        return {key: widget.get().strip() for key, widget in velocity_entries.items()}
+
+    def run_velocity_import(dry_run):
+        data = velocity_values()
+        if not data["VELOCITY_LEAGUE_URL"]:
+            messagebox.showerror("Missing Velocity URL", "Paste a public Velocity League URL first.")
+            return
+        if not data["VELOCITY_DRIVERS_OUTPUT"]:
+            data["VELOCITY_DRIVERS_OUTPUT"] = driver_roster_import_target(driver_csv_var.get(), "league/drivers.csv")
+        result = run_velocity_league_import(
+            url=data["VELOCITY_LEAGUE_URL"],
+            series_name=data["VELOCITY_SERIES_NAME"],
+            stats_output=data["VELOCITY_STATS_OUTPUT"],
+            drivers_output=data["VELOCITY_DRIVERS_OUTPUT"],
+            schedule_output=data["VELOCITY_SCHEDULE_OUTPUT"],
+            dry_run=dry_run,
+        )
+        combined_output = result.stdout
+        if result.stderr:
+            combined_output += "\n" + result.stderr
+        set_output(combined_output or "(No output)")
+        if result.returncode == 0:
+            if not dry_run:
+                set_driver_csv_value(data["VELOCITY_DRIVERS_OUTPUT"])
+                load_driver_profiles()
+            status.set(
+                ("Previewed" if dry_run else "Imported")
+                + " Velocity League stats, drivers, and schedule."
+            )
+        else:
+            status.set("Velocity League import failed. Check the output panel.")
+
+    velocity_buttons = frame(velocity_panel, bg="#0b1520")
+    velocity_buttons.pack(fill="x", padx=12, pady=(8, 10))
+    button(
+        velocity_buttons,
+        text="Preview Velocity Import",
+        command=lambda: run_velocity_import(True),
+        color="#334b64",
+    ).pack(side="left", padx=4)
+    button(
+        velocity_buttons,
+        text="Import Velocity Data",
+        command=lambda: run_velocity_import(False),
+        color=GREEN,
+    ).pack(side="left", padx=4)
+
     output_box.pack(fill="both", expand=True, padx=14, pady=(8, 0))
 
     editor_panel = frame(parent, bg="#0b1520")
