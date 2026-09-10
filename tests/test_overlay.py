@@ -828,7 +828,9 @@ def test_overlay_has_brazen_leaderboard_style():
     assert "rgba(97, 39, 155, 0.82)" in OVERLAY_HTML
     assert "renderBrazenLeaderboard(state, leaderboardStyle)" in OVERLAY_HTML
     assert "renderBrazenRaceBar(state.lap_history || [])" in OVERLAY_HTML
-    assert "countCautionRuns(state.lap_history || [])" in OVERLAY_HTML
+    assert "brazenCautionCount(state)" in OVERLAY_HTML
+    assert "function brazenCautionCount(state)" in OVERLAY_HTML
+    assert 'if (state.caution && count === tracked && (!last || last.status !== "yellow")) count += 1;' in OVERLAY_HTML
     assert 'leaderboardStyle === "brazen"' in OVERLAY_HTML
     assert 'body.leaderboard-brazen-mode .top-banner' in OVERLAY_HTML
 

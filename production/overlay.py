@@ -6084,7 +6084,7 @@ OVERLAY_HTML = r"""<!doctype html>
       setText("brazen-title", event.title || "RGC AI Broadcast");
       setText("brazen-status-label", brazenStatusLabel(state));
       setText("brazen-status-lap", brazenLapLine(state));
-      setText("brazen-cautions", String(countCautionRuns(state.lap_history || [])));
+      setText("brazen-cautions", String(brazenCautionCount(state)));
       renderBrazenRaceBar(state.lap_history || []);
 
       const sponsorLogo = pickRotatingGraphic(event.sponsor_graphics || event.graphics || [], 4.5);
@@ -6165,6 +6165,16 @@ OVERLAY_HTML = r"""<!doctype html>
         if (yellow && !previousYellow) count += 1;
         previousYellow = yellow;
       }
+      return count;
+    }
+
+    function brazenCautionCount(state) {
+      const history = state.lap_history || [];
+      const tracked = countCautionRuns(history);
+      const explicit = Number(state.caution_count || state.cautions || 0);
+      let count = Number.isFinite(explicit) ? Math.max(tracked, explicit) : tracked;
+      const last = history.length ? history[history.length - 1] : null;
+      if (state.caution && count === tracked && (!last || last.status !== "yellow")) count += 1;
       return count;
     }
 
