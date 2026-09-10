@@ -4580,9 +4580,17 @@ OVERLAY_HTML = r"""<!doctype html>
       z-index: 23;
       padding: 3px;
       border: 0;
-      background: transparent;
-      filter: drop-shadow(0 14px 26px rgba(0, 0, 0, 0.58));
-      box-shadow: none;
+      background:
+        linear-gradient(118deg, transparent 0 14%, rgba(147, 51, 234, 0.30) 14.4% 16.1%, transparent 16.5% 35%, rgba(34, 211, 238, 0.22) 35.4% 36.6%, transparent 37% 70%, rgba(192, 132, 252, 0.26) 70.4% 72.2%, transparent 72.6%),
+        linear-gradient(102deg, transparent 0 42%, rgba(236, 72, 153, 0.16) 42.4% 43.4%, transparent 43.8%),
+        radial-gradient(circle at 13% 24%, rgba(126, 34, 206, 0.42), transparent 30%),
+        radial-gradient(circle at 85% 18%, rgba(34, 211, 238, 0.24), transparent 28%);
+      filter:
+        drop-shadow(0 14px 26px rgba(0, 0, 0, 0.58))
+        drop-shadow(0 0 18px rgba(147, 51, 234, 0.22));
+      box-shadow:
+        inset 0 0 0 1px rgba(216, 180, 254, 0.16),
+        0 0 28px rgba(147, 51, 234, 0.18);
     }
 
     .brazen-leaderboard.hidden {
@@ -4596,18 +4604,32 @@ OVERLAY_HTML = r"""<!doctype html>
     }
 
     .brazen-cell {
+      position: relative;
       min-width: 0;
       overflow: hidden;
       border: 2px solid rgba(183, 120, 255, 0.48);
       background:
-        linear-gradient(135deg, rgba(34, 211, 238, 0.10), transparent 28%),
-        linear-gradient(180deg, rgba(216, 180, 254, 0.20), rgba(88, 28, 135, 0.20) 45%, rgba(0, 0, 0, 0.48)),
-        rgba(12, 6, 28, 0.96);
+        linear-gradient(120deg, transparent 0 38%, rgba(34, 211, 238, 0.18) 38.4% 39.4%, transparent 39.8% 62%, rgba(168, 85, 247, 0.24) 62.4% 64%, transparent 64.4%),
+        linear-gradient(135deg, rgba(34, 211, 238, 0.12), transparent 28%),
+        linear-gradient(180deg, rgba(216, 180, 254, 0.24), rgba(88, 28, 135, 0.30) 45%, rgba(0, 0, 0, 0.56)),
+        rgba(14, 7, 36, 0.97);
       box-shadow:
         inset 0 1px 0 rgba(255, 255, 255, 0.20),
         inset 0 -10px 18px rgba(0, 0, 0, 0.28),
-        0 0 20px rgba(168, 85, 247, 0.18),
-        0 0 8px rgba(34, 211, 238, 0.10);
+        inset 0 0 22px rgba(124, 58, 237, 0.22),
+        0 0 22px rgba(168, 85, 247, 0.24),
+        0 0 10px rgba(34, 211, 238, 0.14);
+    }
+
+    .brazen-cell::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background:
+        linear-gradient(104deg, transparent 0 22%, rgba(255, 255, 255, 0.13) 22.3% 23%, transparent 23.4% 74%, rgba(34, 211, 238, 0.12) 74.4% 75.1%, transparent 75.5%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent 38%);
+      opacity: 0.9;
     }
 
     .brazen-leaderboard.caution .brazen-cell,
@@ -4627,7 +4649,9 @@ OVERLAY_HTML = r"""<!doctype html>
       font-weight: 950;
       letter-spacing: 0.045em;
       text-align: center;
-      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.72);
+      text-shadow:
+        0 2px 8px rgba(0, 0, 0, 0.72),
+        0 0 12px rgba(192, 132, 252, 0.55);
     }
 
     .brazen-leader {
@@ -4639,7 +4663,9 @@ OVERLAY_HTML = r"""<!doctype html>
     }
 
     .brazen-flag-rail {
-      background: #15c85f;
+      background:
+        linear-gradient(118deg, rgba(255, 255, 255, 0.20), transparent 23%),
+        #15c85f;
       border-right: 2px solid rgba(255, 255, 255, 0.36);
       box-shadow:
         inset 0 0 0 2px rgba(255, 255, 255, 0.12),
@@ -4648,7 +4674,9 @@ OVERLAY_HTML = r"""<!doctype html>
     }
 
     .brazen-leaderboard.caution .brazen-flag-rail {
-      background: #ffd400;
+      background:
+        linear-gradient(118deg, rgba(255, 255, 255, 0.24), transparent 23%),
+        #ffd400;
       box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.16), 0 0 18px rgba(255, 212, 0, 0.55);
     }
 
@@ -4744,6 +4772,9 @@ OVERLAY_HTML = r"""<!doctype html>
       align-content: center;
       justify-items: center;
       padding: 8px 16px;
+      background:
+        linear-gradient(122deg, transparent 0 28%, rgba(34, 211, 238, 0.16) 28.4% 29.6%, transparent 30% 58%, rgba(168, 85, 247, 0.22) 58.4% 60%, transparent 60.4%),
+        linear-gradient(180deg, rgba(12, 6, 28, 0.96), rgba(46, 16, 101, 0.78));
     }
 
     .brazen-sponsor {
@@ -4812,8 +4843,9 @@ OVERLAY_HTML = r"""<!doctype html>
       min-width: 274px;
       border-left: 1px solid rgba(255, 255, 255, 0.18);
       background:
-        linear-gradient(135deg, rgba(34, 211, 238, 0.10), transparent 35%),
-        linear-gradient(180deg, rgba(255, 255, 255, 0.10), rgba(24, 10, 46, 0.34));
+        linear-gradient(124deg, transparent 0 48%, rgba(34, 211, 238, 0.18) 48.4% 49.4%, transparent 49.8%),
+        linear-gradient(135deg, rgba(34, 211, 238, 0.12), transparent 35%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(24, 10, 46, 0.46));
     }
 
     @keyframes brazen-scroll {
