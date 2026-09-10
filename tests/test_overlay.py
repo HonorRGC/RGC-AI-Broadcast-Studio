@@ -820,11 +820,11 @@ def test_overlay_has_brazen_leaderboard_style():
     assert 'id="brazen-race-bar" class="brazen-race-bar hidden"' in OVERLAY_HTML
     assert ".brazen-leaderboard.caution" in OVERLAY_HTML
     assert ".brazen-flag-rail" in OVERLAY_HTML
-    assert "linear-gradient(132deg, transparent 0 9%, rgba(255, 71, 170" in OVERLAY_HTML
-    assert "radial-gradient(circle at 90% 12%, rgba(24, 118, 255" in OVERLAY_HTML
+    assert ".brazen-leaderboard {\n      position: absolute;" in OVERLAY_HTML
+    assert "background: transparent;" in OVERLAY_HTML
     assert ".brazen-cell::after" in OVERLAY_HTML
-    assert "linear-gradient(128deg, transparent 0 18%" in OVERLAY_HTML
-    assert "rgba(34, 211, 238" in OVERLAY_HTML
+    assert "border: 2px solid rgba(5, 5, 12, 0.98)" in OVERLAY_HTML
+    assert "rgba(97, 39, 155, 0.82)" in OVERLAY_HTML
     assert "renderBrazenLeaderboard(state, leaderboardStyle)" in OVERLAY_HTML
     assert "renderBrazenRaceBar(state.lap_history || [])" in OVERLAY_HTML
     assert "countCautionRuns(state.lap_history || [])" in OVERLAY_HTML
