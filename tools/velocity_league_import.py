@@ -4,8 +4,9 @@ import html
 import re
 import sys
 from pathlib import Path
-from urllib.parse import urljoin, urlparse
-from urllib.request import Request, urlopen
+from urllib.error import HTTPError, URLError
+from urllib.parse import urljoin, urlparse, urlunparse
+from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 
 STATS_FIELDS = [
@@ -42,16 +43,96 @@ DRIVER_FIELDS = [
 SCHEDULE_FIELDS = ["track_name", "schedule_id", "notes"]
 
 
+class NoAutoRedirect(HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
+def url_variants(url):
+    parsed = urlparse(str(url or "").strip())
+    if not parsed.scheme:
+        parsed = urlparse(f"https://{url}")
+    path = parsed.path or "/"
+    variants = []
+    path_parts = [part for part in path.split("/") if part]
+    if parsed.netloc.lower() in {"www.velocityleague.gg", "velocityleague.gg"} and path_parts:
+        league_slug = path_parts[0]
+        remaining_path = "/" + "/".join(path_parts[1:]) if len(path_parts) > 1 else "/"
+        variants.append(
+            urlunparse(
+                (
+                    parsed.scheme or "https",
+                    f"{league_slug}.velocityleague.gg",
+                    remaining_path,
+                    "",
+                    parsed.query,
+                    "",
+                )
+            )
+        )
+    hosts = unique(
+        [
+            parsed.netloc,
+            parsed.netloc.removeprefix("www."),
+            f"www.{parsed.netloc.removeprefix('www.')}" if parsed.netloc else "",
+        ]
+    )
+    paths = unique([path.rstrip("/") or "/", f"{path.rstrip('/')}/"])
+    for host in hosts:
+        for candidate_path in paths:
+            variants.append(urlunparse((parsed.scheme or "https", host, candidate_path, "", parsed.query, "")))
+    return unique(variants)
+
+
 def fetch_html(url, timeout=20):
+    return fetch_html_following_redirects(url, timeout=timeout)
+
+
+def fetch_html_following_redirects(url, timeout=20, max_redirects=6):
+    opener = build_opener(NoAutoRedirect)
+    seen = set()
+    current = url_variants(url)[0]
+    last_error = None
+    for _attempt in range(max_redirects + 1):
+        if current in seen:
+            raise RuntimeError(f"Redirect loop while fetching {url}; last URL was {current}")
+        seen.add(current)
+        request = velocity_request(current)
+        try:
+            with opener.open(request, timeout=timeout) as response:
+                return response.read().decode("utf-8", errors="replace")
+        except HTTPError as error:
+            last_error = error
+            if error.code not in (301, 302, 303, 307, 308):
+                raise
+            location = error.headers.get("Location")
+            if not location:
+                raise
+            current = urljoin(current, location)
+        except URLError:
+            raise
+    raise RuntimeError(f"Too many redirects while fetching {url}: {last_error}")
+
+
+def fetch_first_html(urls, timeout=20):
+    errors = []
+    for url in urls:
+        try:
+            return url, fetch_html(url, timeout=timeout)
+        except Exception as error:
+            errors.append(f"{url}: {error}")
+    raise RuntimeError("; ".join(errors))
+
+
+def velocity_request(url):
     request = Request(
         url,
         headers={
-            "User-Agent": "RGC-AI-Broadcast-Studio/1.0 (+https://realisticgamingcrew.com)",
-            "Accept": "text/html,application/xhtml+xml",
+            "User-Agent": "curl/8.0.0 RGC-AI-Broadcast-Studio/1.0",
+            "Accept": "*/*",
         },
     )
-    with urlopen(request, timeout=timeout) as response:
-        return response.read().decode("utf-8", errors="replace")
+    return request
 
 
 def html_to_text(document):
@@ -126,7 +207,7 @@ def parse_standings_rows(text, series_filter=""):
     for index, line in enumerate(lines):
         if series_filter and series_filter in line.lower():
             current_series = line
-        if not re.fullmatch(r"P?\d{1,3}", line, flags=re.I):
+        if not re.fullmatch(r"P\d{1,3}", line, flags=re.I):
             continue
         position = re.sub(r"\D", "", line)
         window = lines[index + 1 : index + 12]
@@ -268,32 +349,65 @@ def driver_rows_from_stats(stats_rows):
     return rows
 
 
-def parse_schedule_rows(text):
+def schedule_token(value):
+    token = re.sub(r"[^a-z0-9]+", "-", str(value or "").strip().lower()).strip("-")
+    return token or "series"
+
+
+def parse_schedule_rows(text, series_filter=""):
     lines = [line.strip() for line in str(text or "").splitlines() if line.strip()]
+    series_filter = str(series_filter or "").strip().lower()
     rows = []
     for index, line in enumerate(lines):
         round_match = re.fullmatch(r"RD\s+(\d+)", line, flags=re.I)
         if not round_match:
             continue
         round_id = round_match.group(1)
-        window = lines[index + 1 : index + 14]
+        window = lines[index + 1 : index + 10]
         track = ""
         date_text = ""
-        for item in window:
+        series_name = ""
+        lap_text = ""
+        for offset, item in enumerate(window):
             if not date_text and re.search(r"\b(MON|TUE|WED|THU|FRI|SAT|SUN)\b", item, flags=re.I):
                 date_text = item
-            if track:
-                continue
-            if any(skip in item.lower() for skip in ("series", "winner", "results", "recap", "laps", "lead chg", "cautions")):
-                continue
-            if re.search(r"(speedway|raceway|superspeedway|park|motor|daytona|talladega|pocono|darlington|richmond|kansas|atlanta|iowa|charlotte|phoenix|texas|nashville|vegas|rockingham)", item, flags=re.I):
-                track = item
+                detail_offset = offset + 1
+                if detail_offset < len(window) and re.search(r"\b\d{1,2}:\d{2}\s*(AM|PM)\b", window[detail_offset], flags=re.I):
+                    detail_offset += 1
+                if detail_offset < len(window):
+                    series_name = window[detail_offset]
+                if detail_offset + 1 < len(window):
+                    track = window[detail_offset + 1]
+                if detail_offset + 2 < len(window):
+                    lap_text = window[detail_offset + 2]
+                break
+        if series_filter and series_filter not in series_name.lower():
+            continue
+        if not track:
+            for item in window:
+                if track:
+                    continue
+                if any(
+                    skip in item.lower()
+                    for skip in ("series", "winner", "results", "recap", "laps", "lead chg", "cautions")
+                ):
+                    continue
+                if re.search(
+                    r"(speedway|raceway|superspeedway|park|motor|daytona|talladega|pocono|darlington|richmond|kansas|atlanta|iowa|charlotte|phoenix|texas|nashville|vegas|rockingham)",
+                    item,
+                    flags=re.I,
+                ):
+                    track = item
         if track:
+            schedule_id = f"velocity-rd-{round_id}"
+            if series_name:
+                schedule_id = f"{schedule_id}-{schedule_token(series_name)}"
+            notes = " - ".join(part for part in (date_text, series_name, lap_text) if part)
             rows.append(
                 {
                     "track_name": track,
-                    "schedule_id": f"velocity-rd-{round_id}",
-                    "notes": date_text,
+                    "schedule_id": schedule_id,
+                    "notes": notes,
                 }
             )
     return rows
@@ -309,20 +423,20 @@ def write_csv(path, fieldnames, rows):
 
 
 def run_import(args):
-    home_html = fetch_html(args.url)
+    home_url, home_html = fetch_first_html(url_variants(args.url))
     home_text = html_to_text(home_html)
-    schedule_url, schedule_text = first_fetchable_text(page_candidates(args.url, "schedule", home_html))
-    standings_url, standings_text = first_fetchable_text(page_candidates(args.url, "standings", home_html))
-    drivers_url, drivers_text = first_fetchable_text(page_candidates(args.url, "drivers", home_html))
+    schedule_url, schedule_text = first_fetchable_text(page_candidates(home_url, "schedule", home_html))
+    standings_url, standings_text = first_fetchable_text(page_candidates(home_url, "standings", home_html))
+    drivers_url, drivers_text = first_fetchable_text(page_candidates(home_url, "drivers", home_html))
 
     standings_rows = parse_standings_rows("\n".join([home_text, standings_text]), args.series)
     driver_stat_rows = parse_driver_profile_rows(drivers_text)
-    schedule_rows = parse_schedule_rows(schedule_text or home_text)
+    schedule_rows = parse_schedule_rows(schedule_text or home_text, args.series)
     stats_rows = dedupe_stats(standings_rows + driver_stat_rows)
     driver_rows = driver_rows_from_stats(stats_rows)
 
     if args.dry_run:
-        print(f"Velocity League URL: {args.url}")
+        print(f"Velocity League URL: {home_url}")
         print(f"Schedule page: {schedule_url or 'not found'}")
         print(f"Standings page: {standings_url or 'not found'}")
         print(f"Drivers page: {drivers_url or 'not found'}")
