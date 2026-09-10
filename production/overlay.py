@@ -4581,6 +4581,8 @@ OVERLAY_HTML = r"""<!doctype html>
       padding: 3px;
       border: 0;
       background: transparent;
+      overflow: hidden;
+      clip-path: inset(0);
       filter:
         drop-shadow(0 14px 26px rgba(0, 0, 0, 0.62))
         drop-shadow(0 0 10px rgba(126, 34, 206, 0.18));

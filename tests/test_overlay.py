@@ -822,6 +822,7 @@ def test_overlay_has_brazen_leaderboard_style():
     assert ".brazen-flag-rail" in OVERLAY_HTML
     assert ".brazen-leaderboard {\n      position: absolute;" in OVERLAY_HTML
     assert "background: transparent;" in OVERLAY_HTML
+    assert "clip-path: inset(0);" in OVERLAY_HTML
     assert ".brazen-cell::after" in OVERLAY_HTML
     assert "border: 2px solid rgba(5, 5, 12, 0.98)" in OVERLAY_HTML
     assert "rgba(97, 39, 155, 0.82)" in OVERLAY_HTML
