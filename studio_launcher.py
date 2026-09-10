@@ -714,6 +714,36 @@ def league_csv_paths_for_profile(profile_name):
     )
 
 
+def ensure_profile_league_files(profile_name="", root=ROOT):
+    root = Path(root)
+    drivers_csv, season_stats_csv, career_stats_csv, race_schedule_csv = league_csv_paths_for_profile(profile_name)
+    created = []
+
+    drivers_path = resolve_project_path(drivers_csv, root)
+    if not drivers_path.exists():
+        ensure_empty_driver_profile_csv(drivers_path)
+        created.append(str(drivers_path))
+
+    schedule_path = resolve_project_path(race_schedule_csv, root)
+    if not schedule_path.exists():
+        ensure_empty_race_schedule_csv(schedule_path)
+        created.append(str(schedule_path))
+
+    stats_header = (
+        "name,car_number,stats_scope,starts,wins,top_fives,top_tens,poles,"
+        "avg_finish,last_finish,points_position,points_to_next,"
+        "track_starts,track_wins,best_track_finish,notes\n"
+    )
+    for stats_csv in (season_stats_csv, career_stats_csv):
+        stats_path = resolve_project_path(stats_csv, root)
+        stats_path.parent.mkdir(parents=True, exist_ok=True)
+        if not stats_path.exists():
+            stats_path.write_text(stats_header, encoding="utf-8")
+            created.append(str(stats_path))
+
+    return created, (drivers_csv, season_stats_csv, career_stats_csv, race_schedule_csv)
+
+
 def driver_roster_import_target(active_driver_csv="", sim_racer_hub_output=""):
     """Return the one driver CSV the editor and Sim Racer Hub import should share."""
     active = str(active_driver_csv or "").strip()
@@ -1094,28 +1124,8 @@ def build_first_time_setup_checklist(
 
 
 def ensure_league_files(root=ROOT):
-    root = Path(root)
-    league_dir = root / "league"
-    league_dir.mkdir(exist_ok=True)
-
-    copied = []
-    for name in ("drivers.csv", "season.csv", "career.csv"):
-        source = root / "league.example" / name
-        target = league_dir / name
-        if source.exists() and not target.exists():
-            shutil.copyfile(source, target)
-            copied.append(str(target))
-    stats_header = (
-        "name,car_number,stats_scope,starts,wins,top_fives,top_tens,poles,"
-        "avg_finish,last_finish,points_position,points_to_next,"
-        "track_starts,track_wins,best_track_finish,notes\n"
-    )
-    for name, scope in (("season.csv", "season"), ("career.csv", "career")):
-        target = league_dir / name
-        if not target.exists():
-            target.write_text(stats_header, encoding="utf-8")
-            copied.append(str(target))
-    return copied
+    created, _paths = ensure_profile_league_files("", root=root)
+    return created
 
 
 def sanitize_asset_name(path):
@@ -2506,13 +2516,23 @@ def run_gui():
         status.set("Broadcast health refreshed.")
 
     def create_league_files():
-        copied = ensure_league_files()
-        if copied:
-            messagebox.showinfo("League files created", "\n".join(copied))
+        profile_name = profile_var.get().strip() or profile_name_var.get().strip()
+        created, paths = ensure_profile_league_files(profile_name)
+        drivers_csv, season_stats_csv, career_stats_csv, race_schedule_csv = paths
+        sync_league_editor = league_tab_state.get("sync_driver_csv_paths")
+        if sync_league_editor:
+            sync_league_editor(drivers_csv, season_stats_csv, career_stats_csv, race_schedule_csv)
+        display_name = sanitize_profile_name(profile_name) or "default league"
+        if created:
+            messagebox.showinfo(
+                "League files created",
+                f"Created league files for {display_name}:\n\n" + "\n".join(created),
+            )
         else:
             messagebox.showinfo(
                 "League files ready",
-                "league/drivers.csv, league/season.csv, and league/career.csv already exist.",
+                f"League files for {display_name} already exist:\n\n"
+                f"{drivers_csv}\n{season_stats_csv}\n{career_stats_csv}\n{race_schedule_csv}",
             )
 
     def start_broadcast():
@@ -3075,18 +3095,25 @@ def build_league_tab(
             set_entry_value(settings_entries["LEAGUE_DRIVERS_CSV"], driver_csv)
         if "SIMRACERHUB_DRIVERS_OUTPUT" in entries:
             set_entry_value(entries["SIMRACERHUB_DRIVERS_OUTPUT"], driver_csv)
+        if "VELOCITY_DRIVERS_OUTPUT" in entries:
+            set_entry_value(entries["VELOCITY_DRIVERS_OUTPUT"], driver_csv)
         if season_stats_csv:
             if "LEAGUE_SEASON_STATS_CSV" in settings_entries:
                 set_entry_value(settings_entries["LEAGUE_SEASON_STATS_CSV"], season_stats_csv)
             if "SIMRACERHUB_SEASON_STATS_OUTPUT" in entries:
                 set_entry_value(entries["SIMRACERHUB_SEASON_STATS_OUTPUT"], season_stats_csv)
+            if "VELOCITY_STATS_OUTPUT" in entries:
+                set_entry_value(entries["VELOCITY_STATS_OUTPUT"], season_stats_csv)
         if career_stats_csv:
             if "LEAGUE_CAREER_STATS_CSV" in settings_entries:
                 set_entry_value(settings_entries["LEAGUE_CAREER_STATS_CSV"], career_stats_csv)
             if "SIMRACERHUB_CAREER_STATS_OUTPUT" in entries:
                 set_entry_value(entries["SIMRACERHUB_CAREER_STATS_OUTPUT"], career_stats_csv)
-        if race_schedule_csv and "SIMRACERHUB_RACE_SCHEDULE_CSV" in entries:
-            set_entry_value(entries["SIMRACERHUB_RACE_SCHEDULE_CSV"], race_schedule_csv)
+        if race_schedule_csv:
+            if "SIMRACERHUB_RACE_SCHEDULE_CSV" in entries:
+                set_entry_value(entries["SIMRACERHUB_RACE_SCHEDULE_CSV"], race_schedule_csv)
+            if "VELOCITY_SCHEDULE_OUTPUT" in entries:
+                set_entry_value(entries["VELOCITY_SCHEDULE_OUTPUT"], race_schedule_csv)
 
     def sync_driver_csv_from_settings(values):
         set_driver_csv_value(
@@ -3104,6 +3131,7 @@ def build_league_tab(
         load_driver_profiles()
 
     league_tab_state["sync_driver_csv_from_settings"] = sync_driver_csv_from_settings
+    league_tab_state["sync_driver_csv_paths"] = set_driver_csv_value
 
     field_labels = [
         ("Name", "name"),

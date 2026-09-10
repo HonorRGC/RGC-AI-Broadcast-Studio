@@ -49,6 +49,7 @@ from studio_launcher import (
     save_env_file,
     ensure_empty_driver_profile_csv,
     ensure_empty_race_schedule_csv,
+    ensure_profile_league_files,
     save_profile,
     sanitize_asset_name,
     sanitize_video_asset_name,
@@ -1051,6 +1052,25 @@ def test_studio_can_create_empty_race_schedule_csv(tmp_path):
 
     assert path.exists()
     assert path.read_text(encoding="utf-8").splitlines()[0] == "track_name,schedule_id,notes"
+
+
+def test_studio_can_create_profile_specific_league_files(tmp_path):
+    created, paths = ensure_profile_league_files("DSR Electric Series", root=tmp_path)
+
+    assert paths == (
+        "league/DSR_Electric_Series/drivers.csv",
+        "league/DSR_Electric_Series/season.csv",
+        "league/DSR_Electric_Series/career.csv",
+        "league/DSR_Electric_Series/race_schedule.csv",
+    )
+    assert len(created) == 4
+    for relative in paths:
+        assert (tmp_path / relative).exists()
+
+    created_again, paths_again = ensure_profile_league_files("DSR Electric Series", root=tmp_path)
+
+    assert created_again == []
+    assert paths_again == paths
 
 
 def test_tester_zip_excludes_private_local_files():
