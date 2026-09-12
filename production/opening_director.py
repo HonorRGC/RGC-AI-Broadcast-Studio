@@ -178,8 +178,8 @@ class OpeningDirector:
                 "and every restart can change the whole race."
             )
         return (
-            "The field is getting ready for a race that should test pace, tire life, "
-            "and who can make the right adjustment as the run changes."
+            "The field is getting ready for a race where rhythm, clean air, "
+            "and the right lane at the right time can shape the night."
         )
 
     def track_opening_story(self, track_info):
@@ -233,8 +233,8 @@ class OpeningDirector:
                 "the big mistake can decide the night."
             )
         return (
-            "Tonight is about building a complete race, balancing track position, "
-            "tire life, and the moments when it is time to attack."
+            "Tonight is about building a complete race, finding the track's "
+            "preferred lane, and knowing when it is time to attack."
         )
 
     def track_description(self, track_info):

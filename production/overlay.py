@@ -6433,11 +6433,19 @@ OVERLAY_HTML = r"""<!doctype html>
       const hasDriver = !!(driver && (driver.driver_name || driver.car_number));
       card.classList.toggle("hidden", !hasDriver);
       if (!hasDriver) return;
+      const driverKey = `${driver.car_idx || ""}|${driver.car_number || ""}|${driver.driver_name || ""}`;
       setText("driver-card-number", driver.car_number || "?");
       applyDriverCardNumberStyle(driver.number_style || {});
       setText("driver-card-name", driver.driver_name || "Unknown Driver");
       renderDriverCardCountry(driver);
-      setText("driver-card-position-rank", buildDriverCardRankLine(driver));
+      const rankLine = buildDriverCardRankLine(driver);
+      const rankElement = document.getElementById("driver-card-position-rank");
+      const previousRank = String(rankElement.textContent || "").trim();
+      const sameDriver = card.dataset.driverKey === driverKey;
+      if (!(rankLine === "P--" && sameDriver && previousRank && previousRank !== "P--")) {
+        setText("driver-card-position-rank", rankLine);
+      }
+      card.dataset.driverKey = driverKey;
       setText("driver-card-position", buildDriverCardPositionLine(driver));
       setText("driver-card-story", cleanDriverCardStory(driver));
       renderDriverCardImage(driver.car_image_url || "", driver);

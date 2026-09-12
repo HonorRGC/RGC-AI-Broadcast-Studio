@@ -384,7 +384,7 @@ def run_source(
                 overlay_server,
                 source,
                 camera_update_decision,
-                duration=9.0,
+                duration=24.0 if camera_category.startswith("opening_field_rundown") else 9.0,
                 opening_intro=camera_category.startswith("opening_field_rundown"),
                 number_only_card=camera_category.startswith(
                     (
@@ -3117,6 +3117,7 @@ def update_overlay_featured_driver(overlay_server, item, source, camera_decision
         overlay_server,
         source,
         camera_decision,
+        duration=24.0 if opening_intro else 12.0,
         opening_intro=opening_intro,
         number_only_card=rundown_number_only,
         engine=engine,

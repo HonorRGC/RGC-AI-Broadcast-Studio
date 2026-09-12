@@ -1801,6 +1801,7 @@ def test_opening_field_rundown_driver_card_uses_starting_grid_and_country():
     assert overlay.featured[0]["story"] == ""
     assert overlay.featured[0]["speed"] == ""
     assert overlay.featured[0]["car_image_url"] == ""
+    assert overlay.featured[0]["duration"] == 24.0
 
 
 def test_opening_field_rundown_driver_card_updates_when_camera_step_fails():

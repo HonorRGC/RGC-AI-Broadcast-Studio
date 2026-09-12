@@ -47,6 +47,8 @@ def test_opening_waits_for_lineup_after_welcome_and_weather():
     assert "I'm Mike" in track_message
     assert "partly cloudy" in track_message.lower()
     assert "mile-and-a-third oval" in track_message
+    assert "pace, tire life" not in track_message
+    assert "balancing track position, tire life" not in track_message
     assert "81 degrees Fahrenheit" in track_message
     assert "rain chance is 0 percent" in track_message
     assert "dynamic" not in track_message.lower()
