@@ -71,6 +71,16 @@ def test_caution_presentation_stops_music_once_at_one_to_green():
     assert audio.stops == 1
 
 
+def test_caution_presentation_retries_music_if_audio_bed_is_missing_first():
+    audio = AudioBedSpy()
+    director = CautionPresentationDirector()
+
+    director.update(RacePhase.CAUTION, audio_bed=None)
+    director.update(RacePhase.CAUTION, audio_bed=audio)
+
+    assert audio.plays == 1
+
+
 def test_caution_presentation_can_fall_back_to_stop_at_one_to_green():
     class StopOnlyAudioBed:
         def __init__(self):

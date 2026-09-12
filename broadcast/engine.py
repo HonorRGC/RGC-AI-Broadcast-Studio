@@ -57,6 +57,22 @@ class BroadcastEngine:
         self.session_tracker = SessionTracker()
         self._reset_race_session()
 
+    @staticmethod
+    def telemetry_under_caution(telemetry):
+        flags_reader = getattr(telemetry, "get_session_flags", None)
+        try:
+            flags = int(flags_reader() if flags_reader else 0)
+        except Exception:
+            flags = 0
+        caution_bits = (
+            RaceDirector.YELLOW_FLAG
+            | RaceDirector.YELLOW_WAVING
+            | RaceDirector.CAUTION
+            | RaceDirector.CAUTION_WAVING
+            | RaceDirector.ONE_LAP_TO_GREEN
+        )
+        return bool(flags & caution_bits)
+
     def _reset_race_session(self):
         self.race_brain = RaceBrain()
         self.race_director = RaceDirector()
@@ -233,6 +249,7 @@ class BroadcastEngine:
                 session_time=getattr(telemetry, "get_session_time", lambda: 0.0)(),
                 lap_dist_pct=getattr(telemetry, "get_car_idx_lap_dist_pct", lambda: [])(),
                 track_info=track_info,
+                live_under_caution=self.telemetry_under_caution(telemetry),
             )
             self._collect_incidents(
                 telemetry,
@@ -1728,8 +1745,9 @@ class BroadcastEngine:
         session_time=0.0,
         lap_dist_pct=None,
         track_info=None,
+        live_under_caution=False,
     ):
-        under_caution = self.race_director.phase in (
+        under_caution = bool(live_under_caution) or self.race_director.phase in (
             RacePhase.CAUTION,
             RacePhase.ONE_TO_GREEN,
         )
@@ -1811,6 +1829,7 @@ class BroadcastEngine:
             pit_road_status,
             current_lap,
             track_info,
+            live_under_caution=live_under_caution,
         )
 
     def _queue_green_pit_cycle_update(
@@ -1821,8 +1840,11 @@ class BroadcastEngine:
         pit_road_status,
         current_lap,
         track_info=None,
+        live_under_caution=False,
     ):
         if current_lap <= 1 or not results:
+            return False
+        if live_under_caution:
             return False
         if self.race_director.phase != RacePhase.GREEN:
             return False

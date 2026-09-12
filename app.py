@@ -35,6 +35,7 @@ from config import (
 )
 from broadcast.booth import BroadcastBooth
 from broadcast.engine import BroadcastEngine
+from broadcaster.race_director import RacePhase
 from broadcaster.telemetry import IRacingTelemetry
 from production.camera_director import CameraDirector
 from production.audio_bed import AudioBedPlayer, percent_to_mci_volume
@@ -384,7 +385,7 @@ def run_source(
                 overlay_server,
                 source,
                 camera_update_decision,
-                duration=24.0 if camera_category.startswith("opening_field_rundown") else 9.0,
+                duration=9.0,
                 opening_intro=camera_category.startswith("opening_field_rundown"),
                 number_only_card=camera_category.startswith(
                     (
@@ -413,9 +414,15 @@ def run_source(
             overlay_server.set_pit_road_rows(
                 build_producer_pit_road_rows(source, engine)
             )
+        caution_presentation_phase = engine.race_director.phase
+        if (
+            caution_presentation_phase == RacePhase.GREEN
+            and engine.telemetry_under_caution(source)
+        ):
+            caution_presentation_phase = RacePhase.CAUTION
         report_caution_presentation(
             caution_presentation_director.update(
-                engine.race_director.phase,
+                caution_presentation_phase,
                 overlay_server,
                 caution_audio_bed,
             ),
@@ -1262,12 +1269,14 @@ def handle_producer_command(
             replay_director.end_manual_control()
         if hasattr(camera_director, "end_manual_control"):
             camera_director.end_manual_control()
+        set_producer_driver_focus_hold(camera_director, False)
         camera_director.mode = "auto"
         clear_overlay_featured_driver(overlay_server)
         publish_producer_event(overlay_server, "info", "Producer Control", "Auto camera enabled.")
         return
 
     if command == "auto_camera_off":
+        set_producer_driver_focus_hold(camera_director, False)
         camera_director.mode = "off"
         publish_producer_event(
             overlay_server,
@@ -1319,6 +1328,7 @@ def handle_producer_command(
             return
         auto_was_on = getattr(camera_director, "mode", "") == "auto"
         begin_producer_camera_takeover(camera_director, replay_director)
+        set_producer_driver_focus_hold(camera_director, True)
         if auto_was_on:
             publish_producer_event(
                 overlay_server,
@@ -1403,6 +1413,7 @@ def handle_producer_command(
             return
         auto_was_on = getattr(camera_director, "mode", "") == "auto"
         begin_producer_camera_takeover(camera_director, replay_director)
+        set_producer_driver_focus_hold(camera_director, True)
         if auto_was_on:
             publish_producer_event(
                 overlay_server,
@@ -1421,6 +1432,7 @@ def handle_producer_command(
             replay_director.end_manual_control()
         if hasattr(camera_director, "end_manual_control"):
             camera_director.end_manual_control()
+        set_producer_driver_focus_hold(camera_director, False)
         camera_director.replay_active = False
         camera_director.mode = "auto"
         clear_overlay_featured_driver(overlay_server)
@@ -1575,6 +1587,14 @@ def begin_producer_camera_takeover(camera_director, replay_director=None):
         replay_director.begin_manual_control()
 
 
+def set_producer_driver_focus_hold(camera_director, active):
+    if camera_director:
+        try:
+            camera_director.producer_driver_focus_hold = bool(active)
+        except Exception:
+            pass
+
+
 def clear_overlay_featured_driver(overlay_server):
     clearer = getattr(overlay_server, "clear_featured_driver", None)
     if clearer:
@@ -1585,7 +1605,7 @@ def clear_overlay_featured_driver(overlay_server):
 
 
 def producer_manual_camera_control_active(camera_director):
-    return bool(getattr(camera_director, "manual_control_active", False))
+    return bool(getattr(camera_director, "producer_driver_focus_hold", False))
 
 
 def set_producer_replay_speed(source, speed):
@@ -3117,7 +3137,7 @@ def update_overlay_featured_driver(overlay_server, item, source, camera_decision
         overlay_server,
         source,
         camera_decision,
-        duration=24.0 if opening_intro else 12.0,
+        duration=12.0,
         opening_intro=opening_intro,
         number_only_card=rundown_number_only,
         engine=engine,

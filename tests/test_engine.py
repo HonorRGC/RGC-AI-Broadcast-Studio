@@ -709,6 +709,35 @@ def test_green_pit_cycle_does_not_start_with_one_green_flag_pitter():
     assert engine.broadcast_queue.items == []
 
 
+def test_green_pit_cycle_does_not_queue_when_live_yellow_flag_is_present():
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    engine.session_tracker.update("Race")
+    engine.race_director.race_started = True
+    engine.race_director.phase = RacePhase.GREEN
+    results = [
+        {"CarIdx": index, "Position": index + 1, "LapsComplete": 25}
+        for index in range(8)
+    ]
+    drivers = {
+        index: {"name": f"Driver {index + 1}", "number": str(index + 1)}
+        for index in range(8)
+    }
+    pit_road_status = [True] * 4 + [False] * 4
+
+    queued = engine._queue_green_pit_cycle_update(
+        events=[SimpleNamespace(event_type="PIT_STOP")],
+        results=results,
+        driver_lookup=drivers,
+        pit_road_status=pit_road_status,
+        current_lap=25,
+        track_info={"track_name": "Michigan International Speedway"},
+        live_under_caution=True,
+    )
+
+    assert queued is False
+    assert engine.broadcast_queue.items == []
+
+
 def test_green_pit_cycle_lockout_can_air_ready_pit_strategy_story():
     engine = BroadcastEngine(openai_director=SilentOpenAI())
     pit_event = SimpleNamespace(

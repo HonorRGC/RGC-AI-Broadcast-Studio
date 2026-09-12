@@ -55,8 +55,11 @@ class CautionPresentationDirector:
         if self.music_started_for_caution:
             return
         player = getattr(audio_bed, "play", None)
-        if player:
-            player()
+        if not player:
+            return
+        started = player()
+        if started is False:
+            return
         self.music_started_for_caution = True
 
     def stop_audio_once(self, audio_bed):
