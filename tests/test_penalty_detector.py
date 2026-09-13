@@ -44,6 +44,48 @@ def test_black_flag_for_jump_start_is_broadcast():
     assert "jumping the start or restart" in events[0].message
 
 
+def test_black_flag_for_pit_lane_speeding_alias_is_broadcast():
+    detector = PenaltyDetector()
+    drivers = {4: {"name": "Fast Driver", "number": "44"}}
+    detector.analyze([{"CarIdx": 4, "Position": 1}], drivers)
+
+    events = detector.analyze(
+        [
+            {
+                "CarIdx": 4,
+                "Position": 1,
+                "SessionFlags": PenaltyDetector.BLACK_FLAG,
+                "BlackFlagReason": "Too fast entering pit lane",
+            }
+        ],
+        drivers,
+    )
+
+    assert len(events) == 1
+    assert "speeding on pit road" in events[0].message
+
+
+def test_black_flag_for_start_violation_alias_is_broadcast():
+    detector = PenaltyDetector()
+    drivers = {4: {"name": "Early Driver", "number": "44"}}
+    detector.analyze([{"CarIdx": 4, "Position": 1}], drivers)
+
+    events = detector.analyze(
+        [
+            {
+                "CarIdx": 4,
+                "Position": 1,
+                "SessionFlags": PenaltyDetector.BLACK_FLAG,
+                "Reason": "Restart violation",
+            }
+        ],
+        drivers,
+    )
+
+    assert len(events) == 1
+    assert "jumping the start or restart" in events[0].message
+
+
 def test_generic_black_flag_is_ignored_without_reason():
     detector = PenaltyDetector()
     drivers = {4: {"name": "Quiet Driver", "number": "44"}}

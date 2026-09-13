@@ -167,13 +167,29 @@ class PenaltyDetector:
 
     @staticmethod
     def is_pit_speeding_reason(normalized):
-        return "speed" in normalized and ("pit" in normalized or "pitroad" in normalized)
+        pit_context = (
+            "pit" in normalized
+            or "pitroad" in normalized
+            or "pitlane" in normalized
+            or "pit lane" in normalized
+        )
+        return ("speed" in normalized or "too fast" in normalized) and pit_context
 
     @staticmethod
     def is_jump_start_reason(normalized):
         return (
-            ("jump" in normalized or "start" in normalized)
-            and ("start" in normalized or "restart" in normalized or "green" in normalized)
+            (
+                "jump" in normalized
+                and (
+                    "start" in normalized
+                    or "restart" in normalized
+                    or "green" in normalized
+                )
+            )
+            or "early start" in normalized
+            or "restart violation" in normalized
+            or "start violation" in normalized
+            or ("start" in normalized and "green" in normalized)
         )
 
     @staticmethod

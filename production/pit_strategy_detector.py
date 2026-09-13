@@ -2,9 +2,6 @@ import time
 from dataclasses import dataclass
 from typing import Dict, List
 
-from config import PIT_BROADCASTER_NAME
-
-
 @dataclass
 class PitStrategyEvent:
     event_type: str
@@ -211,8 +208,8 @@ class PitStrategyDetector:
             message = self.rotate_phrase(
                 "caution_entry",
                 [
-                    f"{state.driver_name} brings the number {state.car_number} to pit road under caution. That could be for service, damage repair, or a restart adjustment.",
-                    f"{state.driver_name} is coming to the crew under yellow in the number {state.car_number}. We will see how long that stop takes.",
+                    f"The number {state.car_number} of {state.driver_name} is on pit road under caution. That could be service, damage repair, or a restart adjustment.",
+                    f"The crew is waiting on the number {state.car_number} of {state.driver_name} under yellow. We will see how long that stop takes.",
                     f"The number {state.car_number} of {state.driver_name} is on pit road while the field is slowed, and the stop time should tell us more.",
                 ],
             )
@@ -221,10 +218,10 @@ class PitStrategyDetector:
             message = self.rotate_phrase(
                 "green_entry",
                 [
-                    f"{state.driver_name} is on pit road under green. We'll watch whether that is scheduled service, damage repair, or an off-sequence stop.",
-                    f"{state.driver_name} has committed to pit road in the number {state.car_number}. That puts them into the pit cycle while the race stays green.",
-                    f"{PIT_BROADCASTER_NAME} has {state.driver_name} on pit road under green; now the question is how that stop blends into the cycle.",
-                    f"The number {state.car_number} is in for {state.driver_name}, and we will learn more when they roll off pit road.",
+                    f"The number {state.car_number} of {state.driver_name} is on pit road under green. We will watch whether that is scheduled service, damage repair, or an off-sequence stop.",
+                    f"The number {state.car_number} of {state.driver_name} has committed to pit road. That puts them into the pit cycle while the race stays green.",
+                    f"Pit road has the number {state.car_number} of {state.driver_name} in under green; now the question is how that stop blends into the cycle.",
+                    f"The number {state.car_number} is in for {state.driver_name}, and we will learn more when it rolls off pit road.",
                 ],
             )
             importance = 9
@@ -285,9 +282,9 @@ class PitStrategyDetector:
             return self.rotate_phrase(
                 "extended_stop_note",
                 [
-                    f"That was an extended stop{timing}, so damage repair is likely part of the story.",
+                    f"That was an extended stop{timing}, so damage repair or a longer service call is likely part of the story.",
                     f"That stop was longer than normal{timing}, which points toward repairs or a bigger adjustment.",
-                    f"The time on pit road was significant{timing}, so the crew may have been handling damage.",
+                    f"The time on pit road was significant{timing}, which points more toward repairs than routine service.",
                 ],
             )
         if self.looks_like_two_tire_track_position_stop(state):
