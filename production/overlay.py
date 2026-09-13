@@ -4076,7 +4076,7 @@ OVERLAY_HTML = r"""<!doctype html>
     }
 
     body.leaderboard-flo-mode .session-center {
-      top: 188px;
+      top: 238px;
     }
 
     body.leaderboard-brazen-mode .top-banner {
@@ -4480,7 +4480,7 @@ OVERLAY_HTML = r"""<!doctype html>
     .flo-lap-box {
       position: absolute;
       left: 0;
-      top: calc(100% + 12px);
+      top: calc(100% + 20px);
       width: 100%;
       display: grid;
       grid-template-columns: minmax(94px, auto) minmax(0, 1fr);
@@ -4522,17 +4522,18 @@ OVERLAY_HTML = r"""<!doctype html>
 
     .flo-race-bar {
       position: absolute;
-      left: 210px;
-      right: 210px;
-      top: 100%;
+      left: 0;
+      right: 0;
+      top: calc(100% + 3px);
       display: flex;
       gap: 0;
-      height: 11px;
+      height: 13px;
       background: rgba(0, 0, 0, 0.42);
       border-top: 1px solid rgba(255, 255, 255, 0.16);
       border-bottom: 1px solid rgba(255, 255, 255, 0.14);
       overflow: hidden;
       box-shadow: 0 7px 16px rgba(0, 0, 0, 0.32);
+      z-index: 24;
     }
 
     .flo-race-bar.hidden {

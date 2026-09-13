@@ -745,7 +745,7 @@ def test_overlay_has_session_clock_above_sponsor_card():
     assert "left: 50%;" in OVERLAY_HTML
     assert "body.leaderboard-ticker-mode .session-center" in OVERLAY_HTML
     assert "body.leaderboard-flo-mode .session-center" in OVERLAY_HTML
-    assert "top: 188px" in OVERLAY_HTML
+    assert "top: 238px" in OVERLAY_HTML
     assert "buildSessionCenterLine" in OVERLAY_HTML
     assert "formatClock" in OVERLAY_HTML
 
@@ -779,7 +779,8 @@ def test_overlay_has_optional_ticker_leaderboard_and_compact_lap_bar():
     assert "renderFloRaceBar(state.lap_history || [])" in OVERLAY_HTML
     assert "renderFloRaceBar([])" in OVERLAY_HTML
     assert ".flo-race-bar" in OVERLAY_HTML
-    assert "top: calc(100% + 12px)" in OVERLAY_HTML
+    assert "top: calc(100% + 3px)" in OVERLAY_HTML
+    assert "top: calc(100% + 20px)" in OVERLAY_HTML
     assert "grid-template-columns: minmax(94px, auto) minmax(0, 1fr)" in OVERLAY_HTML
     assert "flo-row-cycle .flo-entry" in OVERLAY_HTML
     assert 'content: "CYCLE"' not in OVERLAY_HTML
