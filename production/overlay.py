@@ -22,14 +22,19 @@ from config import (
     OVERLAY_SERIES_NAME,
     RACE_SPONSOR_1_LOGO,
     RACE_SPONSOR_1_NAME,
+    RACE_SPONSOR_1_VIDEO,
     RACE_SPONSOR_2_LOGO,
     RACE_SPONSOR_2_NAME,
+    RACE_SPONSOR_2_VIDEO,
     RACE_SPONSOR_3_LOGO,
     RACE_SPONSOR_3_NAME,
+    RACE_SPONSOR_3_VIDEO,
     RACE_SPONSOR_4_LOGO,
     RACE_SPONSOR_4_NAME,
+    RACE_SPONSOR_4_VIDEO,
     RACE_SPONSOR_5_LOGO,
     RACE_SPONSOR_5_NAME,
+    RACE_SPONSOR_5_VIDEO,
     RACE_SPONSOR_LOGOS,
     STARTING_LINEUP_SPONSOR_LOGO,
     STARTING_LINEUP_SPONSOR_NAME,
@@ -52,23 +57,31 @@ MAX_IRACING_RENDER_BYTES = 5 * 1024 * 1024
 def configured_overlay_sponsor_options():
     options = []
     seen = set()
-    for slot, name, logo in (
-        (1, RACE_SPONSOR_1_NAME, RACE_SPONSOR_1_LOGO),
-        (2, RACE_SPONSOR_2_NAME, RACE_SPONSOR_2_LOGO),
-        (3, RACE_SPONSOR_3_NAME, RACE_SPONSOR_3_LOGO),
-        (4, RACE_SPONSOR_4_NAME, RACE_SPONSOR_4_LOGO),
-        (5, RACE_SPONSOR_5_NAME, RACE_SPONSOR_5_LOGO),
-        ("lineup", STARTING_LINEUP_SPONSOR_NAME, STARTING_LINEUP_SPONSOR_LOGO),
-        ("results", FINAL_RESULTS_SPONSOR_NAME, FINAL_RESULTS_SPONSOR_LOGO),
-        ("review", CAUTION_REVIEW_SLATE_SPONSOR_NAME, CAUTION_REVIEW_SLATE_GRAPHIC),
+    for slot, name, logo, video in (
+        (1, RACE_SPONSOR_1_NAME, RACE_SPONSOR_1_LOGO, RACE_SPONSOR_1_VIDEO),
+        (2, RACE_SPONSOR_2_NAME, RACE_SPONSOR_2_LOGO, RACE_SPONSOR_2_VIDEO),
+        (3, RACE_SPONSOR_3_NAME, RACE_SPONSOR_3_LOGO, RACE_SPONSOR_3_VIDEO),
+        (4, RACE_SPONSOR_4_NAME, RACE_SPONSOR_4_LOGO, RACE_SPONSOR_4_VIDEO),
+        (5, RACE_SPONSOR_5_NAME, RACE_SPONSOR_5_LOGO, RACE_SPONSOR_5_VIDEO),
+        ("lineup", STARTING_LINEUP_SPONSOR_NAME, STARTING_LINEUP_SPONSOR_LOGO, ""),
+        ("results", FINAL_RESULTS_SPONSOR_NAME, FINAL_RESULTS_SPONSOR_LOGO, ""),
+        ("review", CAUTION_REVIEW_SLATE_SPONSOR_NAME, CAUTION_REVIEW_SLATE_GRAPHIC, ""),
     ):
         clean_name = str(name or "").strip()
         clean_logo = str(logo or "").strip()
+        clean_video = str(video or "").strip()
         key = clean_name.lower() or clean_logo.lower()
         if not key or key in seen:
             continue
         seen.add(key)
-        options.append({"slot": slot, "name": clean_name, "logo": clean_logo})
+        options.append(
+            {
+                "slot": slot,
+                "name": clean_name,
+                "logo": clean_logo,
+                "video": clean_video,
+            }
+        )
     cause_name = str(SPONSOR_READ_CAUSE_NAME or "").strip()
     cause_logo = str(SPONSOR_READ_CAUSE_LOGO or "").strip()
     if cause_name and cause_name.lower() not in seen:
@@ -1312,9 +1325,16 @@ class OverlayServer:
             self.state.special_presentation = None
 
     def show_caution_review_slate(self, sponsor_name="", sponsor_slot=""):
-        graphics = self.caution_review_slate_graphics(sponsor_name, sponsor_slot)
+        option = self.caution_review_slate_sponsor_option(sponsor_name, sponsor_slot)
+        graphics = self.caution_review_slate_graphics(sponsor_name, sponsor_slot, option=option)
+        video_url = str((option or {}).get("video", "") or "").strip()
         title = "Caution Review"
-        sponsor_name = str(sponsor_name or self.state.event.caution_review_slate_sponsor or "").strip()
+        sponsor_name = str(
+            sponsor_name
+            or (option or {}).get("name", "")
+            or self.state.event.caution_review_slate_sponsor
+            or ""
+        ).strip()
         subtitle = (
             "Race control is reviewing the incident. "
             "We will show it as soon as the angle is ready."
@@ -1327,6 +1347,7 @@ class OverlayServer:
             subtitle=subtitle,
             duration=1800,
             graphics=graphics,
+            video_url=video_url,
         )
         return {
             "ok": True,
@@ -1334,9 +1355,10 @@ class OverlayServer:
             "title": title,
             "sponsor_name": str(sponsor_name or "").strip(),
             "graphics": graphics,
+            "video_url": video_url,
         }
 
-    def caution_review_slate_graphics(self, sponsor_name="", sponsor_slot=""):
+    def caution_review_slate_sponsor_option(self, sponsor_name="", sponsor_slot=""):
         sponsor_name = str(sponsor_name or "").strip()
         sponsor_slot = str(sponsor_slot or "").strip()
         options = list(self.state.event.sponsor_options or [])
@@ -1349,10 +1371,18 @@ class OverlayServer:
                     and option_name
                     and option_name.lower() == sponsor_name.lower()
                 ) or (sponsor_slot and option_slot == sponsor_slot):
-                    logo = str((option or {}).get("logo", "") or "").strip()
-                    if logo:
-                        return [logo]
-                    break
+                    return option or {}
+        return {}
+
+    def caution_review_slate_graphics(self, sponsor_name="", sponsor_slot="", option=None):
+        option = option or self.caution_review_slate_sponsor_option(
+            sponsor_name,
+            sponsor_slot,
+        )
+        if option:
+            logo = str((option or {}).get("logo", "") or "").strip()
+            if logo:
+                return [logo]
         configured_graphic = str(self.state.event.caution_review_slate_graphic or "").strip()
         if configured_graphic:
             return [configured_graphic]
@@ -2296,6 +2326,21 @@ PRODUCER_HTML = r"""<!doctype html>
       accent-color: var(--blue);
     }
 
+    .control-select-label {
+      display: grid;
+      gap: 5px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .control-select-label .camera-shot-select {
+      width: 100%;
+      min-height: 37px;
+    }
+
     .camera-shot-row {
       display: grid;
       grid-template-columns: minmax(150px, 0.8fr) repeat(4, minmax(0, 1fr));
@@ -2848,7 +2893,15 @@ PRODUCER_HTML = r"""<!doctype html>
             <button class="control-button" id="auto-camera-button">Auto Camera</button>
             <button class="control-button" id="openai-button">OpenAI</button>
             <button class="control-button" id="elevenlabs-button">ElevenLabs</button>
-            <button class="control-button" id="leaderboard-style-button">Leaderboard: Side</button>
+            <label class="control-select-label">
+              Leaderboard
+              <select class="camera-shot-select" id="leaderboard-style-select" title="Overlay leaderboard style">
+                <option value="side">Side</option>
+                <option value="ticker">Ticker</option>
+                <option value="flo">Flo Top</option>
+                <option value="brazen">Brazen</option>
+              </select>
+            </label>
             <button class="control-button danger" id="race-admin-button">Race Admin: OFF</button>
           </div>
           <div class="audio-control-row">
@@ -3557,7 +3610,7 @@ PRODUCER_HTML = r"""<!doctype html>
       const autoButton = document.getElementById("auto-camera-button");
       const openAiButton = document.getElementById("openai-button");
       const elevenButton = document.getElementById("elevenlabs-button");
-      const leaderboardButton = document.getElementById("leaderboard-style-button");
+      const leaderboardSelect = document.getElementById("leaderboard-style-select");
       const raceAdminButton = document.getElementById("race-admin-button");
       const broadcasterSlider = document.getElementById("broadcaster-volume-slider");
       const musicSlider = document.getElementById("music-volume-slider");
@@ -3570,16 +3623,11 @@ PRODUCER_HTML = r"""<!doctype html>
       openAiButton.textContent = openAiOn ? "OpenAI: ON" : "OpenAI: OFF";
       elevenButton.textContent = elevenOn ? "ElevenLabs: ON" : "ElevenLabs: OFF";
       raceAdminButton.textContent = raceAdminOn ? "Race Admin: ON" : "Race Admin: OFF";
-      leaderboardButton.textContent =
-        leaderboardStyle === "ticker" ? "Leaderboard: Ticker" :
-        leaderboardStyle === "flo" ? "Leaderboard: Flo Top" :
-        leaderboardStyle === "brazen" ? "Leaderboard: Brazen" :
-        "Leaderboard: Side";
+      if (leaderboardSelect) leaderboardSelect.value = leaderboardStyle;
       autoButton.className = `control-button ${autoOn ? "good" : "danger"}`;
       openAiButton.className = `control-button ${openAiOn ? "good" : "danger"}`;
       elevenButton.className = `control-button ${elevenOn ? "good" : "danger"}`;
       raceAdminButton.className = `control-button ${raceAdminOn ? "good" : "danger"}`;
-      leaderboardButton.className = `control-button ${leaderboardStyle !== "side" ? "good" : ""}`;
       renderAudioSliders(state, broadcasterSlider, musicSlider);
       renderRaceControl(state);
       renderCautionReviewSponsorSelect(state);
@@ -3594,7 +3642,8 @@ PRODUCER_HTML = r"""<!doctype html>
       for (const option of options) {
         const node = document.createElement("option");
         node.value = String(option.slot || option.name || "");
-        node.textContent = `Review Slate Sponsor: ${option.name || `Sponsor ${option.slot}`}`;
+        const videoTag = option.video ? " (video)" : "";
+        node.textContent = `Review Slate Sponsor: ${option.name || `Sponsor ${option.slot}`}${videoTag}`;
         node.dataset.sponsorName = option.name || "";
         select.appendChild(node);
       }
@@ -3673,16 +3722,7 @@ PRODUCER_HTML = r"""<!doctype html>
         sponsor_slot: select ? select.value : "",
         sponsor_name: selected ? selected.dataset.sponsorName || "" : ""
       };
-      try {
-        await fetch("/overlay/caution-review-slate", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
-        });
-      } catch (error) {
-        console.warn("Immediate review slate failed; falling back to producer queue.", error);
-        sendProducerCommand("caution_review_slate_on", payload);
-      }
+      sendProducerCommand("caution_review_slate_on", payload);
     }
 
     async function clearCautionReviewSlate() {
@@ -3786,14 +3826,10 @@ PRODUCER_HTML = r"""<!doctype html>
       const on = controlEnabled(lastState || {}, "race_admin");
       sendProducerCommand(on ? "race_admin_off" : "race_admin_on");
     });
-    document.getElementById("leaderboard-style-button").addEventListener("click", () => {
-      const style = currentLeaderboardStyle(lastState || {});
-      const nextCommand =
-        style === "side" ? "leaderboard_ticker" :
-        style === "ticker" ? "leaderboard_flo" :
-        style === "flo" ? "leaderboard_brazen" :
-        "leaderboard_side";
-      sendProducerCommand(nextCommand);
+    document.getElementById("leaderboard-style-select").addEventListener("change", (event) => {
+      sendProducerCommand("set_leaderboard_style", {
+        style: event.target.value || "side"
+      });
     });
     setupVolumeSlider("broadcaster-volume-slider", "broadcaster-volume-label", "broadcaster");
     setupVolumeSlider("music-volume-slider", "music-volume-label", "music");
@@ -5289,6 +5325,14 @@ OVERLAY_HTML = r"""<!doctype html>
       background: linear-gradient(90deg, rgba(12, 10, 5, 0.97), rgba(42, 32, 10, 0.94));
     }
 
+    .stat-panel.caution_top_ten {
+      width: 540px;
+      right: 34px;
+      bottom: 66px;
+      border-left-color: #ffd400;
+      background: linear-gradient(90deg, rgba(12, 10, 5, 0.97), rgba(42, 32, 10, 0.94));
+    }
+
     .stat-panel.caution_pit .stat-panel-row {
       padding: 6px 12px;
       grid-template-columns: minmax(0, 1fr) 132px;
@@ -5307,6 +5351,20 @@ OVERLAY_HTML = r"""<!doctype html>
 
     .stat-panel.caution_pit .stat-panel-detail {
       font-size: 10px;
+    }
+
+    .stat-panel.caution_top_ten .stat-panel-row {
+      grid-template-columns: 64px 74px minmax(0, 1fr);
+    }
+
+    .stat-panel.caution_top_ten .stat-panel-label {
+      color: #ffd400;
+      font-size: 13px;
+    }
+
+    .stat-panel.caution_top_ten .stat-panel-value {
+      font-size: 15px;
+      text-align: center;
     }
 
     .stat-panel.race_end_cap {
@@ -5668,6 +5726,14 @@ OVERLAY_HTML = r"""<!doctype html>
 
     .special-presentation.sponsor_commercial .commercial-video {
       display: block;
+    }
+
+    .special-presentation.video_presentation .commercial-video {
+      display: block;
+    }
+
+    .special-presentation.video_presentation .ceremony-card {
+      display: none;
     }
 
     @keyframes sponsorBugPop {
@@ -6296,6 +6362,11 @@ OVERLAY_HTML = r"""<!doctype html>
       layer.classList.toggle("sponsor_bug", active && presentation.kind === "sponsor_bug");
       layer.classList.toggle("sponsor_commercial", active && presentation.kind === "sponsor_commercial");
       layer.classList.toggle("caution_review_slate", active && presentation.kind === "caution_review_slate");
+      const isVideoPresentation = active && Boolean(presentation.video_url) && (
+        presentation.kind === "sponsor_commercial" ||
+        presentation.kind === "caution_review_slate"
+      );
+      layer.classList.toggle("video_presentation", isVideoPresentation);
       if (!active) {
         setCrankSideGraphic("crank-speaker-left", "");
         setCrankSideGraphic("crank-speaker-right", "");
@@ -6308,11 +6379,12 @@ OVERLAY_HTML = r"""<!doctype html>
       const graphics = presentation.graphics || [];
       const isCrank = presentation.kind === "crank_it_up";
       const isCommercial = presentation.kind === "sponsor_commercial";
+      const isCautionReviewVideo = presentation.kind === "caution_review_slate" && presentation.video_url;
       const src = isCrank ? String(graphics[0] || "") : pickRotatingGraphic(graphics, isCommercial ? 999 : 3.5);
       const sideSrc = isCrank ? (graphics[1] || graphics[0] || "") : "";
       setCrankSideGraphic("crank-speaker-left", sideSrc);
       setCrankSideGraphic("crank-speaker-right", sideSrc);
-      setCommercialVideo(isCommercial ? presentation.video_url : "");
+      setCommercialVideo((isCommercial || isCautionReviewVideo) ? presentation.video_url : "");
       logo.classList.toggle("hidden", !src);
       logo.src = src || "";
     }
@@ -6374,7 +6446,12 @@ OVERLAY_HTML = r"""<!doctype html>
       setText("stat-panel-subtitle", panel.subtitle || "");
       const rows = document.getElementById("stat-panel-rows");
       rows.innerHTML = "";
-      const maxRows = panel.kind === "points_standings" ? 20 : panel.kind === "caution_pit" ? 12 : panel.kind === "race_end_cap" ? 9 : 7;
+      const maxRows =
+        panel.kind === "points_standings" ? 20 :
+        panel.kind === "caution_pit" ? 12 :
+        panel.kind === "caution_top_ten" ? 10 :
+        panel.kind === "race_end_cap" ? 9 :
+        7;
       for (const row of (panel.rows || []).slice(0, maxRows)) {
         const item = document.createElement("div");
         item.className = "stat-panel-row";

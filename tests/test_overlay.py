@@ -899,7 +899,8 @@ def test_caution_review_slate_uses_configured_default_graphic():
 
 def test_overlay_supports_points_standings_stat_panel():
     assert ".stat-panel.points_standings" in OVERLAY_HTML
-    assert 'panel.kind === "race_end_cap" ? 9 : 7' in OVERLAY_HTML
+    assert 'panel.kind === "caution_top_ten" ? 10' in OVERLAY_HTML
+    assert 'panel.kind === "race_end_cap" ? 9' in OVERLAY_HTML
     assert "Championship Standings" not in OVERLAY_HTML
 
 
@@ -1167,7 +1168,7 @@ def test_producer_assist_html_reads_overlay_state():
     assert 'id="manual-sponsor-button"' in PRODUCER_HTML
     assert 'id="caution-review-sponsor-select"' in PRODUCER_HTML
     assert "showCautionReviewSlate" in PRODUCER_HTML
-    assert 'fetch("/overlay/caution-review-slate"' in PRODUCER_HTML
+    assert 'sendProducerCommand("caution_review_slate_on"' in PRODUCER_HTML
     assert 'fetch("/overlay/clear-special-presentation"' in PRODUCER_HTML
     assert 'id="camera-explain"' in PRODUCER_HTML
     assert "renderCameraExplain" in PRODUCER_HTML
@@ -1178,14 +1179,14 @@ def test_producer_assist_html_reads_overlay_state():
     assert 'sendProducerCommand("producer_crank_it_up")' in PRODUCER_HTML
     assert 'sendProducerCommand("producer_sponsor_commercial")' in PRODUCER_HTML
     assert "sponsor_slot: Number(button.dataset.sponsorSlot || 0)" in PRODUCER_HTML
-    assert 'id="leaderboard-style-button"' in PRODUCER_HTML
+    assert 'id="leaderboard-style-select"' in PRODUCER_HTML
     assert 'id="broadcaster-volume-slider"' in PRODUCER_HTML
     assert 'id="music-volume-slider"' in PRODUCER_HTML
     assert 'sendProducerCommand("set_audio_volume"' in PRODUCER_HTML
     assert "slider.addEventListener(\"input\"" in PRODUCER_HTML
     assert "sendSoon();" in PRODUCER_HTML
-    assert '"leaderboard_flo"' in PRODUCER_HTML
-    assert "Leaderboard: Flo Top" in PRODUCER_HTML
+    assert 'sendProducerCommand("set_leaderboard_style"' in PRODUCER_HTML
+    assert ">Flo Top<" in PRODUCER_HTML
     assert "Move Camera to Driver" in PRODUCER_HTML
     assert 'id="director-suggestions-list"' in PRODUCER_HTML
     assert "Live booth cues with race data" in PRODUCER_HTML
@@ -1375,7 +1376,12 @@ def test_overlay_server_can_show_caution_review_slate_with_selected_sponsor():
         sponsor_graphics=["/assets/auto.png"],
         sponsor_options=[
             {"slot": 1, "name": "RGC Motorsports", "logo": "/assets/rgc.png"},
-            {"slot": 2, "name": "Autism Awareness", "logo": "/assets/autism.png"},
+            {
+                "slot": 2,
+                "name": "Autism Awareness",
+                "logo": "/assets/autism.png",
+                "video": "/assets/autism.mp4",
+            },
         ],
     )
     server = OverlayServer(state_builder=OverlayStateBuilder(event_config=event_config))
@@ -1386,6 +1392,7 @@ def test_overlay_server_can_show_caution_review_slate_with_selected_sponsor():
     assert response["ok"] is True
     assert state["special_presentation"]["kind"] == "caution_review_slate"
     assert state["special_presentation"]["graphics"] == ["/assets/autism.png"]
+    assert state["special_presentation"]["video_url"] == "/assets/autism.mp4"
 
     server.clear_special_presentation()
 

@@ -1138,6 +1138,9 @@ def handle_producer_command(
         return
 
     if command == "caution_review_slate_on":
+        stopper = getattr(caution_audio_bed, "stop", None)
+        if stopper:
+            stopper()
         shower = getattr(overlay_server, "show_caution_review_slate", None)
         if shower:
             shower(
@@ -1241,6 +1244,18 @@ def handle_producer_command(
                 payload.get("item_id"),
                 payload.get("status", "interviewed"),
             )
+        return
+
+    if command == "set_leaderboard_style":
+        style = str(payload.get("style", "") or "").strip().lower()
+        setter = getattr(overlay_server, "set_leaderboard_style", None)
+        selected = setter(style) if setter else style
+        publish_producer_event(
+            overlay_server,
+            "info",
+            "Overlay",
+            f"Leaderboard style set to {selected}.",
+        )
         return
 
     if command in (
@@ -1748,6 +1763,23 @@ def show_overlay_feature(item, overlay_server, source=None, engine=None):
                 dedupe_key=str(
                     getattr(item, "dedupe_key", "")
                     or f"caution_pit:{latest_pit_lap(engine)}"
+                ),
+                minimum_interval=8.0,
+            )
+        return
+
+    if category == "caution_top_ten_reset":
+        rows = build_caution_top_ten_rows(source, engine)
+        if rows:
+            overlay_server.show_stat_panel(
+                kind="caution_top_ten",
+                title="Restart Top 10",
+                subtitle="Unofficial order as the field doubles up",
+                rows=rows,
+                duration=16.0,
+                dedupe_key=str(
+                    getattr(item, "dedupe_key", "")
+                    or f"caution_top_ten:{latest_pit_lap(engine)}"
                 ),
                 minimum_interval=8.0,
             )
@@ -2830,6 +2862,36 @@ def build_pit_update_rows(source, engine, limit=5):
     return rows
 
 
+def build_caution_top_ten_rows(source, engine=None, limit=10):
+    if not source:
+        return []
+    results = sorted_results_by_position(source.get_results() if source else [])
+    if not results:
+        return []
+    driver_lookup = {}
+    if hasattr(source, "get_driver_lookup"):
+        driver_lookup = source.get_driver_lookup() or {}
+    rows = []
+    for car in results[:limit]:
+        car_idx = car.get("CarIdx")
+        driver = driver_lookup.get(car_idx, {}) if isinstance(driver_lookup, dict) else {}
+        position = normalized_result_position(car, results)
+        number = str(driver.get("number") or car.get("CarNumber") or car.get("Number") or "").strip()
+        name = str(driver.get("name") or car.get("UserName") or f"Car {car_idx}").strip()
+        interval = str(car.get("Interval") or car.get("Gap") or car.get("Time") or "").strip()
+        detail = f"#{number} {name}" if number else name
+        if interval:
+            detail = f"{detail} | Gap {interval}"
+        rows.append(
+            {
+                "label": f"P{position}",
+                "value": f"#{number}" if number else "",
+                "detail": detail,
+            }
+        )
+    return rows
+
+
 def build_caution_pit_summary_rows(source, engine, limit=12):
     if not source or not engine:
         return []
@@ -3041,7 +3103,8 @@ def build_current_position_lookup(results):
 def latest_pit_lap(engine):
     if not engine:
         return 0
-    states = getattr(engine.pit_strategy_detector, "driver_states", {}).values()
+    detector = getattr(engine, "pit_strategy_detector", None)
+    states = getattr(detector, "driver_states", {}).values()
     return max((getattr(state, "last_pit_lap", 0) for state in states), default=0)
 
 

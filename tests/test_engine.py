@@ -2162,9 +2162,11 @@ def test_one_to_green_reports_small_caution_pit_group():
         item for item in engine.broadcast_queue.items
         if item.category == "caution_top_ten_reset"
     )
-    assert "Before this restart, here is the top ten" in top_ten.message
-    assert "first, the 1 of Driver 1" in top_ten.message
-    assert "second, the 2 of Driver 2" in top_ten.message
+    assert top_ten.message == (
+        "The field is doubled up for the restart. "
+        "We have the restart top ten on the screen."
+    )
+    assert top_ten.speaker == "lead"
     assert top_ten.delay_seconds == 1.5
 
 
@@ -2258,8 +2260,11 @@ def test_one_to_green_top_ten_waits_for_stable_running_order():
         item for item in engine.broadcast_queue.items
         if item.category == "caution_top_ten_reset"
     )
-    assert "second, the 3 of Driver 3" in reset.message
-    assert "third, the 2 of Driver 2" in reset.message
+    assert reset.message == (
+        "The field is doubled up for the restart. "
+        "We have the restart top ten on the screen."
+    )
+    assert reset.participant_car_indices[:3] == (0, 2, 1)
 
 
 def test_one_to_green_majority_pit_report_waits_for_full_caution_cycle():

@@ -313,6 +313,34 @@ def test_caution_pit_summary_shows_service_graphic():
     assert "+3 on pit road" in panel["rows"][1]["detail"]
 
 
+def test_caution_top_ten_reset_shows_restart_order_graphic():
+    overlay = OverlaySpy()
+    source = SimpleNamespace(
+        get_results=lambda: [
+            {"CarIdx": index, "Position": index}
+            for index in range(10)
+        ],
+        get_driver_lookup=lambda: {
+            index: {"name": f"Driver {index + 1}", "number": str(index + 1)}
+            for index in range(10)
+        },
+    )
+
+    show_overlay_feature(
+        item(category="caution_top_ten_reset", target=None, message="Restart order."),
+        overlay,
+        source=source,
+        engine=SimpleNamespace(),
+    )
+
+    panel = overlay.stat_panels[0]
+    assert panel["kind"] == "caution_top_ten"
+    assert panel["title"] == "Restart Top 10"
+    assert len(panel["rows"]) == 10
+    assert panel["rows"][0]["label"] == "P1"
+    assert panel["rows"][0]["detail"] == "#1 Driver 1"
+
+
 def test_caution_pit_summary_rows_ignore_old_stops():
     state = SimpleNamespace(
         car_idx=4,
@@ -1060,6 +1088,18 @@ def test_producer_command_can_switch_leaderboard_style():
     )
 
     assert overlay.styles[-1] == "flo"
+
+    handle_producer_command(
+        "set_leaderboard_style",
+        {"style": "brazen"},
+        overlay,
+        source=None,
+        engine=None,
+        booth=None,
+        camera_director=None,
+    )
+
+    assert overlay.styles[-1] == "brazen"
 
     handle_producer_command(
         "leaderboard_brazen",

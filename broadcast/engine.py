@@ -2515,20 +2515,17 @@ class BroadcastEngine:
             return
         if not self.caution_top_ten_order_is_stable(results):
             return
-        message = self.build_caution_top_ten_reset(results, driver_lookup)
-        if not message:
-            return
         ordered = self.sorted_running_order(results)[:10]
         top_ten_car_indices = tuple(
             car.get("CarIdx") for car in ordered if car.get("CarIdx") is not None
         )
         self.caution_top_ten_reset_queued = True
         self.broadcast_queue.add(
-            message,
+            "The field is doubled up for the restart. We have the restart top ten on the screen.",
             priority=8,
             category="caution_top_ten_reset",
             protected=True,
-            speaker="jeff",
+            speaker="lead",
             delay_seconds=1.5,
             expires_after=30,
             dedupe_key=f"caution_top_ten_reset:{current_lap}",

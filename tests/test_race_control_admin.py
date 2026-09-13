@@ -46,6 +46,14 @@ class OverlaySpy:
         }
 
 
+class AudioBedSpy:
+    def __init__(self):
+        self.stops = 0
+
+    def stop(self):
+        self.stops += 1
+
+
 def test_race_control_builder_formats_global_commands():
     builder = RaceControlCommandBuilder()
 
@@ -230,6 +238,7 @@ def test_producer_can_toggle_race_admin_mode():
 
 def test_producer_can_show_and_clear_caution_review_slate():
     overlay = OverlaySpy()
+    audio = AudioBedSpy()
 
     handle_producer_command(
         "caution_review_slate_on",
@@ -239,11 +248,13 @@ def test_producer_can_show_and_clear_caution_review_slate():
         engine=None,
         booth=None,
         camera_director=SimpleNamespace(),
+        caution_audio_bed=audio,
     )
 
     assert overlay.special["kind"] == "caution_review_slate"
     assert overlay.special["title"] == "Caution Review"
     assert overlay.special["graphics"] == ["/assets/rgc.png"]
+    assert audio.stops == 1
     assert "review slate is live" in overlay.events[0]["message"].lower()
 
     handle_producer_command(
