@@ -367,12 +367,6 @@ class BroadcastEngine:
                 return self.broadcast_queue.next_item()
             if green_pit_cycle_active:
                 self.clear_green_pit_cycle_sensitive_editorials()
-                self._queue_ready_pit_strategy_story(
-                    race_state,
-                    race_knowledge,
-                    driver_lookup,
-                )
-                return self.broadcast_queue.next_item()
             queued_crank_it_up = self._queue_crank_it_up(
                 story_results,
                 race_state.green_lap_count,
@@ -447,7 +441,8 @@ class BroadcastEngine:
                 current_lap,
                 race_state,
             )
-            self._collect_pass_stories(story_results, driver_lookup)
+            if not green_pit_cycle_active:
+                self._collect_pass_stories(story_results, driver_lookup)
             self._queue_editorial_decision(
                 race_state,
                 race_knowledge,
@@ -1825,8 +1820,6 @@ class BroadcastEngine:
             driver_lookup=driver_lookup,
             pit_road_status=pit_road_status,
         )
-        for event in events:
-            self.editorial_producer.submit_pit_event(event)
         self._queue_green_pit_cycle_update(
             events,
             results,

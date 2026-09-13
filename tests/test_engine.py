@@ -973,6 +973,55 @@ def test_green_flag_pit_cycle_update_starts_when_multiple_cars_pit():
     assert engine.is_green_pit_cycle_active(35) is True
 
 
+def test_green_flag_pit_entries_do_not_create_per_driver_spoken_stories():
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    engine.race_director.phase = RacePhase.GREEN
+    engine.race_intelligence.race_state.laps_remaining = 40
+    pit_events = [
+        SimpleNamespace(
+            event_type="PIT_STOP",
+            under_caution=False,
+            car_idx=0,
+            message="Driver 1 is on pit road under green.",
+            driver_name="Driver 1",
+            car_number="1",
+            importance=9,
+        ),
+        SimpleNamespace(
+            event_type="PIT_STOP",
+            under_caution=False,
+            car_idx=1,
+            message="Driver 2 is on pit road under green.",
+            driver_name="Driver 2",
+            car_number="2",
+            importance=9,
+        ),
+    ]
+    engine.pit_strategy_detector = SimpleNamespace(
+        driver_states={},
+        analyze=lambda **_: pit_events,
+    )
+    engine.caution_pit_reporter = SimpleNamespace(update=lambda **_: None)
+
+    engine._collect_pit_stories(
+        results=[
+            {"CarIdx": 0, "Position": 1, "LapsComplete": 30},
+            {"CarIdx": 1, "Position": 2, "LapsComplete": 30},
+        ],
+        driver_lookup={
+            0: {"name": "Driver 1", "number": "1"},
+            1: {"name": "Driver 2", "number": "2"},
+        },
+        pit_road_status=[True, True],
+        current_lap=30,
+    )
+
+    assert [
+        item.category for item in engine.editorial_producer.items
+    ] == []
+    assert engine.broadcast_queue.items[0].category == "green_pit_cycle_update"
+
+
 def test_green_flag_pit_cycle_update_reports_recent_stops_after_start():
     engine = BroadcastEngine(openai_director=SilentOpenAI())
     engine.race_director.phase = RacePhase.GREEN

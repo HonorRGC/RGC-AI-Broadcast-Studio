@@ -924,8 +924,31 @@ def test_overlay_state_marks_league_mode_when_league_context_is_configured():
 def test_overlay_hides_caution_sponsor_while_pit_summary_is_active():
     assert "function effectiveSpecialPresentation(state)" in OVERLAY_HTML
     assert 'panel.kind === "caution_pit"' in OVERLAY_HTML
+    assert 'secondaryPanel.kind === "caution_top_ten"' in OVERLAY_HTML
     assert '["race_sponsors", "sponsor_bug"].includes(presentation.kind)' in OVERLAY_HTML
     assert "const presentation = effectiveSpecialPresentation(state);" in OVERLAY_HTML
+
+
+def test_overlay_supports_secondary_left_restart_top_ten_panel():
+    server = OverlayServer()
+
+    assert server.show_stat_panel(
+        kind="caution_pit",
+        title="Caution Pit Road",
+        rows=[{"label": "P1", "value": "Four tires", "detail": "stop 14.2s"}],
+    )
+    assert server.show_stat_panel(
+        kind="caution_top_ten",
+        title="Restart Top 10",
+        rows=[{"label": "P1", "value": "#24", "detail": "Driver One"}],
+    )
+
+    state = server.state.to_dict()
+    assert state["stat_panel"]["kind"] == "caution_pit"
+    assert state["secondary_stat_panel"]["kind"] == "caution_top_ten"
+    assert ".stat-panel.caution_top_ten" in OVERLAY_HTML
+    assert "left: 34px" in OVERLAY_HTML
+    assert 'id="stat-panel-secondary"' in OVERLAY_HTML
 
 
 def test_overlay_title_branding_is_larger_and_more_polished():

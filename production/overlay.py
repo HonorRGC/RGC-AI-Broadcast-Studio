@@ -419,6 +419,7 @@ class OverlayState:
     featured_driver: FeaturedDriver | None = None
     special_presentation: SpecialPresentation | None = None
     stat_panel: StatPanel | None = None
+    secondary_stat_panel: StatPanel | None = None
     leaderboard: list[LeaderboardEntry] = field(default_factory=list)
     producer_leaderboard: list[LeaderboardEntry] = field(default_factory=list)
     lap_history: list[dict[str, Any]] = field(default_factory=list)
@@ -455,6 +456,11 @@ class OverlayState:
                 else None
             ),
             "stat_panel": self.stat_panel.to_dict() if self.stat_panel else None,
+            "secondary_stat_panel": (
+                self.secondary_stat_panel.to_dict()
+                if self.secondary_stat_panel
+                else None
+            ),
             "leaderboard": [entry.to_dict() for entry in self.leaderboard],
             "producer_leaderboard": [
                 entry.to_dict() for entry in self.producer_leaderboard
@@ -1076,6 +1082,7 @@ class OverlayServer:
         self.featured_driver = None
         self.special_presentation = None
         self.stat_panel = None
+        self.secondary_stat_panel = None
         self.last_stat_panel_key = ""
         self.last_stat_panel_at = 0.0
         self.producer_feed = []
@@ -1210,6 +1217,13 @@ class OverlayServer:
                 state.stat_panel = self.stat_panel
             else:
                 self.stat_panel = None
+            if (
+                self.secondary_stat_panel
+                and self.secondary_stat_panel.expires_at > time.monotonic()
+            ):
+                state.secondary_stat_panel = self.secondary_stat_panel
+            else:
+                self.secondary_stat_panel = None
             self.state = state
 
     @staticmethod
@@ -1409,7 +1423,7 @@ class OverlayServer:
                 return False
             self.last_stat_panel_key = key
             self.last_stat_panel_at = now
-            self.stat_panel = StatPanel(
+            panel = StatPanel(
                 kind=str(kind or ""),
                 title=str(title or ""),
                 subtitle=str(subtitle or ""),
@@ -1425,7 +1439,12 @@ class OverlayServer:
                 ],
                 expires_at=now + float(duration),
             )
-            self.state.stat_panel = self.stat_panel
+            if str(kind or "") == "caution_top_ten":
+                self.secondary_stat_panel = panel
+                self.state.secondary_stat_panel = panel
+            else:
+                self.stat_panel = panel
+                self.state.stat_panel = panel
         return True
 
     def add_producer_event(self, kind="info", title="", message="", speaker=""):
@@ -5334,45 +5353,63 @@ OVERLAY_HTML = r"""<!doctype html>
     }
 
     .stat-panel.caution_top_ten {
-      width: 540px;
-      right: 34px;
+      width: 500px;
+      left: 34px;
+      right: auto;
       bottom: 66px;
       border-left-color: #ffd400;
-      background: linear-gradient(90deg, rgba(12, 10, 5, 0.97), rgba(42, 32, 10, 0.94));
+      background: linear-gradient(90deg, rgba(7, 9, 13, 0.98), rgba(30, 25, 8, 0.96));
+      border-right: 2px solid rgba(255, 212, 0, 0.35);
     }
 
     .stat-panel.caution_pit .stat-panel-row {
-      padding: 6px 12px;
+      padding: 7px 13px;
       grid-template-columns: minmax(0, 1fr) 132px;
       gap: 8px;
     }
 
     .stat-panel.caution_pit .stat-panel-label {
-      font-size: 12px;
+      color: #ffffff;
+      font-size: 14px;
+      font-weight: 950;
     }
 
     .stat-panel.caution_pit .stat-panel-value {
       color: #ffd400;
-      font-size: 13px;
+      font-size: 14px;
+      font-weight: 950;
       text-align: right;
     }
 
     .stat-panel.caution_pit .stat-panel-detail {
-      font-size: 10px;
+      color: #f3f6ff;
+      font-size: 11px;
+      font-weight: 800;
     }
 
     .stat-panel.caution_top_ten .stat-panel-row {
-      grid-template-columns: 64px 74px minmax(0, 1fr);
+      padding: 7px 13px;
+      grid-template-columns: 58px 66px minmax(0, 1fr);
+      background: rgba(255, 255, 255, 0.035);
     }
 
     .stat-panel.caution_top_ten .stat-panel-label {
       color: #ffd400;
-      font-size: 13px;
+      font-size: 14px;
+      font-weight: 950;
     }
 
     .stat-panel.caution_top_ten .stat-panel-value {
-      font-size: 15px;
+      color: #ffffff;
+      font-size: 16px;
+      font-weight: 950;
       text-align: center;
+    }
+
+    .stat-panel.caution_top_ten .stat-panel-detail {
+      color: #ffffff;
+      font-size: 13px;
+      font-weight: 900;
     }
 
     .stat-panel.race_end_cap {
@@ -5980,10 +6017,18 @@ OVERLAY_HTML = r"""<!doctype html>
 
   <section id="stat-panel" class="stat-panel hidden">
     <div class="stat-panel-header">
-      <div id="stat-panel-title" class="stat-panel-title"></div>
-      <div id="stat-panel-subtitle" class="stat-panel-subtitle"></div>
+      <div class="stat-panel-title"></div>
+      <div class="stat-panel-subtitle"></div>
     </div>
-    <div id="stat-panel-rows"></div>
+    <div class="stat-panel-rows"></div>
+  </section>
+
+  <section id="stat-panel-secondary" class="stat-panel hidden">
+    <div class="stat-panel-header">
+      <div class="stat-panel-title"></div>
+      <div class="stat-panel-subtitle"></div>
+    </div>
+    <div class="stat-panel-rows"></div>
   </section>
 
   <div class="studio-stamp" aria-label="RGC AI Broadcast Studio">
@@ -6049,7 +6094,8 @@ OVERLAY_HTML = r"""<!doctype html>
       const presentation = effectiveSpecialPresentation(state);
       renderSpecialPresentation(presentation);
       renderDriverCard(shouldHideDriverCardForPresentation(presentation) ? null : state.featured_driver);
-      renderStatPanel(state.stat_panel);
+      renderStatPanel(state.stat_panel, "stat-panel");
+      renderStatPanel(state.secondary_stat_panel, "stat-panel-secondary");
 
       const rows = document.getElementById("leaderboard-rows");
       rows.innerHTML = "";
@@ -6351,8 +6397,9 @@ OVERLAY_HTML = r"""<!doctype html>
     function effectiveSpecialPresentation(state) {
       const presentation = state.special_presentation || null;
       const panel = state.stat_panel || {};
+      const secondaryPanel = state.secondary_stat_panel || {};
       if (
-        panel.kind === "caution_pit" &&
+        (panel.kind === "caution_pit" || secondaryPanel.kind === "caution_top_ten") &&
         presentation &&
         ["race_sponsors", "sponsor_bug"].includes(presentation.kind)
       ) {
@@ -6445,14 +6492,17 @@ OVERLAY_HTML = r"""<!doctype html>
       element.style.backgroundImage = src ? `url("${src}")` : "";
     }
 
-    function renderStatPanel(panel) {
-      const layer = document.getElementById("stat-panel");
+    function renderStatPanel(panel, elementId = "stat-panel") {
+      const layer = document.getElementById(elementId);
       const active = !!(panel && panel.kind);
       layer.className = `stat-panel ${active ? panel.kind : "hidden"}`;
       if (!active) return;
-      setText("stat-panel-title", panel.title || "Race Update");
-      setText("stat-panel-subtitle", panel.subtitle || "");
-      const rows = document.getElementById("stat-panel-rows");
+      const title = layer.querySelector(".stat-panel-title");
+      const subtitle = layer.querySelector(".stat-panel-subtitle");
+      const rows = layer.querySelector(".stat-panel-rows");
+      if (title) title.textContent = panel.title || "Race Update";
+      if (subtitle) subtitle.textContent = panel.subtitle || "";
+      if (!rows) return;
       rows.innerHTML = "";
       const maxRows =
         panel.kind === "points_standings" ? 20 :
