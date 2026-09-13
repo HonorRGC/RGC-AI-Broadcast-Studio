@@ -1165,6 +1165,8 @@ def test_producer_assist_html_reads_overlay_state():
     assert 'sendProducerCommand("replay_fast_forward", { seconds: 10 })' not in PRODUCER_HTML
     assert "Manual Show Features" in PRODUCER_HTML
     assert 'id="manual-crank-it-up-button"' in PRODUCER_HTML
+    assert 'id="manual-caution-music-button"' in PRODUCER_HTML
+    assert 'id="stop-caution-music-button"' in PRODUCER_HTML
     assert 'id="manual-sponsor-button"' in PRODUCER_HTML
     assert 'id="caution-review-sponsor-select"' in PRODUCER_HTML
     assert "showCautionReviewSlate" in PRODUCER_HTML
@@ -1177,6 +1179,8 @@ def test_producer_assist_html_reads_overlay_state():
     assert 'data-sponsor-slot="1"' in PRODUCER_HTML
     assert 'data-sponsor-slot="5"' in PRODUCER_HTML
     assert 'sendProducerCommand("producer_crank_it_up")' in PRODUCER_HTML
+    assert 'sendProducerCommand("caution_music_play")' in PRODUCER_HTML
+    assert 'sendProducerCommand("caution_music_stop")' in PRODUCER_HTML
     assert 'sendProducerCommand("producer_sponsor_commercial")' in PRODUCER_HTML
     assert "sponsor_slot: Number(button.dataset.sponsorSlot || 0)" in PRODUCER_HTML
     assert 'id="leaderboard-style-select"' in PRODUCER_HTML

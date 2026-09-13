@@ -141,6 +141,40 @@ def test_incident_camera_preview_can_air_while_voice_is_busy():
     assert queue.busy_until == now + 20.0
 
 
+def test_caution_top_ten_graphic_can_air_while_voice_is_busy():
+    queue = BroadcastQueue()
+    now = 100.0
+    queue.busy_until = now + 20.0
+    queue.add(
+        "",
+        category="caution_top_ten_reset",
+        priority=8,
+        silent=True,
+        dedupe_key="caution_top_ten_reset:25",
+    )
+    queue.items[0].created_at = now
+
+    item = queue.next_item(now=now)
+
+    assert item.category == "caution_top_ten_reset"
+    assert item.silent is True
+    assert queue.busy_until == now + 20.0
+
+
+def test_starting_lineup_sponsor_handoff_uses_tight_gap():
+    queue = BroadcastQueue()
+    queue.add(
+        "Tonight's starting lineup is presented by RGC.",
+        category="sponsor_read",
+        dedupe_key="sponsor_read:starting_lineup",
+    )
+    queue.items[0].created_at = 100.0
+
+    item = queue.next_item(now=100.0)
+
+    assert queue.estimate_item_gap_seconds(item) == 0.15
+
+
 def test_spoken_feature_reserves_its_runtime():
     queue = BroadcastQueue()
     queue.add(

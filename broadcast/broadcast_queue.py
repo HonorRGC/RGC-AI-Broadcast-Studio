@@ -150,6 +150,8 @@ class BroadcastQueue:
         return self.minimum_gap_seconds
 
     def estimate_item_gap_seconds(self, item):
+        if getattr(item, "dedupe_key", "") == "sponsor_read:starting_lineup":
+            return 0.15
         if item.category == "race_control" and self.is_short_lap_call(item.message):
             return 0.6
         if item.category == "booth_conversation":
@@ -191,7 +193,10 @@ class BroadcastQueue:
                 for item in self.items
                 if item.ready_at <= now
                 and item.silent
-                and item.category == "incident_camera_preview"
+                and item.category in {
+                    "incident_camera_preview",
+                    "caution_top_ten_reset",
+                }
             ]
             if not ready_camera_previews:
                 return None
@@ -218,7 +223,13 @@ class BroadcastQueue:
         self.active_category = selected.category
         self.active_dedupe_key = selected.dedupe_key
 
-        if selected.silent and selected.category == "incident_camera_preview":
+        if selected.silent and selected.category in {
+            "incident_camera_preview",
+            "caution_top_ten_reset",
+        }:
+            return selected
+
+        if selected.silent and selected.feature_duration_seconds <= 0:
             return selected
 
         speech_time = (

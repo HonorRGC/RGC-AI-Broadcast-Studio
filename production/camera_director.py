@@ -611,12 +611,12 @@ class CameraDirector:
 
     def story_minimum_hold_seconds(self, item):
         if self.is_battle_story(item):
-            return max(self.minimum_hold_seconds, 11.5)
+            return max(self.minimum_hold_seconds, 15.0)
         return self.minimum_hold_seconds
 
     def story_return_after_seconds(self, item):
         if self.is_battle_story(item):
-            return max(self.return_after_seconds, 14.0)
+            return max(self.return_after_seconds, 19.0)
         return self.return_after_seconds
 
     def is_battle_story(self, item):

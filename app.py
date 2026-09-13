@@ -1057,6 +1057,29 @@ def handle_producer_command(
         )
         return
 
+    if command == "caution_music_play":
+        player = getattr(caution_audio_bed, "play", None)
+        ok = bool(player()) if player else False
+        publish_producer_event(
+            overlay_server,
+            "info" if ok else "warning",
+            "Caution Music",
+            "Caution music started." if ok else "Caution music could not be started. Check the caution music file.",
+        )
+        return
+
+    if command == "caution_music_stop":
+        stopper = getattr(caution_audio_bed, "stop", None)
+        if stopper:
+            stopper()
+        publish_producer_event(
+            overlay_server,
+            "info",
+            "Caution Music",
+            "Caution music stopped.",
+        )
+        return
+
     if command == "producer_crank_it_up":
         if not engine:
             publish_producer_event(

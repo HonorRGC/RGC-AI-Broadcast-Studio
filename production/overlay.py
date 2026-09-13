@@ -2878,6 +2878,8 @@ PRODUCER_HTML = r"""<!doctype html>
           </div>
           <div class="button-row control-grid" style="margin-top: 10px;">
             <button class="control-button warn" id="manual-crank-it-up-button">Play Crank It Up</button>
+            <button class="control-button warn" id="manual-caution-music-button">Play Caution Music</button>
+            <button class="control-button" id="stop-caution-music-button">Stop Caution Music</button>
             <button class="control-button" id="manual-sponsor-button">Play Next Sponsor</button>
             <button class="control-button sponsor-slot-button" data-sponsor-slot="1">Sponsor 1</button>
             <button class="control-button sponsor-slot-button" data-sponsor-slot="2">Sponsor 2</button>
@@ -3793,6 +3795,12 @@ PRODUCER_HTML = r"""<!doctype html>
     });
     document.getElementById("manual-crank-it-up-button").addEventListener("click", () => {
       sendProducerCommand("producer_crank_it_up");
+    });
+    document.getElementById("manual-caution-music-button").addEventListener("click", () => {
+      sendProducerCommand("caution_music_play");
+    });
+    document.getElementById("stop-caution-music-button").addEventListener("click", () => {
+      sendProducerCommand("caution_music_stop");
     });
     document.getElementById("manual-sponsor-button").addEventListener("click", () => {
       sendProducerCommand("producer_sponsor_commercial");

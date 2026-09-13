@@ -76,8 +76,6 @@ class OpeningDirector:
 
         if not self.lineup_sent and self.has_valid_lineup(results):
             self.lineup_ready_ticks += 1
-            if self.lineup_ready_ticks < 5:
-                return segments
             total_laps_reader = getattr(telemetry, "get_total_laps", None)
             total_laps = total_laps_reader() if total_laps_reader else 0
             segments.append(

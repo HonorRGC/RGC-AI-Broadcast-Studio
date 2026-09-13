@@ -116,6 +116,7 @@ class BroadcastEngine:
         self.green_pit_cycle_update_count = 0
         self.green_pit_cycle_active_until_lap = 0
         self.green_pit_cycle_last_activity_lap = 0
+        self.green_pit_cycle_restart_lockout_until_lap = 0
         self.starting_lineup_sponsor_read_queued = False
         self.story_variant_counts = {}
         self.crank_it_up_sent_this_green_run = False
@@ -225,7 +226,7 @@ class BroadcastEngine:
             scheduler=self.broadcast_queue,
         )
         self._queue_pre_start_extension_outlook(results, driver_lookup)
-        self._handle_green_phase_change()
+        self._handle_green_phase_change(current_lap)
         self._handle_caution_phase_change(
             telemetry,
             current_lap=current_lap,
@@ -469,7 +470,7 @@ class BroadcastEngine:
 
         return self.broadcast_queue.next_item()
 
-    def _handle_green_phase_change(self):
+    def _handle_green_phase_change(self, current_lap=0):
         if not (
             self.race_director.phase_changed
             and self.race_director.phase == RacePhase.GREEN
@@ -481,6 +482,11 @@ class BroadcastEngine:
         # call and let fresh telemetry build the next story.
         self.editorial_producer.clear()
         self.restart_launch_story_queued = False
+        if self.race_director.previous_phase in (RacePhase.CAUTION, RacePhase.ONE_TO_GREEN):
+            self.green_pit_cycle_restart_lockout_until_lap = max(
+                self.green_pit_cycle_restart_lockout_until_lap,
+                self.safe_int(current_lap) + 6,
+            )
 
     def _handle_caution_phase_change(
         self,
@@ -1846,6 +1852,8 @@ class BroadcastEngine:
             return False
         if live_under_caution:
             return False
+        if current_lap <= self.safe_int(self.green_pit_cycle_restart_lockout_until_lap):
+            return False
         if self.race_director.phase != RacePhase.GREEN:
             return False
         race_state = self.race_intelligence.get_race_state()
@@ -2521,15 +2529,16 @@ class BroadcastEngine:
         )
         self.caution_top_ten_reset_queued = True
         self.broadcast_queue.add(
-            "The field is doubled up for the restart. We have the restart top ten on the screen.",
+            "",
             priority=8,
             category="caution_top_ten_reset",
             protected=True,
-            speaker="lead",
+            speaker="",
             delay_seconds=1.5,
             expires_after=30,
             dedupe_key=f"caution_top_ten_reset:{current_lap}",
             participant_car_indices=top_ten_car_indices,
+            silent=True,
         )
 
     def caution_top_ten_order_is_stable(self, results, required_ticks=6):

@@ -738,6 +738,44 @@ def test_green_pit_cycle_does_not_queue_when_live_yellow_flag_is_present():
     assert engine.broadcast_queue.items == []
 
 
+def test_green_pit_cycle_is_locked_out_for_first_laps_after_restart():
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    engine.session_tracker.update("Race")
+    engine.race_director.race_started = True
+    engine.race_director.previous_phase = RacePhase.ONE_TO_GREEN
+    engine.race_director.phase = RacePhase.GREEN
+    engine.race_director.phase_changed = True
+    engine.race_intelligence.race_state.laps_remaining = 40
+    engine._handle_green_phase_change(current_lap=30)
+
+    results = [
+        {"CarIdx": 0, "Position": 1},
+        {"CarIdx": 1, "Position": 2},
+    ]
+    events = [
+        SimpleNamespace(event_type="PIT_STOP", under_caution=False, car_idx=0),
+        SimpleNamespace(event_type="PIT_STOP", under_caution=False, car_idx=1),
+    ]
+
+    locked = engine._queue_green_pit_cycle_update(
+        events,
+        results,
+        {},
+        [True, True],
+        current_lap=32,
+    )
+    unlocked = engine._queue_green_pit_cycle_update(
+        events,
+        results,
+        {},
+        [True, True],
+        current_lap=37,
+    )
+
+    assert locked is False
+    assert unlocked is True
+
+
 def test_green_pit_cycle_lockout_can_air_ready_pit_strategy_story():
     engine = BroadcastEngine(openai_director=SilentOpenAI())
     pit_event = SimpleNamespace(
@@ -2162,11 +2200,8 @@ def test_one_to_green_reports_small_caution_pit_group():
         item for item in engine.broadcast_queue.items
         if item.category == "caution_top_ten_reset"
     )
-    assert top_ten.message == (
-        "The field is doubled up for the restart. "
-        "We have the restart top ten on the screen."
-    )
-    assert top_ten.speaker == "lead"
+    assert top_ten.silent is True
+    assert top_ten.message == ""
     assert top_ten.delay_seconds == 1.5
 
 
@@ -2260,10 +2295,8 @@ def test_one_to_green_top_ten_waits_for_stable_running_order():
         item for item in engine.broadcast_queue.items
         if item.category == "caution_top_ten_reset"
     )
-    assert reset.message == (
-        "The field is doubled up for the restart. "
-        "We have the restart top ten on the screen."
-    )
+    assert reset.silent is True
+    assert reset.message == ""
     assert reset.participant_car_indices[:3] == (0, 2, 1)
 
 
@@ -3297,3 +3330,4 @@ def test_caution_top_ten_queues_after_order_is_stable_and_pit_road_clear():
     )
     assert item.participant_car_indices == tuple(range(10))
     assert item.delay_seconds == 1.5
+    assert item.silent is True

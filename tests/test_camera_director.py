@@ -353,7 +353,7 @@ def test_story_shot_returns_to_leader_on_tv_mixed_after_ten_seconds():
 
 def test_battle_story_holds_camera_longer_before_returning_home():
     telemetry = CameraTelemetry()
-    times = iter([100.0, 111.0, 115.0])
+    times = iter([100.0, 115.0, 120.0])
     director = CameraDirector(mode="auto", clock=lambda: next(times))
     battle = target_item(3)
     battle.message = "A good battle is building for fourth place."
@@ -370,7 +370,7 @@ def test_battle_story_holds_camera_longer_before_returning_home():
 
 def test_battle_story_blocks_fast_switch_to_another_story():
     telemetry = CameraTelemetry()
-    times = iter([100.0, 110.0, 112.0])
+    times = iter([100.0, 114.0, 116.0])
     director = CameraDirector(mode="auto", clock=lambda: next(times))
     battle = target_item(3)
     battle.message = "They are in a tight battle for position."

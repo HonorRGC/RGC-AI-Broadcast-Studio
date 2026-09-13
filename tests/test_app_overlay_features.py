@@ -1138,6 +1138,39 @@ def test_producer_music_volume_reaches_practice_and_qualifying_music():
     assert overlay.events[-1]["message"] == "Music volume set to 32%."
 
 
+def test_producer_can_manually_start_and_stop_caution_music():
+    overlay = ProducerOverlaySpy()
+    audio = SimpleNamespace(plays=0, stops=0)
+    audio.play = lambda: setattr(audio, "plays", audio.plays + 1) or True
+    audio.stop = lambda: setattr(audio, "stops", audio.stops + 1)
+
+    handle_producer_command(
+        "caution_music_play",
+        {},
+        overlay,
+        source=None,
+        engine=None,
+        booth=None,
+        camera_director=None,
+        caution_audio_bed=audio,
+    )
+    handle_producer_command(
+        "caution_music_stop",
+        {},
+        overlay,
+        source=None,
+        engine=None,
+        booth=None,
+        camera_director=None,
+        caution_audio_bed=audio,
+    )
+
+    assert audio.plays == 1
+    assert audio.stops == 1
+    assert overlay.events[-2]["message"] == "Caution music started."
+    assert overlay.events[-1]["message"] == "Caution music stopped."
+
+
 def test_manual_camera_follow_disables_auto_camera():
     overlay = ProducerOverlaySpy()
     camera = CameraSpy()
