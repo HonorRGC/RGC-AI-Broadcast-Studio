@@ -6283,7 +6283,8 @@ OVERLAY_HTML = r"""<!doctype html>
       let count = 0;
       let previousYellow = false;
       for (const lap of history || []) {
-        const yellow = lap && lap.status === "yellow";
+        const status = lap ? String(lap.status || "").toLowerCase() : "";
+        const yellow = status === "yellow" || status === "caution";
         if (yellow && !previousYellow) count += 1;
         previousYellow = yellow;
       }
@@ -6296,7 +6297,13 @@ OVERLAY_HTML = r"""<!doctype html>
       const explicit = Number(state.caution_count || state.cautions || 0);
       let count = Number.isFinite(explicit) ? Math.max(tracked, explicit) : tracked;
       const last = history.length ? history[history.length - 1] : null;
-      if (state.caution && count === tracked && (!last || last.status !== "yellow")) count += 1;
+      const lastStatus = last ? String(last.status || "").toLowerCase() : "";
+      if (
+        state.caution &&
+        count === tracked &&
+        lastStatus !== "yellow" &&
+        lastStatus !== "caution"
+      ) count += 1;
       return count;
     }
 

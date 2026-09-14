@@ -831,7 +831,9 @@ def test_overlay_has_brazen_leaderboard_style():
     assert "renderBrazenRaceBar(state.lap_history || [])" in OVERLAY_HTML
     assert "brazenCautionCount(state)" in OVERLAY_HTML
     assert "function brazenCautionCount(state)" in OVERLAY_HTML
-    assert 'if (state.caution && count === tracked && (!last || last.status !== "yellow")) count += 1;' in OVERLAY_HTML
+    assert 'status === "yellow" || status === "caution"' in OVERLAY_HTML
+    assert 'lastStatus !== "yellow"' in OVERLAY_HTML
+    assert 'lastStatus !== "caution"' in OVERLAY_HTML
     assert 'leaderboardStyle === "brazen"' in OVERLAY_HTML
     assert 'body.leaderboard-brazen-mode .top-banner' in OVERLAY_HTML
 
