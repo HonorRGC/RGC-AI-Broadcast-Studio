@@ -108,11 +108,13 @@ def test_broadcast_settings_have_friendly_labels_and_sections():
     assert BROADCAST_FIELD_LABELS["USE_OPENAI"] == "Use OpenAI Commentary"
     assert BROADCAST_FIELD_LABELS["OPENAI_MODEL"] == "OpenAI Model"
     assert "gpt-5.6-terra" in BROADCAST_FIELD_HELP["OPENAI_MODEL"]
+    assert "gpt-6-astra" in BROADCAST_FIELD_HELP["OPENAI_MODEL"]
     assert OPENAI_MODEL_CHOICES[:3] == (
         "gpt-5.6-terra",
         "gpt-5.6-luna",
         "gpt-5.6-sol",
     )
+    assert "gpt-6-astra" in OPENAI_MODEL_CHOICES
     assert BROADCAST_FIELD_LABELS["OVERLAY_EVENT_TITLE"] == "Overlay Event Title"
     assert BROADCAST_FIELD_LABELS["OVERLAY_LEADERBOARD_STYLE"] == "Leaderboard Style"
     assert "flo uses a compact two-row top leaderboard" in BROADCAST_FIELD_HELP["OVERLAY_LEADERBOARD_STYLE"]

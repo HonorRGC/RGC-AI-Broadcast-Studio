@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Added
+- Added `gpt-6-astra` to the Studio OpenAI model selector for testing the newest higher-cost OpenAI broadcast model when the user's API account has access
+
 ## Version 1.0.4 - Producer Control and Brazen Polish
 
 ### Added

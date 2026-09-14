@@ -70,6 +70,7 @@ OPENAI_MODEL_CHOICES = (
     "gpt-5.6-terra",
     "gpt-5.6-luna",
     "gpt-5.6-sol",
+    "gpt-6-astra",
     "gpt-5.5",
     "gpt-5.1",
     "gpt-5-mini",
@@ -312,7 +313,7 @@ BROADCAST_FIELD_SECTIONS = {
 BROADCAST_FIELD_HELP = {
     "USE_OPENAI": "Required for the full AI broadcast. Turn this off when a human broadcaster only wants prompts, cameras, and overlays.",
     "OPENAI_API_KEY": "Required when OpenAI commentary is on. Keep this private and never show it on stream.",
-    "OPENAI_MODEL": "Model used to write broadcast lines and Discord recaps. Recommended: gpt-5.6-terra. Use gpt-5.6-luna for lower cost/faster calls, or gpt-5.6-sol for the strongest quality. You can also type a custom OpenAI model ID.",
+    "OPENAI_MODEL": "Model used to write broadcast lines and Discord recaps. Recommended: gpt-5.6-terra. Use gpt-5.6-luna for lower cost/faster calls, gpt-5.6-sol for stronger quality, or gpt-6-astra to test the newest higher-cost model if your API account has access. You can also type a custom OpenAI model ID.",
     "USE_ELEVENLABS": "Required for spoken AI broadcasters. Turn this off for silent producer prompts or a human-only broadcast.",
     "ELEVENLABS_API_KEY": "Required when ElevenLabs voices are on. Keep this private.",
     "LEAD_BROADCASTER_NAME": "Name used when the lead play-by-play broadcaster introduces themselves. Default: Mike.",
