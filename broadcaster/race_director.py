@@ -444,27 +444,23 @@ class RaceDirector:
             FINAL_RESULTS_SPONSOR_READ,
             "The final race results",
         )
+        finish_rundown = self.build_finish_rundown(results, driver_lookup, max_cars=None)
         if final_results_sponsor_read:
-            scheduler.add(
-                final_results_sponsor_read,
-                priority=10,
-                category="sponsor_read",
-                protected=True,
-                speaker="lead",
-                delay_seconds=6.0,
-                expires_after=180,
-                dedupe_key="sponsor_read:final_results",
-            )
+            finish_rundown = f"{final_results_sponsor_read} {finish_rundown}"
 
         scheduler.add(
-            self.build_finish_rundown(results, driver_lookup, max_cars=None),
+            finish_rundown,
             priority=9,
             category="post_race",
             protected=True,
             speaker="lead",
-            delay_seconds=10.0 if final_results_sponsor_read else 8.0,
+            delay_seconds=8.0,
             expires_after=180,
-            dedupe_key="post_race:finish_rundown",
+            dedupe_key=(
+                "post_race:finish_rundown:final_results"
+                if final_results_sponsor_read
+                else "post_race:finish_rundown"
+            ),
         )
 
         scheduler.add(

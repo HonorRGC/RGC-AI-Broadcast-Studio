@@ -660,7 +660,7 @@ def test_checkered_queues_finish_rundown_then_signoff():
     assert "Jeff and Sarah" in queue.items[4].message
 
 
-def test_final_results_sponsor_read_queues_before_finish_rundown(monkeypatch):
+def test_final_results_sponsor_read_is_folded_into_finish_rundown(monkeypatch):
     monkeypatch.setattr("broadcaster.race_director.FINAL_RESULTS_SPONSOR_NAME", "Finish Co")
     monkeypatch.setattr("broadcaster.race_director.FINAL_RESULTS_SPONSOR_READ", "")
     director = RaceDirector()
@@ -679,11 +679,12 @@ def test_final_results_sponsor_read_queues_before_finish_rundown(monkeypatch):
     assert categories[:4] == [
         "race_control",
         "post_race_story",
-        "sponsor_read",
         "post_race",
+        "post_race_recap",
     ]
     assert "final race results" in queue.items[2].message.lower()
     assert "Finish Co" in queue.items[2].message
+    assert "finish_rundown:final_results" in queue.items[2].dedupe_key
 
 
 def test_post_race_signoff_uses_next_race_from_schedule(tmp_path):

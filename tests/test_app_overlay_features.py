@@ -959,6 +959,37 @@ def test_sponsor_commercial_reserves_broadcast_queue(monkeypatch):
     assert overlay.special_presentations[0]["kind"] == "sponsor_commercial"
 
 
+def test_lineup_and_final_results_sponsor_reads_do_not_play_commercials(monkeypatch):
+    import app
+
+    overlay = OverlaySpy()
+    engine = SimpleNamespace(
+        broadcast_queue=SimpleNamespace(
+            reserve_busy_seconds=lambda _seconds: (_ for _ in ()).throw(
+                AssertionError("commercial reserve should not run")
+            )
+        )
+    )
+    monkeypatch.setattr(app, "RACE_SPONSOR_VIDEOS", {"RGC Motorsports": "/assets/rgc_ad.mp4"})
+
+    lineup_item = item(
+        category="sponsor_read",
+        target=None,
+        message="The starting lineup is presented by RGC Motorsports.",
+    )
+    lineup_item.dedupe_key = "sponsor_read:starting_lineup"
+    final_item = item(
+        category="post_race",
+        target=None,
+        message="The final race results are presented by RGC Motorsports.",
+    )
+    final_item.dedupe_key = "post_race:finish_rundown:final_results"
+
+    assert reserve_sponsor_commercial_if_needed(lineup_item, overlay, engine) is False
+    assert reserve_sponsor_commercial_if_needed(final_item, overlay, engine) is False
+    assert overlay.special_presentations == []
+
+
 def test_producer_command_can_queue_manual_crank_it_up():
     overlay = ProducerOverlaySpy()
     engine = ManualCrankEngineSpy()

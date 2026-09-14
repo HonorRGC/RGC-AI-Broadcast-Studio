@@ -2191,8 +2191,15 @@ def sponsor_graphics_for_item(item, mentions):
     return sponsor_graphics_for_mentions(mentions)
 
 
+def is_quick_segment_sponsor_read(item):
+    dedupe_key = str(getattr(item, "dedupe_key", "") or "").lower()
+    return "starting_lineup" in dedupe_key or "final_results" in dedupe_key
+
+
 def show_sponsor_commercial_if_available(item, overlay_server):
     if not overlay_server:
+        return False
+    if is_quick_segment_sponsor_read(item):
         return False
     if str(getattr(item, "category", "") or "") != "sponsor_read":
         return False

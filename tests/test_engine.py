@@ -33,6 +33,11 @@ class StubSponsorReads:
         return f"Caution sponsor read on lap {current_lap}."
 
 
+class StubLineupSponsorReads(StubSponsorReads):
+    def segment_read(self, sponsor_name="", sponsor_script="", segment_label=""):
+        return f"{segment_label} is presented by Lineup Co."
+
+
 def test_live_battle_editorial_items_expire_quickly():
     assert BroadcastEngine.editorial_queue_expiry_seconds(
         SimpleNamespace(story_type="live_side_by_side")
@@ -304,6 +309,47 @@ def test_engine_queues_sponsor_read_after_opening_lineup():
     assert sponsor_items[0].message == "Opening sponsor read."
     assert sponsor_items[0].priority == 8
     assert sponsor_items[0].delay_seconds == 1.0
+
+
+def test_starting_lineup_sponsor_is_folded_into_lineup_handoff():
+    results = [
+        {"CarIdx": index, "Position": index, "LapsComplete": 0}
+        for index in range(5)
+    ]
+    drivers = {
+        index: {"name": f"Driver {index + 1}", "number": str(index + 1)}
+        for index in range(5)
+    }
+    snapshot = TelemetrySnapshot(
+        lap=0,
+        total_laps=20,
+        session_flags=RaceFlags.START_READY,
+        track_info={"track_name": "Nashville"},
+        results=results,
+        driver_lookup=drivers,
+        pit_road_status=[False] * 5,
+    )
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    engine.session_tracker.update("Race")
+    engine.sponsor_read_director = StubLineupSponsorReads()
+
+    source = SnapshotSource(snapshot)
+    for _ in range(5):
+        engine.tick(source)
+
+    lineup_handoff = next(
+        item
+        for item in engine.broadcast_queue.items
+        if item.category == "opening_lineup_handoff"
+    )
+    sponsor_items = [
+        item for item in engine.broadcast_queue.items
+        if item.dedupe_key == "sponsor_read:starting_lineup"
+    ]
+
+    assert "The starting lineup is presented by Lineup Co." in lineup_handoff.message
+    assert lineup_handoff.dedupe_key == "opening_lineup_handoff:starting_lineup"
+    assert sponsor_items == []
 
 
 def test_pre_start_extension_queues_league_stat_outlook_without_interrupting_lineup():

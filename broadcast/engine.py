@@ -630,10 +630,16 @@ class BroadcastEngine:
             current_lap=current_lap,
         ):
             if (
-                str(segment.category).startswith("opening_field_rundown")
+                str(segment.category) == "opening_lineup_handoff"
                 and not self.starting_lineup_sponsor_read_queued
             ):
-                self._queue_starting_lineup_sponsor_read()
+                sponsor_message = self.starting_lineup_sponsor_message()
+                if sponsor_message:
+                    segment.message = f"{sponsor_message} {segment.message}"
+                self.starting_lineup_sponsor_read_queued = True
+            dedupe_key = segment.category
+            if str(segment.category) == "opening_lineup_handoff":
+                dedupe_key = "opening_lineup_handoff:starting_lineup"
             self.broadcast_queue.add(
                 segment.message,
                 priority=segment.priority,
@@ -642,7 +648,6 @@ class BroadcastEngine:
                 speaker=segment.speaker,
                 delay_seconds=getattr(segment, "delay_seconds", 0.0),
                 expires_after=180,
-                dedupe_key=segment.category,
                 camera_sequence=segment.camera_sequence,
                 camera_sequence_steps=getattr(segment, "camera_sequence_steps", ()),
                 camera_return_home_after_sequence=getattr(
@@ -650,34 +655,22 @@ class BroadcastEngine:
                     "camera_return_home_after_sequence",
                     False,
                 ),
+                dedupe_key=dedupe_key,
             )
 
         if self.opening_director.is_complete():
             self._queue_opening_sponsor_read()
 
-    def _queue_starting_lineup_sponsor_read(self):
+    def starting_lineup_sponsor_message(self):
         segment_reader = getattr(self.sponsor_read_director, "segment_read", None)
         if not callable(segment_reader):
-            self.starting_lineup_sponsor_read_queued = True
-            return
+            return ""
         message = segment_reader(
             STARTING_LINEUP_SPONSOR_NAME,
             STARTING_LINEUP_SPONSOR_READ,
             "The starting lineup",
         )
-        self.starting_lineup_sponsor_read_queued = True
-        if not message:
-            return
-        self.broadcast_queue.add(
-            message,
-            priority=10,
-            category="sponsor_read",
-            protected=True,
-            speaker="lead",
-            delay_seconds=0.2,
-            expires_after=180,
-            dedupe_key="sponsor_read:starting_lineup",
-        )
+        return str(message or "").strip()
 
     def _queue_opening_sponsor_read(self):
         message = self.sponsor_read_director.opening_read()
