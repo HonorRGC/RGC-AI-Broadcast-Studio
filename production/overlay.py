@@ -4524,7 +4524,7 @@ OVERLAY_HTML = r"""<!doctype html>
       position: absolute;
       left: 0;
       right: 0;
-      top: calc(100% + 3px);
+      top: calc(100% + 15px);
       display: flex;
       gap: 0;
       height: 13px;

@@ -779,7 +779,7 @@ def test_overlay_has_optional_ticker_leaderboard_and_compact_lap_bar():
     assert "renderFloRaceBar(state.lap_history || [])" in OVERLAY_HTML
     assert "renderFloRaceBar([])" in OVERLAY_HTML
     assert ".flo-race-bar" in OVERLAY_HTML
-    assert "top: calc(100% + 3px)" in OVERLAY_HTML
+    assert "top: calc(100% + 15px)" in OVERLAY_HTML
     assert "top: calc(100% + 20px)" in OVERLAY_HTML
     assert "grid-template-columns: minmax(94px, auto) minmax(0, 1fr)" in OVERLAY_HTML
     assert "flo-row-cycle .flo-entry" in OVERLAY_HTML
