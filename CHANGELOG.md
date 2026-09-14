@@ -2,8 +2,13 @@
 
 ## Unreleased
 
+## Version 1.0.5 - Model and Battle Call Refresh
+
 ### Added
 - Added `gpt-6-astra` to the Studio OpenAI model selector for testing the newest higher-cost OpenAI broadcast model when the user's API account has access
+
+### Changed
+- Repeated live battle calls for the same position now come back as follow-up/continuation calls instead of sounding like the same brand-new battle again
 
 ## Version 1.0.4 - Producer Control and Brazen Polish
 
