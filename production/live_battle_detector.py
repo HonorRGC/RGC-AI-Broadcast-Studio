@@ -38,6 +38,7 @@ class LiveBattleDetector:
         self.side_by_side_required_ticks = 2
         self.three_wide_required_ticks = 2
         self.clear_required_ticks = 3
+        self.position_followup_window_seconds = 150.0
 
     def analyze(
         self,
@@ -93,21 +94,39 @@ class LiveBattleDetector:
                 continue
             names = [self.driver_label(driver_lookup, car["car_idx"]) for car in group]
             position = group[0]["position"]
-            summary = self.variant(
-                "three_wide",
-                tuple(car["car_idx"] for car in group),
-                (
-                    f"{names[0]}, {names[1]}, and {names[2]} have been stacked "
-                    f"together around {self.ordinal(position)}. Keep the call to "
-                    "a tight battle for position without claiming a lane or a completed pass.",
-                    f"Three cars are giving us something to watch around {self.ordinal(position)}: "
-                    f"{names[0]}, {names[1]}, and {names[2]}. Call the tension, not a completed pass.",
-                    f"That pack around {self.ordinal(position)} is alive right now: "
-                    f"{names[0]}, {names[1]}, and {names[2]} are close enough "
-                    "that the camera has a real story to follow.",
-                ),
-            )
+            if self.position_followup_active(position):
+                summary = self.variant(
+                    "three_wide_followup",
+                    tuple(car["car_idx"] for car in group),
+                    (
+                        f"The fight around {self.ordinal(position)} still has not settled. "
+                        f"{names[0]}, {names[1]}, and {names[2]} are making this same spot "
+                        "worth another look without treating it like a brand-new story.",
+                        f"Still watching {self.ordinal(position)} here: {names[0]}, "
+                        f"{names[1]}, and {names[2]} keep this pack alive, and nobody "
+                        "is giving an inch.",
+                        f"That earlier battle around {self.ordinal(position)} is still "
+                        f"hanging together with {names[0]}, {names[1]}, and {names[2]}. "
+                        "Call it as a continuation of the pressure.",
+                    ),
+                )
+            else:
+                summary = self.variant(
+                    "three_wide",
+                    tuple(car["car_idx"] for car in group),
+                    (
+                        f"{names[0]}, {names[1]}, and {names[2]} have been stacked "
+                        f"together around {self.ordinal(position)}. Keep the call to "
+                        "a tight battle for position without claiming a lane or a completed pass.",
+                        f"Three cars are giving us something to watch around {self.ordinal(position)}: "
+                        f"{names[0]}, {names[1]}, and {names[2]}. Call the tension, not a completed pass.",
+                        f"That pack around {self.ordinal(position)} is alive right now: "
+                        f"{names[0]}, {names[1]}, and {names[2]} are close enough "
+                        "that the camera has a real story to follow.",
+                    ),
+                )
             self.mark_called(key)
+            self.mark_position_battle_called(position)
             return LiveBattleStory(
                 story_type="live_three_wide",
                 headline=f"Three-car battle near {self.ordinal(position)}.",
@@ -157,25 +176,43 @@ class LiveBattleDetector:
 
         first_label = self.driver_label(driver_lookup, first["car_idx"])
         second_label = self.driver_label(driver_lookup, second["car_idx"])
-        summary = self.variant(
-            "side_by_side",
-            (first["car_idx"], second["car_idx"], best_position),
-            (
-                f"{first_label} and {second_label} have been battling for "
-                f"{self.ordinal(best_position)}. The spot is not settled yet, "
-                "so describe the pressure without declaring a completed pass.",
-                f"Good race developing for {self.ordinal(best_position)} between "
-                f"{first_label} and {second_label}. Give the viewers the fight, "
-                "but do not claim a completed pass unless the assignment says it.",
-                f"{first_label} and {second_label} are close enough around "
-                f"{self.ordinal(best_position)} that the picture can carry some "
-                "of the call. Keep it conversational and avoid overexplaining.",
-                f"This is the kind of mid-pack fight that deserves a look: "
-                f"{first_label} and {second_label} for {self.ordinal(best_position)}.",
-            ),
-        )
+        if self.position_followup_active(best_position):
+            summary = self.variant(
+                "side_by_side_followup",
+                (first["car_idx"], second["car_idx"], best_position),
+                (
+                    f"That fight for {self.ordinal(best_position)} is still going. "
+                    f"{first_label} and {second_label} have not let each other get "
+                    "away, so call this as the same battle continuing.",
+                    f"Still locked together for {self.ordinal(best_position)}: "
+                    f"{first_label} and {second_label}. Nobody is giving an inch "
+                    "here, and the camera can stay with it.",
+                    f"We were watching {self.ordinal(best_position)} earlier, and "
+                    f"it is still alive with {first_label} and {second_label}. "
+                    "Make it a follow-up, not a fresh reset of the same story.",
+                ),
+            )
+        else:
+            summary = self.variant(
+                "side_by_side",
+                (first["car_idx"], second["car_idx"], best_position),
+                (
+                    f"{first_label} and {second_label} have been battling for "
+                    f"{self.ordinal(best_position)}. The spot is not settled yet, "
+                    "so describe the pressure without declaring a completed pass.",
+                    f"Good race developing for {self.ordinal(best_position)} between "
+                    f"{first_label} and {second_label}. Give the viewers the fight, "
+                    "but do not claim a completed pass unless the assignment says it.",
+                    f"{first_label} and {second_label} are close enough around "
+                    f"{self.ordinal(best_position)} that the picture can carry some "
+                    "of the call. Keep it conversational and avoid overexplaining.",
+                    f"This is the kind of mid-pack fight that deserves a look: "
+                    f"{first_label} and {second_label} for {self.ordinal(best_position)}.",
+                ),
+            )
         self.mark_called(key)
         self.mark_called(pair_key)
+        self.mark_position_battle_called(best_position)
         return LiveBattleStory(
             story_type="live_side_by_side",
             headline=f"Close battle for {self.ordinal(best_position)}.",
@@ -218,25 +255,43 @@ class LiveBattleDetector:
                 continue
             challenger_label = self.driver_label(driver_lookup, challenger["car_idx"])
             leader_label = self.driver_label(driver_lookup, leader["car_idx"])
-            summary = self.variant(
-                "pressure",
-                (challenger["car_idx"], leader["car_idx"], position),
-                (
-                    f"{challenger_label} is pressuring {leader_label} "
-                    f"for {self.ordinal(position)} on track.",
-                    f"{challenger_label} has made this a battle for "
-                    f"{self.ordinal(position)} with {leader_label}; keep it as a "
-                    "pressure call, not a confirmed scoring change.",
-                    f"Put the camera on {challenger_label} and {leader_label} "
-                    f"around {self.ordinal(position)}. This is a good battle "
-                    "to let breathe for a moment.",
-                    f"{leader_label} has company for {self.ordinal(position)}. "
-                    f"{challenger_label} is close enough to make the next few "
-                    "corners worth watching.",
-                ),
-            )
+            if self.position_followup_active(position):
+                summary = self.variant(
+                    "pressure_followup",
+                    (challenger["car_idx"], leader["car_idx"], position),
+                    (
+                        f"The battle for {self.ordinal(position)} still has life. "
+                        f"{challenger_label} and {leader_label} keep showing up "
+                        "together, so treat this like a continuation of that fight.",
+                        f"Still watching {self.ordinal(position)} with {challenger_label} "
+                        f"and {leader_label}. No one is giving an inch, and it is "
+                        "worth staying with them a little longer.",
+                        f"That same pressure around {self.ordinal(position)} is back "
+                        f"on screen with {challenger_label} and {leader_label}. "
+                        "Call the ongoing fight instead of restarting the story.",
+                    ),
+                )
+            else:
+                summary = self.variant(
+                    "pressure",
+                    (challenger["car_idx"], leader["car_idx"], position),
+                    (
+                        f"{challenger_label} is pressuring {leader_label} "
+                        f"for {self.ordinal(position)} on track.",
+                        f"{challenger_label} has made this a battle for "
+                        f"{self.ordinal(position)} with {leader_label}; keep it as a "
+                        "pressure call, not a confirmed scoring change.",
+                        f"Put the camera on {challenger_label} and {leader_label} "
+                        f"around {self.ordinal(position)}. This is a good battle "
+                        "to let breathe for a moment.",
+                        f"{leader_label} has company for {self.ordinal(position)}. "
+                        f"{challenger_label} is close enough to make the next few "
+                        "corners worth watching.",
+                    ),
+                )
             self.mark_called(key)
             self.mark_called(pair_key)
+            self.mark_position_battle_called(position)
             best_story = LiveBattleStory(
                 story_type="live_pressure_battle",
                 headline=f"{challenger_label} is pressuring for {self.ordinal(position)}.",
@@ -311,6 +366,13 @@ class LiveBattleDetector:
 
     def mark_called(self, key):
         self.last_story_at[key] = time.time()
+
+    def mark_position_battle_called(self, position):
+        self.mark_called(("battle_position", self.integer(position, 0)))
+
+    def position_followup_active(self, position):
+        last = self.last_story_at.get(("battle_position", self.integer(position, 0)), 0.0)
+        return bool(last and time.time() - last <= self.position_followup_window_seconds)
 
     def importance_for_position(self, position, total_laps, current_lap):
         importance = 6

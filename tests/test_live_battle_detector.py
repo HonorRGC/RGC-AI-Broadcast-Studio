@@ -88,6 +88,35 @@ def test_side_by_side_pair_blocks_immediate_pressure_repeat():
     assert not any(story.story_type == "live_pressure_battle" for story in pressure_stories)
 
 
+def test_repeated_battle_for_same_position_becomes_followup():
+    detector = LiveBattleDetector()
+    payload = dict(
+        results=results(3),
+        driver_lookup=drivers(3),
+        lap_dist_pct_status=[0.5000, 0.5012, 0.5300],
+        pit_road_status=[False] * 3,
+        current_lap=12,
+        total_laps=50,
+        green_lap_count=4,
+    )
+
+    detector.analyze(**payload)
+    first_story = detector.analyze(**payload)[0]
+    for key in list(detector.last_story_at):
+        detector.last_story_at[key] -= detector.story_cooldown_seconds + 1.0
+    detector.pending_side_by_side = {}
+
+    detector.analyze(**payload)
+    followup_story = detector.analyze(**payload)[0]
+
+    assert first_story.story_type == "live_side_by_side"
+    assert followup_story.story_type == "live_side_by_side"
+    assert any(
+        phrase in followup_story.summary.lower()
+        for phrase in ("still", "nobody is giving an inch", "follow-up", "same battle")
+    )
+
+
 def test_detects_live_three_wide_before_two_wide():
     detector = LiveBattleDetector()
     payload = dict(
