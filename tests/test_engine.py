@@ -1015,7 +1015,8 @@ def test_green_flag_pit_cycle_update_starts_when_multiple_cars_pit():
     item = engine.broadcast_queue.next_item()
     assert item.category == "green_pit_cycle_update"
     assert item.speaker == "sarah"
-    assert "Green flag pit stops are starting" in item.message
+    assert "green flag pit stops" in item.message.lower()
+    assert "may" in item.message.lower()
     assert engine.is_green_pit_cycle_active(35) is True
 
 
@@ -1092,6 +1093,59 @@ def test_green_flag_pit_cycle_update_reports_recent_stops_after_start():
     assert "2 cars have made green flag stops" in item.message
 
 
+def test_green_flag_pit_cycle_does_not_start_from_spread_out_stops():
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    engine.race_director.phase = RacePhase.GREEN
+    engine.race_intelligence.race_state.laps_remaining = 35
+    engine.pit_strategy_detector.driver_states = {
+        0: SimpleNamespace(car_idx=0, last_pit_lap=20),
+        1: SimpleNamespace(car_idx=1, last_pit_lap=23),
+    }
+
+    queued = engine._queue_green_pit_cycle_update(
+        [],
+        [{"CarIdx": 0, "Position": 1}, {"CarIdx": 1, "Position": 2}],
+        {},
+        [False, False],
+        current_lap=24,
+    )
+
+    assert queued is False
+    assert engine.is_green_pit_cycle_active(24) is False
+
+
+def test_extended_green_stop_can_air_as_repair_not_pit_cycle():
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    engine.race_director.phase = RacePhase.GREEN
+    engine.race_intelligence.race_state.laps_remaining = 35
+    engine.pit_strategy_detector.driver_states = {
+        4: SimpleNamespace(
+            car_idx=4,
+            last_pit_lap=30,
+            last_pit_stop_seconds=32.0,
+            last_pit_lane_seconds=70.0,
+        ),
+    }
+
+    queued = engine._queue_isolated_green_pit_repair(
+        [
+            SimpleNamespace(
+                event_type="PIT_STOP_COMPLETE",
+                under_caution=False,
+                car_idx=4,
+                driver_name="Driver Four",
+            )
+        ],
+        current_lap=30,
+    )
+
+    assert queued is True
+    item = engine.broadcast_queue.next_item()
+    assert item.category == "pit_strategy"
+    assert "repair" in item.message.lower() or "damage" in item.message.lower()
+    assert "normal pit cycle" in item.message.lower()
+
+
 def test_single_green_flag_pit_stop_does_not_start_cycle_awareness():
     engine = BroadcastEngine(openai_director=SilentOpenAI())
     engine.race_director.phase = RacePhase.GREEN
@@ -1152,7 +1206,8 @@ def test_green_flag_pit_cycle_reset_allows_second_cycle():
     assert queued is True
     item = engine.broadcast_queue.next_item()
     assert item.category == "green_pit_cycle_update"
-    assert "Green flag pit stops are starting" in item.message
+    assert "green flag pit stops" in item.message.lower()
+    assert "may" in item.message.lower()
 
 
 def test_green_flag_pit_cycle_clears_scoring_sensitive_editorials():

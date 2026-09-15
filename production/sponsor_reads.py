@@ -30,6 +30,7 @@ class SponsorReadDirector:
         event_title=OVERLAY_EVENT_TITLE,
         fallback_sponsor=OVERLAY_RACE_SPONSOR,
         max_caution_reads=2,
+        min_caution_lap_gap=8,
     ):
         self.enabled = bool(enabled)
         self.sponsor_name = (sponsor_name or fallback_sponsor or "").strip()
@@ -48,9 +49,11 @@ class SponsorReadDirector:
         self.cause_read = (cause_read or "").strip()
         self.custom_message = (custom_message or "").strip()
         self.max_caution_reads = int(max_caution_reads)
+        self.min_caution_lap_gap = max(0, int(min_caution_lap_gap or 0))
         self.opening_read_sent = False
         self.caution_reads_sent = 0
         self.caution_laps_used = set()
+        self.last_caution_read_lap = 0
         self.read_index = 0
 
     def has_read(self):
@@ -65,14 +68,22 @@ class SponsorReadDirector:
         return message
 
     def caution_read(self, current_lap=0):
+        current_lap = self.safe_int(current_lap)
         if self.caution_reads_sent >= self.max_caution_reads:
             return None
         if current_lap in self.caution_laps_used:
+            return None
+        if (
+            self.last_caution_read_lap > 0
+            and current_lap > 0
+            and current_lap - self.last_caution_read_lap < self.min_caution_lap_gap
+        ):
             return None
         message = self.build_message(opening=False, sponsor_name=self.next_sponsor_name())
         if message:
             self.caution_reads_sent += 1
             self.caution_laps_used.add(current_lap)
+            self.last_caution_read_lap = current_lap
         return message
 
     def segment_read(self, sponsor_name="", sponsor_script="", segment_label="this segment"):
@@ -221,3 +232,10 @@ class SponsorReadDirector:
         if self.cause:
             return f"The broadcast is also proud to support {self.cause}."
         return ""
+
+    @staticmethod
+    def safe_int(value, default=0):
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return default

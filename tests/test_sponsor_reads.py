@@ -58,6 +58,24 @@ def test_caution_sponsor_reads_are_capped_and_once_per_lap():
     assert second_caution is None
 
 
+def test_caution_sponsor_reads_skip_quick_repeat_cautions():
+    director = SponsorReadDirector(
+        sponsor_names=["One", "Two", "Three"],
+        cause="Community Night",
+        custom_message="{sponsor} supports {cause}.",
+        max_caution_reads=3,
+        min_caution_lap_gap=8,
+    )
+
+    first = director.caution_read(current_lap=10)
+    quick_repeat = director.caution_read(current_lap=14)
+    later = director.caution_read(current_lap=18)
+
+    assert first == "One supports Community Night."
+    assert quick_repeat is None
+    assert later == "Two supports Community Night."
+
+
 def test_sponsor_reads_rotate_spoken_sponsors_in_order():
     director = SponsorReadDirector(
         sponsor_names=["Sponsor One", "Sponsor Two", "Sponsor Three"],

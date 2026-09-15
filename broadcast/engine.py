@@ -1813,7 +1813,7 @@ class BroadcastEngine:
             driver_lookup=driver_lookup,
             pit_road_status=pit_road_status,
         )
-        self._queue_green_pit_cycle_update(
+        queued_green_cycle = self._queue_green_pit_cycle_update(
             events,
             results,
             driver_lookup,
@@ -1822,6 +1822,8 @@ class BroadcastEngine:
             track_info,
             live_under_caution=live_under_caution,
         )
+        if not queued_green_cycle and not self.is_green_pit_cycle_active(current_lap):
+            self._queue_isolated_green_pit_repair(events, current_lap)
 
     def _queue_green_pit_cycle_update(
         self,
@@ -1887,7 +1889,8 @@ class BroadcastEngine:
                 current_lap,
             )
             if getattr(state, "last_pit_lap", 0) > 0
-            and current_lap - int(getattr(state, "last_pit_lap", 0) or 0) <= 5
+            and current_lap - int(getattr(state, "last_pit_lap", 0) or 0) <= 4
+            and not self.looks_like_green_repair_stop(state)
         ]
         new_green_entries = [
             event for event in events or []
@@ -1912,7 +1915,10 @@ class BroadcastEngine:
         )
 
         if not self.green_pit_cycle_announced:
-            if len(green_cycle_car_indices) < 2:
+            if len(green_cycle_car_indices) < 2 or not self.green_pit_cluster_is_tight(
+                green_cycle_car_indices,
+                current_lap,
+            ):
                 return False
             self.mark_green_pit_cycle_activity(current_lap)
             message = self.rotate_story_variant(
@@ -1920,7 +1926,7 @@ class BroadcastEngine:
                 self.green_pit_cycle_start_messages(track_info),
             )
         else:
-            if len(recent_states) < 2:
+            if len(recent_states) < 2 or not self.green_pit_states_are_clustered(recent_states):
                 return False
             pitted_count = len({
                 getattr(state, "car_idx", None)
@@ -1946,6 +1952,95 @@ class BroadcastEngine:
         self.green_pit_cycle_last_update_lap = current_lap
         self.green_pit_cycle_update_count += 1
         return True
+
+    def _queue_isolated_green_pit_repair(self, events, current_lap):
+        repair_events = []
+        for event in events or []:
+            if getattr(event, "event_type", "") != "PIT_STOP_COMPLETE":
+                continue
+            if getattr(event, "under_caution", False):
+                continue
+            state = self.pit_strategy_detector.driver_states.get(
+                getattr(event, "car_idx", None)
+            )
+            if not state or not self.looks_like_green_repair_stop(state):
+                continue
+            repair_events.append(event)
+        if not repair_events:
+            return False
+
+        names = self.format_driver_names_for_sentence(
+            getattr(event, "driver_name", "") for event in repair_events[:3]
+        )
+        plural = len(repair_events) != 1
+        message = self.rotate_story_variant(
+            "isolated_green_pit_repair",
+            (
+                f"{names} {'have' if plural else 'has'} made a longer green-flag stop, "
+                f"so that looks more like repairs or trouble than a normal pit cycle.",
+                f"That green-flag stop for {names} was long enough to point toward "
+                f"damage repair instead of routine strategy.",
+                f"{names} {'are' if plural else 'is'} back from an extended trip down pit road. "
+                f"That is usually a sign the crew was dealing with damage or a bigger issue.",
+            ),
+        )
+        self.broadcast_queue.add(
+            message,
+            priority=7,
+            category="pit_strategy",
+            protected=False,
+            speaker="sarah",
+            expires_after=35,
+            dedupe_key=(
+                f"green_pit_repair:{current_lap}:"
+                + "-".join(str(getattr(event, "car_idx", "")) for event in repair_events[:3])
+            ),
+            participant_car_indices=tuple(
+                getattr(event, "car_idx", None)
+                for event in repair_events
+                if getattr(event, "car_idx", None) is not None
+            ),
+        )
+        return True
+
+    def green_pit_cluster_is_tight(self, car_indices, current_lap, max_span=2):
+        laps = []
+        for car_idx in car_indices or []:
+            state = self.pit_strategy_detector.driver_states.get(car_idx)
+            last_lap = self.safe_int(getattr(state, "last_pit_lap", current_lap), current_lap)
+            if last_lap > 0:
+                laps.append(last_lap)
+        if len(laps) < 2:
+            return True
+        return max(laps) - min(laps) <= max_span
+
+    def green_pit_states_are_clustered(self, states, max_span=2):
+        laps = [
+            self.safe_int(getattr(state, "last_pit_lap", 0), 0)
+            for state in states or []
+            if self.safe_int(getattr(state, "last_pit_lap", 0), 0) > 0
+        ]
+        if len(laps) < 2:
+            return False
+        return max(laps) - min(laps) <= max_span
+
+    @staticmethod
+    def looks_like_green_repair_stop(state):
+        return (
+            float(getattr(state, "last_pit_stop_seconds", 0.0) or 0.0) >= 25.0
+            or float(getattr(state, "last_pit_lane_seconds", 0.0) or 0.0) >= 65.0
+        )
+
+    @staticmethod
+    def format_driver_names_for_sentence(names):
+        cleaned = [str(name or "").strip() for name in names or [] if str(name or "").strip()]
+        if not cleaned:
+            return "that car"
+        if len(cleaned) == 1:
+            return cleaned[0]
+        if len(cleaned) == 2:
+            return f"{cleaned[0]} and {cleaned[1]}"
+        return f"{', '.join(cleaned[:-1])}, and {cleaned[-1]}"
 
     def _queue_ready_pit_strategy_story(self, race_state, race_knowledge, driver_lookup):
         if self.broadcast_queue.items:
@@ -2064,26 +2159,26 @@ class BroadcastEngine:
     def green_pit_cycle_start_messages(self, track_info):
         if is_true_pack_drafting_track(track_info):
             return [
-                "Green flag stops are starting, and pit road will be watching who can save fuel, keep a drafting partner, and blend back into a pack. Do not trust the leaderboard completely until this cycles through.",
-                "Pit road is opening under green. On this kind of draft track, the stop matters, but who you leave pit road with can matter just as much, so the order may look shuffled for a few laps.",
-                "The first wave of green flag stops is underway. Fuel saving and finding help on exit could decide who cycles out with track position once everyone has made service.",
+                "This may be the start of green flag stops, and pit road will be watching who can save fuel, keep a drafting partner, and blend back into a pack. Do not trust the leaderboard completely until this cycles through.",
+                "Pit road is starting to open under green. On this kind of draft track, the stop matters, but who you leave pit road with can matter just as much, so the order may look shuffled for a few laps.",
+                "The first wave of green flag stops may be underway. Fuel saving and finding help on exit could decide who cycles out with track position once everyone has made service.",
             ]
         if is_long_straight_draft_assist_track(track_info):
             return [
-                "Green flag stops are starting. Pit road is watching fuel numbers, pit timing, and who gets back up to speed cleanly on the long straights before we call who gained.",
-                "The first wave of green flag pit stops is underway. The undercut can help, but the out-lap has to be clean for it to pay off, and the leaderboard will not settle right away.",
+                "This may be the start of green flag stops. Pit road is watching fuel numbers, pit timing, and who gets back up to speed cleanly on the long straights before we call who gained.",
+                "The first wave of green flag pit stops may be underway. The undercut can help, but the out-lap has to be clean for it to pay off, and the leaderboard will not settle right away.",
                 "Pit road is starting to open under green, and this cycle may briefly shuffle the lead before everyone has made their stop.",
             ]
         if is_road_course(track_info):
             return [
-                "Green flag stops are starting. Pit road is watching the in-laps and out-laps now, because one mistake in the pit window can swing the order.",
-                "The pit cycle is beginning under green. This is where the undercut, traffic, and a clean pit exit can change the race, but the true order comes after the field cycles.",
+                "This may be the start of green flag stops. Pit road is watching the in-laps and out-laps now, because one mistake in the pit window can swing the order.",
+                "The pit cycle may be beginning under green. This is where the undercut, traffic, and a clean pit exit can change the race, but the true order comes after the field cycles.",
                 "The first cars are coming to pit road under green, and the running order may not make sense again until this cycle is complete.",
             ]
         return [
-            "Green flag pit stops are starting. Pit road will be watching who short-pits for fresh tires, who stretches the run, and how tire age splits the field once the cycle is complete.",
-            "Pit road is watching the pit cycle begin under green. On this type of oval, tires can change the pace quickly once the first group commits, but we need everyone to cycle before calling the winners and losers.",
-            "The first wave of green flag stops is underway. Now we watch who takes the early grip and who tries to stretch the run a few laps longer.",
+            "This may be the start of green flag pit stops. Pit road will be watching who short-pits for fresh tires, who stretches the run, and how tire age splits the field once the cycle is complete.",
+            "Pit road is watching a possible pit cycle begin under green. On this type of oval, tires can change the pace quickly once the first group commits, but we need everyone to cycle before calling the winners and losers.",
+            "The first wave of green flag stops may be underway. Now we watch who takes the early grip and who tries to stretch the run a few laps longer.",
         ]
 
     def green_pit_cycle_update_messages(self, pitted_count, track_info):
