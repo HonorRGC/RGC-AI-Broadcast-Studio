@@ -47,6 +47,7 @@ class RaceStateTracker:
         self.state = RaceState()
         self.last_was_caution = False
         self.last_lap = 0
+        self.initialized = False
 
     def update(self, current_lap=0, total_laps=0, session_flags=0):
         current_lap = self.safe_int(current_lap)
@@ -59,15 +60,20 @@ class RaceStateTracker:
         is_overtime = total_laps > 0 and current_lap > total_laps
         is_late_race = total_laps > 0 and laps_remaining <= 10
 
-        if is_caution and not self.last_was_caution:
+        race_has_started = current_lap > 0 or self.state.green_lap_count > 0
+        if is_caution and race_has_started and not self.last_was_caution:
             self.state.caution_count += 1
 
         if self.last_was_caution and is_green:
             self.state.restart_count += 1
             self.state.green_lap_count = 0
 
-        if is_green:
-            self.state.green_lap_count += 1
+        if not self.initialized:
+            self.initialized = True
+            if is_green and current_lap <= 1:
+                self.state.green_lap_count += current_lap
+        elif is_green and current_lap > self.last_lap:
+            self.state.green_lap_count += current_lap - self.last_lap
 
         self.state.moment = self.determine_moment(
             current_lap,
