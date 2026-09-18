@@ -2384,6 +2384,12 @@ def run_gui():
         )
         if not selected:
             return
+        if str(selected).lower().endswith(".events.jsonl"):
+            messagebox.showerror(
+                "Choose the main recording",
+                "Select the matching broadcast_capture_*.jsonl file, not the .events.jsonl sidecar.",
+            )
+            return
         widget = entries["RECORDED_BROADCAST_FILE"]
         widget.delete(0, "end")
         widget.insert(0, selected)
@@ -2632,6 +2638,12 @@ def run_gui():
             messagebox.showerror(
                 "Recording not found",
                 "Choose a valid Driver Mode .jsonl recording first.",
+            )
+            return
+        if not recording.with_suffix(".events.jsonl").is_file():
+            messagebox.showerror(
+                "Broadcast events not found",
+                "This is not a complete Driver Mode recording. Keep the main .jsonl and matching .events.jsonl files together.",
             )
             return
         command = broadcast_command(current_values, replay_path=recording)
