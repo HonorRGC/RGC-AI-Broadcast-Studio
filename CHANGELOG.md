@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Added Driver Mode to record live telemetry and approved broadcast calls silently while the user races.
+- Added recorded-broadcast playback with the original commentary, overlays, camera targets, and iRacing replay controls.
+- Added Studio controls to choose and play a Driver Mode recording after opening its matching iRacing replay.
+
 ## Version 1.0.5 - Model and Battle Call Refresh
 
 ### Added

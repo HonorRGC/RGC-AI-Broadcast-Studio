@@ -235,6 +235,15 @@ CANADIAN_PROVINCES = {
 def parse_args():
     parser = argparse.ArgumentParser(description="RGC AI Broadcast Studio")
     parser.add_argument("--replay", help="Path to a JSONL telemetry recording")
+    parser.add_argument(
+        "--driver-mode",
+        action="store_true",
+        help="Record a live race for later broadcast without playing Studio audio or moving cameras",
+    )
+    parser.add_argument(
+        "--capture-output",
+        help="Optional JSONL destination for Driver Mode telemetry",
+    )
     parser.add_argument("--no-voice", action="store_true", help="Disable ElevenLabs playback")
     parser.add_argument(
         "--voice-test",
@@ -343,8 +352,13 @@ def run_source(
     tick_seconds,
     race_control_service=None,
     discord_reporter=None,
+    capture_recorder=None,
+    driver_mode=False,
+    recorded_broadcast=False,
 ):
     while source.is_connected():
+        if capture_recorder:
+            capture_recorder.record_snapshot(source)
         if overlay_server:
             overlay_server.update_from_telemetry(source)
             overlay_server.set_director_suggestions(
@@ -362,17 +376,18 @@ def run_source(
                 practice_presentation_director,
                 anthem_director,
             )
-        report_practice_presentation(
-            practice_presentation_director.update(
-                source.get_session_type(),
+        if not driver_mode:
+            report_practice_presentation(
+                practice_presentation_director.update(
+                    source.get_session_type(),
+                    overlay_server,
+                ),
                 overlay_server,
-            ),
-            overlay_server,
-        )
-        report_anthem_decision(
-            anthem_director.update(source.get_session_type(), overlay_server),
-            overlay_server,
-        )
+            )
+            report_anthem_decision(
+                anthem_director.update(source.get_session_type(), overlay_server),
+                overlay_server,
+            )
         maybe_show_league_points_panel(overlay_server, source, engine)
         report_replay_decision(replay_director.update(source, camera_director), overlay_server)
         camera_update_decision = camera_director.update(source)
@@ -397,9 +412,11 @@ def run_source(
                 ),
                 engine=engine,
             )
-        non_race_camera_decision = qualifying_camera_director.update(
-            source, camera_director
-        )
+        non_race_camera_decision = None
+        if not driver_mode:
+            non_race_camera_decision = qualifying_camera_director.update(
+                source, camera_director
+            )
         report_camera_decision(non_race_camera_decision, overlay_server)
         if overlay_server:
             update_overlay_focused_driver(
@@ -409,7 +426,11 @@ def run_source(
                 duration=9.0,
                 engine=engine,
             )
-        item = engine.tick(source)
+        generated_item = engine.tick(source)
+        if recorded_broadcast and hasattr(source, "recorded_item_for_current_snapshot"):
+            item = source.recorded_item_for_current_snapshot()
+        else:
+            item = generated_item
         if overlay_server:
             overlay_server.set_pit_road_rows(
                 build_producer_pit_road_rows(source, engine)
@@ -420,14 +441,15 @@ def run_source(
             and engine.telemetry_under_caution(source)
         ):
             caution_presentation_phase = RacePhase.CAUTION
-        report_caution_presentation(
-            caution_presentation_director.update(
-                caution_presentation_phase,
+        if not driver_mode:
+            report_caution_presentation(
+                caution_presentation_director.update(
+                    caution_presentation_phase,
+                    overlay_server,
+                    caution_audio_bed,
+                ),
                 overlay_server,
-                caution_audio_bed,
-            ),
-            overlay_server,
-        )
+            )
         report_discord_race_report(
             discord_reporter,
             source,
@@ -449,6 +471,8 @@ def run_source(
                 if tick_seconds > 0:
                     time.sleep(tick_seconds)
                 continue
+            if capture_recorder:
+                capture_recorder.record_item(item)
             if overlay_server:
                 show_overlay_feature(item, overlay_server, source, engine)
             report_replay_decision(
@@ -3698,13 +3722,18 @@ def report_camera_decision(decision, overlay_server=None):
 
 def main():
     args = parse_args()
+    if args.driver_mode and args.replay:
+        raise SystemExit("--driver-mode cannot be combined with --replay.")
+    if args.driver_mode:
+        args.camera_mode = "off"
+        args.incident_replay = "off"
     engine = BroadcastEngine(incident_debug=args.incident_debug)
     caution_audio_bed = AudioBedPlayer(
         normal_volume=STUDIO_VOLUME * 10,
         ducked_volume=max(0, min(1000, STUDIO_VOLUME * 2)),
     )
     booth = BroadcastBooth(
-        enable_voice=not args.no_voice,
+        enable_voice=not args.no_voice and not args.driver_mode,
         audio_bed=caution_audio_bed,
         studio_volume=STUDIO_VOLUME,
     )
@@ -3790,6 +3819,8 @@ def main():
         f"{pit_name}={'SET' if voice_ids['sarah'] else 'MISSING'}"
     )
     print(f"Incident replay: {args.incident_replay.upper()}")
+    if args.driver_mode:
+        print("Driver Mode: ON (Studio audio and automatic camera control are disabled)")
     print(f"Race Admin Mode: {'ON' if race_control_service.enabled else 'OFF'}")
     print(f"Discord Race Report: {'ON' if discord_reporter.ready() else 'OFF'}")
     if args.incident_debug:
@@ -3827,6 +3858,19 @@ def main():
         source = ReplayTelemetry(args.replay)
         if not source.startup():
             raise RuntimeError("Replay contains no telemetry snapshots.")
+        if source.recorded_items:
+            engine.openai_director.set_enabled(False)
+            replay_controller = IRacingTelemetry()
+            if replay_controller.startup():
+                source.attach_controller(replay_controller)
+                first = source.current_snapshot()
+                replay_controller.seek_replay_session_time(
+                    first.session_num,
+                    first.session_time,
+                )
+                print("Recorded Broadcast: iRacing replay control connected and synchronized.")
+            else:
+                print("Recorded Broadcast: telemetry playback is ready, but iRacing replay control is not connected.")
         run_source(
             source,
             engine,
@@ -3843,6 +3887,7 @@ def main():
             args.tick_seconds,
             race_control_service,
             discord_reporter,
+            recorded_broadcast=bool(source.recorded_items),
         )
         return
 
@@ -3870,23 +3915,39 @@ def main():
         caution_presentation_director = CautionPresentationDirector()
         qualifying_camera_director = QualifyingCameraDirector()
         live_broadcast_validator = LiveBroadcastValidator()
-        run_source(
-            source,
-            engine,
-            booth,
-            camera_director,
-            replay_director,
-            anthem_director,
-            practice_presentation_director,
-            caution_presentation_director,
-            qualifying_camera_director,
-            live_broadcast_validator,
-            overlay_server,
-            caution_audio_bed,
-            args.tick_seconds,
-            race_control_service,
-            discord_reporter,
-        )
+        capture_recorder = None
+        if args.driver_mode:
+            from production.broadcast_capture import BroadcastCaptureRecorder
+
+            capture_recorder = BroadcastCaptureRecorder(
+                output_path=args.capture_output,
+                root=Path(__file__).resolve().parent,
+            )
+            print(f"Driver Mode recording: {capture_recorder.telemetry_path}")
+        try:
+            run_source(
+                source,
+                engine,
+                booth,
+                camera_director,
+                replay_director,
+                anthem_director,
+                practice_presentation_director,
+                caution_presentation_director,
+                qualifying_camera_director,
+                live_broadcast_validator,
+                overlay_server,
+                caution_audio_bed,
+                args.tick_seconds,
+                race_control_service,
+                discord_reporter,
+                capture_recorder=capture_recorder,
+                driver_mode=args.driver_mode,
+            )
+        finally:
+            if capture_recorder:
+                capture_recorder.close()
+                print(f"Driver Mode recording saved: {capture_recorder.telemetry_path}")
         cleanup_live_broadcast_session(
             source,
             replay_director,

@@ -150,6 +150,8 @@ LAUNCHER_FIELDS = [
     ("QUALIFYING_MUSIC_PLAYLIST", ""),
     ("STUDIO_VOLUME", "65"),
     ("CAUTION_REPLAY_AUDIO", ""),
+    ("DRIVER_MODE", "false"),
+    ("RECORDED_BROADCAST_FILE", ""),
     ("POST_RACE_INTERVIEWS_ENABLED", "false"),
     ("RACE_ADMIN_MODE", "false"),
     ("RACE_ADMIN_SEND_MODE", "clipboard"),
@@ -277,6 +279,8 @@ BROADCAST_FIELD_LABELS = {
     "PRACTICE_MUSIC_PLAYLIST": "Practice Music Playlist",
     "QUALIFYING_MUSIC_PLAYLIST": "Qualifying Music Playlist",
     "CAUTION_REPLAY_AUDIO": "Caution Replay Music",
+    "DRIVER_MODE": "Driver Mode — Record Race Silently",
+    "RECORDED_BROADCAST_FILE": "Recorded Broadcast File",
     "POST_RACE_INTERVIEWS_ENABLED": "Post-Race Interviews",
     "RACE_ADMIN_MODE": "Race Admin Mode",
     "RACE_ADMIN_SEND_MODE": "Race Admin Send Mode",
@@ -303,6 +307,7 @@ BROADCAST_FIELD_SECTIONS = {
     "USE_ELEVENLABS": "Broadcaster Voices",
     "OVERLAY_EVENT_TITLE": "Event Sponsors / Overlay Links",
     "PRACTICE_MUSIC_PLAYLIST": "Practice / Qualifying / Caution Music",
+    "DRIVER_MODE": "Recorded Broadcast / Driver Mode",
     "POST_RACE_INTERVIEWS_ENABLED": "Race Flow",
     "RACE_ADMIN_MODE": "Race Control",
     "DISCORD_RACE_REPORT_ENABLED": "Discord Race Report",
@@ -364,6 +369,8 @@ BROADCAST_FIELD_HELP = {
     "PRACTICE_MUSIC_PLAYLIST": "Practice music playlist. Multiple songs are separated with semicolons and loop during practice.",
     "QUALIFYING_MUSIC_PLAYLIST": "Qualifying music playlist. Multiple songs are separated with semicolons and loop during qualifying. Sponsor graphics come from Sponsor 1-5 logos.",
     "CAUTION_REPLAY_AUDIO": "Music bed used during caution replay/presentation segments.",
+    "DRIVER_MODE": "Records the live session while you race. Studio voices, music, automatic cameras, and replay control remain off so they cannot interfere with driving.",
+    "RECORDED_BROADCAST_FILE": "Select a Driver Mode .jsonl recording to broadcast afterward while its matching saved iRacing replay is open.",
     "POST_RACE_INTERVIEWS_ENABLED": "If true, the AI finishes the race recap/top 10 and then hands off to human post-race interviews for the top three. If false, it does the normal signoff.",
     "RACE_ADMIN_MODE": "Enables hosted-race admin commands in Producer Assist. Keep off unless this PC has race admin rights.",
     "RACE_ADMIN_SEND_MODE": "clipboard is safest for stream. open_chat/ui_paste can bring iRacing chat or the iRacing window onto the broadcast PC capture. For clean race control, use a trusted remote admin on another PC through Producer Assist/Tailscale.",
@@ -435,6 +442,8 @@ INLINE_HELP_FIELDS = {
     "CAUTION_REVIEW_SLATE_GRAPHIC",
     "PRACTICE_MUSIC_PLAYLIST",
     "QUALIFYING_MUSIC_PLAYLIST",
+    "DRIVER_MODE",
+    "RECORDED_BROADCAST_FILE",
     "POST_RACE_INTERVIEWS_ENABLED",
     "DISCORD_RACE_REPORT_ENABLED",
     "DISCORD_RACE_REPORT_WEBHOOK_URL",
@@ -455,6 +464,7 @@ BOOLEAN_SETTING_KEYS = {
     "DISCORD_RACE_REPORT_ENABLED",
     "DISCORD_RACE_REPORT_USE_OPENAI",
     "USE_LEAGUE_DRIVER_NOTES",
+    "DRIVER_MODE",
 }
 
 
@@ -1273,8 +1283,9 @@ def copy_to_clipboard(root, text):
     root.update()
 
 
-def broadcast_command():
-    return [
+def broadcast_command(values=None, replay_path=""):
+    values = values or load_env_file()
+    command = [
         sys.executable,
         str(ROOT / "app.py"),
         "--overlay",
@@ -1283,6 +1294,11 @@ def broadcast_command():
         "--incident-replay",
         "auto",
     ]
+    if replay_path:
+        command.extend(["--replay", str(replay_path)])
+    elif setting_enabled(values, "DRIVER_MODE", "false"):
+        command.append("--driver-mode")
+    return command
 
 
 def broadcast_creation_flags():
@@ -1295,13 +1311,14 @@ def broadcast_log_path(path=None):
     return Path(path or BROADCAST_LOG_PATH)
 
 
-def open_broadcast_log(path=None):
+def open_broadcast_log(path=None, command=None):
     path = broadcast_log_path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     log_file = path.open("w", encoding="utf-8", buffering=1)
     log_file.write("RGC AI Broadcast Studio broadcast worker log\n")
     log_file.write("=" * 56 + "\n")
-    log_file.write(f"Command: {' '.join(str(part) for part in broadcast_command())}\n\n")
+    command = command or broadcast_command()
+    log_file.write(f"Command: {' '.join(str(part) for part in command)}\n\n")
     return log_file
 
 
@@ -1527,16 +1544,17 @@ def run_velocity_league_import(
     )
 
 
-def launch_broadcast():
+def launch_broadcast(command=None):
     global BROADCAST_PROCESS, BROADCAST_LOG_FILE
     if is_process_running(BROADCAST_PROCESS):
         return BROADCAST_PROCESS
 
     env = os.environ.copy()
     close_broadcast_log()
-    BROADCAST_LOG_FILE = open_broadcast_log()
+    command = command or broadcast_command()
+    BROADCAST_LOG_FILE = open_broadcast_log(command=command)
     BROADCAST_PROCESS = subprocess.Popen(
-        broadcast_command(),
+        command,
         cwd=ROOT,
         env=env,
         stdout=BROADCAST_LOG_FILE,
@@ -1972,7 +1990,24 @@ def run_gui():
             sticky="w",
             pady=3,
         )
-        if key == "OVERLAY_LEADERBOARD_STYLE":
+        entry_value = None
+        if key == "DRIVER_MODE":
+            driver_mode_value = tk.StringVar(value=bool_setting_text(existing, key, _default))
+            entry_widget = tk.Checkbutton(
+                settings_frame,
+                text="I am driving — record this session silently for a later replay broadcast",
+                variable=driver_mode_value,
+                onvalue="true",
+                offvalue="false",
+                bg=PANEL_BG,
+                fg=TEXT_FG,
+                activebackground=PANEL_BG,
+                activeforeground=TEXT_FG,
+                selectcolor=FIELD_BG,
+                anchor="w",
+            )
+            entry_value = driver_mode_value
+        elif key == "OVERLAY_LEADERBOARD_STYLE":
             entry_widget = ttk.Combobox(
                 settings_frame,
                 values=("side", "ticker", "flo", "brazen"),
@@ -2017,7 +2052,7 @@ def run_gui():
         if isinstance(entry_widget, ttk.Combobox):
             disable_combobox_mousewheel(entry_widget)
         entry_widget.grid(row=settings_grid_row, column=1, sticky="ew", pady=3)
-        entries[key] = entry_widget
+        entries[key] = entry_value or entry_widget
         settings_grid_row += 1
 
         if key in INLINE_HELP_FIELDS and key in BROADCAST_FIELD_HELP:
@@ -2341,6 +2376,26 @@ def run_gui():
         color="#334b64",
     ).grid(row=settings_rows_by_key["CAUTION_REPLAY_AUDIO"], column=2, padx=(8, 0), sticky="w")
 
+    def choose_recorded_broadcast():
+        selected = filedialog.askopenfilename(
+            title="Choose Driver Mode recording",
+            initialdir=str(ROOT / "recordings"),
+            filetypes=(("RGC broadcast recording", "*.jsonl"), ("All files", "*.*")),
+        )
+        if not selected:
+            return
+        widget = entries["RECORDED_BROADCAST_FILE"]
+        widget.delete(0, "end")
+        widget.insert(0, selected)
+        status.set("Recorded broadcast selected. Save Settings, open its iRacing replay, then click Play Recorded Broadcast.")
+
+    button(
+        settings_frame,
+        text="Choose Recording",
+        command=choose_recorded_broadcast,
+        color="#334b64",
+    ).grid(row=settings_rows_by_key["RECORDED_BROADCAST_FILE"], column=2, padx=(8, 0), sticky="w")
+
     settings_frame.columnconfigure(1, weight=1)
 
     label(main_page, textvariable=status, anchor="w", fg=MUTED_FG).pack(
@@ -2539,7 +2594,11 @@ def run_gui():
     def start_broadcast():
         save_settings()
         current_values = collect_values()
-        if setting_enabled(current_values, "USE_SIM_RACING_APPS", "true") and not sim_racing_apps_is_running():
+        if (
+            not setting_enabled(current_values, "DRIVER_MODE", "false")
+            and setting_enabled(current_values, "USE_SIM_RACING_APPS", "true")
+            and not sim_racing_apps_is_running()
+        ):
             messagebox.showwarning(
                 "SIMRacingApps is not running",
                 "Use SIMRacingApps Car Graphics is set to true, but SIMRacingAppsServer is not running.\n\n"
@@ -2552,9 +2611,35 @@ def run_gui():
             return
         process = launch_broadcast()
         if process:
+            if setting_enabled(current_values, "DRIVER_MODE", "false"):
+                status.set(
+                    "Driver Mode recording started. Studio audio and automatic cameras are off. "
+                    "Stop Broadcast after the race to finish and save the recording."
+                )
+            else:
+                status.set(
+                    "Started broadcast with overlay, Producer Assist, cameras, and incident replay. "
+                    "Use Producer Assist to toggle OpenAI, ElevenLabs, and auto cameras."
+                )
+            root.after(1500, open_producer_assist_after_start)
+        refresh_health()
+
+    def play_recorded_broadcast():
+        save_settings()
+        current_values = collect_values()
+        recording = Path(current_values.get("RECORDED_BROADCAST_FILE", "")).expanduser()
+        if not recording.is_file():
+            messagebox.showerror(
+                "Recording not found",
+                "Choose a valid Driver Mode .jsonl recording first.",
+            )
+            return
+        command = broadcast_command(current_values, replay_path=recording)
+        process = launch_broadcast(command=command)
+        if process:
             status.set(
-                "Started broadcast with overlay, Producer Assist, cameras, and incident replay. "
-                "Use Producer Assist to toggle OpenAI, ElevenLabs, and auto cameras."
+                "Recorded broadcast started. Keep the matching iRacing replay open; "
+                "Producer Assist will control cameras and caution review."
             )
             root.after(1500, open_producer_assist_after_start)
         refresh_health()
@@ -2620,6 +2705,12 @@ def run_gui():
         padx=6,
         pady=8,
     )
+    button(
+        broadcast_bar,
+        text="Play Recorded Broadcast",
+        command=play_recorded_broadcast,
+        color="#5d3fb8",
+    ).pack(side="left", padx=6, pady=8)
     button(broadcast_bar, text="Stop Broadcast", command=stop_running_broadcast, color=STOP_RED).pack(
         side="left",
         padx=6,

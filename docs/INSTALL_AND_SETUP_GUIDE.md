@@ -524,3 +524,20 @@ Until a true hidden iRacing admin-command method is confirmed, use clipboard mod
 - Do not send your personal `.env` file to another user.
 - Each league/admin should use their own OpenAI and ElevenLabs accounts.
 - Use Producer Assist to turn OpenAI and ElevenLabs off if you want to test overlays and cameras without AI costs.
+## Driver Mode and recorded replay broadcasts
+
+Driver Mode lets the Studio learn and record a race while you are one of the drivers, without playing broadcast audio or taking control of your cameras.
+
+1. Save the complete iRacing replay for the session.
+2. In Broadcast Settings, check **I am driving — record this session silently for a later replay broadcast**.
+3. Click **Start Broadcast** before practice, qualifying, or the race begins.
+4. Race normally. OpenAI commentary decisions are recorded, but Studio voices, music, automatic cameras, and incident replay controls remain silent and inactive.
+5. After the session, click **Stop Broadcast** so the recording is completed safely.
+6. Turn Driver Mode back off.
+7. Use **Choose Recording** to select the matching file from the `recordings` folder.
+8. Open the matching saved replay in iRacing and position it near the beginning of the recorded session.
+9. Click **Play Recorded Broadcast**. The Studio loads the saved telemetry and original broadcast calls, synchronizes to iRacing, and restores audio, overlays, cameras, sponsors, and caution presentation.
+
+Producer Assist remains available during playback. A producer can take manual camera control or search for a better caution angle, then return control to the recorded broadcast.
+
+Keep the three files with the same recording name together: `.jsonl`, `.events.jsonl`, and `.capture.json`. Driver Mode is an initial replay-broadcast workflow, so run a short AI race test before relying on it for a full event.

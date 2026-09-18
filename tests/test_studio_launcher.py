@@ -771,12 +771,26 @@ def test_launcher_installs_overlay_commercial_video(tmp_path):
 
 
 def test_launcher_builds_default_broadcast_command():
-    command = broadcast_command()
+    command = broadcast_command({"DRIVER_MODE": "false"})
 
     assert command[0] == sys.executable
     assert "--overlay" in command
     assert "--camera-mode" in command
     assert "--incident-replay" in command
+
+
+def test_launcher_builds_driver_mode_and_recorded_broadcast_commands(tmp_path):
+    capture = tmp_path / "race.jsonl"
+    driver_command = broadcast_command({"DRIVER_MODE": "true"})
+    replay_command = broadcast_command(
+        {"DRIVER_MODE": "true"},
+        replay_path=capture,
+    )
+
+    assert "--driver-mode" in driver_command
+    assert "--replay" in replay_command
+    assert str(capture) in replay_command
+    assert "--driver-mode" not in replay_command
 
 
 def test_launcher_uses_stable_broadcast_log_path():
