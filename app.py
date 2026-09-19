@@ -3886,17 +3886,18 @@ def main():
             raise RuntimeError("Replay contains no telemetry snapshots.")
         if source.recorded_items:
             engine.openai_director.set_enabled(False)
-            source.start_timed_playback()
             replay_controller = IRacingTelemetry()
             if replay_controller.startup():
                 source.attach_controller(replay_controller)
-                first = source.current_snapshot()
-                replay_controller.seek_replay_session_time(
-                    first.session_num,
-                    first.session_time,
+                source.synchronize_to_controller(force=True)
+                source.start_timed_playback(reset_index=False)
+                current = source.current_snapshot()
+                print(
+                    "Recorded Broadcast: synchronized to iRacing at "
+                    f"{current.session_type} session time {current.session_time:.1f}s."
                 )
-                print("Recorded Broadcast: iRacing replay control connected and synchronized.")
             else:
+                source.start_timed_playback(reset_index=True)
                 print("Recorded Broadcast: telemetry playback is ready, but iRacing replay control is not connected.")
         run_source(
             source,

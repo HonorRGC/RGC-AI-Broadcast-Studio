@@ -98,6 +98,47 @@ def test_recorded_broadcast_advances_by_original_elapsed_time(tmp_path):
     assert replay.get_lap() == 4
 
 
+def test_recorded_broadcast_can_start_at_current_iracing_session(tmp_path):
+    path = tmp_path / "multi_session.jsonl"
+    snapshots = [
+        {"lap": 0, "timestamp": 1000.0, "session_num": 0, "session_type": "Practice", "session_time": 20.0},
+        {"lap": 0, "timestamp": 1060.0, "session_num": 1, "session_type": "Qualify", "session_time": 10.0},
+        {"lap": 0, "timestamp": 1070.0, "session_num": 1, "session_type": "Qualify", "session_time": 20.0},
+        {"lap": 1, "timestamp": 1120.0, "session_num": 2, "session_type": "Race", "session_time": 5.0},
+    ]
+    path.write_text(
+        "".join(json.dumps(snapshot) + "\n" for snapshot in snapshots),
+        encoding="utf-8",
+    )
+    path.with_suffix(".events.jsonl").write_text(
+        "\n".join(
+            [
+                json.dumps({"snapshot_index": 0, "priority": 5, "message": "Practice call"}),
+                json.dumps({"snapshot_index": 1, "priority": 5, "message": "Qualifying call"}),
+                json.dumps({"snapshot_index": 3, "priority": 5, "message": "Race call"}),
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    controller = FakeReplayController(session_num=1, session_time=19.0, session_type="Qualify")
+    replay = ReplayTelemetry(path, clock=lambda: 50.0).attach_controller(controller)
+
+    assert replay.synchronize_to_controller(force=True)
+    assert replay.current_index == 2
+    assert replay.get_session_type() == "Qualify"
+    assert replay.recorded_item_for_current_snapshot() is None
+
+    controller.session_num = 2
+    controller.session_time = 5.0
+    controller.session_type = "Race"
+    assert replay.synchronize_to_controller()
+    assert replay.current_index == 3
+    assert replay.recorded_item_for_current_snapshot().message == "Race call"
+    assert replay.return_to_live()
+    assert controller.seek_calls == [(2, 5.0)]
+
+
 def test_capture_recorder_writes_telemetry_events_and_metadata(tmp_path, monkeypatch):
     output = tmp_path / "race.jsonl"
     snapshot = SimpleSnapshot()
@@ -124,3 +165,24 @@ def test_capture_recorder_writes_telemetry_events_and_metadata(tmp_path, monkeyp
 class SimpleSnapshot:
     def to_dict(self):
         return {"lap": 12, "session_num": 0, "session_time": 55.0}
+
+
+class FakeReplayController:
+    def __init__(self, session_num, session_time, session_type):
+        self.session_num = session_num
+        self.session_time = session_time
+        self.session_type = session_type
+        self.seek_calls = []
+
+    def get_current_session_num(self):
+        return self.session_num
+
+    def get_session_time(self):
+        return self.session_time
+
+    def get_session_type(self):
+        return self.session_type
+
+    def seek_replay_session_time(self, session_num, session_time):
+        self.seek_calls.append((session_num, session_time))
+        return True

@@ -535,8 +535,8 @@ Driver Mode lets the Studio learn and record a race while you are one of the dri
 5. After the session, click **Stop Broadcast** so the recording is completed safely.
 6. Turn Driver Mode back off.
 7. Use **Choose Recording** to select the matching file from the `recordings` folder.
-8. Open the matching saved replay in iRacing and position it near the beginning of the recorded session.
-9. Click **Play Recorded Broadcast**. The Studio loads the saved telemetry and original broadcast calls, synchronizes to iRacing, and restores audio, overlays, cameras, sponsors, and caution presentation.
+8. Open the matching saved replay in iRacing and position it wherever you want the broadcast to begin. You can start late in practice, near the end of qualifying, on the grid, or at the beginning of the race.
+9. Click **Play Recorded Broadcast**. The Studio finds the closest matching session time, skips earlier calls, and restores audio, overlays, cameras, sponsors, and caution presentation. If you jump forward from practice to qualifying or directly to the race, the recorded broadcast re-synchronizes and does not read the skipped calls.
 
 Producer Assist remains available during playback. A producer can take manual camera control or search for a better caution angle, then return control to the recorded broadcast.
 

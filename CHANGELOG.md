@@ -6,6 +6,7 @@
 - Added recorded-broadcast playback with the original commentary, overlays, camera targets, and iRacing replay controls.
 - Added Studio controls to choose and play a Driver Mode recording after opening its matching iRacing replay.
 - Recorded broadcasts now follow the capture's original elapsed-time clock and hold the next call until the current voice clip has fully finished.
+- Recorded broadcasts can start from the current practice, qualifying, grid, or race replay position and automatically skip earlier captured calls when the producer jumps forward to another session.
 
 ## Version 1.0.5 - Model and Battle Call Refresh
 

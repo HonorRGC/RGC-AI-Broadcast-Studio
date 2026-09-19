@@ -19,15 +19,70 @@ class ReplayTelemetry:
         self.clock = clock or time.monotonic
         self.playback_started_at = None
         self.capture_started_at = self._capture_start_timestamp()
+        self.last_controller_marker = None
 
     def attach_controller(self, controller):
         self.controller = controller
         return self
 
-    def start_timed_playback(self):
+    def start_timed_playback(self, reset_index=False):
+        if reset_index:
+            self.current_index = 0
+            self._delivered_event_indices.clear()
         self.playback_started_at = self.clock()
-        self.current_index = 0
+        snapshot = self.current_snapshot()
+        if snapshot is not None:
+            self.capture_started_at = float(snapshot.timestamp or 0.0)
         return self.current_snapshot()
+
+    def synchronize_to_controller(self, force=False, forward_threshold_seconds=8.0):
+        if not self.controller or not self.snapshots:
+            return False
+        session_num = self.controller.get_current_session_num()
+        session_time = self.controller.get_session_time()
+        session_type = str(self.controller.get_session_type() or "").strip().lower()
+        marker = (int(session_num), float(session_time))
+        current = self.current_snapshot()
+        if current is not None and not force:
+            same_session = int(current.session_num) == marker[0]
+            seconds_ahead = marker[1] - float(current.session_time or 0.0)
+            if same_session and seconds_ahead <= float(forward_threshold_seconds):
+                self.last_controller_marker = marker
+                return False
+
+        candidates = [
+            (index, snapshot)
+            for index, snapshot in enumerate(self.snapshots)
+            if int(snapshot.session_num) == marker[0]
+        ]
+        if not candidates and session_type:
+            candidates = [
+                (index, snapshot)
+                for index, snapshot in enumerate(self.snapshots)
+                if str(snapshot.session_type or "").strip().lower() == session_type
+            ]
+        if not candidates:
+            return False
+
+        target_index, _target = min(
+            candidates,
+            key=lambda pair: abs(float(pair[1].session_time or 0.0) - marker[1]),
+        )
+        if not force and target_index <= self.current_index:
+            return False
+
+        self._mark_events_before(target_index)
+        self.current_index = target_index
+        self.last_controller_marker = marker
+        self.start_timed_playback(reset_index=False)
+        return True
+
+    def _mark_events_before(self, snapshot_index):
+        for event_snapshot_index, items in self.recorded_items.items():
+            if event_snapshot_index >= snapshot_index:
+                continue
+            for offset in range(len(items)):
+                self._delivered_event_indices.add((event_snapshot_index, offset))
 
     def _capture_start_timestamp(self):
         if not self.snapshots:
@@ -77,6 +132,8 @@ class ReplayTelemetry:
         return self.snapshots[self.current_index]
 
     def next_snapshot(self):
+        if self.controller:
+            self.synchronize_to_controller(force=False)
         if self.playback_started_at is not None and self.capture_started_at > 0:
             target_timestamp = self.capture_started_at + (
                 self.clock() - self.playback_started_at
@@ -97,6 +154,7 @@ class ReplayTelemetry:
         self.current_index = 0
         self._delivered_event_indices.clear()
         self.playback_started_at = None
+        self.last_controller_marker = None
 
     def get_session_flags(self):
         snapshot = self.current_snapshot()
@@ -160,12 +218,28 @@ class ReplayTelemetry:
 
     def is_replay_at_live_edge(self, frame_tolerance=120):
         if self.controller:
-            return self.controller.is_replay_at_live_edge(frame_tolerance)
+            snapshot = self.current_snapshot()
+            if snapshot is None:
+                return False
+            controller_session = int(self.controller.get_current_session_num())
+            controller_time = float(self.controller.get_session_time())
+            tolerance_seconds = max(1.0, float(frame_tolerance) / 60.0)
+            return (
+                controller_session == int(snapshot.session_num)
+                and abs(controller_time - float(snapshot.session_time or 0.0))
+                <= tolerance_seconds
+            )
         return True
 
     def return_to_live(self):
         if self.controller:
-            return self.controller.return_to_live()
+            snapshot = self.current_snapshot()
+            if snapshot is None:
+                return False
+            return self.controller.seek_replay_session_time(
+                snapshot.session_num,
+                snapshot.session_time,
+            )
         return False
 
     def __getattr__(self, name):
