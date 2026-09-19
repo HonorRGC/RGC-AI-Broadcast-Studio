@@ -69,6 +69,35 @@ def test_recorded_broadcast_loads_original_items(tmp_path):
     assert replay.recorded_item_for_current_snapshot() is None
 
 
+def test_recorded_broadcast_advances_by_original_elapsed_time(tmp_path):
+    path = tmp_path / "timed_capture.jsonl"
+    snapshots = [
+        {"lap": 1, "timestamp": 1000.0, "session_time": 10.0},
+        {"lap": 2, "timestamp": 1001.0, "session_time": 11.0},
+        {"lap": 3, "timestamp": 1002.0, "session_time": 12.0},
+        {"lap": 4, "timestamp": 1003.0, "session_time": 13.0},
+    ]
+    path.write_text(
+        "".join(json.dumps(snapshot) + "\n" for snapshot in snapshots),
+        encoding="utf-8",
+    )
+    now = [50.0]
+    replay = ReplayTelemetry(path, clock=lambda: now[0])
+    replay.start_timed_playback()
+
+    now[0] = 50.4
+    replay.next_snapshot()
+    assert replay.get_lap() == 1
+
+    now[0] = 52.2
+    replay.next_snapshot()
+    assert replay.get_lap() == 3
+
+    now[0] = 53.1
+    replay.next_snapshot()
+    assert replay.get_lap() == 4
+
+
 def test_capture_recorder_writes_telemetry_events_and_metadata(tmp_path, monkeypatch):
     output = tmp_path / "race.jsonl"
     snapshot = SimpleSnapshot()

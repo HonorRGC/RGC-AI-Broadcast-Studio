@@ -1,4 +1,5 @@
 import json
+import time
 from pathlib import Path
 
 from broadcast.broadcast_queue import ScheduledBroadcast
@@ -8,17 +9,33 @@ from replay.replay_reader import ReplayReader
 class ReplayTelemetry:
     """Implements the same read interface as the live iRacing adapter."""
 
-    def __init__(self, filename):
+    def __init__(self, filename, clock=None):
         self.path = Path(filename)
         self.snapshots = ReplayReader(filename).load_all()
         self.current_index = 0
         self.controller = None
         self.recorded_items = self._load_recorded_items()
         self._delivered_event_indices = set()
+        self.clock = clock or time.monotonic
+        self.playback_started_at = None
+        self.capture_started_at = self._capture_start_timestamp()
 
     def attach_controller(self, controller):
         self.controller = controller
         return self
+
+    def start_timed_playback(self):
+        self.playback_started_at = self.clock()
+        self.current_index = 0
+        return self.current_snapshot()
+
+    def _capture_start_timestamp(self):
+        if not self.snapshots:
+            return 0.0
+        try:
+            return float(self.snapshots[0].timestamp or 0.0)
+        except (TypeError, ValueError):
+            return 0.0
 
     def _load_recorded_items(self):
         path = self.path.with_suffix(".events.jsonl")
@@ -60,16 +77,16 @@ class ReplayTelemetry:
         return self.snapshots[self.current_index]
 
     def next_snapshot(self):
-        if self.controller:
-            session_num = self.controller.get_current_session_num()
-            session_time = self.controller.get_session_time()
+        if self.playback_started_at is not None and self.capture_started_at > 0:
+            target_timestamp = self.capture_started_at + (
+                self.clock() - self.playback_started_at
+            )
             best_index = self.current_index
-            for index, snapshot in enumerate(self.snapshots):
-                marker = (int(snapshot.session_num), float(snapshot.session_time))
-                target = (int(session_num), float(session_time))
-                if marker <= target:
+            for index in range(self.current_index, len(self.snapshots)):
+                snapshot = self.snapshots[index]
+                if float(snapshot.timestamp or 0.0) <= target_timestamp:
                     best_index = index
-                elif int(snapshot.session_num) >= int(session_num):
+                else:
                     break
             self.current_index = best_index
             return self.current_snapshot()
@@ -79,6 +96,7 @@ class ReplayTelemetry:
     def reset(self):
         self.current_index = 0
         self._delivered_event_indices.clear()
+        self.playback_started_at = None
 
     def get_session_flags(self):
         snapshot = self.current_snapshot()

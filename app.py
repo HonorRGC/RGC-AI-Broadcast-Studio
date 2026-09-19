@@ -356,6 +356,7 @@ def run_source(
     driver_mode=False,
     recorded_broadcast=False,
 ):
+    recorded_audio_busy_until = 0.0
     while source.is_connected():
         if capture_recorder:
             capture_recorder.record_snapshot(source)
@@ -428,7 +429,9 @@ def run_source(
             )
         generated_item = engine.tick(source)
         if recorded_broadcast and hasattr(source, "recorded_item_for_current_snapshot"):
-            item = source.recorded_item_for_current_snapshot()
+            item = None
+            if time.monotonic() >= recorded_audio_busy_until:
+                item = source.recorded_item_for_current_snapshot()
         else:
             item = generated_item
         if overlay_server:
@@ -482,7 +485,13 @@ def run_source(
             if should_switch_camera_after_voice_starts(item):
                 if not getattr(item, "silent", False):
                     prefade_music_before_restart_call(item, caution_audio_bed)
-                    broadcast_with_actual_timing(booth, engine, item)
+                    playback_seconds = broadcast_with_actual_timing(booth, engine, item)
+                    if recorded_broadcast:
+                        recorded_audio_busy_until = reserve_recorded_audio_until(
+                            engine,
+                            item,
+                            playback_seconds,
+                        )
                     reserve_sponsor_commercial_if_needed(
                         item,
                         overlay_server,
@@ -525,7 +534,13 @@ def run_source(
                     )
                 if not getattr(item, "silent", False):
                     prefade_music_before_restart_call(item, caution_audio_bed)
-                    broadcast_with_actual_timing(booth, engine, item)
+                    playback_seconds = broadcast_with_actual_timing(booth, engine, item)
+                    if recorded_broadcast:
+                        recorded_audio_busy_until = reserve_recorded_audio_until(
+                            engine,
+                            item,
+                            playback_seconds,
+                        )
                     reserve_sponsor_commercial_if_needed(
                         item,
                         overlay_server,
@@ -593,6 +608,17 @@ def broadcast_with_actual_timing(booth, engine, item):
             item,
             playback_seconds,
         )
+    return playback_seconds
+
+
+def reserve_recorded_audio_until(engine, item, playback_seconds=0.0):
+    queue = engine.broadcast_queue
+    duration = float(playback_seconds or 0.0)
+    if duration <= 0:
+        duration = queue.estimate_speech_seconds(item.message, item.category)
+    gap = queue.estimate_item_gap_seconds(item)
+    tail = queue.estimate_tail_padding_seconds(item)
+    return time.monotonic() + duration + gap + tail
 
 
 def is_one_to_green_restart_call(item):
@@ -3860,6 +3886,7 @@ def main():
             raise RuntimeError("Replay contains no telemetry snapshots.")
         if source.recorded_items:
             engine.openai_director.set_enabled(False)
+            source.start_timed_playback()
             replay_controller = IRacingTelemetry()
             if replay_controller.startup():
                 source.attach_controller(replay_controller)
