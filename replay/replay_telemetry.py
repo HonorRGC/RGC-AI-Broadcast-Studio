@@ -10,6 +10,7 @@ class ReplayTelemetry:
     """Implements the same read interface as the live iRacing adapter."""
 
     def __init__(self, filename, clock=None):
+        self.recorded_broadcast = True
         self.path = Path(filename)
         self.snapshots = ReplayReader(filename).load_all()
         self.current_index = 0
@@ -45,8 +46,7 @@ class ReplayTelemetry:
         current = self.current_snapshot()
         if current is not None and not force:
             same_session = int(current.session_num) == marker[0]
-            seconds_ahead = marker[1] - float(current.session_time or 0.0)
-            if same_session and seconds_ahead <= float(forward_threshold_seconds):
+            if same_session:
                 self.last_controller_marker = marker
                 return False
 

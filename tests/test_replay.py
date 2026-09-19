@@ -138,6 +138,10 @@ def test_recorded_broadcast_can_start_at_current_iracing_session(tmp_path):
     assert replay.return_to_live()
     assert controller.seek_calls == [(2, 5.0)]
 
+    controller.session_time = 9999.0
+    assert not replay.synchronize_to_controller()
+    assert replay.current_index == 3
+
 
 def test_capture_recorder_writes_telemetry_events_and_metadata(tmp_path, monkeypatch):
     output = tmp_path / "race.jsonl"

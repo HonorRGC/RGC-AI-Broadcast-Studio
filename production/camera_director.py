@@ -134,6 +134,9 @@ class CameraDirector:
     def ensure_live_edge(self, telemetry, now):
         if self.mode != "auto":
             return None
+        if bool(getattr(telemetry, "recorded_broadcast", False)):
+            self.live_edge_initialized = True
+            return None
 
         checker = getattr(telemetry, "is_replay_at_live_edge", None)
         at_live_edge = checker() if checker else None

@@ -729,6 +729,18 @@ def test_auto_mode_returns_a_behind_replay_view_to_live():
     assert telemetry.return_to_live_calls == 1
 
 
+def test_recorded_broadcast_never_uses_live_edge_enforcement():
+    telemetry = CameraTelemetry()
+    telemetry.recorded_broadcast = True
+    telemetry.at_live_edge = False
+    director = CameraDirector(mode="auto", clock=lambda: 100.0)
+
+    decision = director.update(telemetry)
+
+    assert decision.status == "switched"
+    assert telemetry.return_to_live_calls == 0
+
+
 def test_live_edge_enforcement_is_suspended_during_incident_replay():
     telemetry = CameraTelemetry()
     telemetry.at_live_edge = False
