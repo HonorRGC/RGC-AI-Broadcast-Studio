@@ -135,8 +135,9 @@ def test_recorded_broadcast_can_start_at_current_iracing_session(tmp_path):
     assert replay.synchronize_to_controller()
     assert replay.current_index == 3
     assert replay.recorded_item_for_current_snapshot().message == "Race call"
+    assert replay.seek_replay_session_time(2, 3.5)
     assert replay.return_to_live()
-    assert controller.seek_calls == [(2, 5.0)]
+    assert controller.seek_calls == [(2, 3.5), (2, 5.0)]
 
     controller.session_time = 9999.0
     assert not replay.synchronize_to_controller()

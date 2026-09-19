@@ -540,4 +540,6 @@ Driver Mode lets the Studio learn and record a race while you are one of the dri
 
 Producer Assist remains available during playback. A producer can take manual camera control or search for a better caution angle, then return control to the recorded broadcast.
 
+During recorded playback, Producer Assist can select drivers and camera groups, pause, play, rewind, fast-forward, and search for a caution. **Return Live** means return to the current saved-broadcast time; it does not mean jump to the end of the iRacing replay. The Studio also re-synchronizes at one-to-green and green-flag calls to limit timing drift after a caution.
+
 Keep the three files with the same recording name together: `.jsonl`, `.events.jsonl`, and `.capture.json`. Driver Mode is an initial replay-broadcast workflow, so run a short AI race test before relying on it for a full event.

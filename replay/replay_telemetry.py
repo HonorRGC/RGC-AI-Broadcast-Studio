@@ -181,6 +181,11 @@ class ReplayTelemetry:
         return snapshot.session_time_remaining if snapshot else 0.0
 
     def seek_replay_session_time(self, session_num, session_time_seconds):
+        if self.controller:
+            return self.controller.seek_replay_session_time(
+                session_num,
+                session_time_seconds,
+            )
         return False
 
     def get_lap(self):
