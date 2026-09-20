@@ -152,6 +152,13 @@ class BroadcastQueue:
     def estimate_item_gap_seconds(self, item):
         if getattr(item, "dedupe_key", "") == "sponsor_read:starting_lineup":
             return 0.15
+        if item.category in {
+            "opening_welcome",
+            "opening_race_outlook",
+            "opening_pit_report",
+            "opening_lineup_handoff",
+        }:
+            return 0.18
         if item.category == "race_control" and self.is_short_lap_call(item.message):
             return 0.6
         if item.category == "booth_conversation":
@@ -161,6 +168,13 @@ class BroadcastQueue:
     def estimate_tail_padding_seconds(self, item):
         if getattr(item, "silent", False):
             return 0.0
+        if item.category in {
+            "opening_welcome",
+            "opening_race_outlook",
+            "opening_pit_report",
+            "opening_lineup_handoff",
+        }:
+            return 0.08
         if item.category.startswith("opening_field_rundown"):
             return 0.04
         return self.voice_tail_padding_seconds

@@ -48,9 +48,17 @@ def test_opening_introduces_crew_briefly_before_lineup():
     assert "I'm Mike" in track_message
     assert "Jeff in the booth" in track_message
     assert "Sarah on pit road" in track_message
-    assert len(track_message.split()) < 30
+    assert "Nashville has become a momentum race" in track_message
+    assert "mile-and-a-third oval" in track_message
+    assert "track temperature is 108 degrees Fahrenheit" in track_message
     assert "I'm Jeff" in first_segments[1].message
+    assert "Thanks" not in first_segments[1].message
+    assert "tire" in first_segments[1].message.lower()
     assert "I'm Sarah" in first_segments[2].message
+    assert "Thanks" not in first_segments[2].message
+    assert first_segments[0].priority == 10
+    assert first_segments[1].priority == 10
+    assert first_segments[2].priority == 10
     assert director.is_complete() is False
 
     results, drivers = build_lineup()

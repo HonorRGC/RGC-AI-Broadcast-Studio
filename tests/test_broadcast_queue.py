@@ -175,6 +175,17 @@ def test_starting_lineup_sponsor_handoff_uses_tight_gap():
     assert queue.estimate_item_gap_seconds(item) == 0.15
 
 
+def test_opening_crew_uses_quick_broadcast_handoffs():
+    queue = BroadcastQueue()
+    queue.add("Welcome", category="opening_welcome")
+    queue.items[0].created_at = 100.0
+
+    item = queue.next_item(now=100.0)
+
+    assert queue.estimate_item_gap_seconds(item) == 0.18
+    assert queue.estimate_tail_padding_seconds(item) == 0.08
+
+
 def test_spoken_feature_reserves_its_runtime():
     queue = BroadcastQueue()
     queue.add(

@@ -68,7 +68,7 @@ class OpeningDirector:
             self.track_info_sent = True
 
         if not self.race_outlook_sent:
-            segments.append(self.build_crew_color_intro(driver_lookup))
+            segments.append(self.build_crew_color_intro(driver_lookup, track_info))
             self.race_outlook_sent = True
 
         if not self.pit_report_sent:
@@ -127,10 +127,20 @@ class OpeningDirector:
         location = f" in {city}, {state}" if city and state else ""
 
         if compact:
+            details = []
+            for detail in (
+                self.track_opening_story(track_info),
+                self.track_description(track_info),
+                self.race_package_note(),
+                self.build_weather_summary(track_info),
+            ):
+                if detail:
+                    details.append(detail)
+            detail_text = f" {' '.join(details)}" if details else ""
             message = (
                 f"Good evening and welcome to {track_name}{location}. "
                 f"I'm {self.lead_name}, joined by {self.color_name} in the booth "
-                f"and {self.pit_name} on pit road."
+                f"and {self.pit_name} on pit road.{detail_text}"
             )
         else:
             details = []
@@ -341,11 +351,12 @@ class OpeningDirector:
             category="opening_race_outlook",
         )
 
-    def build_crew_color_intro(self, driver_lookup=None):
+    def build_crew_color_intro(self, driver_lookup=None, track_info=None):
         league_note = " We have championship stories throughout this field." if self.league_opening_story(driver_lookup) else ""
+        race_note = self.track_race_outlook(track_info or {})
         return OpeningSegment(
-            f"Thanks, {self.lead_name}. I'm {self.color_name}.{league_note} I'm ready to see who makes the first move.",
-            priority=9,
+            f"I'm {self.color_name}.{league_note} {race_note}",
+            priority=10,
             speaker="jeff",
             category="opening_race_outlook",
         )
@@ -404,8 +415,8 @@ class OpeningDirector:
 
     def build_crew_pit_intro(self):
         return OpeningSegment(
-            f"Thanks, {self.lead_name}. I'm {self.pit_name} on pit road. The crews are ready, and I'll have the strategy covered.",
-            priority=8,
+            f"I'm {self.pit_name} on pit road. The crews are ready, and I'll have the strategy covered.",
+            priority=10,
             speaker="sarah",
             category="opening_pit_report",
         )

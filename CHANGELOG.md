@@ -2,7 +2,8 @@
 
 ## Unreleased
 
-- Shortened the pre-race show into a quick Mike welcome and crew introduction, brief replies from Jeff and Sarah, then the starting-lineup sponsor and full grid.
+- Refined the pre-race show so Mike introduces the crew and retains the useful track, weather, temperature, and league-package setup before brief racing and pit-road reports from Jeff and Sarah.
+- Opening crew handoffs now use a near-immediate broadcast transition, and Sarah is guaranteed to speak before the starting-lineup sponsor and full grid.
 - The complete starting lineup is now protected through the final driver when the initial green arrives; the green-flag call waits its turn and uses more varied wording.
 - The optional pre-green hype line now airs only when time remains, and the extra opening sponsor read no longer delays the lineup.
 - Added Driver Mode to record live telemetry and approved broadcast calls silently while the user races.
