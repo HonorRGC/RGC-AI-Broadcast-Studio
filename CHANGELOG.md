@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## Version 1.0.6 - Recorded Broadcast and Pre-Race Polish
 
 - Refined the pre-race show so Mike introduces the crew and retains the useful track, weather, temperature, and league-package setup before brief racing and pit-road reports from Jeff and Sarah.
 - Opening crew handoffs now use a near-immediate broadcast transition, and Sarah is guaranteed to speak before the starting-lineup sponsor and full grid.
