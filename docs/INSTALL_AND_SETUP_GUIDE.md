@@ -538,6 +538,8 @@ Driver Mode lets the Studio learn and record a race while you are one of the dri
 8. Open the matching saved replay in iRacing and position it wherever you want the broadcast to begin. You can start late in practice, near the end of qualifying, on the grid, or at the beginning of the race.
 9. Click **Play Recorded Broadcast**. The Studio finds the closest matching session time, skips earlier calls, and restores audio, overlays, cameras, sponsors, and caution presentation. If you jump forward from practice to qualifying or directly to the race, the recorded broadcast re-synchronizes and does not read the skipped calls.
 
+You may start **Play Recorded Broadcast** before pressing Play in iRacing. The Studio will show as armed and will not begin commentary, driver cards, music, or automatic camera moves until iRacing's replay frames actually start moving. The replay frame counter is the master clock, so pausing or changing replay speed no longer lets the broadcast run laps ahead.
+
 Producer Assist remains available during playback. A producer can take manual camera control or search for a better caution angle, then return control to the recorded broadcast.
 
 During recorded playback, Producer Assist can select drivers and camera groups, pause, play, rewind, fast-forward, and search for a caution. **Return Live** means return to the current saved-broadcast time; it does not mean jump to the end of the iRacing replay. The Studio also re-synchronizes at one-to-green and green-flag calls to limit timing drift after a caution.

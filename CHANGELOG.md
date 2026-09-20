@@ -9,6 +9,7 @@
 - Recorded broadcasts can start from the current practice, qualifying, grid, or race replay position and automatically skip earlier captured calls when the producer jumps forward to another session.
 - Recorded broadcasts no longer run the live-race camera safeguard that sends iRacing to the live edge, which is the end of a saved replay.
 - Recorded playback now forwards caution/event seeks to iRacing and re-anchors at one-to-green and green-flag calls to reduce restart timing drift.
+- Recorded Broadcast now waits for iRacing replay frames to move and uses the replay frame counter as its master clock, keeping calls, driver cards, cameras, pauses, and session playback aligned even when the Studio starts first.
 
 ## Version 1.0.5 - Model and Battle Call Refresh
 

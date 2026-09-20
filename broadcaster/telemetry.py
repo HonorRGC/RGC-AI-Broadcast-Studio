@@ -59,6 +59,18 @@ class IRacingTelemetry:
         except (TypeError, ValueError):
             return None
 
+    def get_replay_frame_number(self):
+        try:
+            return int(self.safe_read("ReplayFrameNum"))
+        except (TypeError, ValueError):
+            return None
+
+    def get_replay_play_speed(self):
+        try:
+            return int(self.safe_read("ReplayPlaySpeed"))
+        except (TypeError, ValueError):
+            return None
+
     def return_to_live(self):
         try:
             seek_sent = self.ir.replay_search(irsdk.RpySrchMode.to_end)

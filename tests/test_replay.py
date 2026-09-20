@@ -144,6 +144,41 @@ def test_recorded_broadcast_can_start_at_current_iracing_session(tmp_path):
     assert replay.current_index == 3
 
 
+def test_recorded_broadcast_waits_for_iracing_replay_frames_to_move(tmp_path):
+    path = tmp_path / "frame_clock.jsonl"
+    snapshots = [
+        {"lap": 1, "timestamp": 1000.0, "session_num": 2, "session_type": "Race", "session_time": 10.0},
+        {"lap": 2, "timestamp": 1001.0, "session_num": 2, "session_type": "Race", "session_time": 11.0},
+        {"lap": 3, "timestamp": 1002.0, "session_num": 2, "session_type": "Race", "session_time": 12.0},
+    ]
+    path.write_text(
+        "".join(json.dumps(snapshot) + "\n" for snapshot in snapshots),
+        encoding="utf-8",
+    )
+    controller = FakeReplayController(
+        session_num=2,
+        session_time=10.0,
+        session_type="Race",
+        replay_frame=600,
+    )
+    replay = ReplayTelemetry(path).attach_controller(controller)
+
+    replay.next_snapshot()
+    replay.next_snapshot()
+    assert not replay.recorded_playback_is_ready()
+    assert replay.current_index == 0
+
+    controller.replay_frame = 601
+    replay.next_snapshot()
+    assert replay.recorded_playback_is_ready()
+    assert replay.current_index == 0
+
+    controller.replay_frame = 721
+    replay.next_snapshot()
+    assert replay.current_index == 2
+    assert replay.get_lap() == 3
+
+
 def test_capture_recorder_writes_telemetry_events_and_metadata(tmp_path, monkeypatch):
     output = tmp_path / "race.jsonl"
     snapshot = SimpleSnapshot()
@@ -173,11 +208,12 @@ class SimpleSnapshot:
 
 
 class FakeReplayController:
-    def __init__(self, session_num, session_time, session_type):
+    def __init__(self, session_num, session_time, session_type, replay_frame=0):
         self.session_num = session_num
         self.session_time = session_time
         self.session_type = session_type
         self.seek_calls = []
+        self.replay_frame = replay_frame
 
     def get_current_session_num(self):
         return self.session_num
@@ -187,6 +223,9 @@ class FakeReplayController:
 
     def get_session_type(self):
         return self.session_type
+
+    def get_replay_frame_number(self):
+        return self.replay_frame
 
     def seek_replay_session_time(self, session_num, session_time):
         self.seek_calls.append((session_num, session_time))

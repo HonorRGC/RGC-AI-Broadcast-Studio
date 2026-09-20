@@ -377,6 +377,16 @@ def run_source(
                 practice_presentation_director,
                 anthem_director,
             )
+        if (
+            recorded_broadcast
+            and hasattr(source, "recorded_playback_is_ready")
+            and not source.recorded_playback_is_ready()
+        ):
+            if hasattr(source, "next_snapshot"):
+                source.next_snapshot()
+            if tick_seconds > 0:
+                time.sleep(tick_seconds)
+            continue
         if not driver_mode:
             report_practice_presentation(
                 practice_presentation_director.update(
@@ -3900,12 +3910,9 @@ def main():
             replay_controller = IRacingTelemetry()
             if replay_controller.startup():
                 source.attach_controller(replay_controller)
-                source.synchronize_to_controller(force=True)
-                source.start_timed_playback(reset_index=False)
-                current = source.current_snapshot()
                 print(
-                    "Recorded Broadcast: synchronized to iRacing at "
-                    f"{current.session_type} session time {current.session_time:.1f}s."
+                    "Recorded Broadcast: armed and waiting for the iRacing replay "
+                    "frames to begin moving."
                 )
             else:
                 source.start_timed_playback(reset_index=True)

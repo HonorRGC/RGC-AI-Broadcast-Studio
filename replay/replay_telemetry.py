@@ -21,10 +21,57 @@ class ReplayTelemetry:
         self.playback_started_at = None
         self.capture_started_at = self._capture_start_timestamp()
         self.last_controller_marker = None
+        self.playback_ready = False
+        self.controller_frame_anchor = None
+        self.controller_frame_observed = None
+        self.pending_frame_reanchor = False
 
     def attach_controller(self, controller):
         self.controller = controller
+        self.arm_controller_playback()
         return self
+
+    def arm_controller_playback(self):
+        self.playback_ready = False
+        self.controller_frame_anchor = self._controller_frame_number()
+        self.controller_frame_observed = self.controller_frame_anchor
+        self.pending_frame_reanchor = False
+        self.playback_started_at = None
+        return self.controller_frame_anchor
+
+    def recorded_playback_is_ready(self):
+        return not self.controller or self.playback_ready
+
+    def _controller_frame_number(self):
+        if not self.controller:
+            return None
+        reader = getattr(self.controller, "get_replay_frame_number", None)
+        if not reader:
+            return None
+        try:
+            value = reader()
+            return int(value) if value is not None else None
+        except (TypeError, ValueError):
+            return None
+
+    def _activate_controller_playback_if_moving(self):
+        frame = self._controller_frame_number()
+        if frame is None:
+            return False
+        if self.controller_frame_observed is None:
+            self.controller_frame_observed = frame
+            self.controller_frame_anchor = frame
+            return False
+        if frame == self.controller_frame_observed:
+            return False
+        self.synchronize_to_controller(force=True)
+        self.playback_ready = True
+        self.controller_frame_anchor = frame
+        self.controller_frame_observed = frame
+        snapshot = self.current_snapshot()
+        if snapshot is not None:
+            self.capture_started_at = float(snapshot.timestamp or 0.0)
+        return True
 
     def start_timed_playback(self, reset_index=False):
         if reset_index:
@@ -75,6 +122,10 @@ class ReplayTelemetry:
         self.current_index = target_index
         self.last_controller_marker = marker
         self.start_timed_playback(reset_index=False)
+        frame = self._controller_frame_number()
+        if frame is not None:
+            self.controller_frame_anchor = frame
+            self.controller_frame_observed = frame
         return True
 
     def _mark_events_before(self, snapshot_index):
@@ -133,7 +184,31 @@ class ReplayTelemetry:
 
     def next_snapshot(self):
         if self.controller:
+            if not self.playback_ready:
+                self._activate_controller_playback_if_moving()
+                return self.current_snapshot()
             self.synchronize_to_controller(force=False)
+            frame = self._controller_frame_number()
+            if self.pending_frame_reanchor and frame is not None:
+                self.controller_frame_anchor = frame
+                self.controller_frame_observed = frame
+                snapshot = self.current_snapshot()
+                if snapshot is not None:
+                    self.capture_started_at = float(snapshot.timestamp or 0.0)
+                self.pending_frame_reanchor = False
+            if frame is not None and self.controller_frame_anchor is not None:
+                elapsed = max(0.0, (frame - self.controller_frame_anchor) / 60.0)
+                target_timestamp = self.capture_started_at + elapsed
+                best_index = self.current_index
+                for index in range(self.current_index, len(self.snapshots)):
+                    snapshot = self.snapshots[index]
+                    if float(snapshot.timestamp or 0.0) <= target_timestamp:
+                        best_index = index
+                    else:
+                        break
+                self.current_index = best_index
+                self.controller_frame_observed = frame
+                return self.current_snapshot()
         if self.playback_started_at is not None and self.capture_started_at > 0:
             target_timestamp = self.capture_started_at + (
                 self.clock() - self.playback_started_at
@@ -155,6 +230,10 @@ class ReplayTelemetry:
         self._delivered_event_indices.clear()
         self.playback_started_at = None
         self.last_controller_marker = None
+        self.playback_ready = False
+        self.controller_frame_anchor = None
+        self.controller_frame_observed = None
+        self.pending_frame_reanchor = False
 
     def get_session_flags(self):
         snapshot = self.current_snapshot()
@@ -241,10 +320,13 @@ class ReplayTelemetry:
             snapshot = self.current_snapshot()
             if snapshot is None:
                 return False
-            return self.controller.seek_replay_session_time(
+            accepted = self.controller.seek_replay_session_time(
                 snapshot.session_num,
                 snapshot.session_time,
             )
+            if accepted:
+                self.pending_frame_reanchor = True
+            return accepted
         return False
 
     def __getattr__(self, name):
