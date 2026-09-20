@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Shortened the pre-race show into a quick Mike welcome and crew introduction, brief replies from Jeff and Sarah, then the starting-lineup sponsor and full grid.
+- The complete starting lineup is now protected through the final driver when the initial green arrives; the green-flag call waits its turn and uses more varied wording.
+- The optional pre-green hype line now airs only when time remains, and the extra opening sponsor read no longer delays the lineup.
 - Added Driver Mode to record live telemetry and approved broadcast calls silently while the user races.
 - Added recorded-broadcast playback with the original commentary, overlays, camera targets, and iRacing replay controls.
 - Added Studio controls to choose and play a Driver Mode recording after opening its matching iRacing replay.

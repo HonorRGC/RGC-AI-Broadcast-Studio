@@ -264,7 +264,7 @@ def test_initial_one_to_green_keeps_the_opening_package_available():
         item.dedupe_key == "race_control:one_to_green:initial"
         for item in engine.broadcast_queue.items
     )
-    assert not any(item.category == "opening_race_outlook" for item in engine.broadcast_queue.items)
+    assert any(item.category == "opening_race_outlook" for item in engine.broadcast_queue.items)
     assert any(item.category == "opening_pit_report" for item in engine.broadcast_queue.items)
     assert any(
         item.category.startswith("opening_field_rundown")
@@ -272,7 +272,7 @@ def test_initial_one_to_green_keeps_the_opening_package_available():
     )
 
 
-def test_engine_queues_sponsor_read_after_opening_lineup():
+def test_engine_does_not_add_a_second_opening_sponsor_after_lineup():
     results = [
         {"CarIdx": index, "Position": index, "LapsComplete": 0}
         for index in range(5)
@@ -305,10 +305,7 @@ def test_engine_queues_sponsor_read_after_opening_lineup():
         item for item in engine.broadcast_queue.items
         if item.category == "sponsor_read"
     ]
-    assert len(sponsor_items) == 1
-    assert sponsor_items[0].message == "Opening sponsor read."
-    assert sponsor_items[0].priority == 8
-    assert sponsor_items[0].delay_seconds == 1.0
+    assert sponsor_items == []
 
 
 def test_starting_lineup_sponsor_is_folded_into_lineup_handoff():

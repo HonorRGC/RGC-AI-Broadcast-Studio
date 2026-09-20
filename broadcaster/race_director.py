@@ -84,6 +84,7 @@ class RaceDirector:
         self.last_results = []
         self.last_driver_lookup = {}
         self.admin_caution_pending = False
+        self.green_call_index = 0
 
     def mark_admin_caution_pending(self):
         self.admin_caution_pending = True
@@ -229,9 +230,29 @@ class RaceDirector:
             "sponsor_read"
         )
         sponsor_delayed_green = bool(sponsor_pending or sponsor_on_air)
+        initial_start = not self.race_started
+        lineup_categories = tuple(
+            item.category
+            for item in getattr(scheduler, "items", ())
+            if str(item.category).startswith("opening_field_rundown")
+        )
+        opening_categories = (
+            "opening_welcome",
+            "opening_race_outlook",
+            "opening_pit_report",
+            "opening_lineup_handoff",
+        )
+        preserve_categories = ("sponsor_read",) + lineup_categories
+        if lineup_categories:
+            preserve_categories += opening_categories
         scheduler.clear_for_race_control(
-            preserve_categories=("sponsor_read",),
-            reset_busy=not sponsor_on_air,
+            preserve_categories=preserve_categories,
+            reset_busy=not sponsor_on_air and not (
+                initial_start
+                and str(getattr(scheduler, "active_category", "")).startswith(
+                    "opening_field_rundown"
+                )
+            ),
         )
         track_name = self.get_track_name(track_info)
 
@@ -240,13 +261,24 @@ class RaceDirector:
         elif sponsor_delayed_green:
             message = f"We are under green at {track_name}."
         elif self.race_started and self.previous_phase in [RacePhase.CAUTION, RacePhase.ONE_TO_GREEN]:
-            message = f"Green flag is back in the air! We are racing again at {track_name}!"
+            options = (
+                "Green flag is back in the air! We are racing again!",
+                f"Back to green at {track_name}!",
+                "The pace car is in and the race is back underway!",
+            )
+            message = options[self.green_call_index % len(options)]
         else:
-            message = f"Green flag is in the air! We are racing at {track_name}!"
+            options = (
+                f"Green flag is in the air! We are racing at {track_name}!",
+                f"The pace car is in, and we are underway at {track_name}!",
+                f"They are off! The race is underway at {track_name}!",
+            )
+            message = options[self.green_call_index % len(options)]
+        self.green_call_index += 1
 
         scheduler.add(
             message,
-            priority=7 if sponsor_pending else 12,
+            priority=7 if sponsor_pending or initial_start else 12,
             category="race_control",
             protected=True,
             speaker="lead",

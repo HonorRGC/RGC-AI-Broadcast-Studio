@@ -658,8 +658,9 @@ class BroadcastEngine:
                 dedupe_key=dedupe_key,
             )
 
-        if self.opening_director.is_complete():
-            self._queue_opening_sponsor_read()
+        # Keep the pre-race package moving. The dedicated starting-lineup
+        # sponsor is folded into the handoff above, so a second opening read
+        # would only delay the grid.
 
     def starting_lineup_sponsor_message(self):
         segment_reader = getattr(self.sponsor_read_director, "segment_read", None)

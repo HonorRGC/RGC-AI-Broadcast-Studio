@@ -205,6 +205,54 @@ def test_green_flag_waits_for_pending_sponsor_read():
     assert green.message == "We are under green at Daytona."
 
 
+def test_initial_green_waits_until_full_starting_lineup_is_finished():
+    director = RaceDirector()
+    queue = BroadcastQueue()
+    queue.add(
+        "Welcome and meet the crew.",
+        priority=10,
+        category="opening_welcome",
+        protected=True,
+    )
+    queue.add(
+        "The starting lineup is presented by Lineup Co.",
+        priority=9,
+        category="opening_lineup_handoff",
+        protected=True,
+    )
+    for position in range(1, 6):
+        queue.add(
+            f"{position}th, Driver {position}.",
+            priority=9,
+            category=f"opening_field_rundown_{position}",
+            protected=True,
+        )
+    queue.add(
+        "The field is set.",
+        priority=7,
+        category="opening_hype",
+        protected=True,
+    )
+    director.previous_phase = RacePhase.ONE_TO_GREEN
+    director.phase = RacePhase.GREEN
+
+    director.handle_green_flag(queue, {"track_name": "Daytona"})
+
+    categories = [item.category for item in queue.items]
+    assert "opening_hype" not in categories
+    assert categories.count("opening_lineup_handoff") == 1
+    assert len([category for category in categories if category.startswith("opening_field_rundown")]) == 5
+    assert queue.next_item().category == "opening_welcome"
+    queue.busy_until = 0
+    assert queue.next_item().category == "opening_lineup_handoff"
+    for _ in range(5):
+        queue.busy_until = 0
+        assert queue.next_item().category.startswith("opening_field_rundown")
+    queue.busy_until = 0
+    green = queue.next_item()
+    assert green.dedupe_key.startswith("race_control:green")
+
+
 def test_delayed_restart_green_uses_back_under_green_wording():
     director = RaceDirector()
     director.race_started = True

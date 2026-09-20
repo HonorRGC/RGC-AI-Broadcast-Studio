@@ -34,53 +34,41 @@ def build_lineup(count=12, zero_based=True):
     return results, drivers
 
 
-def test_opening_waits_for_lineup_after_welcome_and_weather():
+def test_opening_introduces_crew_briefly_before_lineup():
     director = OpeningDirector()
 
     first_segments = director.update(TrackTelemetry(), [], {})
 
     assert [segment.category for segment in first_segments] == [
         "opening_welcome",
+        "opening_race_outlook",
+        "opening_pit_report",
     ]
     track_message = first_segments[0].message
-    assert "momentum race" in track_message
     assert "I'm Mike" in track_message
-    assert "partly cloudy" in track_message.lower()
-    assert "mile-and-a-third oval" in track_message
-    assert "pace, tire life" not in track_message
-    assert "balancing track position, tire life" not in track_message
-    assert "81 degrees Fahrenheit" in track_message
-    assert "rain chance is 0 percent" in track_message
-    assert "dynamic" not in track_message.lower()
-    assert "hotter track should make the tires give up faster" in track_message
+    assert "Jeff in the booth" in track_message
+    assert "Sarah on pit road" in track_message
+    assert len(track_message.split()) < 30
+    assert "I'm Jeff" in first_segments[1].message
+    assert "I'm Sarah" in first_segments[2].message
     assert director.is_complete() is False
 
     results, drivers = build_lineup()
     lineup_segments = director.update(TrackTelemetry(), results, drivers)
 
-    assert len(lineup_segments) == 16
+    assert len(lineup_segments) == 14
     assert lineup_segments[0].category == "opening_lineup_handoff"
-    assert "send it over to Jeff for the first ten" in lineup_segments[0].message
+    assert "send it to Jeff for the starting lineup" in lineup_segments[0].message
     assert lineup_segments[1].category == "opening_field_rundown_1"
-    assert lineup_segments[-3].category == "opening_pit_handoff"
-    assert lineup_segments[-2].category == "opening_pit_report"
     assert lineup_segments[-1].category == "opening_hype"
-    assert "Thanks, Mike" in lineup_segments[1].message
-    assert "I'm Jeff" in lineup_segments[1].message
     assert "12-car field" in lineup_segments[1].message
     assert "Pole, the 1 of Driver 1" in lineup_segments[1].message
-    assert "12th, the 12 of Driver 12" in lineup_segments[-4].message
+    assert "12th, the 12 of Driver 12" in lineup_segments[-2].message
     assert lineup_segments[1].camera_sequence == (0,)
     assert lineup_segments[1].camera_sequence_steps == ((0, "Rear Chase", 0),)
     assert lineup_segments[1].camera_return_home_after_sequence is False
-    assert lineup_segments[-4].camera_return_home_after_sequence is True
+    assert lineup_segments[-2].camera_return_home_after_sequence is True
     assert lineup_segments[1].speaker == "jeff"
-    assert lineup_segments[-3].speaker == "lead"
-    assert "check in with Sarah on pit road" in lineup_segments[-3].message
-    assert lineup_segments[-2].speaker == "sarah"
-    assert "Thanks, Mike" in lineup_segments[-2].message
-    assert "I'm Sarah" in lineup_segments[-2].message
-    assert "pit road" in lineup_segments[-2].message.lower()
     assert lineup_segments[-1].speaker == "lead"
     assert lineup_segments[-1].delay_seconds == 4.0
     assert "Let's settle in and go racing" in lineup_segments[-1].message
@@ -88,7 +76,7 @@ def test_opening_waits_for_lineup_after_welcome_and_weather():
     assert "boys and girls" not in lineup_segments[-1].message
     assert (
         "That is your 12-car field for 80 laps at Nashville Superspeedway"
-        in lineup_segments[-4].message
+        in lineup_segments[-2].message
     )
     assert director.is_complete() is True
 
@@ -149,8 +137,7 @@ def test_opening_uses_custom_broadcaster_names():
     results, drivers = build_lineup(count=22)
     segments = director.build_field_rundown(results, drivers)
 
-    assert "I'm James" in segments[0].message
-    assert "Lee" in segments[0].message
+    assert "22-car field" in segments[0].message
     assert "Continuing with the next ten in the lineup" in segments[10].message
     assert "Back to James for the next ten in the lineup" in segments[20].message
     assert "I'm Amanda" in director.build_pit_report(TrackTelemetry().get_track_info()).message
@@ -163,8 +150,6 @@ def test_lineup_opening_handoff_varies_with_field_size_and_track():
     second = director.lineup_opening_handoff(field_size=26, track_name="Daytona")
 
     assert first != second
-    assert "Mike" in first
-    assert "Jeff" in first
     assert "25-car field" in first
 
 
