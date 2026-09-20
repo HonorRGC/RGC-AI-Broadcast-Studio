@@ -2,6 +2,7 @@
 
 ## Version 1.0.6 - Recorded Broadcast and Pre-Race Polish
 
+- Expanded the in-app Help / Setup Guide with Driver Mode playback, current Producer Assist controls, manual camera ownership, sponsor tools, caution-review presentation, and the protected pre-race lineup flow.
 - Refined the pre-race show so Mike introduces the crew and retains the useful track, weather, temperature, and league-package setup before brief racing and pit-road reports from Jeff and Sarah.
 - Opening crew handoffs now use a near-immediate broadcast transition, and Sarah is guaranteed to speak before the starting-lineup sponsor and full grid.
 - The complete starting lineup is now protected through the final driver when the initial green arrives; the green-flag call waits its turn and uses more varied wording.

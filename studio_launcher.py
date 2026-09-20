@@ -3736,11 +3736,13 @@ def build_help_tab(
         Start Broadcast runs the broadcast engine, overlay, Producer Assist control room, cameras, caution replay controls, and race control.
         Producer Assist opens automatically after Start Broadcast. If you close it, use the Producer Assist link to open it again.
         Use Producer Assist to turn OpenAI, ElevenLabs, and auto cameras on or off during the same running broadcast.
+        Manual driver or camera selection takes camera control and holds the selected driver card while the human broadcaster makes the call.
+        Click Return Live when you want automatic commentary and cameras to resume.
         Stop Broadcast stops a broadcast launched by the studio.
 
-        Important: RGC AI Broadcast Studio is currently for live iRacing sessions only. Start it while the session is live
-        during practice, qualifying, grid, or race. Saved iRacing replays are not officially supported for normal broadcasts yet.
-        Replay SDK data can behave differently from live telemetry, so cameras, timing, cautions, scoring, and broadcast calls may not line up correctly.
+        For an ordinary AI or human-assisted broadcast, start the Studio while the iRacing session is live during practice,
+        qualifying, grid, or race. Do not use Start Broadcast by itself to call a saved replay. Use Driver Mode and
+        Play Recorded Broadcast for the supported recorded-race workflow described below.
 
         Race Admin Send Mode controls how admin commands are handled. clipboard is broadcast-safe and copies the command for manual send.
         open_chat copies the command and opens iRacing text chat for quick Ctrl+V/Enter. ui_paste is testing-only and may show iRacing chat/window on the broadcast.
@@ -3749,7 +3751,39 @@ def build_help_tab(
         """,
     )
     section(
-        "10. Remote helper setup with Tailscale",
+        "10. Driver Mode and recorded broadcasts",
+        """
+        Driver Mode records the live race while you drive without playing broadcaster audio or allowing automatic camera changes.
+
+        1. Turn on Driver Mode — Record Race Silently and click Start Broadcast before or during the live event.
+        2. Race normally. Keep the Studio running so it can save telemetry, approved calls, overlays, and camera targets.
+        3. After the race, save/open the matching iRacing replay and turn Driver Mode off.
+        4. Choose the recording with Recorded Broadcast File. Keep its .jsonl, .events.jsonl, and .capture.json files together.
+        5. Click Play Recorded Broadcast. You can press this before starting replay playback; the Studio waits silently until replay frames move.
+
+        The replay frame counter controls timing, so pausing or changing replay speed also pauses or changes the recorded broadcast timing.
+        You may begin at practice, qualifying, grid, or race; the Studio finds the current session location and skips earlier saved calls.
+        During cautions, Producer Assist may take camera control, rewind, change drivers or angles, and then Return Live to the current recorded-broadcast time.
+        Run a short test before relying on Driver Mode for a full league production because the matching saved iRacing replay is required.
+        """,
+    )
+    section(
+        "11. Producer Assist broadcast tools",
+        """
+        Producer Assist is both the AI control room and a tool for human broadcasters. It shows director suggestions, current broadcast focus,
+        driver and league statistics, pit strategy, race events, possible incidents, points information, and camera/replay controls.
+
+        Use the leaderboard selector for Top Down, Scroll, Flo, or Brazen without stepping through every style on air.
+        Manual sponsor buttons play a chosen Sponsor 1-5 item. Crank It Up, caution music, and presentation graphics can also be triggered manually.
+        During a caution, the full-screen Caution Review Slate or selected review video can hide camera searching and rewinding from viewers.
+        The top-ten reset graphic, pit-road report, race recap, points, and final-results graphics are handled through the same running overlay.
+
+        The pre-race show introduces Mike, Jeff, and Sarah before the starting-lineup sponsor and full grid. If the race goes green early,
+        the Studio protects the remaining lineup calls, finishes announcing the field, and then makes the opening green-flag call.
+        """,
+    )
+    section(
+        "12. Remote helper setup with Tailscale",
         f"""
         Recommended for trusted league admins in different locations: use Tailscale.
         Download Tailscale for Windows here: {TAILSCALE_WINDOWS_DOWNLOAD_URL}
@@ -3766,14 +3800,14 @@ def build_help_tab(
         """,
     )
     section(
-        "11. Updates",
+        "13. Updates",
         """
         Use Check for Updates to compare this installed version against the latest GitHub Release.
         Early versions open the release/download page instead of auto-installing. This is safer while the app is still moving quickly.
         """,
     )
     section(
-        "12. Race-night checklist",
+        "14. Race-night checklist",
         """
         Open iRacing, open Streamlabs/OBS, confirm the browser overlay is visible, load your profile,
         refresh Broadcast Health, then start during practice. Run a short smoke test before league night:

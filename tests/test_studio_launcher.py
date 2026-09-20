@@ -201,6 +201,17 @@ def test_start_broadcast_auto_opens_producer_assist():
     assert "trusted admins on your Tailscale network" in source
 
 
+def test_help_guide_documents_driver_mode_and_current_producer_tools():
+    source = Path("studio_launcher.py").read_text(encoding="utf-8")
+
+    assert '"10. Driver Mode and recorded broadcasts"' in source
+    assert "the Studio waits silently until replay frames move" in source
+    assert '"11. Producer Assist broadcast tools"' in source
+    assert "Caution Review Slate" in source
+    assert "protects the remaining lineup calls" in source
+    assert "Do not use Start Broadcast by itself to call a saved replay" in source
+
+
 def test_studio_mousewheel_scrolls_from_full_window():
     source = Path("studio_launcher.py").read_text(encoding="utf-8")
 

@@ -21,13 +21,13 @@ You need:
 
 If you only want overlays, cameras, and race information for a human broadcaster, start the broadcast and use **Producer Assist** to turn OpenAI and ElevenLabs off.
 
-## Live-session support only
+## Live broadcasts and Driver Mode recordings
 
-RGC AI Broadcast Studio is currently built for **live iRacing sessions only**.
+Normal **Start Broadcast** operation is built for live iRacing sessions. Use it during a live practice, qualifying, grid, race, hosted session, league race, official race, or AI race.
 
-Use it during a live practice, qualifying, grid, race, hosted session, league race, official race, or AI race. Do not use saved iRacing replays for normal broadcasts yet.
+Version 1.0.6 also includes **Driver Mode** for recording a race silently while you drive and playing that saved broadcast afterward with its matching iRacing replay. Driver Mode records the live telemetry and approved calls first; it does not attempt to invent a new broadcast from replay SDK data alone.
 
-Replay support is not officially supported because some replay data from the iRacing SDK does not behave the same as live telemetry. In saved replays, cameras, scoring, timing, caution detection, pit reporting, and broadcast calls may not line up correctly.
+Do not use Start Broadcast by itself to call a saved replay. For recorded races, follow the Driver Mode instructions later in this guide and keep the `.jsonl`, `.events.jsonl`, and `.capture.json` files together.
 
 Best practice:
 
@@ -371,7 +371,7 @@ Start Broadcast
 
 Then open Producer Assist if you want to switch between AI broadcast and human-broadcaster control during the same running session.
 
-Important: start the Studio while the iRacing session is live. Saved iRacing replay broadcasts are not supported for normal use yet. Replay controls inside Producer Assist are for live-session caution/incident review, not for running a full broadcast from a saved replay file.
+Important: use Start Broadcast while the iRacing session is live. For a saved race, first capture it live with Driver Mode and then use Play Recorded Broadcast with the matching iRacing replay. Replay controls inside Producer Assist support both live-session caution review and manual camera review during recorded-broadcast playback.
 
 Race Control note: `Race Admin Send Mode = clipboard` is the broadcast-safe default. It copies commands like `!yellow` or `!eol #34` so the admin can send them without the program opening iRacing chat on stream. `open_chat` copies the command and opens iRacing text chat for quick Ctrl+V/Enter. `ui_paste` is testing-only and may show the iRacing window/chat box in the broadcast capture.
 
