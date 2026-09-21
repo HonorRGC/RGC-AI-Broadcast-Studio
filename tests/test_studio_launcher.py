@@ -987,6 +987,7 @@ def test_launcher_builds_velocity_league_import_command():
         url="https://www.velocityleague.gg/trrl",
         series_name="Truck Series",
         stats_output="league/season.csv",
+        career_output="league/career.csv",
         drivers_output="league/drivers.csv",
         schedule_output="league/race_schedule.csv",
         dry_run=True,
@@ -998,6 +999,9 @@ def test_launcher_builds_velocity_league_import_command():
     assert ["--series", "Truck Series"] == command[command.index("--series") : command.index("--series") + 2]
     assert ["--stats-output", "league/season.csv"] == command[
         command.index("--stats-output") : command.index("--stats-output") + 2
+    ]
+    assert ["--career-output", "league/career.csv"] == command[
+        command.index("--career-output") : command.index("--career-output") + 2
     ]
     assert ["--drivers-output", "league/drivers.csv"] == command[
         command.index("--drivers-output") : command.index("--drivers-output") + 2

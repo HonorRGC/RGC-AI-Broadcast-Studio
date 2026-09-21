@@ -2,6 +2,7 @@
 
 ## Version 1.0.6 - Recorded Broadcast and Pre-Race Polish
 
+- Rebuilt the Velocity League importer around the site's structured driver records so statistics are no longer mistaken for names, names and car numbers match by customer ID, signed drivers are included, and season standings, combined career stats, and the full selected-series schedule import from one league URL.
 - Expanded the in-app Help / Setup Guide with Driver Mode playback, current Producer Assist controls, manual camera ownership, sponsor tools, caution-review presentation, and the protected pre-race lineup flow.
 - Refined the pre-race show so Mike introduces the crew and retains the useful track, weather, temperature, and league-package setup before brief racing and pit-road reports from Jeff and Sarah.
 - Opening crew handoffs now use a near-immediate broadcast transition, and Sarah is guaranteed to speak before the starting-lineup sponsor and full grid.

@@ -1,11 +1,12 @@
 import argparse
 import csv
 import html
+import json
 import re
 import sys
 from pathlib import Path
 from urllib.error import HTTPError, URLError
-from urllib.parse import urljoin, urlparse, urlunparse
+from urllib.parse import parse_qs, urlencode, urljoin, urlparse, urlunparse
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 
@@ -199,6 +200,177 @@ def normalize_number(value):
     return text.lstrip("#")
 
 
+def extract_embedded_records(document, name_key="name"):
+    """Read Velocity's structured Next.js records instead of guessing from display text."""
+    decoded = html.unescape(str(document or "")).replace(r'\"', '"')
+    decoder = json.JSONDecoder()
+    records = []
+    seen = set()
+    for match in re.finditer(r'\{"cust_id"', decoded):
+        try:
+            record, _end = decoder.raw_decode(decoded[match.start() :])
+        except (json.JSONDecodeError, TypeError, ValueError):
+            continue
+        if not isinstance(record, dict) or name_key not in record:
+            continue
+        signature = json.dumps(record, sort_keys=True, default=str)
+        if signature in seen:
+            continue
+        records.append(record)
+        seen.add(signature)
+    return records
+
+
+def parse_structured_standings(document):
+    rows = []
+    seen_customers = set()
+    position = 0
+    for record in extract_embedded_records(document, name_key="display_name"):
+        cust_id = str(record.get("cust_id") or "").strip()
+        if not cust_id or cust_id in seen_customers:
+            continue
+        name = clean_driver_name(record.get("display_name"))
+        number = normalize_number(record.get("car_number"))
+        if not name:
+            continue
+        position += 1
+        race_entries = record.get("raceEntries") or record.get("raceDetails") or []
+        completed_entries = [entry for entry in race_entries if isinstance(entry, dict)]
+        latest = completed_entries[-1] if completed_entries else {}
+        rows.append(
+            {
+                "_cust_id": cust_id,
+                "_points": record.get("total_points", ""),
+                "name": name,
+                "car_number": number,
+                "stats_scope": "season",
+                "starts": record.get("races", ""),
+                "wins": record.get("wins", ""),
+                "top_fives": record.get("top5", ""),
+                "top_tens": record.get("top10", ""),
+                "poles": record.get("poles", ""),
+                "avg_finish": average_finish(completed_entries),
+                "last_finish": latest.get("finish_pos", ""),
+                "points_position": str(position),
+                "points_to_next": "",
+                "track_starts": "",
+                "track_wins": "",
+                "best_track_finish": best_finish(completed_entries),
+                "notes": f"Velocity season standings; {record.get('total_points', '')} points".strip("; "),
+            }
+        )
+        seen_customers.add(cust_id)
+    if rows:
+        previous_points = safe_float(rows[0].get("_points"))
+        for row in rows:
+            points = safe_float(row.get("_points"))
+            if row["points_position"] != "1" and previous_points is not None and points is not None:
+                row["points_to_next"] = format_number(previous_points - points)
+            previous_points = points
+    return rows
+
+
+def parse_structured_career(document):
+    rows = []
+    seen_customers = set()
+    for record in extract_embedded_records(document):
+        cust_id = str(record.get("cust_id") or "").strip()
+        if not cust_id or cust_id in seen_customers or "starts" not in record:
+            continue
+        name = clean_driver_name(record.get("name"))
+        if not name:
+            continue
+        rows.append(
+            {
+                "_cust_id": cust_id,
+                "name": name,
+                "car_number": normalize_number(record.get("active_car_number") or record.get("car_number")),
+                "stats_scope": "career",
+                "starts": record.get("starts", ""),
+                "wins": record.get("wins", ""),
+                "top_fives": record.get("top5", ""),
+                "top_tens": record.get("top10", ""),
+                "poles": record.get("poles", ""),
+                "avg_finish": record.get("avg_finish", ""),
+                "last_finish": "",
+                "points_position": "",
+                "points_to_next": "",
+                "track_starts": "",
+                "track_wins": "",
+                "best_track_finish": "",
+                "notes": "Velocity combined league career stats",
+            }
+        )
+        seen_customers.add(cust_id)
+    return rows
+
+
+def parse_structured_directory(document, series_key=""):
+    rows = []
+    by_customer = {}
+    series_key = str(series_key or "").strip().casefold()
+    for record in extract_embedded_records(document):
+        cust_id = str(record.get("cust_id") or "").strip()
+        if not cust_id or not clean_driver_name(record.get("name")):
+            continue
+        record_series = str(record.get("series_key") or "").strip().casefold()
+        if series_key and record_series and record_series != series_key:
+            continue
+        existing = by_customer.get(cust_id)
+        if existing and existing.get("car_number"):
+            continue
+        by_customer[cust_id] = {
+            "_cust_id": cust_id,
+            "name": clean_driver_name(record.get("name")),
+            "car_number": normalize_number(record.get("last_car_number")),
+            "hometown": "",
+            "state": "",
+            "country": str(record.get("country_code") or "").strip(),
+            "driving_style": "",
+            "sponsor": "",
+            "about": directory_about(record),
+            "car_image": "",
+        }
+    rows.extend(by_customer.values())
+    return rows
+
+
+def directory_about(record):
+    first_raced = str(record.get("first_raced") or "").strip()
+    starts = str(record.get("starts") or "").strip()
+    parts = []
+    if starts:
+        parts.append(f"Velocity directory lists {starts} league start{'s' if starts != '1' else ''}")
+    if first_raced:
+        parts.append(f"first raced {first_raced[:10]}")
+    return "; ".join(parts)
+
+
+def safe_float(value):
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def format_number(value):
+    if value is None:
+        return ""
+    return str(int(value)) if float(value).is_integer() else f"{float(value):g}"
+
+
+def average_finish(entries):
+    finishes = [safe_float(entry.get("finish_pos")) for entry in entries]
+    finishes = [value for value in finishes if value is not None and value > 0]
+    return format_number(sum(finishes) / len(finishes)) if finishes else ""
+
+
+def best_finish(entries):
+    finishes = [safe_float(entry.get("finish_pos")) for entry in entries]
+    finishes = [value for value in finishes if value is not None and value > 0]
+    return format_number(min(finishes)) if finishes else ""
+
+
 def parse_standings_rows(text, series_filter=""):
     lines = [line.strip() for line in str(text or "").splitlines() if line.strip()]
     series_filter = str(series_filter or "").strip().lower()
@@ -349,6 +521,97 @@ def driver_rows_from_stats(stats_rows):
     return rows
 
 
+def resolve_series_key(input_url, series_filter, document):
+    parsed = urlparse(str(input_url or ""))
+    query_key = (parse_qs(parsed.query).get("series") or [""])[0].strip()
+    if query_key:
+        return query_key
+    reserved = {"standings", "drivers", "directory", "schedule", "recap"}
+    path_parts = [part for part in parsed.path.split("/") if part]
+    if parsed.netloc.endswith("velocityleague.gg") and len(path_parts) >= 2:
+        candidate = path_parts[-1].strip()
+        if candidate.casefold() not in reserved:
+            return candidate
+
+    decoded = html.unescape(str(document or "")).replace(r'\"', '"')
+    pairs = []
+    for pattern in (
+        r'"series_key":"([^"]+)"[^{}]{0,500}"series_name":"([^"]+)"',
+        r'"seriesKey":"([^"]+)"[^{}]{0,500}"seriesName":"([^"]+)"',
+    ):
+        pairs.extend(re.findall(pattern, decoded, flags=re.I))
+    wanted = str(series_filter or "").strip().casefold()
+    for key, name in pairs:
+        if wanted and wanted in {key.casefold(), name.casefold()}:
+            return key
+    if wanted:
+        token = schedule_token(wanted)
+        for key, name in pairs:
+            if token in {schedule_token(key), schedule_token(name)}:
+                return key
+        return token
+    return pairs[0][0] if pairs else ""
+
+
+def merge_driver_sources(directory_rows, standings_rows, career_rows):
+    """Use career names first, then season records, while retaining signed drivers."""
+    by_customer = {}
+    for source in (directory_rows, standings_rows, career_rows):
+        for row in source:
+            cust_id = str(row.get("_cust_id") or "").strip()
+            if not cust_id:
+                continue
+            current = by_customer.setdefault(
+                cust_id,
+                {field: "" for field in DRIVER_FIELDS} | {"_cust_id": cust_id},
+            )
+            if row.get("name"):
+                current["name"] = row["name"]
+            if row.get("car_number"):
+                current["car_number"] = row["car_number"]
+            for field in DRIVER_FIELDS[2:]:
+                if row.get(field) and not current.get(field):
+                    current[field] = row[field]
+    return [
+        {field: row.get(field, "") for field in DRIVER_FIELDS}
+        for row in by_customer.values()
+        if looks_like_driver_name(row.get("name"))
+    ]
+
+
+def looks_like_driver_name(value):
+    text = clean_driver_name(value)
+    if not text or not re.search(r"[A-Za-z]", text):
+        return False
+    return not any(
+        token in text.casefold()
+        for token in (
+            "avg finish",
+            "inc/race",
+            "drivers",
+            "starts",
+            "top 5",
+            "top 10",
+            "points",
+        )
+    )
+
+
+def apply_canonical_driver_names(stats_rows, career_rows):
+    canonical = {
+        str(row.get("_cust_id") or ""): row
+        for row in career_rows
+        if row.get("_cust_id")
+    }
+    for row in stats_rows:
+        match = canonical.get(str(row.get("_cust_id") or ""))
+        if not match:
+            continue
+        row["name"] = match.get("name") or row.get("name", "")
+        row["car_number"] = match.get("car_number") or row.get("car_number", "")
+    return stats_rows
+
+
 def schedule_token(value):
     token = re.sub(r"[^a-z0-9]+", "-", str(value or "").strip().lower()).strip("-")
     return token or "series"
@@ -422,40 +685,116 @@ def write_csv(path, fieldnames, rows):
         writer.writerows({field: row.get(field, "") for field in fieldnames} for row in rows)
 
 
+def preserve_existing_driver_details(path, incoming_rows):
+    path = Path(path)
+    if not path.exists():
+        return incoming_rows
+    try:
+        with path.open("r", newline="", encoding="utf-8-sig") as csv_file:
+            existing_rows = list(csv.DictReader(csv_file))
+    except (OSError, csv.Error):
+        return incoming_rows
+    by_name = {
+        clean_driver_name(row.get("name")).casefold(): row
+        for row in existing_rows
+        if looks_like_driver_name(row.get("name"))
+    }
+    number_counts = {}
+    for row in existing_rows:
+        number = normalize_number(row.get("car_number"))
+        if number:
+            number_counts[number] = number_counts.get(number, 0) + 1
+    by_number = {
+        normalize_number(row.get("car_number")): row
+        for row in existing_rows
+        if normalize_number(row.get("car_number"))
+        and number_counts.get(normalize_number(row.get("car_number"))) == 1
+        and looks_like_driver_name(row.get("name"))
+    }
+    for incoming in incoming_rows:
+        existing = by_name.get(clean_driver_name(incoming.get("name")).casefold())
+        if not existing:
+            existing = by_number.get(normalize_number(incoming.get("car_number")))
+        if not existing:
+            continue
+        for field in DRIVER_FIELDS[2:]:
+            if not incoming.get(field) and existing.get(field):
+                incoming[field] = existing[field]
+    return incoming_rows
+
+
 def run_import(args):
     home_url, home_html = fetch_first_html(url_variants(args.url))
     home_text = html_to_text(home_html)
-    schedule_url, schedule_text = first_fetchable_text(page_candidates(home_url, "schedule", home_html))
-    standings_url, standings_text = first_fetchable_text(page_candidates(home_url, "standings", home_html))
-    drivers_url, drivers_text = first_fetchable_text(page_candidates(home_url, "drivers", home_html))
+    parsed_home = urlparse(home_url)
+    league_root = urlunparse((parsed_home.scheme, parsed_home.netloc, "", "", "", "")).rstrip("/")
+    series_key = resolve_series_key(args.url, args.series, home_html)
+    series_query = urlencode({"series": series_key}) if series_key else ""
+    standings_query = urlencode({"series": series_key, "season": "s1"}) if series_key else ""
 
-    standings_rows = parse_standings_rows("\n".join([home_text, standings_text]), args.series)
-    driver_stat_rows = parse_driver_profile_rows(drivers_text)
-    schedule_rows = parse_schedule_rows(schedule_text or home_text, args.series)
-    stats_rows = dedupe_stats(standings_rows + driver_stat_rows)
-    driver_rows = driver_rows_from_stats(stats_rows)
+    schedule_candidates = []
+    if series_key:
+        schedule_candidates.append(f"{league_root}/schedule?{series_query}")
+        schedule_candidates.append(f"{league_root}/{series_key}")
+    schedule_candidates.extend(page_candidates(home_url, "schedule", home_html))
+    standings_candidates = [f"{league_root}/standings?{standings_query}"] if standings_query else []
+    standings_candidates.extend(page_candidates(home_url, "standings", home_html))
+    drivers_candidates = [f"{league_root}/drivers?{series_query}"] if series_query else []
+    drivers_candidates.extend(page_candidates(home_url, "drivers", home_html))
+    directory_candidates = [f"{league_root}/directory"]
+    directory_candidates.extend(page_candidates(home_url, "directory", home_html))
+
+    schedule_url, schedule_html = fetch_first_html(unique(schedule_candidates))
+    standings_url, standings_html = fetch_first_html(unique(standings_candidates))
+    drivers_url, drivers_html = fetch_first_html(unique(drivers_candidates))
+    directory_url, directory_html = fetch_first_html(unique(directory_candidates))
+
+    standings_rows = parse_structured_standings(standings_html)
+    if not standings_rows:
+        standings_rows = parse_standings_rows(
+            "\n".join([home_text, html_to_text(standings_html)]),
+            args.series,
+        )
+    career_rows = parse_structured_career(drivers_html)
+    if not career_rows:
+        career_rows = parse_driver_profile_rows(html_to_text(drivers_html))
+    directory_rows = parse_structured_directory(directory_html, series_key)
+    standings_rows = apply_canonical_driver_names(standings_rows, career_rows)
+    schedule_rows = parse_schedule_rows(html_to_text(schedule_html) or home_text)
+    season_rows = dedupe_stats(standings_rows)
+    career_stats_rows = dedupe_stats(career_rows)
+    driver_rows = merge_driver_sources(directory_rows, standings_rows, career_rows)
 
     if args.dry_run:
         print(f"Velocity League URL: {home_url}")
+        print(f"Series key: {series_key or 'not detected'}")
         print(f"Schedule page: {schedule_url or 'not found'}")
         print(f"Standings page: {standings_url or 'not found'}")
         print(f"Drivers page: {drivers_url or 'not found'}")
-        print(f"Parsed stats rows: {len(stats_rows)}")
+        print(f"Directory page: {directory_url or 'not found'}")
+        print(f"Parsed season rows: {len(season_rows)}")
+        print(f"Parsed career rows: {len(career_stats_rows)}")
         print(f"Parsed driver rows: {len(driver_rows)}")
         print(f"Parsed schedule rows: {len(schedule_rows)}")
-        for row in stats_rows[:10]:
+        for row in season_rows[:10]:
             print(f"STAT {row.get('points_position') or '--'} #{row.get('car_number') or '--'} {row.get('name')}")
+        for row in career_stats_rows[:5]:
+            print(f"CAREER {row.get('starts') or '0'} starts #{row.get('car_number') or '--'} {row.get('name')}")
         for row in schedule_rows[:10]:
             print(f"SCHEDULE {row.get('schedule_id')} {row.get('track_name')} {row.get('notes')}")
         return 0
 
     if args.stats_output:
-        write_csv(args.stats_output, STATS_FIELDS, stats_rows)
+        write_csv(args.stats_output, STATS_FIELDS, season_rows)
+    if args.career_output:
+        write_csv(args.career_output, STATS_FIELDS, career_stats_rows)
     if args.drivers_output:
+        driver_rows = preserve_existing_driver_details(args.drivers_output, driver_rows)
         write_csv(args.drivers_output, DRIVER_FIELDS, driver_rows)
     if args.schedule_output:
         write_csv(args.schedule_output, SCHEDULE_FIELDS, schedule_rows)
-    print(f"Imported {len(stats_rows)} Velocity stat row(s) to {args.stats_output}.")
+    print(f"Imported {len(season_rows)} Velocity season row(s) to {args.stats_output}.")
+    print(f"Imported {len(career_stats_rows)} Velocity career row(s) to {args.career_output}.")
     print(f"Imported {len(driver_rows)} Velocity driver row(s) to {args.drivers_output}.")
     print(f"Imported {len(schedule_rows)} Velocity schedule row(s) to {args.schedule_output}.")
     return 0
@@ -466,6 +805,7 @@ def build_parser():
     parser.add_argument("url", help="Velocity league home URL, for example https://www.velocityleague.gg/trrl")
     parser.add_argument("--series", default="", help="Optional series name filter, for example Truck Series")
     parser.add_argument("--stats-output", default="league/season.csv")
+    parser.add_argument("--career-output", default="league/career.csv")
     parser.add_argument("--drivers-output", default="league/drivers.csv")
     parser.add_argument("--schedule-output", default="league/race_schedule.csv")
     parser.add_argument("--dry-run", action="store_true")

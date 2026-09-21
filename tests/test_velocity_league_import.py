@@ -1,10 +1,115 @@
 from tools.velocity_league_import import (
     driver_rows_from_stats,
     fetch_first_html,
+    merge_driver_sources,
+    parse_structured_career,
+    parse_structured_directory,
+    parse_structured_standings,
+    preserve_existing_driver_details,
     parse_schedule_rows,
     parse_standings_rows,
     url_variants,
 )
+
+
+def rsc_page(*objects):
+    import json
+
+    payload = "".join(json.dumps(item, separators=(",", ":")) for item in objects)
+    return f'<script>self.__next_f.push([1,"{payload.replace(chr(34), chr(92) + chr(34))}"])</script>'
+
+
+def test_structured_velocity_pages_use_real_names_numbers_and_stats():
+    standings = rsc_page(
+        {
+            "cust_id": 120815,
+            "display_name": "Richard Holland2",
+            "car_number": "31",
+            "total_points": 38,
+            "wins": 0,
+            "top5": 1,
+            "top10": 1,
+            "poles": 0,
+            "races": 1,
+            "raceEntries": [{"finish_pos": 5}],
+        }
+    )
+    careers = rsc_page(
+        {
+            "cust_id": 120815,
+            "name": "Richard Holland",
+            "car_number": "31",
+            "active_car_number": "31",
+            "starts": 2,
+            "wins": 0,
+            "top5": 2,
+            "top10": 2,
+            "avg_finish": 3.5,
+            "poles": 0,
+        }
+    )
+
+    season_rows = parse_structured_standings(standings)
+    career_rows = parse_structured_career(careers)
+    from tools.velocity_league_import import apply_canonical_driver_names
+
+    apply_canonical_driver_names(season_rows, career_rows)
+
+    assert season_rows[0]["name"] == "Richard Holland"
+    assert season_rows[0]["car_number"] == "31"
+    assert season_rows[0]["last_finish"] == 5
+    assert career_rows[0]["starts"] == 2
+    assert career_rows[0]["avg_finish"] == 3.5
+
+
+def test_directory_adds_signed_drivers_and_career_name_wins():
+    directory = rsc_page(
+        {
+            "cust_id": "120815",
+            "name": "Richard Holland2",
+            "series_key": "tuesday-night-trucks",
+            "starts": 1,
+            "first_raced": "2026-09-16 00:00:34+00",
+            "last_car_number": "31",
+            "country_code": None,
+        },
+        {
+            "cust_id": "999",
+            "name": "Signed Driver",
+            "series_key": "tuesday-night-trucks",
+            "starts": 0,
+            "last_car_number": "44",
+        },
+    )
+    directory_rows = parse_structured_directory(directory, "tuesday-night-trucks")
+    career_rows = [
+        {"_cust_id": "120815", "name": "Richard Holland", "car_number": "31"}
+    ]
+
+    drivers = merge_driver_sources(directory_rows, [], career_rows)
+
+    assert [(row["name"], row["car_number"]) for row in drivers] == [
+        ("Richard Holland", "31"),
+        ("Signed Driver", "44"),
+    ]
+
+
+def test_velocity_driver_import_preserves_manual_profile_details(tmp_path):
+    path = tmp_path / "drivers.csv"
+    path.write_text(
+        "name,car_number,hometown,state,country,driving_style,sponsor,about,car_image\n"
+        "Richard Holland,P3,Richmond,VA,United States,,RGC,Manual story,car.png\n",
+        encoding="utf-8",
+    )
+
+    rows = preserve_existing_driver_details(
+        path,
+        [{"name": "Richard Holland", "car_number": "31", "hometown": "", "state": "", "country": "", "driving_style": "", "sponsor": "", "about": "", "car_image": ""}],
+    )
+
+    assert rows[0]["car_number"] == "31"
+    assert rows[0]["hometown"] == "Richmond"
+    assert rows[0]["about"] == "Manual story"
 
 
 def test_parse_velocity_standings_rows_from_public_page_text():

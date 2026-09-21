@@ -187,6 +187,7 @@ VELOCITY_LEAGUE_FIELDS = [
     ("VELOCITY_LEAGUE_URL", ""),
     ("VELOCITY_SERIES_NAME", ""),
     ("VELOCITY_STATS_OUTPUT", "league/season.csv"),
+    ("VELOCITY_CAREER_OUTPUT", "league/career.csv"),
     ("VELOCITY_DRIVERS_OUTPUT", "league/drivers.csv"),
     ("VELOCITY_SCHEDULE_OUTPUT", "league/race_schedule.csv"),
 ]
@@ -298,6 +299,7 @@ BROADCAST_FIELD_LABELS = {
     "VELOCITY_LEAGUE_URL": "Velocity League URL",
     "VELOCITY_SERIES_NAME": "Velocity Series Name",
     "VELOCITY_STATS_OUTPUT": "Velocity Stats CSV",
+    "VELOCITY_CAREER_OUTPUT": "Velocity Career CSV",
     "VELOCITY_DRIVERS_OUTPUT": "Velocity Drivers CSV",
     "VELOCITY_SCHEDULE_OUTPUT": "Velocity Schedule CSV",
 }
@@ -385,9 +387,10 @@ BROADCAST_FIELD_HELP = {
     "LEAGUE_FUEL_PERCENT": "Optional league race setting. Example: 65 means Mike can mention fuel is set at 65 percent during the opening.",
     "LEAGUE_ENGINE_POWER_PERCENT": "Optional league race setting. Example: 90 means Mike can mention engine power is set at 90 percent.",
     "LEAGUE_TIRE_SETS": "Optional league race tire limit. Example: 3 means Mike can mention three tire sets are available.",
-    "VELOCITY_LEAGUE_URL": "Public Velocity League home URL. Example: https://www.velocityleague.gg/trrl.",
-    "VELOCITY_SERIES_NAME": "Optional Velocity series name filter. Leave blank to import the public league-wide standings that Velocity exposes.",
-    "VELOCITY_STATS_OUTPUT": "CSV where Velocity standings/stats are written. Usually league/season.csv.",
+    "VELOCITY_LEAGUE_URL": "Public Velocity League home URL. The importer automatically checks its directory, selected-series standings, combined career stats, series page, and schedule.",
+    "VELOCITY_SERIES_NAME": "Optional Velocity series name or URL key, such as tuesday-night-trucks. A Velocity standings or series URL can also supply this automatically.",
+    "VELOCITY_STATS_OUTPUT": "CSV where selected-series Velocity standings are written. Usually league/season.csv.",
+    "VELOCITY_CAREER_OUTPUT": "CSV where Velocity's combined league career statistics are written. Usually league/career.csv.",
     "VELOCITY_DRIVERS_OUTPUT": "CSV where Velocity driver names and numbers are written. Usually league/drivers.csv.",
     "VELOCITY_SCHEDULE_OUTPUT": "CSV where Velocity schedule rows are written. Usually league/race_schedule.csv.",
 }
@@ -1498,6 +1501,7 @@ def velocity_league_import_command(
     url,
     series_name="",
     stats_output="league/season.csv",
+    career_output="league/career.csv",
     drivers_output="league/drivers.csv",
     schedule_output="league/race_schedule.csv",
     dry_run=False,
@@ -1511,6 +1515,8 @@ def velocity_league_import_command(
         command.extend(["--series", str(series_name)])
     if stats_output:
         command.extend(["--stats-output", str(stats_output)])
+    if career_output:
+        command.extend(["--career-output", str(career_output)])
     if drivers_output:
         command.extend(["--drivers-output", str(drivers_output)])
     if schedule_output:
@@ -1524,6 +1530,7 @@ def run_velocity_league_import(
     url,
     series_name="",
     stats_output="league/season.csv",
+    career_output="league/career.csv",
     drivers_output="league/drivers.csv",
     schedule_output="league/race_schedule.csv",
     dry_run=False,
@@ -1533,6 +1540,7 @@ def run_velocity_league_import(
             url=url,
             series_name=series_name,
             stats_output=stats_output,
+            career_output=career_output,
             drivers_output=drivers_output,
             schedule_output=schedule_output,
             dry_run=dry_run,
@@ -3020,8 +3028,8 @@ def build_league_tab(
     label(
         velocity_panel,
         text=(
-            "Optional: import public Velocity League standings, schedule, and driver numbers from a league URL "
-            "like https://www.velocityleague.gg/trrl. This writes to the same league CSV files the broadcaster already uses."
+            "Import the active directory, selected-series standings, combined league career stats, schedule, and correct driver names/numbers "
+            "from one public league URL such as https://www.velocityleague.gg/trrl. Use Series Name only when the league runs multiple series."
         ),
         bg="#0b1520",
         fg=MUTED_FG,
@@ -3041,6 +3049,7 @@ def build_league_tab(
             ("Velocity League URL", "VELOCITY_LEAGUE_URL"),
             ("Series Name", "VELOCITY_SERIES_NAME"),
             ("Stats CSV", "VELOCITY_STATS_OUTPUT"),
+            ("Career CSV", "VELOCITY_CAREER_OUTPUT"),
             ("Drivers CSV", "VELOCITY_DRIVERS_OUTPUT"),
             ("Schedule CSV", "VELOCITY_SCHEDULE_OUTPUT"),
         )
@@ -3072,6 +3081,7 @@ def build_league_tab(
             url=data["VELOCITY_LEAGUE_URL"],
             series_name=data["VELOCITY_SERIES_NAME"],
             stats_output=data["VELOCITY_STATS_OUTPUT"],
+            career_output=data["VELOCITY_CAREER_OUTPUT"],
             drivers_output=data["VELOCITY_DRIVERS_OUTPUT"],
             schedule_output=data["VELOCITY_SCHEDULE_OUTPUT"],
             dry_run=dry_run,
@@ -3208,6 +3218,8 @@ def build_league_tab(
                 set_entry_value(entries["SIMRACERHUB_SEASON_STATS_OUTPUT"], season_stats_csv)
             if "VELOCITY_STATS_OUTPUT" in entries:
                 set_entry_value(entries["VELOCITY_STATS_OUTPUT"], season_stats_csv)
+            if "VELOCITY_CAREER_OUTPUT" in entries:
+                set_entry_value(entries["VELOCITY_CAREER_OUTPUT"], career_stats_csv)
         if career_stats_csv:
             if "LEAGUE_CAREER_STATS_CSV" in settings_entries:
                 set_entry_value(settings_entries["LEAGUE_CAREER_STATS_CSV"], career_stats_csv)
@@ -3718,6 +3730,12 @@ def build_help_tab(
         If schedule import finds no rows, add the first race schedule_id in First Race Schedule ID and import again.
         Race Schedule CSV maps track_name to schedule_id for every race in the season. The post-race Discord report uses the
         current iRacing track, Season ID, and imported schedule to add Sim Racer Hub race results and standings automatically.
+
+        For a Velocity League profile, paste the public league home URL into Velocity League URL. One import automatically reads
+        the active directory, selected-series standings, combined league career statistics, and full schedule. If the league has
+        multiple series, enter the series URL key such as tuesday-night-trucks or paste that series/standings URL. Velocity season
+        data goes to season.csv, combined career data goes to career.csv, and manually entered hometown, state, sponsor, About story,
+        and car image are preserved when a matching driver is imported again.
         """,
     )
     section(
