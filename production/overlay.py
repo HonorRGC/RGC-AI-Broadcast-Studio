@@ -531,6 +531,9 @@ class OverlayStateBuilder:
 
         leaderboard = self.visible_leaderboard_window(full_leaderboard)
 
+        recorded_history_reader = getattr(telemetry, "get_recorded_lap_history", None)
+        if callable(recorded_history_reader):
+            self.merge_recorded_lap_history(recorded_history_reader())
         self.update_lap_history(session_type, lap, caution, green)
 
         return OverlayState(
@@ -1015,6 +1018,15 @@ class OverlayStateBuilder:
         if existing == "caution":
             return
         self.lap_status_by_lap[lap] = status
+
+    def merge_recorded_lap_history(self, recorded_history):
+        for raw_lap, raw_status in (recorded_history or {}).items():
+            lap = self.safe_int(raw_lap)
+            status = str(raw_status or "").strip().lower()
+            if lap <= 0 or status not in {"green", "caution"}:
+                continue
+            if self.lap_status_by_lap.get(lap) != "caution":
+                self.lap_status_by_lap[lap] = status
 
     def build_lap_history(self, total_laps=0):
         if not self.lap_status_by_lap:

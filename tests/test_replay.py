@@ -179,6 +179,52 @@ def test_recorded_broadcast_waits_for_iracing_replay_frames_to_move(tmp_path):
     assert replay.get_lap() == 3
 
 
+def test_return_to_live_waits_for_async_seek_before_reanchoring(tmp_path):
+    path = tmp_path / "return_live.jsonl"
+    snapshots = [
+        {"lap": lap, "timestamp": 1000.0 + lap, "session_num": 2,
+         "session_type": "Race", "session_time": 10.0 + lap}
+        for lap in range(1, 7)
+    ]
+    path.write_text("".join(json.dumps(item) + "\n" for item in snapshots), encoding="utf-8")
+    controller = FakeReplayController(2, 11.0, "Race", replay_frame=600)
+    replay = ReplayTelemetry(path).attach_controller(controller)
+    replay.playback_ready = True
+    replay.current_index = 4
+
+    # The operator has rewound iRacing while the recorded broadcast remains at lap five.
+    controller.session_time = 6.0
+    controller.replay_frame = 300
+    assert replay.return_to_live()
+    assert replay.next_snapshot().lap == 5
+    assert replay.pending_live_target is not None
+
+    # Only re-anchor after iRacing reports that the asynchronous seek has landed.
+    controller.session_time = 15.0
+    controller.replay_frame = 900
+    assert replay.next_snapshot().lap == 5
+    assert replay.pending_live_target is None
+    controller.replay_frame = 960
+    assert replay.next_snapshot().lap == 6
+
+
+def test_recorded_lap_history_rebuilds_before_midrace_restart(tmp_path):
+    path = tmp_path / "lap_history.jsonl"
+    snapshots = [
+        {"lap": 1, "timestamp": 1001.0, "session_num": 2, "session_type": "Race", "session_flags": 4},
+        {"lap": 2, "timestamp": 1002.0, "session_num": 2, "session_type": "Race", "session_flags": 4},
+        {"lap": 3, "timestamp": 1003.0, "session_num": 2, "session_type": "Race", "session_flags": 8},
+        {"lap": 4, "timestamp": 1004.0, "session_num": 2, "session_type": "Race", "session_flags": 4},
+    ]
+    path.write_text("".join(json.dumps(item) + "\n" for item in snapshots), encoding="utf-8")
+    replay = ReplayTelemetry(path)
+    replay.current_index = 3
+
+    assert replay.get_recorded_lap_history() == {
+        1: "green", 2: "green", 3: "caution", 4: "green"
+    }
+
+
 def test_capture_recorder_writes_telemetry_events_and_metadata(tmp_path, monkeypatch):
     output = tmp_path / "race.jsonl"
     snapshot = SimpleSnapshot()

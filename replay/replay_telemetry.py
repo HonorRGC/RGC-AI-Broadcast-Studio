@@ -25,6 +25,9 @@ class ReplayTelemetry:
         self.controller_frame_anchor = None
         self.controller_frame_observed = None
         self.pending_frame_reanchor = False
+        self.pending_live_target = None
+        self._lap_history_cache_index = -1
+        self._recorded_lap_status = {}
 
     def attach_controller(self, controller):
         self.controller = controller
@@ -36,6 +39,7 @@ class ReplayTelemetry:
         self.controller_frame_anchor = self._controller_frame_number()
         self.controller_frame_observed = self.controller_frame_anchor
         self.pending_frame_reanchor = False
+        self.pending_live_target = None
         self.playback_started_at = None
         return self.controller_frame_anchor
 
@@ -189,6 +193,15 @@ class ReplayTelemetry:
                 return self.current_snapshot()
             self.synchronize_to_controller(force=False)
             frame = self._controller_frame_number()
+            if self.pending_live_target is not None:
+                if not self._controller_reached_live_target(frame):
+                    return self.current_snapshot()
+                self.controller_frame_anchor = frame
+                self.controller_frame_observed = frame
+                snapshot = self.current_snapshot()
+                if snapshot is not None:
+                    self.capture_started_at = float(snapshot.timestamp or 0.0)
+                self.pending_live_target = None
             if self.pending_frame_reanchor and frame is not None:
                 self.controller_frame_anchor = frame
                 self.controller_frame_observed = frame
@@ -234,6 +247,9 @@ class ReplayTelemetry:
         self.controller_frame_anchor = None
         self.controller_frame_observed = None
         self.pending_frame_reanchor = False
+        self.pending_live_target = None
+        self._lap_history_cache_index = -1
+        self._recorded_lap_status = {}
 
     def get_session_flags(self):
         snapshot = self.current_snapshot()
@@ -325,9 +341,63 @@ class ReplayTelemetry:
                 snapshot.session_time,
             )
             if accepted:
-                self.pending_frame_reanchor = True
+                self.pending_frame_reanchor = False
+                self.pending_live_target = {
+                    "session_num": int(snapshot.session_num),
+                    "session_time": float(snapshot.session_time or 0.0),
+                    "request_frame": self._controller_frame_number(),
+                    "request_session_num": int(self.controller.get_current_session_num()),
+                    "request_session_time": float(self.controller.get_session_time()),
+                }
             return accepted
         return False
+
+    def _controller_reached_live_target(self, frame, tolerance_seconds=1.25):
+        target = self.pending_live_target
+        if not target or not self.controller:
+            return True
+        try:
+            session_num = int(self.controller.get_current_session_num())
+            session_time = float(self.controller.get_session_time())
+        except (TypeError, ValueError):
+            return False
+        if session_num != target["session_num"]:
+            return False
+        if abs(session_time - target["session_time"]) > tolerance_seconds:
+            return False
+
+        request_was_already_near = (
+            target["request_session_num"] == target["session_num"]
+            and abs(target["request_session_time"] - target["session_time"])
+            <= tolerance_seconds
+        )
+        if request_was_already_near:
+            return True
+        request_frame = target.get("request_frame")
+        return frame is None or request_frame is None or frame != request_frame
+
+    def get_recorded_lap_history(self):
+        """Return every recorded race-lap state through the playback position."""
+        if self.current_index < self._lap_history_cache_index:
+            self._lap_history_cache_index = -1
+            self._recorded_lap_status = {}
+
+        caution_mask = 0x00000008 | 0x00000100 | 0x00004000 | 0x00008000
+        start = self._lap_history_cache_index + 1
+        end = min(self.current_index, len(self.snapshots) - 1)
+        for index in range(start, end + 1):
+            snapshot = self.snapshots[index]
+            if str(snapshot.session_type or "").strip().lower() != "race":
+                continue
+            lap = int(snapshot.race_lap() or 0)
+            if lap <= 0:
+                continue
+            flags = int(snapshot.session_flags or 0)
+            status = "caution" if flags & caution_mask else "green"
+            if self._recorded_lap_status.get(lap) != "caution":
+                self._recorded_lap_status[lap] = status
+        self._lap_history_cache_index = end
+        return dict(self._recorded_lap_status)
 
     def __getattr__(self, name):
         controller = self.__dict__.get("controller")
