@@ -767,6 +767,33 @@ def driver_roster_import_target(active_driver_csv="", sim_racer_hub_output=""):
     return configured or "league/drivers.csv"
 
 
+def velocity_output_defaults(values):
+    """Keep legacy Velocity output fields aligned with the active league profile."""
+    values = dict(values or {})
+    mappings = (
+        ("VELOCITY_DRIVERS_OUTPUT", "LEAGUE_DRIVERS_CSV", "league/drivers.csv"),
+        ("VELOCITY_STATS_OUTPUT", "LEAGUE_SEASON_STATS_CSV", "league/season.csv"),
+        ("VELOCITY_CAREER_OUTPUT", "LEAGUE_CAREER_STATS_CSV", "league/career.csv"),
+        ("VELOCITY_SCHEDULE_OUTPUT", "SIMRACERHUB_RACE_SCHEDULE_CSV", "league/race_schedule.csv"),
+    )
+    resolved = {}
+    for velocity_key, active_key, generic_default in mappings:
+        configured = str(values.get(velocity_key, "") or "").strip()
+        active = str(values.get(active_key, "") or "").strip()
+        resolved[velocity_key] = (
+            active if active and configured in ("", generic_default) else configured or active or generic_default
+        )
+    return resolved
+
+
+def csv_has_data_rows(path):
+    try:
+        with Path(path).open(newline="", encoding="utf-8-sig") as csv_file:
+            return next(csv.DictReader(csv_file), None) is not None
+    except (OSError, csv.Error):
+        return False
+
+
 def ensure_empty_driver_profile_csv(csv_path):
     path = Path(csv_path)
     if path.exists():
@@ -946,14 +973,29 @@ def build_health_status(values, root=ROOT, broadcast_running=False):
                 )
             )
         else:
-            rows.append(
-                (
-                    "League Profiles",
-                    "Ready",
-                    "Driver, season stats, and career stats CSV files found.",
-                    "ok",
+            empty_stats = [
+                label
+                for label, path in (("season stats", season_path), ("career stats", career_path))
+                if not csv_has_data_rows(path)
+            ]
+            if empty_stats:
+                rows.append(
+                    (
+                        "League Profiles",
+                        "Stats empty",
+                        f"The {', '.join(empty_stats)} CSV has no driver rows. Import league data again before broadcasting.",
+                        "warn",
+                    )
                 )
-            )
+            else:
+                rows.append(
+                    (
+                        "League Profiles",
+                        "Ready",
+                        "Driver, season stats, and career stats CSV files found and contain data.",
+                        "ok",
+                    )
+                )
     else:
         rows.append(("League Profiles", "Off", "League driver context disabled.", "off"))
 
@@ -3043,6 +3085,7 @@ def build_league_tab(
         key: existing.get(key, default)
         for key, default in VELOCITY_LEAGUE_FIELDS
     }
+    velocity_defaults.update(velocity_output_defaults(existing))
     velocity_entries = {}
     for row_number, (label_text, key) in enumerate(
         (
@@ -3092,7 +3135,12 @@ def build_league_tab(
         set_output(combined_output or "(No output)")
         if result.returncode == 0:
             if not dry_run:
-                set_driver_csv_value(data["VELOCITY_DRIVERS_OUTPUT"])
+                set_driver_csv_value(
+                    data["VELOCITY_DRIVERS_OUTPUT"],
+                    data["VELOCITY_STATS_OUTPUT"],
+                    data["VELOCITY_CAREER_OUTPUT"],
+                    data["VELOCITY_SCHEDULE_OUTPUT"],
+                )
                 load_driver_profiles()
             status.set(
                 ("Previewed" if dry_run else "Imported")

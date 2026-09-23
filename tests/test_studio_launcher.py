@@ -56,6 +56,7 @@ from studio_launcher import (
     sanitize_profile_name,
     sim_racer_hub_import_command,
     velocity_league_import_command,
+    velocity_output_defaults,
     stop_broadcast_processes,
     update_status_from_release,
     version_parts,
@@ -530,8 +531,8 @@ def test_launcher_health_reports_league_files_ready(tmp_path):
     league_dir = tmp_path / "league"
     league_dir.mkdir()
     (league_dir / "drivers.csv").write_text("name,car_number\n", encoding="utf-8")
-    (league_dir / "season.csv").write_text("name,starts\n", encoding="utf-8")
-    (league_dir / "career.csv").write_text("name,starts\n", encoding="utf-8")
+    (league_dir / "season.csv").write_text("name,starts\nT.J. Lee,1\n", encoding="utf-8")
+    (league_dir / "career.csv").write_text("name,starts\nT.J. Lee,10\n", encoding="utf-8")
     values = launcher_defaults(
         {
             "USE_OPENAI": "false",
@@ -1010,6 +1011,39 @@ def test_launcher_builds_velocity_league_import_command():
         command.index("--schedule-output") : command.index("--schedule-output") + 2
     ]
     assert "--dry-run" in command
+
+
+def test_velocity_outputs_follow_active_profile_paths_when_old_defaults_remain():
+    outputs = velocity_output_defaults(
+        {
+            "LEAGUE_DRIVERS_CSV": "league/Taco_Tuesday/drivers.csv",
+            "LEAGUE_SEASON_STATS_CSV": "league/Taco_Tuesday/season.csv",
+            "LEAGUE_CAREER_STATS_CSV": "league/Taco_Tuesday/career.csv",
+            "SIMRACERHUB_RACE_SCHEDULE_CSV": "league/Taco_Tuesday/race_schedule.csv",
+            "VELOCITY_DRIVERS_OUTPUT": "league/drivers.csv",
+            "VELOCITY_STATS_OUTPUT": "league/season.csv",
+            "VELOCITY_CAREER_OUTPUT": "league/career.csv",
+            "VELOCITY_SCHEDULE_OUTPUT": "league/race_schedule.csv",
+        }
+    )
+
+    assert outputs == {
+        "VELOCITY_DRIVERS_OUTPUT": "league/Taco_Tuesday/drivers.csv",
+        "VELOCITY_STATS_OUTPUT": "league/Taco_Tuesday/season.csv",
+        "VELOCITY_CAREER_OUTPUT": "league/Taco_Tuesday/career.csv",
+        "VELOCITY_SCHEDULE_OUTPUT": "league/Taco_Tuesday/race_schedule.csv",
+    }
+
+
+def test_velocity_outputs_preserve_explicit_custom_destinations():
+    outputs = velocity_output_defaults(
+        {
+            "LEAGUE_SEASON_STATS_CSV": "league/Taco_Tuesday/season.csv",
+            "VELOCITY_STATS_OUTPUT": "exports/velocity-season.csv",
+        }
+    )
+
+    assert outputs["VELOCITY_STATS_OUTPUT"] == "exports/velocity-season.csv"
 
 
 def test_studio_driver_profile_rows_round_trip(tmp_path):

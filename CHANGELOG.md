@@ -18,6 +18,8 @@
 - Recorded Broadcast now waits for iRacing replay frames to move and uses the replay frame counter as its master clock, keeping calls, driver cards, cameras, pauses, and session playback aligned even when the Studio starts first.
 - Return Live now waits until iRacing has actually completed its asynchronous replay seek before re-anchoring the recorded-broadcast clock, preventing caution-review camera work from shifting the commentary out of sync.
 - Restarting or joining a recorded broadcast midway through the race now reconstructs the complete green/yellow lap-history bar from all earlier captured telemetry.
+- Velocity League imports now default to the active profile's driver, season, career, and schedule CSV files instead of silently writing to shared league files that the selected profile does not read.
+- Broadcast Health now warns when league season or career CSV files exist but contain no driver statistics.
 
 ## Version 1.0.5 - Model and Battle Call Refresh
 
