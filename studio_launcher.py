@@ -598,7 +598,8 @@ def load_profile(profile_name, profile_dir=PROFILE_DIR):
     path = profile_path(profile_name, profile_dir)
     if not path.exists():
         raise FileNotFoundError(f"Profile not found: {profile_name}")
-    return launcher_defaults(load_env_file(path))
+    values = launcher_defaults(load_env_file(path))
+    return migrate_legacy_velocity_profile_paths(profile_name, values)
 
 
 def delete_profile(profile_name, profile_dir=PROFILE_DIR):
@@ -726,6 +727,32 @@ def league_csv_paths_for_profile(profile_name):
         f"league/{slug}/career.csv",
         f"league/{slug}/race_schedule.csv",
     )
+
+
+def migrate_legacy_velocity_profile_paths(profile_name, values):
+    """Move older Velocity profiles off the shared league CSV defaults."""
+    migrated = dict(values or {})
+    if not str(migrated.get("VELOCITY_LEAGUE_URL", "") or "").strip():
+        return migrated
+
+    drivers_csv, season_csv, career_csv, schedule_csv = league_csv_paths_for_profile(
+        profile_name
+    )
+    mappings = (
+        ("LEAGUE_DRIVERS_CSV", "league/drivers.csv", drivers_csv),
+        ("LEAGUE_SEASON_STATS_CSV", "league/season.csv", season_csv),
+        ("LEAGUE_CAREER_STATS_CSV", "league/career.csv", career_csv),
+        ("SIMRACERHUB_RACE_SCHEDULE_CSV", "league/race_schedule.csv", schedule_csv),
+        ("VELOCITY_DRIVERS_OUTPUT", "league/drivers.csv", drivers_csv),
+        ("VELOCITY_STATS_OUTPUT", "league/season.csv", season_csv),
+        ("VELOCITY_CAREER_OUTPUT", "league/career.csv", career_csv),
+        ("VELOCITY_SCHEDULE_OUTPUT", "league/race_schedule.csv", schedule_csv),
+    )
+    for key, old_default, profile_path_value in mappings:
+        current = str(migrated.get(key, "") or "").strip()
+        if not current or current.replace("\\", "/").casefold() == old_default.casefold():
+            migrated[key] = profile_path_value
+    return migrated
 
 
 def ensure_profile_league_files(profile_name="", root=ROOT):
@@ -2484,6 +2511,7 @@ def run_gui():
 
     def apply_values_to_form(values):
         values = launcher_defaults(values)
+        values.update(velocity_output_defaults(values))
         for key, widget in entries.items():
             if hasattr(widget, "set"):
                 widget.set(values.get(key, ""))
@@ -2546,9 +2574,15 @@ def run_gui():
         except Exception as error:
             messagebox.showerror("Profile load failed", str(error))
             return
+        ensure_profile_league_files(name, root=ROOT)
         apply_values_to_form(values)
-        save_env_file(collect_values())
-        status.set(f"Loaded profile '{name}' and saved it as the active broadcast settings.")
+        migrated_values = collect_values()
+        save_env_file(migrated_values)
+        save_profile(name, migrated_values)
+        status.set(
+            f"Loaded profile '{name}', migrated its league data paths when needed, "
+            "and saved it as the active broadcast settings."
+        )
 
     def delete_selected_profile():
         name = profile_var.get().strip()

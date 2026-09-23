@@ -22,6 +22,7 @@
 - Broadcast Health now warns when league season or career CSV files exist but contain no driver statistics.
 - Green-flag top-ten rundowns now consistently report each driver's gap to the leader and positions gained or lost; league profiles add the manually entered sponsor first and hometown/location second, while official races stay concise.
 - Pit-stop reporting now uses visible per-car black flags and penalty reasons: confirmed pit-speeding is called as speeding, confirmed restart violations are identified, and an unrevealed reason is described only as a black-flag penalty instead of being mistaken for damage repair.
+- Loading an older Velocity League profile now migrates shared `league/*.csv` defaults to that profile's unique league folder, updates the visible import paths, creates any missing CSV shells, and saves the corrected profile paths.
 
 ## Version 1.0.5 - Model and Battle Call Refresh
 

@@ -40,6 +40,7 @@ from studio_launcher import (
     launcher_defaults,
     list_profiles,
     load_profile,
+    migrate_legacy_velocity_profile_paths,
     load_env_file,
     profile_path,
     producer_assist_launch_url,
@@ -681,6 +682,48 @@ def test_launcher_saves_lists_and_loads_profiles(tmp_path):
     assert profiles == ["WFO Truck"]
     assert loaded["USE_OPENAI"] == "false"
     assert loaded["OVERLAY_EVENT_TITLE"] == "WFO Truck Night"
+
+
+def test_old_velocity_profile_migrates_shared_csv_paths_to_profile_folder(tmp_path):
+    save_profile(
+        "Taco Tuesday Truck Series",
+        launcher_defaults(
+            {
+                "VELOCITY_LEAGUE_URL": "https://www.velocityleague.gg/trrl",
+                "LEAGUE_DRIVERS_CSV": "league/drivers.csv",
+                "LEAGUE_SEASON_STATS_CSV": "league/season.csv",
+                "LEAGUE_CAREER_STATS_CSV": "league/career.csv",
+                "SIMRACERHUB_RACE_SCHEDULE_CSV": "league/race_schedule.csv",
+                "VELOCITY_DRIVERS_OUTPUT": "league/drivers.csv",
+                "VELOCITY_STATS_OUTPUT": "league/season.csv",
+                "VELOCITY_CAREER_OUTPUT": "league/career.csv",
+                "VELOCITY_SCHEDULE_OUTPUT": "league/race_schedule.csv",
+            }
+        ),
+        profile_dir=tmp_path,
+    )
+
+    loaded = load_profile("Taco Tuesday Truck Series", profile_dir=tmp_path)
+
+    assert loaded["LEAGUE_DRIVERS_CSV"] == "league/Taco_Tuesday_Truck_Series/drivers.csv"
+    assert loaded["LEAGUE_SEASON_STATS_CSV"] == "league/Taco_Tuesday_Truck_Series/season.csv"
+    assert loaded["VELOCITY_STATS_OUTPUT"] == "league/Taco_Tuesday_Truck_Series/season.csv"
+    assert loaded["VELOCITY_CAREER_OUTPUT"] == "league/Taco_Tuesday_Truck_Series/career.csv"
+    assert loaded["VELOCITY_SCHEDULE_OUTPUT"] == "league/Taco_Tuesday_Truck_Series/race_schedule.csv"
+
+
+def test_velocity_profile_migration_preserves_custom_paths():
+    migrated = migrate_legacy_velocity_profile_paths(
+        "Taco Tuesday",
+        {
+            "VELOCITY_LEAGUE_URL": "https://www.velocityleague.gg/trrl",
+            "LEAGUE_SEASON_STATS_CSV": "exports/custom-season.csv",
+            "VELOCITY_STATS_OUTPUT": "exports/custom-season.csv",
+        },
+    )
+
+    assert migrated["LEAGUE_SEASON_STATS_CSV"] == "exports/custom-season.csv"
+    assert migrated["VELOCITY_STATS_OUTPUT"] == "exports/custom-season.csv"
 
 
 def test_launcher_can_delete_saved_profile(tmp_path):
