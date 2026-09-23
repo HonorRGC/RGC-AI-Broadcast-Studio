@@ -35,6 +35,10 @@ class PitDriverState:
     last_reported_at: float = 0.0
     initialized: bool = False
     started_from_pit_road: bool = False
+    black_flag_seen_during_stop: bool = False
+    penalty_reason_during_stop: str = ""
+    black_flag_active: bool = False
+    last_penalty_reason: str = ""
 
 
 class PitStrategyDetector:
@@ -52,6 +56,8 @@ class PitStrategyDetector:
         under_caution=False,
         session_time=None,
         lap_dist_pct=None,
+        car_idx_session_flags=None,
+        penalty_reasons=None,
     ) -> List[PitStrategyEvent]:
         events = []
         session_time = self.safe_float(session_time, time.time())
@@ -74,6 +80,13 @@ class PitStrategyDetector:
                 car_idx=car_idx,
                 driver_name=driver_name,
                 car_number=car_number,
+            )
+
+            self.update_penalty_state(
+                state,
+                self.array_value(car_idx_session_flags, car_idx),
+                self.array_value(penalty_reasons, car_idx),
+                car,
             )
 
             on_pit_road = self.is_car_on_pit_road(car_idx, pit_road_status)
@@ -122,6 +135,8 @@ class PitStrategyDetector:
                 if event and (self.can_report(state) or event.event_type == "PIT_STOP_COMPLETE"):
                     events.append(event)
                     state.last_reported_at = time.time()
+                state.black_flag_seen_during_stop = False
+                state.penalty_reason_during_stop = ""
 
             state.on_pit_road = on_pit_road
 
@@ -278,6 +293,23 @@ class PitStrategyDetector:
         stop_seconds = float(state.last_pit_stop_seconds or 0.0)
         timing = self.format_stop_timing(lane_seconds, stop_seconds)
 
+        if state.black_flag_seen_during_stop:
+            reason = self.normalize_penalty_reason(state.penalty_reason_during_stop)
+            if self.is_pit_speeding_reason(reason):
+                return (
+                    f"That extra time{timing} was the number {state.car_number} "
+                    "serving a black-flag penalty for speeding on pit road."
+                )
+            if self.is_jump_start_reason(reason):
+                return (
+                    f"That extra time{timing} was the number {state.car_number} "
+                    "serving the penalty for jumping the start or restart."
+                )
+            return (
+                f"That extra time{timing} appears to be a black-flag penalty being "
+                "served; iRacing has not identified the exact reason."
+            )
+
         if self.is_extended_repair_stop(state):
             return self.rotate_phrase(
                 "extended_stop_note",
@@ -330,6 +362,47 @@ class PitStrategyDetector:
                 f"The stop was on the short side{timing}, so the crew may have kept it simple.",
                 f"They were not parked long{timing}, which can be useful when track position is the priority.",
             ],
+        )
+
+    def update_penalty_state(self, state, flags, reason, car):
+        for key in ("PenaltyReason", "Penalty", "BlackFlagReason", "Reason"):
+            if not reason and (car or {}).get(key):
+                reason = (car or {}).get(key)
+        try:
+            has_black_flag = bool(int(flags or 0) & 0x00010000)
+        except (TypeError, ValueError):
+            has_black_flag = False
+        normalized_reason = self.normalize_penalty_reason(reason)
+        confirmed_penalty_reason = self.is_pit_speeding_reason(
+            normalized_reason
+        ) or self.is_jump_start_reason(normalized_reason)
+        new_reason = bool(normalized_reason and normalized_reason != state.last_penalty_reason)
+        if (has_black_flag and not state.black_flag_active) or (
+            confirmed_penalty_reason and new_reason
+        ):
+            state.black_flag_seen_during_stop = True
+        if reason:
+            state.penalty_reason_during_stop = str(reason)
+        state.black_flag_active = has_black_flag
+        state.last_penalty_reason = normalized_reason
+
+    @staticmethod
+    def normalize_penalty_reason(value):
+        text = str(value or "").lower()
+        return " ".join(text.replace("_", " ").replace("-", " ").split())
+
+    @staticmethod
+    def is_pit_speeding_reason(reason):
+        pit_context = "pit" in reason or "pitroad" in reason or "pitlane" in reason
+        return ("speed" in reason or "too fast" in reason) and pit_context
+
+    @staticmethod
+    def is_jump_start_reason(reason):
+        return (
+            ("jump" in reason and any(word in reason for word in ("start", "restart", "green")))
+            or "restart violation" in reason
+            or "start violation" in reason
+            or "early start" in reason
         )
 
     def describe_position_change(self, state):

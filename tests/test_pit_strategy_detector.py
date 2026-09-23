@@ -236,6 +236,47 @@ def test_pit_detector_reports_quick_stop_as_track_position_move():
     assert "track-position move" in completed[0].message
 
 
+def test_pit_detector_calls_confirmed_speeding_penalty_instead_of_long_stop():
+    detector = PitStrategyDetector()
+    detector.report_cooldown_seconds = 0
+    drivers = {0: {"name": "Fast Driver", "number": "44"}}
+    common = dict(results=[{"CarIdx": 0, "Position": 5}], driver_lookup=drivers,
+                  current_lap=21, under_caution=False, lap_dist_pct=[0.2])
+
+    detector.analyze(pit_road_status=[False], session_time=100.0,
+                     car_idx_session_flags=[0], penalty_reasons=[""], **common)
+    detector.analyze(pit_road_status=[True], session_time=110.0,
+                     car_idx_session_flags=[0x00010000],
+                     penalty_reasons=["Speeding on pit road"], **common)
+    events = detector.analyze(pit_road_status=[False], session_time=145.0,
+                              car_idx_session_flags=[0x00010000],
+                              penalty_reasons=["Speeding on pit road"], **common)
+
+    completed = [event for event in events if event.event_type == "PIT_STOP_COMPLETE"]
+    assert "black-flag penalty for speeding on pit road" in completed[0].message
+    assert "damage repair" not in completed[0].message
+
+
+def test_pit_detector_reports_visible_black_flag_without_guessing_reason():
+    detector = PitStrategyDetector()
+    detector.report_cooldown_seconds = 0
+    drivers = {0: {"name": "Penalized Driver", "number": "12"}}
+    common = dict(results=[{"CarIdx": 0, "Position": 8}], driver_lookup=drivers,
+                  current_lap=30, under_caution=False, lap_dist_pct=[0.3])
+
+    detector.analyze(pit_road_status=[False], session_time=200.0,
+                     car_idx_session_flags=[0], penalty_reasons=[""], **common)
+    detector.analyze(pit_road_status=[True], session_time=210.0,
+                     car_idx_session_flags=[0x00010000], penalty_reasons=[""], **common)
+    events = detector.analyze(pit_road_status=[False], session_time=245.0,
+                              car_idx_session_flags=[0x00010000], penalty_reasons=[""], **common)
+
+    completed = [event for event in events if event.event_type == "PIT_STOP_COMPLETE"]
+    assert "black-flag penalty being served" in completed[0].message
+    assert "exact reason" in completed[0].message
+    assert "speeding" not in completed[0].message
+
+
 def test_pit_detector_mentions_quick_stop_that_gains_track_position():
     detector = PitStrategyDetector()
     detector.report_cooldown_seconds = 0

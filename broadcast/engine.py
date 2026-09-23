@@ -250,6 +250,12 @@ class BroadcastEngine:
                 lap_dist_pct=getattr(telemetry, "get_car_idx_lap_dist_pct", lambda: [])(),
                 track_info=track_info,
                 live_under_caution=self.telemetry_under_caution(telemetry),
+                car_idx_session_flags=getattr(
+                    telemetry, "get_car_idx_session_flags", lambda: []
+                )(),
+                penalty_reasons=getattr(
+                    telemetry, "get_car_idx_penalty_reasons", lambda: []
+                )(),
             )
             self._collect_incidents(
                 telemetry,
@@ -1740,6 +1746,8 @@ class BroadcastEngine:
         lap_dist_pct=None,
         track_info=None,
         live_under_caution=False,
+        car_idx_session_flags=None,
+        penalty_reasons=None,
     ):
         under_caution = bool(live_under_caution) or self.race_director.phase in (
             RacePhase.CAUTION,
@@ -1753,6 +1761,8 @@ class BroadcastEngine:
             under_caution=under_caution,
             session_time=session_time,
             lap_dist_pct=lap_dist_pct,
+            car_idx_session_flags=car_idx_session_flags,
+            penalty_reasons=penalty_reasons,
         )
         if under_caution:
             self.caution_pit_reporter.update(
