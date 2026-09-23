@@ -20,6 +20,7 @@
 - Restarting or joining a recorded broadcast midway through the race now reconstructs the complete green/yellow lap-history bar from all earlier captured telemetry.
 - Velocity League imports now default to the active profile's driver, season, career, and schedule CSV files instead of silently writing to shared league files that the selected profile does not read.
 - Broadcast Health now warns when league season or career CSV files exist but contain no driver statistics.
+- Green-flag top-ten rundowns now consistently report each driver's gap to the leader and positions gained or lost; league profiles add the manually entered sponsor first and hometown/location second, while official races stay concise.
 
 ## Version 1.0.5 - Model and Battle Call Refresh
 

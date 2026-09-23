@@ -153,6 +153,7 @@ class FieldRundownDirector:
                             ),
                         )
                     ),
+                    "league_profile": driver_info.get("league_profile") or {},
                     "league_context": self.league_rundown_context(
                         driver_info,
                         order_position,
@@ -311,38 +312,44 @@ class FieldRundownDirector:
         current_position = PositionFormatter.ordinal(entry["position"])
         starting_position = entry.get("starting_position", 0)
         net = starting_position - entry["position"] if starting_position else 0
-        position = entry["position"]
         number = entry["number"]
         name = entry["name"]
+        identity = f"{current_position.capitalize()} place, the number {number} of {name}."
 
+        profile = entry.get("league_profile") or {}
+        profile_parts = []
+        if profile:
+            sponsor = self.clean(profile.get("sponsor"))
+            location = self.location_phrase(profile)
+            if sponsor:
+                profile_parts.append(f"Sponsored by {sponsor}")
+            if location:
+                profile_parts.append(f"representing {location}")
+
+        running_parts = []
+        gap = self.gap_to_leader_phrase(entry)
+        if gap:
+            running_parts.append(gap)
+        running_parts.append(self.net_movement_phrase(net))
+
+        parts = [identity]
+        if profile_parts:
+            parts.append(f"{', '.join(profile_parts)}.")
+        parts.append(f"They are {' and '.join(running_parts)}.")
+        return " ".join(parts)
+
+    def gap_to_leader_phrase(self, entry):
+        if self.safe_int(entry.get("position"), 0) <= 1:
+            return "the race leader"
+        gap = max(0.0, self.safe_float(entry.get("gap_to_leader"), 0.0))
+        return f"{gap:.1f} seconds behind the leader"
+
+    def net_movement_phrase(self, net):
         if net > 0:
-            templates = (
-                f"{current_position.capitalize()} place is the {number} of {name}, up {self.position_count(net)} from the start.",
-                f"Scored {current_position}, {name} has moved the {number} forward {self.position_count(net)}.",
-                f"{name} has climbed to {current_position} in the number {number}, a gain of {self.position_count(net)}.",
-            )
-        elif net < 0:
-            lost = self.position_count(abs(net))
-            starting = PositionFormatter.ordinal(starting_position)
-            templates = (
-                f"{current_position.capitalize()} place belongs to the {number} of {name}, after starting {starting}.",
-                f"{name} is shown {current_position} in the number {number}, down {lost} from the grid.",
-                f"The {number} of {name} is holding {current_position} now after slipping back {lost}.",
-            )
-        else:
-            templates = (
-                f"{current_position.capitalize()} place, the {number} of {name}, right where they started.",
-                f"{name} continues in {current_position} with the number {number}, matching their starting spot.",
-                f"The {number} of {name} is steady in {current_position}, no change from the grid.",
-            )
-
-        stat_context = entry.get("league_context") or self.session_stat_context(
-            entry,
-            net,
-        )
-        if stat_context:
-            return f"{templates[(position - 1) % len(templates)]} {stat_context}"
-        return templates[(position - 1) % len(templates)]
+            return f"up {self.position_count(net)} from the start"
+        if net < 0:
+            return f"down {self.position_count(abs(net))} from the start"
+        return "in the same position where they started"
 
     def league_rundown_context(self, driver_info, order_position=1):
         candidates = []

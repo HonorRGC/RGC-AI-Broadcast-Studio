@@ -59,9 +59,11 @@ def test_long_green_rundown_freezes_top_ten_and_airs_one_driver_at_a_time():
     assert "20 laps into this green-flag stretch" in segments[0].message
     assert "top ten" in segments[0].message
     assert "First place" in segments[0].message
-    assert "best lap so far is 30.125 seconds" in segments[0].message
+    assert "the race leader" in segments[0].message
+    assert "same position where they started" in segments[0].message
     assert "Driver 2" in second_segment[0].message
-    assert "within 0.4 seconds" in second_segment[0].message
+    assert "0.4 seconds behind the leader" in second_segment[0].message
+    assert "up 3 spots from the start" in second_segment[0].message
     assert repeated[0].category == "long_green_field_rundown_3"
 
 
@@ -160,13 +162,10 @@ def test_long_green_rundown_uses_adjacent_gap_not_leader_gap():
 
     assert entries[2]["gap_to_leader"] == 2.0
     assert entries[2]["gap_to_car_ahead"] == 1.6
-    assert "1.6 seconds behind the car ahead" in director.format_entry(entries[2])
-    assert "2.0 seconds back from the next position" not in director.format_entry(
-        entries[2]
-    )
+    assert "2.0 seconds behind the leader" in director.format_entry(entries[2])
 
 
-def test_long_green_rundown_prefers_league_track_stats_over_session_gap():
+def test_long_green_rundown_keeps_league_profile_ahead_of_gap_and_movement():
     director = FieldRundownDirector()
     results = [
         {"CarIdx": 0, "Position": 1, "StartingPosition": 1, "Time": 0.0},
@@ -176,6 +175,11 @@ def test_long_green_rundown_prefers_league_track_stats_over_session_gap():
         0: {
             "name": "T.J. Lee",
             "number": "34",
+            "league_profile": {
+                "sponsor": "RGC Motorsports",
+                "hometown": "Richmond",
+                "state": "Virginia",
+            },
             "league_stats_by_scope": [
                 {
                     "stats_scope": "season",
@@ -192,11 +196,11 @@ def test_long_green_rundown_prefers_league_track_stats_over_session_gap():
     entries = director.build_entries(results, drivers)
     message = director.format_entry(entries[0])
 
-    assert "At this track" in message
-    assert "5 previous league starts" in message
-    assert "2 track wins" in message
-    assert "best finish of first" in message
-    assert "best lap so far" not in message
+    assert "Sponsored by RGC Motorsports" in message
+    assert "representing Richmond, Virginia" in message
+    assert message.index("Sponsored by") < message.index("representing")
+    assert "the race leader" in message
+    assert "same position where they started" in message
 
 
 def test_long_green_rundown_uses_league_points_and_profile_notes():
@@ -230,9 +234,31 @@ def test_long_green_rundown_uses_league_points_and_profile_notes():
     message = director.format_entry(entries[1])
 
     assert "Austin Peterson" in message
-    assert "patient on long runs" in message
+    assert "Sponsored by" not in message
     assert "Lebanon, Tennessee, United States" in message
-    assert "within 0.5 seconds" not in message
+    assert "0.5 seconds behind the leader" in message
+    assert "up 2 spots from the start" in message
+
+
+def test_official_rundown_uses_only_leader_gap_and_position_movement():
+    director = FieldRundownDirector()
+    entries = director.build_entries(
+        [
+            {"CarIdx": 0, "Position": 1, "StartingPosition": 1, "Time": 0.0},
+            {"CarIdx": 1, "Position": 2, "StartingPosition": 5, "Time": 1.26},
+        ],
+        {
+            0: {"name": "Leader", "number": "1", "country": "United States"},
+            1: {"name": "Official Driver", "number": "22", "country": "Canada"},
+        },
+    )
+
+    message = director.format_entry(entries[1])
+
+    assert "1.3 seconds behind the leader" in message
+    assert "up 3 spots from the start" in message
+    assert "Canada" not in message
+    assert "Sponsored by" not in message
 
 
 def test_long_green_final_rundown_segment_returns_to_home_camera():
