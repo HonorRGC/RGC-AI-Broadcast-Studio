@@ -290,6 +290,24 @@ class ReplayTelemetry:
                 if frame is not None:
                     self.controller_frame_observed = frame
                 return self.current_snapshot()
+            # ReplayFrameNum can roll backward when iRacing crosses from
+            # qualifying/pace laps into the race.  Never retain an anchor that
+            # is ahead of the current frame: doing so pins elapsed time at zero
+            # immediately after the green flag.
+            if (
+                frame is not None
+                and self.controller_frame_anchor is not None
+                and self.pending_live_target is None
+                and frame < self.controller_frame_anchor
+            ):
+                self.synchronize_to_controller(force=True)
+                frame = self._controller_frame_number()
+                if frame is not None:
+                    self.controller_frame_anchor = frame
+                    self.controller_frame_observed = frame
+                snapshot = self.current_snapshot()
+                if snapshot is not None:
+                    self.capture_started_at = float(snapshot.timestamp or 0.0)
             # Some saved replays reset or briefly stop updating ReplayFrameNum at
             # a session boundary.  The sim's session clock still advances, so use
             # it to re-anchor instead of leaving telemetry and commentary frozen

@@ -100,6 +100,20 @@ def test_sim_racing_apps_failure_marks_service_temporarily_offline(monkeypatch):
     assert len(calls) == 2
 
 
+def test_reset_sim_racing_apps_state_discards_prior_session_data():
+    sim_racing_apps._CACHE["old"] = {"time": 1.0, "data": {"State": "NORMAL"}}
+    sim_racing_apps._ROSTER_CACHE["old"] = {"time": 1.0, "data": [{}]}
+    sim_racing_apps._LAST_GOOD_RENDER_INFO[(1, "1", "driver")] = {"image_url": "old"}
+    sim_racing_apps._OFFLINE_UNTIL_BY_BASE["old"] = 99.0
+
+    sim_racing_apps.reset_sim_racing_apps_state()
+
+    assert sim_racing_apps._CACHE == {}
+    assert sim_racing_apps._ROSTER_CACHE == {}
+    assert sim_racing_apps._LAST_GOOD_RENDER_INFO == {}
+    assert sim_racing_apps._OFFLINE_UNTIL_BY_BASE == {}
+
+
 def test_build_car_image_url_ignores_error_state(monkeypatch):
     def fake_urlopen(url, timeout=0):
         return Response('{"State":"ERROR","Value":"not available"}')

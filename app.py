@@ -51,7 +51,10 @@ from production.overlay import OverlayServer, OverlayStateBuilder
 from production.multiclass import build_multiclass_context
 from production.car_paint_preview import ensure_preview_file
 from production.iracing_render_cache import build_iracing_render_image_url
-from production.sim_racing_apps import build_sim_racing_apps_car_render_info
+from production.sim_racing_apps import (
+    build_sim_racing_apps_car_render_info,
+    reset_sim_racing_apps_state,
+)
 from production.replay_director import ReplayDirector
 from production.race_control import RaceControlService
 
@@ -3943,6 +3946,7 @@ def main():
             else:
                 source.start_timed_playback(reset_index=True)
                 print("Recorded Broadcast: telemetry playback is ready, but iRacing replay control is not connected.")
+        reset_sim_racing_apps_state()
         run_source(
             source,
             engine,
@@ -3971,6 +3975,7 @@ def main():
             continue
 
         print("\nConnected to iRacing!")
+        reset_sim_racing_apps_state()
         cleanup_live_broadcast_session(
             source,
             replay_director,

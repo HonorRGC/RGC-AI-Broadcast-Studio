@@ -35,6 +35,14 @@ CAR_FIELDS = (
 )
 
 
+def reset_sim_racing_apps_state():
+    """Discard data tied to a prior iRacing/SIMRacingApps session."""
+    _CACHE.clear()
+    _ROSTER_CACHE.clear()
+    _LAST_GOOD_RENDER_INFO.clear()
+    _OFFLINE_UNTIL_BY_BASE.clear()
+
+
 def build_sim_racing_apps_car_image_url(
     driver_info,
     *,

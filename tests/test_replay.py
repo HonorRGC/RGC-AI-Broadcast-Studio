@@ -182,6 +182,31 @@ def test_recorded_broadcast_uses_session_clock_when_frame_clock_stalls(tmp_path)
     assert replay.get_lap() == 2
 
 
+def test_recorded_broadcast_reanchors_when_frame_counter_rolls_back_after_green(tmp_path):
+    path = tmp_path / "green_frame_rollover.jsonl"
+    snapshots = [
+        {"lap": 0, "timestamp": 1000.0, "session_num": 2, "session_type": "Race", "session_time": 20.0},
+        {"lap": 1, "timestamp": 1001.0, "session_num": 2, "session_type": "Race", "session_time": 21.0},
+        {"lap": 2, "timestamp": 1002.0, "session_num": 2, "session_type": "Race", "session_time": 22.0},
+    ]
+    path.write_text("".join(json.dumps(item) + "\n" for item in snapshots), encoding="utf-8")
+    controller = FakeReplayController(2, 20.0, "Race", replay_frame=600)
+    replay = ReplayTelemetry(path).attach_controller(controller)
+    replay.playback_ready = True
+
+    # iRacing rolls its frame counter back at the green while its race clock
+    # continues normally.
+    controller.session_time = 21.0
+    controller.replay_frame = 30
+    replay.next_snapshot()
+    assert replay.get_lap() == 1
+
+    controller.session_time = 22.0
+    controller.replay_frame = 90
+    replay.next_snapshot()
+    assert replay.get_lap() == 2
+
+
 def test_recorded_broadcast_waits_for_iracing_replay_frames_to_move(tmp_path):
     path = tmp_path / "frame_clock.jsonl"
     snapshots = [
