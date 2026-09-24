@@ -222,10 +222,30 @@ def extract_embedded_records(document, name_key="name"):
 
 
 def parse_structured_standings(document):
+    records = extract_embedded_records(document, name_key="display_name")
+    # Velocity embeds overview standings for its other series before the table
+    # selected by the URL. A repeated customer marks the next complete table;
+    # the selected series is the final table rendered in the page payload.
+    groups = []
+    current_group = []
+    current_customers = set()
+    for record in records:
+        cust_id = str(record.get("cust_id") or "").strip()
+        if cust_id and cust_id in current_customers and current_group:
+            groups.append(current_group)
+            current_group = []
+            current_customers = set()
+        current_group.append(record)
+        if cust_id:
+            current_customers.add(cust_id)
+    if current_group:
+        groups.append(current_group)
+    selected_records = groups[-1] if groups else []
+
     rows = []
     seen_customers = set()
     position = 0
-    for record in extract_embedded_records(document, name_key="display_name"):
+    for record in selected_records:
         cust_id = str(record.get("cust_id") or "").strip()
         if not cust_id or cust_id in seen_customers:
             continue
@@ -553,6 +573,20 @@ def resolve_series_key(input_url, series_filter, document):
     return pairs[0][0] if pairs else ""
 
 
+def build_standings_query(series_key, input_url=""):
+    """Target the active series standings unless the user chose a season.
+
+    Velocity's unqualified series URL resolves the current standings.  Forcing
+    ``season=s1`` can select an older or different season and was the reason the
+    Wednesday graphic showed the wrong order.
+    """
+    query = {"series": str(series_key or "").strip()}
+    supplied_season = (parse_qs(urlparse(str(input_url or "")).query).get("season") or [""])[0].strip()
+    if supplied_season:
+        query["season"] = supplied_season
+    return urlencode({key: value for key, value in query.items() if value})
+
+
 def merge_driver_sources(directory_rows, standings_rows, career_rows):
     """Use career names first, then season records, while retaining signed drivers."""
     by_customer = {}
@@ -730,7 +764,7 @@ def run_import(args):
     league_root = urlunparse((parsed_home.scheme, parsed_home.netloc, "", "", "", "")).rstrip("/")
     series_key = resolve_series_key(args.url, args.series, home_html)
     series_query = urlencode({"series": series_key}) if series_key else ""
-    standings_query = urlencode({"series": series_key, "season": "s1"}) if series_key else ""
+    standings_query = build_standings_query(series_key, args.url) if series_key else ""
 
     schedule_candidates = []
     if series_key:

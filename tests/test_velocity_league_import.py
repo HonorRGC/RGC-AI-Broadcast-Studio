@@ -1,4 +1,5 @@
 from tools.velocity_league_import import (
+    build_standings_query,
     driver_rows_from_stats,
     fetch_first_html,
     merge_driver_sources,
@@ -60,6 +61,46 @@ def test_structured_velocity_pages_use_real_names_numbers_and_stats():
     assert season_rows[0]["last_finish"] == 5
     assert career_rows[0]["starts"] == 2
     assert career_rows[0]["avg_finish"] == 3.5
+
+
+def test_structured_standings_uses_selected_series_table_rendered_last():
+    page = rsc_page(
+        {
+            "cust_id": 100,
+            "display_name": "Other Series Leader",
+            "car_number": "1",
+            "total_points": 90,
+            "races": 2,
+        },
+        {
+            "cust_id": 200,
+            "display_name": "Shared Driver",
+            "car_number": "2",
+            "total_points": 80,
+            "races": 2,
+        },
+        {
+            "cust_id": 200,
+            "display_name": "Wednesday Leader",
+            "car_number": "81",
+            "total_points": 87,
+            "races": 2,
+        },
+        {
+            "cust_id": 300,
+            "display_name": "Wednesday Second",
+            "car_number": "34",
+            "total_points": 80,
+            "races": 2,
+        },
+    )
+
+    rows = parse_structured_standings(page)
+
+    assert [(row["points_position"], row["name"], row["car_number"]) for row in rows] == [
+        ("1", "Wednesday Leader", "81"),
+        ("2", "Wednesday Second", "34"),
+    ]
 
 
 def test_directory_adds_signed_drivers_and_career_name_wins():
@@ -245,6 +286,24 @@ def test_velocity_url_variants_try_league_subdomain_first():
     assert variants[0] == "https://trrl.velocityleague.gg/"
     assert "https://www.velocityleague.gg/trrl" in variants
     assert "https://www.velocityleague.gg/trrl/" in variants
+
+
+def test_velocity_standings_query_uses_active_series_without_forcing_s1():
+    query = build_standings_query(
+        "whiskey-throttle-wednesday",
+        "https://www.velocityleague.gg/trrl/standings?series=whiskey-throttle-wednesday",
+    )
+
+    assert query == "series=whiskey-throttle-wednesday"
+
+
+def test_velocity_standings_query_preserves_explicit_season():
+    query = build_standings_query(
+        "whiskey-throttle-wednesday",
+        "https://www.velocityleague.gg/trrl/standings?series=whiskey-throttle-wednesday&season=s2",
+    )
+
+    assert query == "series=whiskey-throttle-wednesday&season=s2"
 
 
 def test_fetch_first_html_retries_after_redirect_loop(monkeypatch):
