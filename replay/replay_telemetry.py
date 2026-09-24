@@ -24,6 +24,7 @@ class ReplayTelemetry:
         self.playback_ready = False
         self.controller_frame_anchor = None
         self.controller_frame_observed = None
+        self.controller_session_marker_observed = None
         self.pending_frame_reanchor = False
         self.pending_live_target = None
         self._lap_history_cache_index = -1
@@ -38,6 +39,7 @@ class ReplayTelemetry:
         self.playback_ready = False
         self.controller_frame_anchor = self._controller_frame_number()
         self.controller_frame_observed = self.controller_frame_anchor
+        self.controller_session_marker_observed = self._controller_session_marker()
         self.pending_frame_reanchor = False
         self.pending_live_target = None
         self.playback_started_at = None
@@ -58,24 +60,53 @@ class ReplayTelemetry:
         except (TypeError, ValueError):
             return None
 
+    def _controller_session_marker(self):
+        if not self.controller:
+            return None
+        try:
+            return (
+                int(self.controller.get_current_session_num()),
+                float(self.controller.get_session_time()),
+                self._session_type_family(self.controller.get_session_type()),
+            )
+        except (AttributeError, TypeError, ValueError):
+            return None
+
     def _activate_controller_playback_if_moving(self):
         frame = self._controller_frame_number()
-        if frame is None:
-            return False
-        if self.controller_frame_observed is None:
+        session_marker = self._controller_session_marker()
+        if frame is not None and self.controller_frame_observed is None:
             self.controller_frame_observed = frame
             self.controller_frame_anchor = frame
-            return False
-        if frame == self.controller_frame_observed:
+        frame_moved = (
+            frame is not None
+            and self.controller_frame_observed is not None
+            and frame != self.controller_frame_observed
+        )
+        session_clock_moved = self._session_marker_moved(session_marker)
+        if not frame_moved and not session_clock_moved:
             return False
         self.synchronize_to_controller(force=True)
         self.playback_ready = True
-        self.controller_frame_anchor = frame
-        self.controller_frame_observed = frame
+        if frame is not None:
+            self.controller_frame_anchor = frame
+            self.controller_frame_observed = frame
+        self.controller_session_marker_observed = session_marker
         snapshot = self.current_snapshot()
         if snapshot is not None:
             self.capture_started_at = float(snapshot.timestamp or 0.0)
         return True
+
+    def _session_marker_moved(self, marker, minimum_seconds=0.2):
+        previous = self.controller_session_marker_observed
+        if marker is None:
+            return False
+        if previous is None:
+            self.controller_session_marker_observed = marker
+            return False
+        if marker[0] != previous[0] or marker[2] != previous[2]:
+            return True
+        return abs(marker[1] - previous[1]) >= float(minimum_seconds)
 
     def start_timed_playback(self, reset_index=False):
         if reset_index:
@@ -300,6 +331,7 @@ class ReplayTelemetry:
         self.playback_ready = False
         self.controller_frame_anchor = None
         self.controller_frame_observed = None
+        self.controller_session_marker_observed = None
         self.pending_frame_reanchor = False
         self.pending_live_target = None
         self._lap_history_cache_index = -1

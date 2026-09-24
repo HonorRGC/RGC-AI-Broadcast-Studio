@@ -217,6 +217,26 @@ def test_recorded_broadcast_waits_for_iracing_replay_frames_to_move(tmp_path):
     assert replay.get_lap() == 3
 
 
+def test_recorded_broadcast_can_arm_from_session_clock_when_frame_is_frozen(tmp_path):
+    path = tmp_path / "session_clock_start.jsonl"
+    snapshots = [
+        {"lap": 1, "timestamp": 1000.0, "session_num": 2, "session_type": "Race", "session_time": 10.0},
+        {"lap": 2, "timestamp": 1001.0, "session_num": 2, "session_type": "Race", "session_time": 11.0},
+    ]
+    path.write_text("".join(json.dumps(item) + "\n" for item in snapshots), encoding="utf-8")
+    controller = FakeReplayController(2, 10.0, "Race", replay_frame=600)
+    replay = ReplayTelemetry(path).attach_controller(controller)
+
+    replay.next_snapshot()
+    assert not replay.recorded_playback_is_ready()
+
+    controller.session_time = 10.5
+    replay.next_snapshot()
+
+    assert replay.recorded_playback_is_ready()
+    assert replay.get_lap() == 1
+
+
 def test_return_to_live_waits_for_async_seek_before_reanchoring(tmp_path):
     path = tmp_path / "return_live.jsonl"
     snapshots = [

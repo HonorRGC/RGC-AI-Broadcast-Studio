@@ -404,9 +404,29 @@ def test_launcher_health_reports_sim_racing_apps_optional_when_not_running(monke
     rows = build_health_status(values, root=Path("C:/RGC"), broadcast_running=False)
     row_map = {name: (state, detail, level) for name, state, detail, level in rows}
 
-    assert row_map["SIMRacingApps"][0] == "Not running"
+    assert row_map["SIMRacingApps"][0] == "Not connected"
     assert "Start SIMRacingAppsServer" in row_map["SIMRacingApps"][1]
     assert row_map["SIMRacingApps"][2] == "warn"
+
+
+def test_sim_racing_apps_health_requires_connection_to_sim(monkeypatch):
+    import studio_launcher
+
+    class Response:
+        status = 200
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def read(self, _size):
+            return b'{"State":"ERROR","Value":"NO Connection to SIM"}'
+
+    monkeypatch.setattr(studio_launcher.urllib.request, "urlopen", lambda *_args, **_kwargs: Response())
+
+    assert not studio_launcher.sim_racing_apps_is_running()
 
 
 def test_launcher_health_reports_sim_racing_apps_disabled(monkeypatch):

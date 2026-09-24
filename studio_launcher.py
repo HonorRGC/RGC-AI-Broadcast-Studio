@@ -842,7 +842,13 @@ def ensure_empty_race_schedule_csv(csv_path):
 def sim_racing_apps_is_running(url=SIM_RACING_APPS_HEALTH_URL, timeout=0.35):
     try:
         with urllib.request.urlopen(url, timeout=timeout) as response:
-            return 200 <= int(getattr(response, "status", 200)) < 500
+            if not 200 <= int(getattr(response, "status", 200)) < 500:
+                return False
+            payload = json.loads(response.read(64_000).decode("utf-8", errors="ignore"))
+            if str(payload.get("State") or "").strip().upper() == "ERROR":
+                return False
+            value = str(payload.get("Value") or payload.get("ValueFormatted") or "").strip()
+            return bool(value) and "NO CONNECTION TO SIM" not in value.upper()
     except Exception:
         return False
 
@@ -933,8 +939,8 @@ def build_health_status(values, root=ROOT, broadcast_running=False):
         rows.append(
             (
                 "SIMRacingApps",
-                "Not running",
-                "Start SIMRacingAppsServer before broadcasting, or set Use SIMRacingApps Car Graphics to false.",
+                "Not connected",
+                "Start SIMRacingAppsServer and make sure it shows a connection to iRacing, or set Use SIMRacingApps Car Graphics to false.",
                 "warn",
             )
         )
@@ -2690,12 +2696,12 @@ def run_gui():
             and not sim_racing_apps_is_running()
         ):
             messagebox.showwarning(
-                "SIMRacingApps is not running",
-                "Use SIMRacingApps Car Graphics is set to true, but SIMRacingAppsServer is not running.\n\n"
-                "Start SIMRacingAppsServer before starting the broadcast, or change Use SIMRacingApps Car Graphics to false and save settings.",
+                "SIMRacingApps is not connected",
+                "Use SIMRacingApps Car Graphics is set to true, but SIMRacingAppsServer is not connected to iRacing.\n\n"
+                "Start SIMRacingAppsServer and confirm it connects to the sim before starting the broadcast, or change Use SIMRacingApps Car Graphics to false and save settings.",
             )
             status.set(
-                "SIMRacingApps is enabled but not running. Start SIMRacingAppsServer or set it to false."
+                "SIMRacingApps is enabled but not connected to iRacing. Connect it to the sim or set it to false."
             )
             refresh_health()
             return
