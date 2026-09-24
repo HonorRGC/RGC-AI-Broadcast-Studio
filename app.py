@@ -1954,10 +1954,23 @@ def show_overlay_feature(item, overlay_server, source=None, engine=None):
 
 def build_points_standings_rows(source=None, engine=None, limit=20):
     driver_lookup = {}
-    if source and hasattr(source, "get_driver_lookup"):
-        driver_lookup = source.get_driver_lookup() or {}
-    if engine and getattr(engine, "league_context", None):
-        driver_lookup = engine.league_context.enrich_driver_lookup(driver_lookup)
+    league_context = getattr(engine, "league_context", None) if engine else None
+    season_reader = getattr(league_context, "season_standings", None)
+    configured_standings = season_reader() if callable(season_reader) else []
+    if configured_standings:
+        driver_lookup = {
+            f"season:{index}": {
+                "name": stats.name,
+                "number": stats.car_number,
+                "league_stats_by_scope": [stats.as_dict()],
+            }
+            for index, stats in enumerate(configured_standings)
+        }
+    else:
+        if source and hasattr(source, "get_driver_lookup"):
+            driver_lookup = source.get_driver_lookup() or {}
+        if league_context:
+            driver_lookup = league_context.enrich_driver_lookup(driver_lookup)
 
     standings = []
     seen = set()

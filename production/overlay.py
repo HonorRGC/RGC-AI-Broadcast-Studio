@@ -5346,13 +5346,7 @@ OVERLAY_HTML = r"""<!doctype html>
       border-left-color: #15c85f;
     }
 
-    .stat-panel.points_standings {
-      width: 540px;
-      bottom: 42px;
-      border-left-color: #39a7ff;
-      background: linear-gradient(90deg, rgba(7, 11, 19, 0.97), rgba(18, 36, 58, 0.95));
-    }
-
+    .stat-panel.points_standings,
     .stat-panel.points_standings_pre_race {
       left: 28px;
       right: auto;
@@ -5363,19 +5357,23 @@ OVERLAY_HTML = r"""<!doctype html>
       background: linear-gradient(90deg, rgba(7, 11, 19, 0.97), rgba(18, 36, 58, 0.95));
     }
 
+    .stat-panel.points_standings .stat-panel-header,
     .stat-panel.points_standings_pre_race .stat-panel-header {
       padding: 8px 11px 7px;
     }
 
+    .stat-panel.points_standings .stat-panel-title,
     .stat-panel.points_standings_pre_race .stat-panel-title {
       font-size: 18px;
     }
 
+    .stat-panel.points_standings .stat-panel-subtitle,
     .stat-panel.points_standings_pre_race .stat-panel-subtitle {
       margin-top: 1px;
       font-size: 9px;
     }
 
+    .stat-panel.points_standings .stat-panel-row,
     .stat-panel.points_standings_pre_race .stat-panel-row {
       grid-template-columns: minmax(0, 1fr) 42px 126px;
       gap: 7px;
@@ -5384,11 +5382,13 @@ OVERLAY_HTML = r"""<!doctype html>
       min-height: 17px;
     }
 
+    .stat-panel.points_standings .stat-panel-label,
     .stat-panel.points_standings_pre_race .stat-panel-label {
       font-size: 11px;
       line-height: 14px;
     }
 
+    .stat-panel.points_standings .stat-panel-value,
     .stat-panel.points_standings_pre_race .stat-panel-value {
       color: #9ed8ff;
       font-size: 12px;
@@ -5396,6 +5396,7 @@ OVERLAY_HTML = r"""<!doctype html>
       text-align: right;
     }
 
+    .stat-panel.points_standings .stat-panel-detail,
     .stat-panel.points_standings_pre_race .stat-panel-detail {
       grid-column: auto;
       color: #d6e9fa;
@@ -5535,29 +5536,6 @@ OVERLAY_HTML = r"""<!doctype html>
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-    }
-
-    .stat-panel.points_standings .stat-panel-title {
-      font-size: 21px;
-    }
-
-    .stat-panel.points_standings .stat-panel-row {
-      padding: 5px 12px;
-      grid-template-columns: minmax(0, 1fr) 58px;
-      gap: 8px;
-    }
-
-    .stat-panel.points_standings .stat-panel-label {
-      font-size: 12px;
-    }
-
-    .stat-panel.points_standings .stat-panel-value {
-      font-size: 14px;
-      color: #9ed8ff;
-    }
-
-    .stat-panel.points_standings .stat-panel-detail {
-      font-size: 10px;
     }
 
     .hidden {

@@ -420,6 +420,34 @@ class LeagueContext:
                 ordered.append(stats)
         return ordered
 
+    def season_standings(self):
+        """Return the complete season standings from the configured season file.
+
+        Build this list from the season import itself instead of the live-session
+        roster.  That keeps absent drivers in the top 20 and prevents combined
+        career totals from being mistaken for the active series standings.
+        """
+        standings = []
+        seen = set()
+        for scoped in self.stats_by_name.values():
+            stats = scoped.get("season") if isinstance(scoped, dict) else None
+            if not stats or self.position_number(stats.points_position) <= 0:
+                continue
+            key = (self.normalize(stats.name), self.normalize_number(stats.car_number))
+            if key in seen:
+                continue
+            seen.add(key)
+            standings.append(stats)
+        standings.sort(key=lambda stats: self.position_number(stats.points_position))
+        return standings
+
+    @staticmethod
+    def position_number(value):
+        try:
+            return int(float(str(value or "").strip()))
+        except (TypeError, ValueError):
+            return 0
+
     def normalized_stats_scope(self, stats):
         return stats.scope_label()
 

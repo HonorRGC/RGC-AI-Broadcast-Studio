@@ -220,6 +220,41 @@ def test_league_context_reads_season_and_career_from_separate_csv_files(tmp_path
     assert any("career wins: 4" in summary for summary in enriched[4]["league_stats_summaries"])
 
 
+def test_season_standings_uses_only_season_file_and_returns_full_order(tmp_path):
+    season_csv = tmp_path / "season.csv"
+    season_csv.write_text(
+        "\n".join(
+            [
+                "name,car_number,points_position,wins,notes",
+                "Second Driver,22,2,1,Velocity season standings",
+                "Points Leader,11,1,2,Velocity season standings",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    career_csv = tmp_path / "career.csv"
+    career_csv.write_text(
+        "\n".join(
+            [
+                "name,car_number,points_position,wins,notes",
+                "Wrong Combined Driver,99,1,20,Velocity combined league career stats",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    context = LeagueContext(
+        tmp_path / "missing.csv",
+        season_stats_csv_path=season_csv,
+        career_stats_csv_path=career_csv,
+        enabled=True,
+    )
+
+    standings = context.season_standings()
+
+    assert [stats.name for stats in standings] == ["Points Leader", "Second Driver"]
+    assert all(stats.scope_label() == "season" for stats in standings)
+
+
 def test_league_context_assignment_notes_include_profile_season_and_career(tmp_path):
     career_csv = tmp_path / "career.csv"
     career_csv.write_text(
