@@ -4452,7 +4452,18 @@ OVERLAY_HTML = r"""<!doctype html>
       border-right: 1px solid rgba(255, 255, 255, 0.16);
     }
 
-    .flo-brand img,
+    .flo-brand img {
+      width: 100%;
+      height: 100%;
+      max-width: 202px;
+      max-height: 104px;
+      object-fit: contain;
+      transform: scale(1.08);
+      filter:
+        drop-shadow(0 7px 12px rgba(0, 0, 0, 0.70))
+        drop-shadow(0 0 12px rgba(255, 255, 255, 0.12));
+    }
+
     .flo-series img {
       max-width: 184px;
       max-height: 72px;
@@ -4857,6 +4868,7 @@ OVERLAY_HTML = r"""<!doctype html>
     .brazen-sponsor {
       grid-column: 1;
       grid-row: 2 / span 2;
+      padding: 4px 8px;
       clip-path: polygon(0 0, 100% 0, 100% 86%, 92% 100%, 0 100%);
     }
 
@@ -4867,9 +4879,12 @@ OVERLAY_HTML = r"""<!doctype html>
     }
 
     .brazen-sponsor img {
-      max-width: 246px;
-      max-height: 100px;
+      width: 100%;
+      height: 100%;
+      max-width: 274px;
+      max-height: 112px;
       object-fit: contain;
+      transform: scale(1.06);
       filter:
         drop-shadow(0 8px 14px rgba(0, 0, 0, 0.76))
         drop-shadow(0 0 12px rgba(185, 124, 255, 0.20));
