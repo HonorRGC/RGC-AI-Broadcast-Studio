@@ -764,6 +764,15 @@ def test_post_race_end_cap_panel_is_right_aligned():
     assert "transform: none;" in OVERLAY_HTML
 
 
+def test_championship_panel_clears_each_leaderboard_and_session_timer():
+    assert "body.leaderboard-ticker-mode .stat-panel.points_standings" in OVERLAY_HTML
+    assert "body.leaderboard-flo-mode .stat-panel.points_standings" in OVERLAY_HTML
+    assert "body.leaderboard-brazen-mode .stat-panel.points_standings" in OVERLAY_HTML
+    assert "top: 226px;" in OVERLAY_HTML
+    assert "top: 286px;" in OVERLAY_HTML
+    assert "top: 278px;" in OVERLAY_HTML
+
+
 def test_overlay_has_optional_ticker_leaderboard_and_compact_lap_bar():
     assert 'id="ticker-leaderboard"' in OVERLAY_HTML
     assert 'id="flo-leaderboard"' in OVERLAY_HTML

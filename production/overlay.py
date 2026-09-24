@@ -5363,13 +5363,31 @@ OVERLAY_HTML = r"""<!doctype html>
 
     .stat-panel.points_standings,
     .stat-panel.points_standings_pre_race {
-      left: 28px;
+      left: 308px;
       right: auto;
       top: 176px;
       bottom: auto;
       width: 455px;
       border-left-color: #39a7ff;
       background: linear-gradient(90deg, rgba(7, 11, 19, 0.97), rgba(18, 36, 58, 0.95));
+    }
+
+    body.leaderboard-ticker-mode .stat-panel.points_standings,
+    body.leaderboard-ticker-mode .stat-panel.points_standings_pre_race {
+      left: 28px;
+      top: 226px;
+    }
+
+    body.leaderboard-flo-mode .stat-panel.points_standings,
+    body.leaderboard-flo-mode .stat-panel.points_standings_pre_race {
+      left: 28px;
+      top: 286px;
+    }
+
+    body.leaderboard-brazen-mode .stat-panel.points_standings,
+    body.leaderboard-brazen-mode .stat-panel.points_standings_pre_race {
+      left: 28px;
+      top: 278px;
     }
 
     .stat-panel.points_standings .stat-panel-header,
