@@ -237,6 +237,58 @@ def test_recorded_broadcast_can_arm_from_session_clock_when_frame_is_frozen(tmp_
     assert replay.get_lap() == 1
 
 
+def test_manual_external_seek_realigns_recorded_broadcast_and_events(tmp_path):
+    path = tmp_path / "manual_seek.jsonl"
+    snapshots = [
+        {"lap": 0, "timestamp": 1000.0 + index, "session_num": 0, "session_type": "Practice", "session_time": 10.0 + index}
+        for index in range(8)
+    ]
+    path.write_text("".join(json.dumps(item) + "\n" for item in snapshots), encoding="utf-8")
+    path.with_suffix(".events.jsonl").write_text(
+        "".join(
+            json.dumps({"snapshot_index": index, "priority": 5, "message": f"Call {index}"}) + "\n"
+            for index in range(8)
+        ),
+        encoding="utf-8",
+    )
+    now = [50.0]
+    controller = FakeReplayController(0, 10.0, "Practice", replay_frame=600)
+    replay = ReplayTelemetry(path, clock=lambda: now[0]).attach_controller(controller)
+    replay.playback_ready = True
+    replay.current_index = 1
+    replay.recorded_item_for_current_snapshot()
+
+    now[0] = 50.2
+    controller.session_time = 16.0
+    controller.replay_frame = 960
+    replay.next_snapshot()
+
+    assert replay.current_index == 6
+    assert replay.recorded_item_for_current_snapshot().message == "Call 6"
+
+
+def test_manual_review_holds_timeline_during_large_frame_seek(tmp_path):
+    path = tmp_path / "manual_review_hold.jsonl"
+    snapshots = [
+        {"lap": index, "timestamp": 1000.0 + index, "session_num": 2, "session_type": "Race", "session_time": 10.0 + index}
+        for index in range(8)
+    ]
+    path.write_text("".join(json.dumps(item) + "\n" for item in snapshots), encoding="utf-8")
+    now = [50.0]
+    controller = FakeReplayController(2, 11.0, "Race", replay_frame=660)
+    replay = ReplayTelemetry(path, clock=lambda: now[0]).attach_controller(controller)
+    replay.playback_ready = True
+    replay.current_index = 1
+    replay.set_manual_review_hold(True)
+
+    now[0] = 50.2
+    controller.session_time = 16.0
+    controller.replay_frame = 960
+    replay.next_snapshot()
+
+    assert replay.current_index == 1
+
+
 def test_return_to_live_waits_for_async_seek_before_reanchoring(tmp_path):
     path = tmp_path / "return_live.jsonl"
     snapshots = [

@@ -377,6 +377,13 @@ def run_source(
                 practice_presentation_director,
                 anthem_director,
             )
+        manual_camera_control = producer_manual_camera_control_active(camera_director)
+        replay_review_active = manual_camera_control or bool(
+            getattr(camera_director, "replay_active", False)
+        )
+        set_review_hold = getattr(source, "set_manual_review_hold", None)
+        if callable(set_review_hold):
+            set_review_hold(replay_review_active)
         if (
             recorded_broadcast
             and hasattr(source, "recorded_playback_is_ready")
@@ -438,10 +445,16 @@ def run_source(
                 engine=engine,
             )
         generated_item = engine.tick(source)
-        if recorded_broadcast and hasattr(source, "recorded_item_for_current_snapshot"):
+        if (
+            recorded_broadcast
+            and hasattr(source, "recorded_item_for_current_snapshot")
+            and not manual_camera_control
+        ):
             item = None
             if time.monotonic() >= recorded_audio_busy_until:
                 item = source.recorded_item_for_current_snapshot()
+        elif recorded_broadcast:
+            item = None
         else:
             item = generated_item
         if overlay_server:
@@ -469,7 +482,7 @@ def run_source(
             engine,
             overlay_server,
         )
-        if item and producer_manual_camera_control_active(camera_director):
+        if item and manual_camera_control:
             if hasattr(source, "next_snapshot"):
                 source.next_snapshot()
             if tick_seconds > 0:

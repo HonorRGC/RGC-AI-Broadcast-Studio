@@ -25,6 +25,8 @@ class ReplayTelemetry:
         self.controller_frame_anchor = None
         self.controller_frame_observed = None
         self.controller_session_marker_observed = None
+        self.controller_frame_polled_at = None
+        self.manual_review_hold = False
         self.pending_frame_reanchor = False
         self.pending_live_target = None
         self._lap_history_cache_index = -1
@@ -40,6 +42,7 @@ class ReplayTelemetry:
         self.controller_frame_anchor = self._controller_frame_number()
         self.controller_frame_observed = self.controller_frame_anchor
         self.controller_session_marker_observed = self._controller_session_marker()
+        self.controller_frame_polled_at = self.clock()
         self.pending_frame_reanchor = False
         self.pending_live_target = None
         self.playback_started_at = None
@@ -47,6 +50,9 @@ class ReplayTelemetry:
 
     def recorded_playback_is_ready(self):
         return not self.controller or self.playback_ready
+
+    def set_manual_review_hold(self, active):
+        self.manual_review_hold = bool(active)
 
     def _controller_frame_number(self):
         if not self.controller:
@@ -164,7 +170,10 @@ class ReplayTelemetry:
         if not force and target_index <= self.current_index:
             return False
 
-        self._mark_events_before(target_index)
+        if target_index < self.current_index:
+            self._align_event_delivery_to(target_index)
+        else:
+            self._mark_events_before(target_index)
         self.current_index = target_index
         self.last_controller_marker = marker
         self.start_timed_playback(reset_index=False)
@@ -266,6 +275,21 @@ class ReplayTelemetry:
                 return self.current_snapshot()
             self.synchronize_to_controller(force=False)
             frame = self._controller_frame_number()
+            polled_at = self.clock()
+            if (
+                not self.manual_review_hold
+                and self.pending_live_target is None
+                and self._controller_frame_jump_is_external(frame, polled_at)
+            ):
+                if self.synchronize_to_controller(force=True):
+                    self._align_event_delivery_to(self.current_index)
+                self.controller_frame_polled_at = polled_at
+                return self.current_snapshot()
+            self.controller_frame_polled_at = polled_at
+            if self.manual_review_hold and self.pending_live_target is None:
+                if frame is not None:
+                    self.controller_frame_observed = frame
+                return self.current_snapshot()
             # Some saved replays reset or briefly stop updating ReplayFrameNum at
             # a session boundary.  The sim's session clock still advances, so use
             # it to re-anchor instead of leaving telemetry and commentary frozen
@@ -323,6 +347,24 @@ class ReplayTelemetry:
         self.current_index += 1
         return self.current_snapshot()
 
+    def _controller_frame_jump_is_external(self, frame, polled_at):
+        if frame is None or self.controller_frame_observed is None:
+            return False
+        previous_poll = self.controller_frame_polled_at
+        if previous_poll is None:
+            return False
+        wall_seconds = max(0.0, float(polled_at) - float(previous_poll))
+        allowed_frames = max(180.0, wall_seconds * 60.0 * 4.0 + 120.0)
+        return abs(int(frame) - int(self.controller_frame_observed)) > allowed_frames
+
+    def _align_event_delivery_to(self, snapshot_index):
+        self._delivered_event_indices = {
+            (event_snapshot_index, offset)
+            for event_snapshot_index, items in self.recorded_items.items()
+            if event_snapshot_index < snapshot_index
+            for offset in range(len(items))
+        }
+
     def reset(self):
         self.current_index = 0
         self._delivered_event_indices.clear()
@@ -332,6 +374,8 @@ class ReplayTelemetry:
         self.controller_frame_anchor = None
         self.controller_frame_observed = None
         self.controller_session_marker_observed = None
+        self.controller_frame_polled_at = None
+        self.manual_review_hold = False
         self.pending_frame_reanchor = False
         self.pending_live_target = None
         self._lap_history_cache_index = -1
