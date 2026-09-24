@@ -214,6 +214,28 @@ class ReplayTelemetry:
             and controller_time - current_time >= float(threshold_seconds)
         )
 
+    def _controller_clock_needs_sync(self, threshold_seconds=0.75):
+        """Detect recorded telemetry lag even when ReplayFrameNum is unusable."""
+        if not self.controller or self.pending_live_target is not None:
+            return False
+        current = self.current_snapshot()
+        if current is None:
+            return False
+        try:
+            controller_session = int(self.controller.get_current_session_num())
+            controller_time = float(self.controller.get_session_time())
+            controller_type = self._session_type_family(self.controller.get_session_type())
+            current_session = int(current.session_num)
+            current_time = float(current.session_time or 0.0)
+            current_type = self._session_type_family(current.session_type)
+        except (AttributeError, TypeError, ValueError):
+            return False
+        if controller_session != current_session:
+            return True
+        if controller_type and current_type and controller_type != current_type:
+            return True
+        return controller_time - current_time >= float(threshold_seconds)
+
     def _mark_events_before(self, snapshot_index):
         for event_snapshot_index, items in self.recorded_items.items():
             if event_snapshot_index >= snapshot_index:
@@ -290,6 +312,18 @@ class ReplayTelemetry:
                 if frame is not None:
                     self.controller_frame_observed = frame
                 return self.current_snapshot()
+            # SessionTime remains available in cases where ReplayFrameNum is
+            # absent, frozen, or reset at the green.  Use it as the safety clock
+            # so the recorded broadcast cannot remain stuck at lap zero.
+            if self._controller_clock_needs_sync():
+                self.synchronize_to_controller(force=True)
+                frame = self._controller_frame_number()
+                if frame is not None:
+                    self.controller_frame_anchor = frame
+                    self.controller_frame_observed = frame
+                snapshot = self.current_snapshot()
+                if snapshot is not None:
+                    self.capture_started_at = float(snapshot.timestamp or 0.0)
             # ReplayFrameNum can roll backward when iRacing crosses from
             # qualifying/pace laps into the race.  Never retain an anchor that
             # is ahead of the current frame: doing so pins elapsed time at zero
