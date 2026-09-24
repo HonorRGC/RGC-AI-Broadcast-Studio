@@ -96,6 +96,9 @@ def test_sim_racing_apps_failure_marks_service_temporarily_offline(monkeypatch):
     assert build_sim_racing_apps_car_image_url({"car_idx": 12}, now=20.0) == ""
     assert len(calls) == 1
 
+    assert build_sim_racing_apps_car_image_url({"car_idx": 12}, now=23.0) == ""
+    assert len(calls) == 2
+
 
 def test_build_car_image_url_ignores_error_state(monkeypatch):
     def fake_urlopen(url, timeout=0):

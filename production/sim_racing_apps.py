@@ -13,7 +13,9 @@ CACHE_TTL_SECONDS = 3.0
 ROSTER_CACHE_TTL_SECONDS = 15.0
 REQUEST_TIMEOUT_SECONDS = 0.35
 MAX_ROSTER_CARS = 80
-OFFLINE_RETRY_SECONDS = 45.0
+# Keep failed requests from stuttering the overlay, but recover promptly when an
+# operator restarts SIMRacingApps during a live or recorded broadcast.
+OFFLINE_RETRY_SECONDS = 12.0
 
 _CACHE = {}
 _ROSTER_CACHE = {}

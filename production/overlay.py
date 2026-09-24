@@ -6749,11 +6749,15 @@ OVERLAY_HTML = r"""<!doctype html>
         imageShell.classList.remove("image-failed", "image-loading");
         image.dataset.currentSrc = "";
         image.dataset.currentKey = "";
+        image.dataset.retryAfter = "0";
         image.removeAttribute("src");
         return;
       }
       const imageKey = `${imageUrl}|${driver.car_idx || ""}|${driver.car_number || ""}|${driver.driver_name || ""}`;
-      if (image.dataset.currentKey === imageKey) return;
+      const sameImage = image.dataset.currentKey === imageKey;
+      const retryAfter = Number(image.dataset.retryAfter || 0);
+      if (sameImage && !imageShell.classList.contains("image-failed")) return;
+      if (sameImage && Date.now() < retryAfter) return;
       image.dataset.currentSrc = imageUrl;
       image.dataset.currentKey = imageKey;
       imageShell.classList.remove("image-failed");
@@ -6764,10 +6768,12 @@ OVERLAY_HTML = r"""<!doctype html>
         : imageUrl;
       image.onload = () => {
         if (image.dataset.currentKey !== imageKey) return;
+        image.dataset.retryAfter = "0";
         imageShell.classList.remove("image-failed", "image-loading", "no-source");
       };
       image.onerror = () => {
         if (image.dataset.currentKey !== imageKey) return;
+        image.dataset.retryAfter = String(Date.now() + 5000);
         imageShell.classList.remove("image-loading");
         imageShell.classList.add("image-failed");
         image.removeAttribute("src");
