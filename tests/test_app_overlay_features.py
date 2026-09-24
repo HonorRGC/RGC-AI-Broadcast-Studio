@@ -749,7 +749,7 @@ def test_league_points_panel_shows_during_practice_without_race_story():
     assert maybe_show_league_points_panel(overlay, source, engine) is True
 
     panel = overlay.stat_panels[0]
-    assert panel["kind"] == "points_standings"
+    assert panel["kind"] == "points_standings_pre_race"
     assert panel["subtitle"] == "Top 20 entering this race • Practice"
     assert panel["dedupe_key"] == "points_standings:pre_race:practice"
 

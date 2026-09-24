@@ -902,6 +902,8 @@ def test_caution_review_slate_uses_configured_default_graphic():
 
 def test_overlay_supports_points_standings_stat_panel():
     assert ".stat-panel.points_standings" in OVERLAY_HTML
+    assert ".stat-panel.points_standings_pre_race" in OVERLAY_HTML
+    assert '"points_standings_pre_race"' in OVERLAY_HTML
     assert 'panel.kind === "caution_top_ten" ? 10' in OVERLAY_HTML
     assert 'panel.kind === "race_end_cap" ? 9' in OVERLAY_HTML
     assert "Championship Standings" not in OVERLAY_HTML

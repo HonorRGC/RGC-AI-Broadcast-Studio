@@ -2020,7 +2020,7 @@ def maybe_show_league_points_panel(overlay_server, source, engine):
     title = "Championship Standings"
     subtitle = f"Top 20 entering this race • {session_type or 'Pre-race'}"
     return overlay_server.show_stat_panel(
-        kind="points_standings",
+        kind="points_standings_pre_race",
         title=title,
         subtitle=subtitle,
         rows=rows,

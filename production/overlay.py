@@ -5353,6 +5353,57 @@ OVERLAY_HTML = r"""<!doctype html>
       background: linear-gradient(90deg, rgba(7, 11, 19, 0.97), rgba(18, 36, 58, 0.95));
     }
 
+    .stat-panel.points_standings_pre_race {
+      left: 28px;
+      right: auto;
+      top: 176px;
+      bottom: auto;
+      width: 455px;
+      border-left-color: #39a7ff;
+      background: linear-gradient(90deg, rgba(7, 11, 19, 0.97), rgba(18, 36, 58, 0.95));
+    }
+
+    .stat-panel.points_standings_pre_race .stat-panel-header {
+      padding: 8px 11px 7px;
+    }
+
+    .stat-panel.points_standings_pre_race .stat-panel-title {
+      font-size: 18px;
+    }
+
+    .stat-panel.points_standings_pre_race .stat-panel-subtitle {
+      margin-top: 1px;
+      font-size: 9px;
+    }
+
+    .stat-panel.points_standings_pre_race .stat-panel-row {
+      grid-template-columns: minmax(0, 1fr) 42px 126px;
+      gap: 7px;
+      padding: 3px 9px;
+      align-items: center;
+      min-height: 17px;
+    }
+
+    .stat-panel.points_standings_pre_race .stat-panel-label {
+      font-size: 11px;
+      line-height: 14px;
+    }
+
+    .stat-panel.points_standings_pre_race .stat-panel-value {
+      color: #9ed8ff;
+      font-size: 12px;
+      line-height: 14px;
+      text-align: right;
+    }
+
+    .stat-panel.points_standings_pre_race .stat-panel-detail {
+      grid-column: auto;
+      color: #d6e9fa;
+      font-size: 9px;
+      line-height: 12px;
+      text-align: right;
+    }
+
     .stat-panel.pit_update {
       border-left-color: #ffd400;
     }
@@ -6525,7 +6576,7 @@ OVERLAY_HTML = r"""<!doctype html>
       if (!rows) return;
       rows.innerHTML = "";
       const maxRows =
-        panel.kind === "points_standings" ? 20 :
+        ["points_standings", "points_standings_pre_race"].includes(panel.kind) ? 20 :
         panel.kind === "caution_pit" ? 12 :
         panel.kind === "caution_top_ten" ? 10 :
         panel.kind === "race_end_cap" ? 9 :
