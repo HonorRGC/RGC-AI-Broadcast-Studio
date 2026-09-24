@@ -144,6 +144,44 @@ def test_recorded_broadcast_can_start_at_current_iracing_session(tmp_path):
     assert replay.current_index == 3
 
 
+def test_recorded_broadcast_detects_race_transition_when_session_number_is_reused(tmp_path):
+    path = tmp_path / "reused_session_number.jsonl"
+    snapshots = [
+        {"lap": 0, "timestamp": 1000.0, "session_num": 0, "session_type": "Lone Qualify", "session_time": 30.0},
+        {"lap": 1, "timestamp": 1030.0, "session_num": 0, "session_type": "Race", "session_time": 2.0},
+        {"lap": 2, "timestamp": 1031.0, "session_num": 0, "session_type": "Race", "session_time": 3.0},
+    ]
+    path.write_text("".join(json.dumps(item) + "\n" for item in snapshots), encoding="utf-8")
+    controller = FakeReplayController(0, 30.0, "Lone Qualify", replay_frame=1800)
+    replay = ReplayTelemetry(path).attach_controller(controller)
+    replay.playback_ready = True
+
+    controller.session_time = 2.0
+    controller.session_type = "Race"
+    controller.replay_frame = 0
+    replay.next_snapshot()
+
+    assert replay.get_session_type() == "Race"
+    assert replay.get_lap() == 1
+
+
+def test_recorded_broadcast_uses_session_clock_when_frame_clock_stalls(tmp_path):
+    path = tmp_path / "stalled_frame_clock.jsonl"
+    snapshots = [
+        {"lap": 1, "timestamp": 1000.0, "session_num": 2, "session_type": "Race", "session_time": 10.0},
+        {"lap": 2, "timestamp": 1004.0, "session_num": 2, "session_type": "Race", "session_time": 14.0},
+    ]
+    path.write_text("".join(json.dumps(item) + "\n" for item in snapshots), encoding="utf-8")
+    controller = FakeReplayController(2, 10.0, "Race", replay_frame=600)
+    replay = ReplayTelemetry(path).attach_controller(controller)
+    replay.playback_ready = True
+
+    controller.session_time = 14.0
+    replay.next_snapshot()
+
+    assert replay.get_lap() == 2
+
+
 def test_recorded_broadcast_waits_for_iracing_replay_frames_to_move(tmp_path):
     path = tmp_path / "frame_clock.jsonl"
     snapshots = [

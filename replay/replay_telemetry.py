@@ -92,12 +92,15 @@ class ReplayTelemetry:
             return False
         session_num = self.controller.get_current_session_num()
         session_time = self.controller.get_session_time()
-        session_type = str(self.controller.get_session_type() or "").strip().lower()
+        session_type = self._session_type_family(self.controller.get_session_type())
         marker = (int(session_num), float(session_time))
         current = self.current_snapshot()
         if current is not None and not force:
             same_session = int(current.session_num) == marker[0]
-            if same_session:
+            same_type = not session_type or self._session_type_family(
+                current.session_type
+            ) == session_type
+            if same_session and same_type:
                 self.last_controller_marker = marker
                 return False
 
@@ -106,11 +109,19 @@ class ReplayTelemetry:
             for index, snapshot in enumerate(self.snapshots)
             if int(snapshot.session_num) == marker[0]
         ]
+        if session_type:
+            typed_candidates = [
+                (index, snapshot)
+                for index, snapshot in candidates
+                if self._session_type_family(snapshot.session_type) == session_type
+            ]
+            if typed_candidates:
+                candidates = typed_candidates
         if not candidates and session_type:
             candidates = [
                 (index, snapshot)
                 for index, snapshot in enumerate(self.snapshots)
-                if str(snapshot.session_type or "").strip().lower() == session_type
+                if self._session_type_family(snapshot.session_type) == session_type
             ]
         if not candidates:
             return False
@@ -131,6 +142,37 @@ class ReplayTelemetry:
             self.controller_frame_anchor = frame
             self.controller_frame_observed = frame
         return True
+
+    @staticmethod
+    def _session_type_family(value):
+        text = str(value or "").strip().lower()
+        if "qual" in text:
+            return "qualify"
+        if "race" in text:
+            return "race"
+        if "practice" in text:
+            return "practice"
+        if "warmup" in text or "warm up" in text:
+            return "warmup"
+        return text
+
+    def _controller_time_is_ahead(self, threshold_seconds=3.0):
+        if not self.controller:
+            return False
+        current = self.current_snapshot()
+        if current is None:
+            return False
+        try:
+            controller_session = int(self.controller.get_current_session_num())
+            controller_time = float(self.controller.get_session_time())
+            current_session = int(current.session_num)
+            current_time = float(current.session_time or 0.0)
+        except (TypeError, ValueError):
+            return False
+        return (
+            controller_session == current_session
+            and controller_time - current_time >= float(threshold_seconds)
+        )
 
     def _mark_events_before(self, snapshot_index):
         for event_snapshot_index, items in self.recorded_items.items():
@@ -193,6 +235,18 @@ class ReplayTelemetry:
                 return self.current_snapshot()
             self.synchronize_to_controller(force=False)
             frame = self._controller_frame_number()
+            # Some saved replays reset or briefly stop updating ReplayFrameNum at
+            # a session boundary.  The sim's session clock still advances, so use
+            # it to re-anchor instead of leaving telemetry and commentary frozen
+            # in qualifying while the Race cameras continue to move.
+            if (
+                frame is not None
+                and self.controller_frame_observed is not None
+                and frame <= self.controller_frame_observed
+                and self._controller_time_is_ahead()
+            ):
+                self.synchronize_to_controller(force=True)
+                frame = self._controller_frame_number()
             if self.pending_live_target is not None:
                 if not self._controller_reached_live_target(frame):
                     return self.current_snapshot()
