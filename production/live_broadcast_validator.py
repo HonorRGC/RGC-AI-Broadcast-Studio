@@ -27,15 +27,28 @@ class LiveBroadcastValidator:
         "caution_top_ten_reset",
     }
 
+    LIVE_BATTLE_TYPES = {
+        "live_side_by_side",
+        "live_three_wide",
+        "live_pass_clear",
+        "live_pressure_battle",
+    }
+
     def validate(self, item, telemetry):
         category = str(getattr(item, "category", "") or "")
         car_idx = getattr(item, "camera_target_car_idx", None)
+        story_type = str(getattr(item, "source_story_type", "") or "")
 
         if category in self.ORDER_SENSITIVE_CATEGORIES:
             return self.validate_running_order_item(item, telemetry)
 
         if category not in self.STORY_CATEGORIES or car_idx is None:
             return BroadcastValidation(True)
+
+        if story_type in self.LIVE_BATTLE_TYPES:
+            battle_validation = self.validate_live_battle(item, telemetry)
+            if not battle_validation.valid:
+                return battle_validation
 
         message = str(getattr(item, "message", "") or "")
         position = self.current_position(telemetry, car_idx)
@@ -70,6 +83,25 @@ class LiveBroadcastValidator:
                 f"story claimed top ten but live position is P{position}",
             )
 
+        return BroadcastValidation(True)
+
+    def validate_live_battle(self, item, telemetry):
+        participants = tuple(
+            car_idx
+            for car_idx in (getattr(item, "participant_car_indices", ()) or ())
+            if car_idx is not None
+        )
+        if len(participants) < 2:
+            return BroadcastValidation(False, "live battle no longer has enough participants")
+
+        positions = [self.current_position(telemetry, car_idx) for car_idx in participants]
+        if any(position is None for position in positions):
+            return BroadcastValidation(False, "live battle participants are no longer scored")
+        ordered = sorted(positions)
+        if ordered[-1] - ordered[0] > len(ordered) - 1:
+            return BroadcastValidation(False, "queued battle is no longer together in live scoring")
+        if any(self.is_on_pit_road(telemetry, car_idx) for car_idx in participants):
+            return BroadcastValidation(False, "a queued battle participant went to pit road")
         return BroadcastValidation(True)
 
     def validate_running_order_item(self, item, telemetry):

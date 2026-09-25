@@ -24,6 +24,8 @@ def story(message, car_idx=1):
         category="race_story",
         message=message,
         camera_target_car_idx=car_idx,
+        participant_car_indices=(),
+        source_story_type="",
     )
 
 
@@ -82,6 +84,40 @@ def test_validator_allows_current_leader_story():
         story("The 24 is the leader and starting to stretch it."),
         telemetry,
     )
+
+    assert result.valid is True
+
+
+def test_validator_skips_delayed_live_battle_when_pair_is_no_longer_adjacent():
+    telemetry = Telemetry(
+        results=[
+            {"CarIdx": 1, "Position": 0},
+            {"CarIdx": 3, "Position": 1},
+            {"CarIdx": 2, "Position": 2},
+        ],
+    )
+    item = story("A battle for second.", car_idx=1)
+    item.source_story_type = "live_side_by_side"
+    item.participant_car_indices = (1, 2)
+
+    result = LiveBroadcastValidator().validate(item, telemetry)
+
+    assert result.valid is False
+    assert "no longer together" in result.reason
+
+
+def test_validator_allows_live_battle_when_pair_remains_adjacent():
+    telemetry = Telemetry(
+        results=[
+            {"CarIdx": 1, "Position": 0},
+            {"CarIdx": 2, "Position": 1},
+        ],
+    )
+    item = story("A battle for the lead.", car_idx=1)
+    item.source_story_type = "live_side_by_side"
+    item.participant_car_indices = (1, 2)
+
+    result = LiveBroadcastValidator().validate(item, telemetry)
 
     assert result.valid is True
 

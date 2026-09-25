@@ -1,6 +1,8 @@
 import time
 from dataclasses import dataclass
 
+from production.track_style import is_true_pack_drafting_track
+
 
 @dataclass(frozen=True)
 class LiveBattleStory:
@@ -49,6 +51,7 @@ class LiveBattleDetector:
         current_lap=0,
         total_laps=0,
         green_lap_count=0,
+        track_info=None,
     ):
         if current_lap < 1 or not results or not lap_dist_pct_status:
             return []
@@ -58,6 +61,15 @@ class LiveBattleDetector:
         cars = self.build_cars(results, lap_dist_pct_status, pit_road_status)
         if len(cars) < 2:
             return []
+
+        pack_draft = is_true_pack_drafting_track(track_info)
+        original_side_ticks = self.side_by_side_required_ticks
+        original_three_ticks = self.three_wide_required_ticks
+        original_clear_ticks = self.clear_required_ticks
+        if pack_draft:
+            self.side_by_side_required_ticks = max(original_side_ticks, 5)
+            self.three_wide_required_ticks = max(original_three_ticks, 5)
+            self.clear_required_ticks = max(original_clear_ticks, 6)
 
         stories = []
         three_wide = self.detect_three_wide(cars, driver_lookup, current_lap, total_laps)
@@ -72,8 +84,16 @@ class LiveBattleDetector:
         if alongside:
             stories.append(alongside)
 
+        self.side_by_side_required_ticks = original_side_ticks
+        self.three_wide_required_ticks = original_three_ticks
+        self.clear_required_ticks = original_clear_ticks
+
+        if pack_draft:
+            # The whole pack may meet the geometric definition of a battle.
+            # Keep only a verified front-of-field story and do not stack calls.
+            stories = [story for story in stories if story.position <= 5]
         stories.sort(key=lambda story: story.importance, reverse=True)
-        return stories[:2]
+        return stories[:1] if pack_draft else stories[:2]
 
     def detect_three_wide(self, cars, driver_lookup, current_lap, total_laps):
         for index in range(len(cars) - 2):

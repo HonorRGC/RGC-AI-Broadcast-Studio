@@ -448,7 +448,11 @@ class BroadcastEngine:
                 race_state,
             )
             if not green_pit_cycle_active:
-                self._collect_pass_stories(story_results, driver_lookup)
+                self._collect_pass_stories(
+                    story_results,
+                    driver_lookup,
+                    track_info=track_info,
+                )
             self._queue_editorial_decision(
                 race_state,
                 race_knowledge,
@@ -740,9 +744,21 @@ class BroadcastEngine:
         self.pre_start_extension_outlook_queued = True
         return True
 
-    def _collect_pass_stories(self, results, driver_lookup):
+    def _collect_pass_stories(self, results, driver_lookup, track_info=None):
         for event in self.race_brain.analyze(results, driver_lookup):
             if event.importance < 8:
+                continue
+
+            # Pack-drafting scoring can reshuffle several times while a line is
+            # being generated and spoken. Treat only a lead change or a
+            # multi-position move as a standalone pass story there; ordinary
+            # one-spot shuffling is better represented by the live picture.
+            positions_gained = max(0, event.old_position - event.new_position)
+            if (
+                is_true_pack_drafting_track(track_info)
+                and event.new_position != 1
+                and positions_gained < 2
+            ):
                 continue
 
             if event.new_position == 1:
@@ -1636,6 +1652,7 @@ class BroadcastEngine:
             current_lap=current_lap,
             total_laps=total_laps,
             green_lap_count=green_lap_count,
+            track_info=telemetry.get_track_info(),
         )
         for event in events:
             primary = driver_lookup.get(event.primary_car_idx, {})
@@ -3410,6 +3427,7 @@ class BroadcastEngine:
             dedupe_key=self.editorial_producer.build_story_id(item),
             camera_target_car_idx=item.camera_target_car_idx,
             participant_car_indices=item.participant_car_indices,
+            source_story_type=item.story_type,
         )
         self._queue_booth_follow_up(item, race_state)
         return True

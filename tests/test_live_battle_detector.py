@@ -226,3 +226,43 @@ def test_detector_stays_quiet_under_caution_or_pit_road():
 
     assert caution_stories == []
     assert not any(1 in story.participant_car_indices for story in pit_stories)
+
+
+def test_pack_draft_requires_longer_confirmation_and_limits_battle_to_front_five():
+    detector = LiveBattleDetector()
+    payload = dict(
+        results=results(8),
+        driver_lookup=drivers(8),
+        lap_dist_pct_status=[0.60, 0.57, 0.54, 0.51, 0.48, 0.4500, 0.4510, 0.42],
+        pit_road_status=[False] * 8,
+        current_lap=20,
+        total_laps=60,
+        green_lap_count=8,
+        track_info={"track_name": "Daytona International Speedway"},
+    )
+
+    for _ in range(6):
+        stories = detector.analyze(**payload)
+
+    assert stories == []
+
+
+def test_pack_draft_front_battle_needs_five_stable_ticks():
+    detector = LiveBattleDetector()
+    payload = dict(
+        results=results(4),
+        driver_lookup=drivers(4),
+        lap_dist_pct_status=[0.5000, 0.5010, 0.54, 0.58],
+        pit_road_status=[False] * 4,
+        current_lap=20,
+        total_laps=60,
+        green_lap_count=8,
+        track_info={"track_name": "Talladega Superspeedway"},
+    )
+
+    first_four = [detector.analyze(**payload) for _ in range(4)]
+    fifth = detector.analyze(**payload)
+
+    assert all(stories == [] for stories in first_four)
+    assert len(fifth) == 1
+    assert fifth[0].position <= 5
