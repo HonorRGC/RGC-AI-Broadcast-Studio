@@ -3415,6 +3415,30 @@ def test_three_quarter_recap_queues_once_with_key_stats():
     assert queued_again is False
 
 
+def test_league_three_quarter_recap_queues_points_graphic_after_recap():
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    engine.league_context.is_configured = lambda: True
+    race_state = RaceState(
+        current_lap=60,
+        total_laps=80,
+        laps_remaining=20,
+        green_lap_count=22,
+        caution_count=1,
+        is_green=True,
+    )
+
+    assert engine._queue_three_quarter_recap(
+        [], {}, race_state, current_lap=60, total_laps=80
+    ) is True
+
+    assert [queued.category for queued in engine.broadcast_queue.items] == [
+        "race_recap",
+        "race_recap_points",
+    ]
+    assert engine.broadcast_queue.items[1].silent is True
+    assert engine.broadcast_queue.items[1].priority < engine.broadcast_queue.items[0].priority
+
+
 class RaceFlags:
     GREEN = 0x00000004
     CAUTION = 0x00004000

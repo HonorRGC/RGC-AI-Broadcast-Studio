@@ -465,6 +465,69 @@ def test_race_recap_overlay_shows_three_quarter_summary():
     assert panel["rows"][4]["detail"] == "#3 Mover Driver"
 
 
+def test_quarter_and_halfway_calls_show_entering_championship_standings():
+    overlay = OverlaySpy()
+    source = SimpleNamespace(
+        get_driver_lookup=lambda: {
+            1: {
+                "name": "Points Leader",
+                "number": "11",
+                "league_stats_by_scope": [{
+                    "stats_scope": "season",
+                    "points_position": "1",
+                    "points_to_next": "0",
+                }],
+            }
+        }
+    )
+    engine = SimpleNamespace(
+        league_context=SimpleNamespace(
+            is_configured=lambda: True,
+            enrich_driver_lookup=lambda lookup: lookup,
+        )
+    )
+    progress = item(category="race_progress", target=None)
+    progress.dedupe_key = "race_progress:halfway"
+
+    show_overlay_feature(progress, overlay, source=source, engine=engine)
+
+    assert overlay.stat_panels[0]["kind"] == "points_standings"
+    assert "Halfway update" in overlay.stat_panels[0]["subtitle"]
+
+
+def test_three_quarter_points_graphic_uses_entering_standings_after_recap():
+    overlay = OverlaySpy()
+    source = SimpleNamespace(
+        get_driver_lookup=lambda: {
+            1: {
+                "name": "Points Leader",
+                "number": "11",
+                "league_stats_by_scope": [{
+                    "stats_scope": "season",
+                    "points_position": "1",
+                    "points_to_next": "0",
+                }],
+            }
+        }
+    )
+    engine = SimpleNamespace(
+        league_context=SimpleNamespace(
+            is_configured=lambda: True,
+            enrich_driver_lookup=lambda lookup: lookup,
+        )
+    )
+
+    show_overlay_feature(
+        item(category="race_recap_points", target=None),
+        overlay,
+        source=source,
+        engine=engine,
+    )
+
+    assert overlay.stat_panels[0]["kind"] == "points_standings"
+    assert "Three-quarter update" in overlay.stat_panels[0]["subtitle"]
+
+
 def test_post_race_overlay_shows_end_cap_summary():
     overlay = OverlaySpy()
     race_state = SimpleNamespace(

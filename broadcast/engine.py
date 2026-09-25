@@ -975,6 +975,18 @@ class BroadcastEngine:
             expires_after=45,
             dedupe_key=f"race_recap:three_quarter:{total_laps}",
         )
+        if self.league_context.is_configured():
+            self.broadcast_queue.add(
+                "Championship standings graphic after the three-quarter recap.",
+                priority=9,
+                category="race_recap_points",
+                protected=True,
+                speaker="producer",
+                delay_seconds=1.0,
+                expires_after=90,
+                dedupe_key=f"race_recap:three_quarter_points:{total_laps}",
+                silent=True,
+            )
         return True
 
     def build_three_quarter_recap(

@@ -1900,6 +1900,32 @@ def show_overlay_feature(item, overlay_server, source=None, engine=None):
             )
         return
 
+    if category == "race_recap_points":
+        show_race_points_panel(
+            overlay_server,
+            source,
+            engine,
+            subtitle="Championship entering tonight • Three-quarter update",
+            dedupe_key="points_standings:race:three_quarter",
+        )
+        return
+
+    if category == "race_progress":
+        milestone_key = str(getattr(item, "dedupe_key", "") or "").casefold()
+        if (
+            ("quarter" in milestone_key and "three_quarter" not in milestone_key)
+            or "halfway" in milestone_key
+        ):
+            label = "Halfway update" if "halfway" in milestone_key else "First-quarter update"
+            show_race_points_panel(
+                overlay_server,
+                source,
+                engine,
+                subtitle=f"Championship entering tonight • {label}",
+                dedupe_key=f"points_standings:{milestone_key}",
+            )
+        return
+
     if category.startswith("race_stat:points_standings"):
         rows = build_points_standings_rows(source, engine)
         if rows:
@@ -2080,6 +2106,29 @@ def maybe_show_league_points_panel(overlay_server, source, engine):
         duration=5.0,
         dedupe_key=f"points_standings:pre_race:{session_key or 'session'}",
         minimum_interval=2.0,
+    )
+
+
+def show_race_points_panel(
+    overlay_server,
+    source,
+    engine,
+    subtitle="Championship entering tonight",
+    dedupe_key="points_standings:race",
+):
+    if not overlay_server or not is_league_broadcast(engine):
+        return False
+    rows = build_points_standings_rows(source, engine, limit=20)
+    if not rows:
+        return False
+    return overlay_server.show_stat_panel(
+        kind="points_standings",
+        title="Championship Standings",
+        subtitle=subtitle,
+        rows=rows,
+        duration=18.0,
+        dedupe_key=dedupe_key,
+        minimum_interval=1.0,
     )
 
 
