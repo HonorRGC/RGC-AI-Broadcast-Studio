@@ -325,6 +325,81 @@ def parse_structured_career(document):
     return rows
 
 
+def extract_series_season_keys(document):
+    decoded = html.unescape(str(document or "")).replace(r'\"', '"')
+    return unique(re.findall(r'"season_key"\s*:\s*"([^"]+)"', decoded, flags=re.I))
+
+
+def aggregate_series_career(season_groups):
+    """Combine only the selected series' seasons into series-career totals."""
+    by_customer = {}
+    for season_rows in season_groups:
+        for row in season_rows:
+            cust_id = str(row.get("_cust_id") or "").strip()
+            identity = cust_id or clean_driver_name(row.get("name")).casefold()
+            if not identity:
+                continue
+            current = by_customer.setdefault(
+                identity,
+                {
+                    "_cust_id": cust_id,
+                    "name": row.get("name", ""),
+                    "car_number": row.get("car_number", ""),
+                    "stats_scope": "career",
+                    "starts": 0,
+                    "wins": 0,
+                    "top_fives": 0,
+                    "top_tens": 0,
+                    "poles": 0,
+                    "_finish_total": 0.0,
+                    "_finish_starts": 0,
+                    "last_finish": "",
+                    "best_track_finish": "",
+                },
+            )
+            current["name"] = row.get("name") or current["name"]
+            current["car_number"] = row.get("car_number") or current["car_number"]
+            starts = int(safe_float(row.get("starts")) or 0)
+            current["starts"] += starts
+            for target, source in (
+                ("wins", "wins"),
+                ("top_fives", "top_fives"),
+                ("top_tens", "top_tens"),
+                ("poles", "poles"),
+            ):
+                current[target] += int(safe_float(row.get(source)) or 0)
+            avg_finish = safe_float(row.get("avg_finish"))
+            if avg_finish is not None and starts > 0:
+                current["_finish_total"] += avg_finish * starts
+                current["_finish_starts"] += starts
+            if row.get("last_finish") not in (None, ""):
+                current["last_finish"] = row.get("last_finish")
+            best = safe_float(row.get("best_track_finish"))
+            prior_best = safe_float(current.get("best_track_finish"))
+            if best is not None and (prior_best is None or best < prior_best):
+                current["best_track_finish"] = format_number(best)
+
+    results = []
+    season_count = len(season_groups)
+    for current in by_customer.values():
+        finish_starts = current.pop("_finish_starts")
+        finish_total = current.pop("_finish_total")
+        current["avg_finish"] = (
+            format_number(finish_total / finish_starts) if finish_starts else ""
+        )
+        current.update(
+            {
+                "points_position": "",
+                "points_to_next": "",
+                "track_starts": "",
+                "track_wins": "",
+                "notes": f"Velocity selected-series career across {season_count} season{'s' if season_count != 1 else ''}",
+            }
+        )
+        results.append(current)
+    return results
+
+
 def parse_structured_directory(document, series_key=""):
     rows = []
     by_customer = {}
@@ -789,15 +864,28 @@ def run_import(args):
             "\n".join([home_text, html_to_text(standings_html)]),
             args.series,
         )
-    career_rows = parse_structured_career(drivers_html)
-    if not career_rows:
-        career_rows = parse_driver_profile_rows(html_to_text(drivers_html))
+    canonical_rows = parse_structured_career(drivers_html)
+    if not canonical_rows:
+        canonical_rows = parse_driver_profile_rows(html_to_text(drivers_html))
     directory_rows = parse_structured_directory(directory_html, series_key)
-    standings_rows = apply_canonical_driver_names(standings_rows, career_rows)
+    standings_rows = apply_canonical_driver_names(standings_rows, canonical_rows)
     schedule_rows = parse_schedule_rows(html_to_text(schedule_html) or home_text)
     season_rows = dedupe_stats(standings_rows)
-    career_stats_rows = dedupe_stats(career_rows)
-    driver_rows = merge_driver_sources(directory_rows, standings_rows, career_rows)
+    season_keys = extract_series_season_keys(standings_html)
+    historical_seasons = []
+    for season_key in season_keys:
+        history_query = urlencode({"series": series_key, "season": season_key})
+        _history_url, history_html = fetch_first_html(
+            [f"{league_root}/standings?{history_query}"]
+        )
+        history_rows = parse_structured_standings(history_html)
+        apply_canonical_driver_names(history_rows, canonical_rows)
+        if history_rows:
+            historical_seasons.append(dedupe_stats(history_rows))
+    if not historical_seasons:
+        historical_seasons = [season_rows]
+    career_stats_rows = dedupe_stats(aggregate_series_career(historical_seasons))
+    driver_rows = merge_driver_sources(directory_rows, standings_rows, canonical_rows)
 
     if args.dry_run:
         print(f"Velocity League URL: {home_url}")

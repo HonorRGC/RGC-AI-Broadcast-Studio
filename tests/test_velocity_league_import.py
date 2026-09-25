@@ -1,6 +1,8 @@
 from tools.velocity_league_import import (
+    aggregate_series_career,
     build_standings_query,
     driver_rows_from_stats,
+    extract_series_season_keys,
     fetch_first_html,
     merge_driver_sources,
     parse_structured_career,
@@ -101,6 +103,64 @@ def test_structured_standings_uses_selected_series_table_rendered_last():
         ("1", "Wednesday Leader", "81"),
         ("2", "Wednesday Second", "34"),
     ]
+
+
+def test_velocity_series_career_aggregates_only_selected_series_seasons():
+    season_one = [
+        {
+            "_cust_id": "100",
+            "name": "Wednesday Driver",
+            "car_number": "81",
+            "starts": "2",
+            "wins": "1",
+            "top_fives": "2",
+            "top_tens": "2",
+            "poles": "0",
+            "avg_finish": "2.5",
+            "last_finish": "1",
+            "best_track_finish": "1",
+        }
+    ]
+    season_two = [
+        {
+            "_cust_id": "100",
+            "name": "Wednesday Driver",
+            "car_number": "81",
+            "starts": "3",
+            "wins": "2",
+            "top_fives": "3",
+            "top_tens": "3",
+            "poles": "1",
+            "avg_finish": "3.0",
+            "last_finish": "2",
+            "best_track_finish": "1",
+        }
+    ]
+
+    career = aggregate_series_career([season_one, season_two])[0]
+
+    assert career["stats_scope"] == "career"
+    assert career["starts"] == 5
+    assert career["wins"] == 3
+    assert career["top_fives"] == 5
+    assert career["top_tens"] == 5
+    assert career["poles"] == 1
+    assert career["avg_finish"] == "2.8"
+    assert career["last_finish"] == "2"
+    assert "2 seasons" in career["notes"]
+
+
+def test_velocity_extracts_selected_series_season_keys():
+    document = rsc_page(
+        {
+            "seasons": [
+                {"season_key": "s1", "name": "Season 1"},
+                {"season_key": "s2", "name": "Season 2"},
+            ]
+        }
+    )
+
+    assert extract_series_season_keys(document) == ["s1", "s2"]
 
 
 def test_directory_adds_signed_drivers_and_career_name_wins():
