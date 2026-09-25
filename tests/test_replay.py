@@ -228,6 +228,64 @@ def test_recorded_broadcast_uses_session_clock_when_frame_number_is_missing(tmp_
     assert replay.get_lap() == 2
 
 
+def test_session_clock_recovery_preserves_recorded_calls_between_snapshots(tmp_path):
+    path = tmp_path / "preserve_green_calls.jsonl"
+    snapshots = [
+        {"lap": lap, "timestamp": 1000.0 + lap, "session_num": 2, "session_type": "Race", "session_time": 20.0 + lap}
+        for lap in range(3)
+    ]
+    path.write_text("".join(json.dumps(item) + "\n" for item in snapshots), encoding="utf-8")
+    path.with_suffix(".events.jsonl").write_text(
+        "".join(
+            json.dumps({"snapshot_index": index, "priority": 5, "message": f"Race call {index}"}) + "\n"
+            for index in range(3)
+        ),
+        encoding="utf-8",
+    )
+    controller = FakeReplayController(2, 20.0, "Race", replay_frame=None)
+    replay = ReplayTelemetry(path).attach_controller(controller)
+    replay.playback_ready = True
+
+    assert replay.recorded_item_for_current_snapshot().message == "Race call 0"
+    controller.session_time = 22.0
+    replay.next_snapshot()
+
+    assert replay.get_lap() == 2
+    assert replay.recorded_item_for_current_snapshot().message == "Race call 1"
+    assert replay.recorded_item_for_current_snapshot().message == "Race call 2"
+
+
+def test_automatic_race_transition_preserves_unfinished_lineup_calls(tmp_path):
+    path = tmp_path / "lineup_into_green.jsonl"
+    snapshots = [
+        {"lap": 0, "timestamp": 1000.0, "session_num": 1, "session_type": "Qualify", "session_time": 30.0},
+        {"lap": 0, "timestamp": 1001.0, "session_num": 2, "session_type": "Race", "session_time": 1.0},
+    ]
+    path.write_text("".join(json.dumps(item) + "\n" for item in snapshots), encoding="utf-8")
+    path.with_suffix(".events.jsonl").write_text(
+        "".join(
+            [
+                json.dumps({"snapshot_index": 0, "priority": 8, "message": "Final lineup driver"}) + "\n",
+                json.dumps({"snapshot_index": 1, "priority": 10, "message": "Green flag is in the air"}) + "\n",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    controller = FakeReplayController(1, 30.0, "Qualify", replay_frame=1800)
+    replay = ReplayTelemetry(path).attach_controller(controller)
+    replay.playback_ready = True
+
+    controller.session_num = 2
+    controller.session_type = "Race"
+    controller.session_time = 1.0
+    controller.replay_frame = 0
+    replay.next_snapshot()
+
+    assert replay.get_session_type() == "Race"
+    assert replay.recorded_item_for_current_snapshot().message == "Final lineup driver"
+    assert replay.recorded_item_for_current_snapshot().message == "Green flag is in the air"
+
+
 def test_recorded_broadcast_waits_for_iracing_replay_frames_to_move(tmp_path):
     path = tmp_path / "frame_clock.jsonl"
     snapshots = [

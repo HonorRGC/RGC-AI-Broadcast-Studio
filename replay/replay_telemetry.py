@@ -124,7 +124,12 @@ class ReplayTelemetry:
             self.capture_started_at = float(snapshot.timestamp or 0.0)
         return self.current_snapshot()
 
-    def synchronize_to_controller(self, force=False, forward_threshold_seconds=8.0):
+    def synchronize_to_controller(
+        self,
+        force=False,
+        forward_threshold_seconds=8.0,
+        preserve_pending_events=False,
+    ):
         if not self.controller or not self.snapshots:
             return False
         session_num = self.controller.get_current_session_num()
@@ -172,7 +177,7 @@ class ReplayTelemetry:
 
         if target_index < self.current_index:
             self._align_event_delivery_to(target_index)
-        else:
+        elif not preserve_pending_events:
             self._mark_events_before(target_index)
         self.current_index = target_index
         self.last_controller_marker = marker
@@ -295,7 +300,10 @@ class ReplayTelemetry:
             if not self.playback_ready:
                 self._activate_controller_playback_if_moving()
                 return self.current_snapshot()
-            self.synchronize_to_controller(force=False)
+            self.synchronize_to_controller(
+                force=False,
+                preserve_pending_events=True,
+            )
             frame = self._controller_frame_number()
             polled_at = self.clock()
             if (
@@ -316,7 +324,10 @@ class ReplayTelemetry:
             # absent, frozen, or reset at the green.  Use it as the safety clock
             # so the recorded broadcast cannot remain stuck at lap zero.
             if self._controller_clock_needs_sync():
-                self.synchronize_to_controller(force=True)
+                self.synchronize_to_controller(
+                    force=True,
+                    preserve_pending_events=True,
+                )
                 frame = self._controller_frame_number()
                 if frame is not None:
                     self.controller_frame_anchor = frame
@@ -334,7 +345,10 @@ class ReplayTelemetry:
                 and self.pending_live_target is None
                 and frame < self.controller_frame_anchor
             ):
-                self.synchronize_to_controller(force=True)
+                self.synchronize_to_controller(
+                    force=True,
+                    preserve_pending_events=True,
+                )
                 frame = self._controller_frame_number()
                 if frame is not None:
                     self.controller_frame_anchor = frame
@@ -352,7 +366,10 @@ class ReplayTelemetry:
                 and frame <= self.controller_frame_observed
                 and self._controller_time_is_ahead()
             ):
-                self.synchronize_to_controller(force=True)
+                self.synchronize_to_controller(
+                    force=True,
+                    preserve_pending_events=True,
+                )
                 frame = self._controller_frame_number()
             if self.pending_live_target is not None:
                 if not self._controller_reached_live_target(frame):
