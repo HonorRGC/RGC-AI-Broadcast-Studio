@@ -4547,7 +4547,9 @@ OVERLAY_HTML = r"""<!doctype html>
       position: absolute;
       left: 0;
       right: 0;
-      top: calc(100% + 15px);
+      /* Keep the history strip in its own channel: directly below the
+         leaderboard and fully above the lap counter. */
+      top: calc(100% + 2px);
       display: flex;
       gap: 0;
       height: 13px;
