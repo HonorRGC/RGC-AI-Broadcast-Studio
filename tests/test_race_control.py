@@ -839,7 +839,7 @@ def test_checkered_finish_rundown_waits_for_stable_order():
             queue,
             {"track_name": "Homestead Miami Speedway"},
         )
-    for _ in range(8):
+    for _ in range(2):
         director.handle_post_race_results(
             final_results,
             drivers,

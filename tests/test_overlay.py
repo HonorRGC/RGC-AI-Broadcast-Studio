@@ -758,10 +758,10 @@ def test_overlay_has_top_center_under_caution_badge():
     assert 'document.getElementById("caution-status").classList.toggle("hidden", !state.caution)' in OVERLAY_HTML
 
 
-def test_post_race_end_cap_panel_is_right_aligned():
+def test_post_race_end_cap_panel_is_centered():
     assert ".stat-panel.race_end_cap" in OVERLAY_HTML
-    assert "right: 34px;" in OVERLAY_HTML
-    assert "transform: none;" in OVERLAY_HTML
+    assert "left: 50%;" in OVERLAY_HTML
+    assert "transform: translateX(-50%);" in OVERLAY_HTML
 
 
 def test_championship_panel_clears_each_leaderboard_and_session_timer():
@@ -824,6 +824,10 @@ def test_overlay_has_brazen_leaderboard_style():
     assert 'id="brazen-leader-name"' in OVERLAY_HTML
     assert 'id="brazen-leader-fastest"' in OVERLAY_HTML
     assert 'id="brazen-status-label"' in OVERLAY_HTML
+    assert 'id="brazen-flag-rail-label"' in OVERLAY_HTML
+    assert 'function brazenFlagRailLabel(state)' in OVERLAY_HTML
+    assert 'if (state.caution) return "YELLOW"' in OVERLAY_HTML
+    assert 'if (state.green) return "GREEN"' in OVERLAY_HTML
     assert "Waiting for starting grid" in OVERLAY_HTML
     assert "@keyframes brazen-scroll" in OVERLAY_HTML
     assert "clip-path: polygon" in OVERLAY_HTML

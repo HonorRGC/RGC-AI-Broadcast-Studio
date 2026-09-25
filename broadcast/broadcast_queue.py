@@ -150,6 +150,8 @@ class BroadcastQueue:
             ("quarter_field_rundown", "three_quarter_field_rundown", "long_green_field_rundown")
         ):
             return 1.0
+        if category in {"post_race_story", "post_race", "post_race_recap"}:
+            return 0.5
         return self.minimum_gap_seconds
 
     def estimate_item_gap_seconds(self, item):

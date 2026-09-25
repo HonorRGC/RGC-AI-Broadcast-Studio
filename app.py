@@ -1912,7 +1912,14 @@ def show_overlay_feature(item, overlay_server, source=None, engine=None):
             )
         return
 
-    if category in ("post_race_story", "post_race", "post_race_recap"):
+    if category in ("post_race_story", "post_race"):
+        show_post_race_winner_card(overlay_server, source, engine)
+        return
+
+    if category == "post_race_recap":
+        clearer = getattr(overlay_server, "clear_special_presentation", None)
+        if clearer:
+            clearer()
         show_post_race_winner_card(overlay_server, source, engine)
         rows = build_race_end_cap_rows(source, engine)
         if rows:

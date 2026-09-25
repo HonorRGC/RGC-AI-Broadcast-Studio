@@ -4753,6 +4753,9 @@ OVERLAY_HTML = r"""<!doctype html>
     }
 
     .brazen-flag-rail {
+      display: flex;
+      align-items: center;
+      justify-content: center;
       background:
         linear-gradient(118deg, rgba(255, 255, 255, 0.20), transparent 23%),
         #15c85f;
@@ -4761,6 +4764,27 @@ OVERLAY_HTML = r"""<!doctype html>
         inset 0 0 0 2px rgba(255, 255, 255, 0.12),
         inset 16px 0 18px rgba(255, 255, 255, 0.16),
         0 0 18px rgba(21, 200, 95, 0.42);
+    }
+
+    .brazen-flag-rail-label {
+      position: relative;
+      z-index: 2;
+      color: #04150a;
+      font-size: 17px;
+      font-weight: 1000;
+      letter-spacing: 0.08em;
+      text-shadow: 0 1px 0 rgba(255, 255, 255, 0.38);
+    }
+
+    .brazen-leaderboard.caution .brazen-flag-rail-label {
+      color: #171300;
+    }
+
+    .brazen-leaderboard.checkered .brazen-flag-rail-label {
+      padding: 3px 6px;
+      color: #ffffff;
+      background: rgba(0, 0, 0, 0.74);
+      text-shadow: 0 2px 4px #000;
     }
 
     .brazen-leaderboard.caution .brazen-flag-rail {
@@ -5513,10 +5537,11 @@ OVERLAY_HTML = r"""<!doctype html>
     }
 
     .stat-panel.race_end_cap {
-      right: 34px;
+      left: 50%;
+      right: auto;
       bottom: 74px;
-      transform: none;
-      width: 520px;
+      transform: translateX(-50%);
+      width: 600px;
       border-left-color: #ffffff;
       box-shadow: 0 18px 42px rgba(0, 0, 0, 0.50), 0 0 24px rgba(255, 255, 255, 0.10);
     }
@@ -6038,7 +6063,9 @@ OVERLAY_HTML = r"""<!doctype html>
   <section id="brazen-leaderboard" class="brazen-leaderboard hidden">
     <div id="brazen-title" class="brazen-cell brazen-title">RGC AI Broadcast</div>
     <div class="brazen-cell brazen-leader">
-      <div id="brazen-flag-rail" class="brazen-flag-rail"></div>
+      <div id="brazen-flag-rail" class="brazen-flag-rail">
+        <span id="brazen-flag-rail-label" class="brazen-flag-rail-label">GREEN</span>
+      </div>
       <div class="brazen-leader-main">
         <div class="brazen-mini-label">Leader</div>
         <div id="brazen-leader-name" class="brazen-leader-name">--</div>
@@ -6280,6 +6307,7 @@ OVERLAY_HTML = r"""<!doctype html>
 
       const event = state.event || {};
       setText("brazen-title", event.title || "RGC AI Broadcast");
+      setText("brazen-flag-rail-label", brazenFlagRailLabel(state));
       setText("brazen-status-label", brazenStatusLabel(state));
       setText("brazen-status-lap", brazenLapLine(state));
       setText("brazen-cautions", String(brazenCautionCount(state)));
@@ -6342,6 +6370,13 @@ OVERLAY_HTML = r"""<!doctype html>
       if (state.caution) return "Yellow Flag";
       if (state.green) return "Green Flag";
       return sessionLabel(state.session_type || "Waiting");
+    }
+
+    function brazenFlagRailLabel(state) {
+      if (isCheckeredState(state)) return "CHECKERED";
+      if (state.caution) return "YELLOW";
+      if (state.green) return "GREEN";
+      return "READY";
     }
 
     function brazenLapLine(state) {

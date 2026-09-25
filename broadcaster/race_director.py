@@ -39,8 +39,10 @@ class RaceDirector:
     START_GO = 0x80000000
     SESSION_STATE_CHECKERED = 5
     SESSION_STATE_COOL_DOWN = 6
-    POST_RACE_MIN_STABILIZATION_TICKS = 12
-    POST_RACE_STABLE_ORDER_TICKS = 6
+    # Give trailing timing/scoring updates a short window to settle without
+    # holding the post-race show until cars have cleared the track.
+    POST_RACE_MIN_STABILIZATION_TICKS = 9
+    POST_RACE_STABLE_ORDER_TICKS = 3
     POST_RACE_STABLE_ORDER_CARS = 20
 
     def __init__(
@@ -466,7 +468,7 @@ class RaceDirector:
             category="post_race_story",
             protected=True,
             speaker="lead",
-            delay_seconds=1.0,
+            delay_seconds=0.0,
             expires_after=180,
             dedupe_key="post_race:winner_story",
         )
@@ -486,7 +488,7 @@ class RaceDirector:
             category="post_race",
             protected=True,
             speaker="lead",
-            delay_seconds=8.0,
+            delay_seconds=0.0,
             expires_after=180,
             dedupe_key=(
                 "post_race:finish_rundown:final_results"
@@ -501,7 +503,7 @@ class RaceDirector:
             category="post_race_recap",
             protected=True,
             speaker="lead",
-            delay_seconds=18.0,
+            delay_seconds=0.0,
             expires_after=240,
             dedupe_key="post_race:recap",
         )

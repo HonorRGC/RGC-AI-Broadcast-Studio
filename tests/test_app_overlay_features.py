@@ -504,7 +504,7 @@ def test_post_race_overlay_shows_end_cap_summary():
     )
 
     show_overlay_feature(
-        item(category="post_race", target=None),
+        item(category="post_race_recap", target=None),
         overlay,
         source=source,
         engine=engine,

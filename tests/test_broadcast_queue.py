@@ -79,6 +79,7 @@ def test_one_driver_lineup_items_have_a_shorter_air_gap():
     queue.next_item(now=100.0)
 
     assert queue.estimate_gap_seconds("opening_field_rundown_12") == 0.12
+    assert queue.estimate_gap_seconds("post_race") == 0.5
     expected_speech = queue.estimate_speech_seconds(
         "Starting twelfth, the 12 of Example Driver.",
         "opening_field_rundown_12",
