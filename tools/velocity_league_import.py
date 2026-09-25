@@ -41,7 +41,21 @@ DRIVER_FIELDS = [
     "car_image",
 ]
 
-SCHEDULE_FIELDS = ["track_name", "schedule_id", "notes"]
+SCHEDULE_FIELDS = ["track_name", "schedule_id", "results_url", "notes"]
+
+
+def extract_recap_urls(html_text, base_url, series_key=""):
+    urls = []
+    for raw_href in re.findall(r'href=["\']([^"\']*/recap/\d+[^"\']*)["\']', str(html_text or ""), flags=re.I):
+        href = html.unescape(raw_href)
+        url = urljoin(base_url, href)
+        if series_key:
+            query_series = parse_qs(urlparse(url).query).get("series", [""])[0]
+            if query_series and query_series.casefold() != series_key.casefold():
+                continue
+        if url not in urls:
+            urls.append(url)
+    return urls
 
 
 class NoAutoRedirect(HTTPRedirectHandler):
@@ -870,6 +884,9 @@ def run_import(args):
     directory_rows = parse_structured_directory(directory_html, series_key)
     standings_rows = apply_canonical_driver_names(standings_rows, canonical_rows)
     schedule_rows = parse_schedule_rows(html_to_text(schedule_html) or home_text)
+    recap_urls = extract_recap_urls(schedule_html, league_root, series_key)
+    for row, recap_url in zip(schedule_rows, recap_urls):
+        row["results_url"] = recap_url
     season_rows = dedupe_stats(standings_rows)
     season_keys = extract_series_season_keys(standings_html)
     historical_seasons = []

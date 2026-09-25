@@ -84,6 +84,7 @@ LEAGUE_ENGINE_POWER_PERCENT = os.getenv("LEAGUE_ENGINE_POWER_PERCENT", "").strip
 LEAGUE_TIRE_SETS = os.getenv("LEAGUE_TIRE_SETS", "").strip()
 LEAGUE_PLAYOFF_CUTOFF = env_int("LEAGUE_PLAYOFF_CUTOFF", 0)
 VELOCITY_SERIES_NAME = os.getenv("VELOCITY_SERIES_NAME", "").strip()
+VELOCITY_LEAGUE_URL = os.getenv("VELOCITY_LEAGUE_URL", "").strip()
 RACE_ADMIN_MODE = os.getenv("RACE_ADMIN_MODE", "false").lower() == "true"
 RACE_ADMIN_SEND_MODE = os.getenv("RACE_ADMIN_SEND_MODE", "clipboard").strip().lower()
 

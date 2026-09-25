@@ -16,6 +16,8 @@ from config import (
     SIMRACERHUB_RACE_SCHEDULE_CSV,
     SIMRACERHUB_SEASON_ID,
     SIMRACERHUB_SOURCE,
+    VELOCITY_LEAGUE_URL,
+    VELOCITY_SERIES_NAME,
 )
 
 
@@ -34,6 +36,8 @@ class DiscordRaceReporter:
         series_name=OVERLAY_SERIES_NAME,
         opener=None,
         current_date=None,
+        velocity_league_url=VELOCITY_LEAGUE_URL,
+        velocity_series_name=VELOCITY_SERIES_NAME,
     ):
         self.enabled = bool(enabled)
         self.webhook_url = str(webhook_url or "").strip()
@@ -45,6 +49,8 @@ class DiscordRaceReporter:
         self.series_name = str(series_name or "").strip()
         self.opener = opener or urllib.request.urlopen
         self.current_date = current_date
+        self.velocity_league_url = str(velocity_league_url or "").strip()
+        self.velocity_series_name = str(velocity_series_name or "").strip()
         self.posted = False
         self.last_error = ""
 
@@ -144,6 +150,14 @@ class DiscordRaceReporter:
     def format_result_links(self, track_name=""):
         links = []
         schedule_match = self.scheduled_race_for_track(track_name)
+        if self.velocity_league_url:
+            results_url = str((schedule_match or {}).get("results_url") or "").strip()
+            if results_url:
+                links.append(f"[Velocity race recap]({results_url})")
+            standings_url = self.velocity_standings_url()
+            if standings_url:
+                links.append(f"[Velocity championship standings]({standings_url})")
+            return "\n".join(links)
         results_url = self.resolve_scheduled_results_url(track_name, schedule_match=schedule_match)
         if results_url:
             links.append(f"[Race results]({results_url})")
@@ -151,6 +165,15 @@ class DiscordRaceReporter:
         if championship_url:
             links.append(f"[Championship standings]({championship_url})")
         return "\n".join(links)
+
+    def velocity_standings_url(self):
+        base = self.velocity_league_url.rstrip("/")
+        if not base:
+            return ""
+        series = self.velocity_series_name.strip()
+        if not series:
+            return f"{base}/standings"
+        return f"{base}/standings?{urllib.parse.urlencode({'series': series})}"
 
     def resolve_scheduled_results_url(self, track_name="", schedule_match=None):
         match = schedule_match or self.scheduled_race_for_track(track_name)
@@ -201,6 +224,7 @@ class DiscordRaceReporter:
                             "race_id": str(row.get("race_id") or "").strip(),
                             "notes": str(row.get("notes") or "").strip(),
                             "race_date": str(row.get("race_date") or "").strip(),
+                            "results_url": str(row.get("results_url") or "").strip(),
                         })
         except Exception:
             return {}

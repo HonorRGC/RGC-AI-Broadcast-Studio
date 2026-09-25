@@ -3,6 +3,7 @@ from tools.velocity_league_import import (
     build_standings_query,
     driver_rows_from_stats,
     extract_series_season_keys,
+    extract_recap_urls,
     fetch_first_html,
     merge_driver_sources,
     parse_structured_career,
@@ -20,6 +21,23 @@ def rsc_page(*objects):
 
     payload = "".join(json.dumps(item, separators=(",", ":")) for item in objects)
     return f'<script>self.__next_f.push([1,"{payload.replace(chr(34), chr(92) + chr(34))}"])</script>'
+
+
+def test_extracts_selected_series_velocity_recap_links():
+    page = (
+        '<a href="/trrl/recap/88863839?series=whiskey-throttle-wednesday">Recap</a>'
+        '<a href="/trrl/recap/777?series=tuesday-night-trucks">Other</a>'
+    )
+
+    urls = extract_recap_urls(
+        page,
+        "https://www.velocityleague.gg",
+        "whiskey-throttle-wednesday",
+    )
+
+    assert urls == [
+        "https://www.velocityleague.gg/trrl/recap/88863839?series=whiskey-throttle-wednesday"
+    ]
 
 
 def test_structured_velocity_pages_use_real_names_numbers_and_stats():

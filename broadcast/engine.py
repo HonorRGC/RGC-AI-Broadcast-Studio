@@ -137,11 +137,31 @@ class BroadcastEngine:
         self.caution_started_session_time = None
         self.stage_end_laps = tuple(sorted(set(int(lap) for lap in STAGE_END_LAPS if int(lap) > 0)))
         self.stages_announced = set()
+        self.replay_review_active = False
+        self.replay_return_guard_ticks = 0
+
+    def set_replay_review_active(self, active):
+        active = bool(active)
+        if self.replay_review_active and not active:
+            # iRacing needs a few telemetry frames to finish returning from a
+            # replay seek. Freeze flag transitions during that handoff so the
+            # same yellow is not counted and announced as a new caution.
+            self.replay_return_guard_ticks = max(self.replay_return_guard_ticks, 5)
+        self.replay_review_active = active
+
+    def replay_transition_hold_active(self):
+        if self.replay_review_active:
+            return True
+        if self.replay_return_guard_ticks > 0:
+            self.replay_return_guard_ticks -= 1
+            return True
+        return False
 
     def tick(self, telemetry):
         session_type_reader = getattr(telemetry, "get_session_type", None)
         session_type = session_type_reader() if session_type_reader else "Race"
         transition = self.session_tracker.update(session_type)
+        transition_hold = self.replay_transition_hold_active()
 
         if transition.changed:
             print(f"iRacing session detected: {transition.current.value}")
@@ -151,6 +171,9 @@ class BroadcastEngine:
 
         if transition.entered_race:
             self._reset_race_session()
+
+        self.race_director.set_phase_update_hold(transition_hold)
+        self.race_intelligence.race_state_tracker.set_transition_hold(transition_hold)
 
         results = telemetry.get_results()
         driver_lookup = self.league_context.enrich_driver_lookup(

@@ -386,6 +386,9 @@ def run_source(
         replay_review_active = manual_camera_control or bool(
             getattr(camera_director, "replay_active", False)
         )
+        set_engine_review_hold = getattr(engine, "set_replay_review_active", None)
+        if callable(set_engine_review_hold):
+            set_engine_review_hold(replay_review_active)
         set_review_hold = getattr(source, "set_manual_review_hold", None)
         if callable(set_review_hold):
             set_review_hold(replay_review_active)

@@ -87,12 +87,18 @@ class RaceDirector:
         self.last_driver_lookup = {}
         self.admin_caution_pending = False
         self.green_call_index = 0
+        self.phase_updates_held = False
+
+    def set_phase_update_hold(self, active):
+        self.phase_updates_held = bool(active)
 
     def mark_admin_caution_pending(self):
         self.admin_caution_pending = True
 
     def update(self, telemetry, results, driver_lookup, scheduler):
         self.phase_changed = False
+        if self.phase_updates_held:
+            return
         session_flags = telemetry.get_session_flags()
         state_reader = getattr(telemetry, "get_session_state", None)
         session_state = state_reader() if state_reader else 0

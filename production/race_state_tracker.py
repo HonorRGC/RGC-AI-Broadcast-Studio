@@ -48,8 +48,14 @@ class RaceStateTracker:
         self.last_was_caution = False
         self.last_lap = 0
         self.initialized = False
+        self.transitions_held = False
+
+    def set_transition_hold(self, active):
+        self.transitions_held = bool(active)
 
     def update(self, current_lap=0, total_laps=0, session_flags=0):
+        if self.transitions_held:
+            return self.state
         current_lap = self.safe_int(current_lap)
         total_laps = self.safe_int(total_laps)
 

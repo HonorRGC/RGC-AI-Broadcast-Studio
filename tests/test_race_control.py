@@ -1,4 +1,5 @@
 import time
+from types import SimpleNamespace
 
 import pytest
 
@@ -166,6 +167,46 @@ def test_pre_race_yellow_does_not_count_as_live_caution():
     tracker.update(current_lap=2, total_laps=50, session_flags=yellow)
 
     assert tracker.get_state().caution_count == 1
+
+
+def test_replay_review_hold_does_not_count_same_caution_twice():
+    tracker = RaceStateTracker()
+    green = RaceDirector.GREEN_FLAG
+    yellow = RaceDirector.YELLOW_FLAG
+
+    tracker.update(current_lap=10, total_laps=50, session_flags=green)
+    tracker.update(current_lap=11, total_laps=50, session_flags=yellow)
+    assert tracker.get_state().caution_count == 1
+
+    tracker.set_transition_hold(True)
+    tracker.update(current_lap=9, total_laps=50, session_flags=green)
+    tracker.update(current_lap=11, total_laps=50, session_flags=yellow)
+    tracker.set_transition_hold(False)
+    tracker.update(current_lap=11, total_laps=50, session_flags=yellow)
+
+    assert tracker.get_state().caution_count == 1
+
+
+def test_race_director_hold_does_not_repeat_yellow_announcement():
+    director = RaceDirector()
+    queue = BroadcastQueue()
+    director.race_started = True
+    director.phase = RacePhase.CAUTION
+    director.yellow_announced = True
+    telemetry = SimpleNamespace(
+        get_session_flags=lambda: RaceDirector.GREEN_FLAG,
+        get_session_state=lambda: 0,
+        get_total_laps=lambda: 50,
+        get_lap=lambda: 10,
+        get_track_info=lambda: {"track_name": "Daytona"},
+    )
+
+    director.set_phase_update_hold(True)
+    director.update(telemetry, [], {}, queue)
+
+    assert director.phase == RacePhase.CAUTION
+    assert director.yellow_announced is True
+    assert queue.items == []
 
 
 def test_green_flag_clears_stale_opening_messages():

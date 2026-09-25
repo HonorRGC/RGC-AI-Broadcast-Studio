@@ -233,6 +233,31 @@ def test_discord_race_report_can_use_series_id_standings_link(tmp_path, monkeypa
     assert "https://www.simracerhub.com/scoring/season_standings.php?series_id=3872" in links
 
 
+def test_discord_report_uses_velocity_recap_and_standings_links(tmp_path):
+    schedule = tmp_path / "race_schedule.csv"
+    schedule.write_text(
+        "track_name,schedule_id,results_url,notes\n"
+        "Daytona International Speedway,velocity-rd-1,"
+        "https://www.velocityleague.gg/trrl/recap/88863839?series=whiskey-throttle-wednesday,Race 1\n",
+        encoding="utf-8",
+    )
+    reporter = DiscordRaceReporter(
+        enabled=True,
+        webhook_url="https://discord.example/webhook",
+        use_openai=False,
+        race_schedule_csv=str(schedule),
+        velocity_league_url="https://www.velocityleague.gg/trrl",
+        velocity_series_name="whiskey-throttle-wednesday",
+    )
+
+    links = reporter.format_result_links("Daytona International Speedway")
+
+    assert "Velocity race recap" in links
+    assert "recap/88863839?series=whiskey-throttle-wednesday" in links
+    assert "Velocity championship standings" in links
+    assert "standings?series=whiskey-throttle-wednesday" in links
+
+
 def test_discord_race_report_uses_true_green_laps_only():
     reporter = DiscordRaceReporter(enabled=True, webhook_url="https://discord.example/webhook")
     results = [{"CarIdx": 1, "Position": 0}]
