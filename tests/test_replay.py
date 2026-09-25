@@ -422,6 +422,30 @@ def test_return_to_live_waits_for_async_seek_before_reanchoring(tmp_path):
     assert replay.next_snapshot().lap == 6
 
 
+def test_return_to_live_confirmation_timeout_cannot_freeze_broadcast(tmp_path):
+    path = tmp_path / "return_live_timeout.jsonl"
+    snapshots = [
+        {"lap": lap, "timestamp": 1000.0 + lap, "session_num": 2,
+         "session_type": "Race", "session_time": 10.0 + lap}
+        for lap in range(1, 5)
+    ]
+    path.write_text("".join(json.dumps(item) + "\n" for item in snapshots), encoding="utf-8")
+    now = [50.0]
+    controller = FakeReplayController(2, 5.0, "Race", replay_frame=300)
+    replay = ReplayTelemetry(path, clock=lambda: now[0]).attach_controller(controller)
+    replay.playback_ready = True
+    replay.current_index = 1
+
+    assert replay.return_to_live()
+    assert replay.pending_live_target is not None
+
+    # iRacing never reports that the accepted seek landed.
+    now[0] = 55.1
+    replay.next_snapshot()
+
+    assert replay.pending_live_target is None
+
+
 def test_recorded_lap_history_rebuilds_before_midrace_restart(tmp_path):
     path = tmp_path / "lap_history.jsonl"
     snapshots = [

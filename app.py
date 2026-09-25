@@ -502,10 +502,6 @@ def run_source(
                 continue
             if capture_recorder:
                 capture_recorder.record_item(item)
-            if recorded_broadcast and should_resync_recorded_replay_for_item(item):
-                resync = getattr(source, "return_to_live", None)
-                if resync:
-                    resync()
             if overlay_server:
                 show_overlay_feature(item, overlay_server, source, engine)
             report_replay_decision(
@@ -654,13 +650,6 @@ def reserve_recorded_audio_until(engine, item, playback_seconds=0.0):
 def is_one_to_green_restart_call(item):
     key = str(getattr(item, "dedupe_key", "") or "")
     return key.startswith("race_control:one_to_green")
-
-
-def should_resync_recorded_replay_for_item(item):
-    key = str(getattr(item, "dedupe_key", "") or "")
-    return key.startswith("race_control:one_to_green") or key.startswith(
-        "race_control:green"
-    )
 
 
 def publish_producer_event(overlay_server, kind="info", title="", message="", speaker=""):

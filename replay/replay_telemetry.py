@@ -547,6 +547,7 @@ class ReplayTelemetry:
                     "request_frame": self._controller_frame_number(),
                     "request_session_num": int(self.controller.get_current_session_num()),
                     "request_session_time": float(self.controller.get_session_time()),
+                    "requested_at": self.clock(),
                 }
             return accepted
         return False
@@ -554,6 +555,12 @@ class ReplayTelemetry:
     def _controller_reached_live_target(self, frame, tolerance_seconds=1.25):
         target = self.pending_live_target
         if not target or not self.controller:
+            return True
+        # Never let an accepted-but-unconfirmed iRacing seek freeze the entire
+        # recorded broadcast. A normal seek lands quickly; after five seconds,
+        # re-anchor at the best position iRacing currently reports and continue.
+        requested_at = target.get("requested_at")
+        if requested_at is not None and self.clock() - float(requested_at) >= 5.0:
             return True
         try:
             session_num = int(self.controller.get_current_session_num())
