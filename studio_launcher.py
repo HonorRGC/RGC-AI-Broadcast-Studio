@@ -166,6 +166,7 @@ LAUNCHER_FIELDS = [
     ("LEAGUE_FUEL_PERCENT", ""),
     ("LEAGUE_ENGINE_POWER_PERCENT", ""),
     ("LEAGUE_TIRE_SETS", ""),
+    ("LEAGUE_PLAYOFF_CUTOFF", "0"),
 ]
 
 SIM_RACER_HUB_FIELDS = [
@@ -296,6 +297,7 @@ BROADCAST_FIELD_LABELS = {
     "LEAGUE_FUEL_PERCENT": "Fuel Percent",
     "LEAGUE_ENGINE_POWER_PERCENT": "Engine Power Percent",
     "LEAGUE_TIRE_SETS": "Tire Sets",
+    "LEAGUE_PLAYOFF_CUTOFF": "Playoff Positions",
     "VELOCITY_LEAGUE_URL": "Velocity League URL",
     "VELOCITY_SERIES_NAME": "Velocity Series Name",
     "VELOCITY_STATS_OUTPUT": "Velocity Stats CSV",
@@ -387,6 +389,7 @@ BROADCAST_FIELD_HELP = {
     "LEAGUE_FUEL_PERCENT": "Optional league race setting. Example: 65 means Mike can mention fuel is set at 65 percent during the opening.",
     "LEAGUE_ENGINE_POWER_PERCENT": "Optional league race setting. Example: 90 means Mike can mention engine power is set at 90 percent.",
     "LEAGUE_TIRE_SETS": "Optional league race tire limit. Example: 3 means Mike can mention three tire sets are available.",
+    "LEAGUE_PLAYOFF_CUTOFF": "Number of championship positions highlighted as playoff eligible. Use 12 for the Tuesday and Wednesday Velocity series, or 0 when the league has no playoff cutoff.",
     "VELOCITY_LEAGUE_URL": "Public Velocity League home URL. The importer automatically checks its directory, selected-series standings, combined career stats, series page, and schedule.",
     "VELOCITY_SERIES_NAME": "Optional Velocity series name or URL key, such as tuesday-night-trucks. A Velocity standings or series URL can also supply this automatically.",
     "VELOCITY_STATS_OUTPUT": "CSV where selected-series Velocity standings are written. Usually league/season.csv.",
@@ -455,6 +458,7 @@ INLINE_HELP_FIELDS = {
     "LEAGUE_FUEL_PERCENT",
     "LEAGUE_ENGINE_POWER_PERCENT",
     "LEAGUE_TIRE_SETS",
+    "LEAGUE_PLAYOFF_CUTOFF",
 }
 
 BOOLEAN_SETTING_KEYS = {

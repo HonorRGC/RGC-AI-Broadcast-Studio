@@ -8,6 +8,7 @@ from app import (
     build_featured_driver_image,
     build_featured_driver_render_info,
     build_projected_points_rows,
+    build_points_standings_rows,
     build_caution_pit_summary_rows,
     build_race_recap_rows,
     featured_driver_position_info,
@@ -718,7 +719,8 @@ def test_points_standings_story_shows_top_twenty_graphic():
     assert len(panel["rows"]) == 20
     assert panel["rows"][0]["value"] == "1st"
     assert panel["rows"][0]["label"] == "#1 Driver 1"
-    assert "2 pts to next" in panel["rows"][0]["detail"]
+    assert panel["rows"][0]["detail"] == "Points leader"
+    assert panel["rows"][1]["detail"] == "-4 leader | -4 next"
 
 
 def test_league_points_panel_shows_during_practice_without_race_story():
@@ -752,6 +754,33 @@ def test_league_points_panel_shows_during_practice_without_race_story():
     assert panel["kind"] == "points_standings_pre_race"
     assert panel["subtitle"] == "Top 20 entering this race • Practice"
     assert panel["dedupe_key"] == "points_standings:pre_race:practice"
+    assert panel["duration"] == 5.0
+    assert panel["minimum_interval"] == 2.0
+
+
+def test_velocity_tuesday_and_wednesday_series_highlight_top_twelve(monkeypatch):
+    monkeypatch.setattr("app.LEAGUE_PLAYOFF_CUTOFF", 0)
+    monkeypatch.setattr("app.VELOCITY_SERIES_NAME", "whiskey-throttle-wednesday")
+    source = SimpleNamespace(
+        get_driver_lookup=lambda: {
+            index: {
+                "name": f"Driver {index}",
+                "number": str(index),
+                "league_stats_by_scope": [{
+                    "stats_scope": "season",
+                    "points_position": str(index),
+                    "points_to_next": "5" if index > 1 else "0",
+                }],
+            }
+            for index in range(1, 15)
+        }
+    )
+
+    rows = build_points_standings_rows(source, limit=20)
+
+    assert all(row["highlight"] for row in rows[:12])
+    assert rows[12]["highlight"] is False
+    assert rows[11]["detail"] == "-55 leader | -5 next"
 
 
 def test_league_race_recap_adds_points_watch_rows():

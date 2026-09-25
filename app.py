@@ -10,6 +10,7 @@ from config import (
     CRANK_IT_UP_SPONSOR_GRAPHIC,
     FINAL_RESULTS_SPONSOR_NAME,
     FINAL_RESULTS_SPONSOR_LOGO,
+    LEAGUE_PLAYOFF_CUTOFF,
     OVERLAY_BRAND_GRAPHICS,
     OVERLAY_HOST,
     OVERLAY_RACE_SPONSOR,
@@ -32,6 +33,7 @@ from config import (
     STARTING_LINEUP_SPONSOR_LOGO,
     STUDIO_VOLUME,
     USE_IRACING_RENDERED_CAR_IMAGES,
+    VELOCITY_SERIES_NAME,
 )
 from broadcast.booth import BroadcastBooth
 from broadcast.engine import BroadcastEngine
@@ -2001,19 +2003,42 @@ def build_points_standings_rows(source=None, engine=None, limit=20):
                 "points_position": points_position,
                 "label": f"#{number} {name}".strip() if number else name,
                 "value": ordinal(points_position),
+                "points_to_next": points_to_next,
                 "detail": " | ".join(detail_parts) or "Championship contender",
             }
         )
 
     standings.sort(key=lambda row: row["points_position"])
-    return [
-        {
-            "label": row["label"],
-            "value": row["value"],
-            "detail": row["detail"],
-        }
-        for row in standings[:limit]
-    ]
+    points_behind_leader = 0
+    playoff_cutoff = championship_playoff_cutoff()
+    formatted = []
+    for index, row in enumerate(standings[:limit]):
+        points_to_next = safe_int(row.get("points_to_next"), 0)
+        if index > 0:
+            points_behind_leader += max(0, points_to_next)
+        if index == 0:
+            gap_detail = "Points leader"
+        else:
+            gap_detail = f"-{points_behind_leader} leader | -{max(0, points_to_next)} next"
+        formatted.append(
+            {
+                "label": row["label"],
+                "value": row["value"],
+                "detail": gap_detail,
+                "points_to_next": max(0, points_to_next),
+                "highlight": bool(playoff_cutoff and row["points_position"] <= playoff_cutoff),
+            }
+        )
+    return formatted
+
+
+def championship_playoff_cutoff():
+    if LEAGUE_PLAYOFF_CUTOFF > 0:
+        return LEAGUE_PLAYOFF_CUTOFF
+    series = str(VELOCITY_SERIES_NAME or "").strip().casefold()
+    if any(token in series for token in ("tuesday", "wednesday", "whiskey-throttle")):
+        return 12
+    return 0
 
 
 def is_league_broadcast(engine):
@@ -2034,6 +2059,9 @@ def maybe_show_league_points_panel(overlay_server, source, engine):
     session_type = str(getattr(source, "get_session_type", lambda: "")() or "")
     session_key = session_type.strip().casefold()
     if "race" in session_key:
+        clearer = getattr(overlay_server, "clear_stat_panel", None)
+        if clearer:
+            clearer(kind="points_standings_pre_race")
         return False
     if not any(token in session_key for token in ("practice", "qual", "warmup")):
         return False
@@ -2049,9 +2077,9 @@ def maybe_show_league_points_panel(overlay_server, source, engine):
         title=title,
         subtitle=subtitle,
         rows=rows,
-        duration=24.0,
+        duration=5.0,
         dedupe_key=f"points_standings:pre_race:{session_key or 'session'}",
-        minimum_interval=120.0,
+        minimum_interval=2.0,
     )
 
 
@@ -2787,7 +2815,10 @@ def build_points_watch_rows(source=None, engine=None, limit=2):
 
     closest = None
     for row in standings[1:]:
-        points_to_next = points_to_next_from_detail(row.get("detail", ""))
+        points_to_next = safe_int(
+            row.get("points_to_next"),
+            points_to_next_from_detail(row.get("detail", "")),
+        )
         if points_to_next <= 0:
             continue
         if closest is None or points_to_next < closest[0]:
@@ -2851,7 +2882,11 @@ def build_projected_points_rows(source=None, engine=None, limit=3):
 
 def points_to_next_from_detail(detail):
     text = str(detail or "")
-    match = re.search(r"(\d+)\s+pts?\s+to\s+next", text, flags=re.IGNORECASE)
+    match = re.search(
+        r"(?:-\s*)?(\d+)\s+(?:pts?\s+to\s+)?next",
+        text,
+        flags=re.IGNORECASE,
+    )
     if not match:
         return 0
     return safe_int(match.group(1), 0)

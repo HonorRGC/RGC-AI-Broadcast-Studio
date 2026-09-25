@@ -295,12 +295,14 @@ class StatPanelRow:
     label: str = ""
     value: str = ""
     detail: str = ""
+    highlight: bool = False
 
     def to_dict(self):
         return {
             "label": self.label,
             "value": self.value,
             "detail": self.detail,
+            "highlight": self.highlight,
         }
 
 
@@ -1446,6 +1448,7 @@ class OverlayServer:
                         label=str((row or {}).get("label", "")),
                         value=str((row or {}).get("value", "")),
                         detail=str((row or {}).get("detail", "")),
+                        highlight=bool((row or {}).get("highlight", False)),
                     )
                     for row in (rows or [])
                 ],
@@ -1458,6 +1461,16 @@ class OverlayServer:
                 self.stat_panel = panel
                 self.state.stat_panel = panel
         return True
+
+    def clear_stat_panel(self, kind=""):
+        with self.lock:
+            if self.stat_panel and (not kind or self.stat_panel.kind == kind):
+                self.stat_panel = None
+                self.state.stat_panel = None
+                self.last_stat_panel_key = ""
+                self.last_stat_panel_at = 0.0
+                return True
+        return False
 
     def add_producer_event(self, kind="info", title="", message="", speaker=""):
         item = ProducerFeedItem(
@@ -5443,15 +5456,15 @@ OVERLAY_HTML = r"""<!doctype html>
 
     .stat-panel.points_standings .stat-panel-label,
     .stat-panel.points_standings_pre_race .stat-panel-label {
-      font-size: 11px;
-      line-height: 14px;
+      font-size: 13px;
+      line-height: 16px;
     }
 
     .stat-panel.points_standings .stat-panel-value,
     .stat-panel.points_standings_pre_race .stat-panel-value {
       color: #9ed8ff;
-      font-size: 12px;
-      line-height: 14px;
+      font-size: 13px;
+      line-height: 16px;
       text-align: right;
     }
 
@@ -5459,9 +5472,15 @@ OVERLAY_HTML = r"""<!doctype html>
     .stat-panel.points_standings_pre_race .stat-panel-detail {
       grid-column: auto;
       color: #d6e9fa;
-      font-size: 9px;
-      line-height: 12px;
+      font-size: 11px;
+      line-height: 14px;
       text-align: right;
+    }
+
+    .stat-panel.points_standings .stat-panel-row.playoff-eligible,
+    .stat-panel.points_standings_pre_race .stat-panel-row.playoff-eligible {
+      background: linear-gradient(90deg, rgba(126, 34, 206, 0.34), rgba(57, 167, 255, 0.13));
+      box-shadow: inset 4px 0 0 #b66cff;
     }
 
     .stat-panel.pit_update {
@@ -6631,7 +6650,7 @@ OVERLAY_HTML = r"""<!doctype html>
         7;
       for (const row of (panel.rows || []).slice(0, maxRows)) {
         const item = document.createElement("div");
-        item.className = "stat-panel-row";
+        item.className = `stat-panel-row${row.highlight ? " playoff-eligible" : ""}`;
         item.innerHTML = `
           <span class="stat-panel-label">${escapeHtml(row.label || "")}</span>
           <span class="stat-panel-value">${escapeHtml(row.value || "")}</span>

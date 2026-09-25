@@ -920,6 +920,8 @@ def test_overlay_supports_points_standings_stat_panel():
     assert 'panel.kind === "caution_top_ten" ? 10' in OVERLAY_HTML
     assert 'panel.kind === "race_end_cap" ? 9' in OVERLAY_HTML
     assert "Championship Standings" not in OVERLAY_HTML
+    assert 'row.highlight ? " playoff-eligible" : ""' in OVERLAY_HTML
+    assert ".stat-panel.points_standings_pre_race .stat-panel-row.playoff-eligible" in OVERLAY_HTML
 
 
 def test_overlay_state_marks_league_mode_when_league_context_is_configured():
