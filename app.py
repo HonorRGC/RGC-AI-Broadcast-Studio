@@ -3091,14 +3091,11 @@ def build_caution_top_ten_rows(source, engine=None, limit=10):
         position = normalized_result_position(car, results)
         number = str(driver.get("number") or car.get("CarNumber") or car.get("Number") or "").strip()
         name = str(driver.get("name") or car.get("UserName") or f"Car {car_idx}").strip()
-        interval = str(car.get("Interval") or car.get("Gap") or car.get("Time") or "").strip()
         detail = f"#{number} {name}" if number else name
-        if interval:
-            detail = f"{detail} | Gap {interval}"
         rows.append(
             {
                 "label": f"P{position}",
-                "value": f"#{number}" if number else "",
+                "value": "",
                 "detail": detail,
             }
         )

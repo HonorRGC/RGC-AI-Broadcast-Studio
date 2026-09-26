@@ -4374,7 +4374,7 @@ OVERLAY_HTML = r"""<!doctype html>
       right: 0;
       /* Keep the history strip in its own channel: directly below the
          leaderboard and fully above the lap counter. */
-      top: calc(100% + 2px);
+      top: calc(100% + 6px);
       display: flex;
       gap: 0;
       height: 13px;
@@ -5331,7 +5331,7 @@ OVERLAY_HTML = r"""<!doctype html>
     }
 
     .stat-panel.caution_pit {
-      width: 540px;
+      width: 500px;
       right: 34px;
       bottom: 66px;
       border-left-color: #ffd400;
@@ -5339,7 +5339,7 @@ OVERLAY_HTML = r"""<!doctype html>
     }
 
     .stat-panel.caution_top_ten {
-      width: 500px;
+      width: 430px;
       left: 34px;
       right: auto;
       bottom: 66px;
@@ -5349,53 +5349,57 @@ OVERLAY_HTML = r"""<!doctype html>
     }
 
     .stat-panel.caution_pit .stat-panel-row {
-      padding: 7px 13px;
-      grid-template-columns: minmax(0, 1fr) 132px;
-      gap: 8px;
+      padding: 8px 14px;
+      grid-template-columns: minmax(0, 1fr) 150px;
+      gap: 10px;
     }
 
     .stat-panel.caution_pit .stat-panel-label {
       color: #ffffff;
-      font-size: 14px;
+      font-size: 16px;
       font-weight: 950;
     }
 
     .stat-panel.caution_pit .stat-panel-value {
       color: #ffd400;
-      font-size: 14px;
+      font-size: 15px;
       font-weight: 950;
       text-align: right;
     }
 
     .stat-panel.caution_pit .stat-panel-detail {
       color: #f3f6ff;
-      font-size: 11px;
+      font-size: 13px;
       font-weight: 800;
     }
 
     .stat-panel.caution_top_ten .stat-panel-row {
-      padding: 7px 13px;
-      grid-template-columns: 58px 66px minmax(0, 1fr);
+      padding: 8px 14px;
+      grid-template-columns: 58px minmax(0, 1fr);
+      gap: 10px;
       background: rgba(255, 255, 255, 0.035);
     }
 
     .stat-panel.caution_top_ten .stat-panel-label {
       color: #ffd400;
-      font-size: 14px;
+      font-size: 16px;
       font-weight: 950;
     }
 
     .stat-panel.caution_top_ten .stat-panel-value {
-      color: #ffffff;
-      font-size: 16px;
-      font-weight: 950;
-      text-align: center;
+      display: none;
     }
 
     .stat-panel.caution_top_ten .stat-panel-detail {
       color: #ffffff;
-      font-size: 13px;
+      font-size: 16px;
       font-weight: 900;
+    }
+
+    body.leaderboard-flo-mode .stat-panel.caution_top_ten,
+    body.leaderboard-flo-mode .stat-panel.caution_pit {
+      top: 274px;
+      bottom: auto;
     }
 
     .stat-panel.race_end_cap {
