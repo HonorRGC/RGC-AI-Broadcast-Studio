@@ -830,6 +830,10 @@ def test_overlay_has_brazen_leaderboard_style():
     assert 'if (state.green) return "GREEN"' in OVERLAY_HTML
     assert "Waiting for starting grid" in OVERLAY_HTML
     assert "@keyframes brazen-scroll" in OVERLAY_HTML
+    assert "leaderboard.slice(0, 40)" in OVERLAY_HTML
+    assert 'class="brazen-cycle-reset"' in OVERLAY_HTML
+    assert "Back to Leader" in OVERLAY_HTML
+    assert "brazen-cycle-leader" in OVERLAY_HTML
     assert "clip-path: polygon" in OVERLAY_HTML
     assert 'id="brazen-race-bar" class="brazen-race-bar hidden"' in OVERLAY_HTML
     assert ".brazen-leaderboard.caution" in OVERLAY_HTML

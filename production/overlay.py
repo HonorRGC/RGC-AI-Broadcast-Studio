@@ -4964,6 +4964,30 @@ OVERLAY_HTML = r"""<!doctype html>
       min-width: max-content;
     }
 
+    .brazen-cycle-reset {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 150px;
+      min-width: 150px;
+      padding: 0 12px;
+      color: #ffffff;
+      font-size: 13px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      border-left: 2px solid rgba(139, 77, 231, 0.95);
+      border-right: 2px solid rgba(139, 77, 231, 0.95);
+      background: linear-gradient(135deg, rgba(35, 12, 65, 0.98), rgba(102, 42, 169, 0.94));
+      box-shadow: inset 0 0 18px rgba(196, 134, 255, 0.2);
+    }
+
+    .brazen-cycle-reset span::before {
+      content: "\2192";
+      margin-right: 7px;
+      color: #bfff49;
+    }
+
     .brazen-field-entry {
       display: grid;
       grid-template-columns: auto auto minmax(0, 1fr) auto;
@@ -4976,6 +5000,13 @@ OVERLAY_HTML = r"""<!doctype html>
       background:
         linear-gradient(130deg, transparent 0 52%, rgba(220, 160, 255, 0.14) 52.2% 52.7%, transparent 53.1%),
         linear-gradient(180deg, rgba(255, 255, 255, 0.09), rgba(25, 10, 48, 0.62), rgba(5, 5, 10, 0.84));
+    }
+
+    .brazen-field-entry.brazen-cycle-leader {
+      border-left: 3px solid #bfff49;
+      background:
+        linear-gradient(130deg, transparent 0 52%, rgba(191, 255, 73, 0.12) 52.2% 52.7%, transparent 53.1%),
+        linear-gradient(180deg, rgba(191, 255, 73, 0.1), rgba(38, 17, 65, 0.72), rgba(5, 5, 10, 0.88));
     }
 
     @keyframes brazen-scroll {
@@ -6358,8 +6389,10 @@ OVERLAY_HTML = r"""<!doctype html>
         setText("brazen-leader-fastest", leader.fastest_lap || "--");
         setText("brazen-leader-led", leader.laps_led ? String(leader.laps_led) : "--");
 
-        const field = leaderboard.slice(1, 41);
-        const row = field.length ? field.map(renderBrazenEntry).join("") : "";
+        const field = leaderboard.slice(0, 40);
+        const resetMarker = `<div class="brazen-cycle-reset"><span>Back to Leader</span></div>`;
+        const entries = field.length ? field.map((entry, index) => renderBrazenEntry(entry, index === 0)).join("") : "";
+        const row = `${resetMarker}${entries}`;
         document.getElementById("brazen-field-track").innerHTML = `
           <div class="brazen-field-row">${row}</div>
           <div class="brazen-field-row" aria-hidden="true">${row}</div>
@@ -6367,9 +6400,9 @@ OVERLAY_HTML = r"""<!doctype html>
       }
     }
 
-    function renderBrazenEntry(entry) {
+    function renderBrazenEntry(entry, isLeader = false) {
       return `
-        <div class="brazen-field-entry">
+        <div class="brazen-field-entry${isLeader ? " brazen-cycle-leader" : ""}">
           <span class="brazen-position">${escapeHtml(entry.position || "")}</span>
           <span class="brazen-number" style="${numberStyleAttribute(entry.number_style || {})}">${escapeHtml(entry.car_number || "?")}</span>
           <span class="brazen-name">${escapeHtml(lastNameOrName(entry.driver_name || "Unknown"))}</span>
