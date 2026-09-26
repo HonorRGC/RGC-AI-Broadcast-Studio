@@ -25,7 +25,7 @@ If you only want overlays, cameras, and race information for a human broadcaster
 
 Normal **Start Broadcast** operation is built for live iRacing sessions. Use it during a live practice, qualifying, grid, race, hosted session, league race, official race, or AI race.
 
-Version 1.0.6 also includes **Driver Mode** for recording a race silently while you drive and playing that saved broadcast afterward with its matching iRacing replay. Driver Mode records the live telemetry and approved calls first; it does not attempt to invent a new broadcast from replay SDK data alone.
+Version 1.0.7 also includes **Driver Mode** for recording a race silently while you drive and playing that saved broadcast afterward with its matching iRacing replay. Driver Mode records the live telemetry and approved calls first; it does not attempt to invent a new broadcast from replay SDK data alone.
 
 Do not use Start Broadcast by itself to call a saved replay. For recorded races, follow the Driver Mode instructions later in this guide and keep the `.jsonl`, `.events.jsonl`, and `.capture.json` files together.
 

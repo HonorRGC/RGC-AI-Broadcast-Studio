@@ -1,5 +1,18 @@
 # Changelog
 
+## Version 1.0.7 - Broadcast and League Manager Foundation
+
+### Changed
+- Refocused the Studio and Producer Assist on broadcasting and league management by removing the race-admin panel, remote-producer workflow, Discord interview queue, race-event log, race-control audit, and selected-driver notes.
+- Kept the local Producer Assist control room centered on director suggestions, driver and league statistics, pit strategy, broadcast notes, cameras, replay, sponsors, audio, and overlay controls.
+- Simplified the caution restart Top 10 graphic to position, car number, and driver name.
+- Increased pit-summary text size and adjusted both caution graphics to remain clear of the Flo leaderboard.
+- Moved the Flo green/yellow lap-history strip fully below the cycling driver row.
+
+### Fixed
+- Added a silent Windows launcher and hid background health-check/helper processes so the BAT and desktop shortcut no longer create repeated flashing PowerShell windows.
+- Desktop shortcuts now launch the Studio through the silent Windows script while preserving a readable setup warning when the virtual environment is missing.
+
 ## Version 1.0.6 - Recorded Broadcast and Pre-Race Polish
 
 - Rebuilt the Velocity League importer around the site's structured driver records so statistics are no longer mistaken for names, names and car numbers match by customer ID, signed drivers are included, and season standings, combined career stats, and the full selected-series schedule import from one league URL.
