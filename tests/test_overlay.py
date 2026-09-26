@@ -91,17 +91,13 @@ def test_brand_graphic_can_show_in_any_session():
     assert "const isRace =" not in OVERLAY_HTML
 
 
-def test_producer_html_includes_camera_control_handoff():
-    assert "take-camera-control-button" in PRODUCER_HTML
-    assert "release-camera-control-button" in PRODUCER_HTML
-    assert "producer-share-link" in PRODUCER_HTML
-
-
-def test_producer_html_includes_race_control_panel():
-    assert "Race Control" in PRODUCER_HTML
-    assert "race-admin-button" in PRODUCER_HTML
-    assert 'data-race-action="throw_yellow"' in PRODUCER_HTML
-    assert 'data-race-action="clear_penalty"' in PRODUCER_HTML
+def test_producer_html_focuses_on_broadcast_tools():
+    assert "take-camera-control-button" not in PRODUCER_HTML
+    assert "release-camera-control-button" not in PRODUCER_HTML
+    assert "producer-share-link" not in PRODUCER_HTML
+    assert "race-admin-button" not in PRODUCER_HTML
+    assert 'data-race-action="throw_yellow"' not in PRODUCER_HTML
+    assert 'data-race-action="clear_penalty"' not in PRODUCER_HTML
     assert "state.producer_leaderboard || state.leaderboard || []" in PRODUCER_HTML
     assert "max-height: calc(100vh - 280px)" not in PRODUCER_HTML
 
@@ -1243,19 +1239,13 @@ def test_producer_assist_html_reads_overlay_state():
     assert "Live booth cues with race data" in PRODUCER_HTML
     assert 'id="producer-note-input"' in PRODUCER_HTML
     assert 'id="incident-review-list"' not in PRODUCER_HTML
-    assert 'id="interview-queue-list"' in PRODUCER_HTML
-    assert 'id="race-event-log-list"' in PRODUCER_HTML
+    assert 'id="interview-queue-list"' not in PRODUCER_HTML
+    assert 'id="race-event-log-list"' not in PRODUCER_HTML
     assert 'class="panel wide"' in PRODUCER_HTML
-    assert 'id="race-control-audit-list"' in PRODUCER_HTML
-    assert "event-log-table" in PRODUCER_HTML
-    assert "renderRaceEventLog" in PRODUCER_HTML
-    assert "reviewRaceEvent" in PRODUCER_HTML
-    assert "noteRaceEvent" in PRODUCER_HTML
-    assert 'sendProducerCommand("race_event_review"' in PRODUCER_HTML
-    assert 'sendProducerCommand("race_event_note"' in PRODUCER_HTML
-    assert "Session</div>" in PRODUCER_HTML
-    assert "Camera</div>" in PRODUCER_HTML
-    assert "Discord Setup" in PRODUCER_HTML
+    assert 'id="race-control-audit-list"' not in PRODUCER_HTML
+    assert "Discord Setup" not in PRODUCER_HTML
+    assert 'id="add-driver-note-button"' not in PRODUCER_HTML
+    assert "Broadcast Notes" in PRODUCER_HTML
 
 
 def test_producer_assist_prioritizes_live_control_room_panels():
@@ -1263,15 +1253,9 @@ def test_producer_assist_prioritizes_live_control_room_panels():
     focus_index = PRODUCER_HTML.index("<h3>Current Broadcast Focus</h3>")
     pit_road_index = PRODUCER_HTML.index("<h3>Pit Road / Strategy</h3>")
     camera_index = PRODUCER_HTML.index('id="follow-driver-button"')
-    race_control_index = PRODUCER_HTML.index("<h3>Race Control</h3>")
-    interview_index = PRODUCER_HTML.index("<h3>Interview Queue</h3>")
-    event_log_index = PRODUCER_HTML.index("<h3>Race Event Log</h3>")
-    audit_index = PRODUCER_HTML.index("<h3>Race Control Audit</h3>")
-    discord_index = PRODUCER_HTML.index("<h3>Discord Setup</h3>")
+    notes_index = PRODUCER_HTML.index("<h3>Broadcast Notes</h3>")
 
-    assert suggestions_index < focus_index < pit_road_index < camera_index < race_control_index
-    assert pit_road_index < interview_index < event_log_index
-    assert event_log_index < audit_index < discord_index
+    assert suggestions_index < focus_index < pit_road_index < camera_index < notes_index
     assert "button-row control-grid" in PRODUCER_HTML
     assert "panel full priority" in PRODUCER_HTML
 

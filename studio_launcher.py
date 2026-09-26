@@ -111,7 +111,6 @@ LAUNCHER_FIELDS = [
     ("OVERLAY_SERIES_NAME", ""),
     ("OVERLAY_SERIES_LOGO", ""),
     ("OVERLAY_LEADERBOARD_STYLE", "side"),
-    ("OVERLAY_HOST", "127.0.0.1"),
     ("USE_SIM_RACING_APPS", "true"),
     ("USE_SPONSOR_READS", "true"),
     ("SPONSOR_READ_CAUSE_NAME", ""),
@@ -153,8 +152,6 @@ LAUNCHER_FIELDS = [
     ("DRIVER_MODE", "false"),
     ("RECORDED_BROADCAST_FILE", ""),
     ("POST_RACE_INTERVIEWS_ENABLED", "false"),
-    ("RACE_ADMIN_MODE", "false"),
-    ("RACE_ADMIN_SEND_MODE", "clipboard"),
     ("DISCORD_RACE_REPORT_ENABLED", "false"),
     ("DISCORD_RACE_REPORT_WEBHOOK_URL", ""),
     ("DISCORD_RACE_REPORT_USE_OPENAI", "true"),
@@ -208,16 +205,6 @@ LEGACY_SPONSOR_FIELDS = [
     ("NATIONAL_ANTHEM_AUDIO", ""),
     ("NATIONAL_ANTHEM_GRAPHICS", ""),
     ("CAUTION_PRESENTATION_GRAPHICS", ""),
-    ("DISCORD_BOT_ENABLED", "false"),
-    ("DISCORD_BOT_TOKEN", ""),
-    ("DISCORD_GUILD_ID", ""),
-    ("DISCORD_BOOTH_CHANNEL_ID", ""),
-    ("DISCORD_WAITING_CHANNEL_ID", ""),
-    ("DISCORD_INTERVIEW_CHANNEL_ID", ""),
-    ("REMOTE_PRODUCER_ENABLED", "false"),
-    ("REMOTE_PRODUCER_RELAY_URL", ""),
-    ("REMOTE_PRODUCER_SESSION_CODE", ""),
-    ("REMOTE_PRODUCER_PIN", ""),
 ]
 
 SAVED_FIELDS = (
@@ -243,7 +230,6 @@ BROADCAST_FIELD_LABELS = {
     "OVERLAY_SERIES_NAME": "Series Name",
     "OVERLAY_SERIES_LOGO": "Series Logo",
     "OVERLAY_LEADERBOARD_STYLE": "Leaderboard Style",
-    "OVERLAY_HOST": "Remote Producer Assist Access",
     "USE_SIM_RACING_APPS": "Use SIMRacingApps Car Graphics",
     "USE_SPONSOR_READS": "Use Sponsor Reads",
     "SPONSOR_READ_CAUSE_NAME": "Cause / Awareness Name",
@@ -284,8 +270,6 @@ BROADCAST_FIELD_LABELS = {
     "DRIVER_MODE": "Driver Mode — Record Race Silently",
     "RECORDED_BROADCAST_FILE": "Recorded Broadcast File",
     "POST_RACE_INTERVIEWS_ENABLED": "Post-Race Interviews",
-    "RACE_ADMIN_MODE": "Race Admin Mode",
-    "RACE_ADMIN_SEND_MODE": "Race Admin Send Mode",
     "DISCORD_RACE_REPORT_ENABLED": "Discord Race Report",
     "DISCORD_RACE_REPORT_WEBHOOK_URL": "Race Report Webhook URL",
     "DISCORD_RACE_REPORT_USE_OPENAI": "Use OpenAI Race Recap",
@@ -313,7 +297,6 @@ BROADCAST_FIELD_SECTIONS = {
     "PRACTICE_MUSIC_PLAYLIST": "Practice / Qualifying / Caution Music",
     "DRIVER_MODE": "Recorded Broadcast / Driver Mode",
     "POST_RACE_INTERVIEWS_ENABLED": "Race Flow",
-    "RACE_ADMIN_MODE": "Race Control",
     "DISCORD_RACE_REPORT_ENABLED": "Discord Race Report",
     "USE_LEAGUE_DRIVER_NOTES": "League Data",
     "LEAGUE_FUEL_PERCENT": "League Race Package",
@@ -335,7 +318,6 @@ BROADCAST_FIELD_HELP = {
     "OVERLAY_SERIES_NAME": "League or series name. Example: WFO Wicked Wednesday Truck Series.",
     "OVERLAY_SERIES_LOGO": "Logo for the series. It can rotate in the title with sponsor and cause logos.",
     "OVERLAY_LEADERBOARD_STYLE": "side keeps the NASCAR-style left leaderboard. ticker scrolls across the top under the title. flo uses a compact two-row top leaderboard. brazen uses a leader-focused top board with sponsor rotation, series logo, flag status, and a scrolling field row.",
-    "OVERLAY_HOST": "Use 127.0.0.1 for this PC only. Use 0.0.0.0 when trusted helpers connect through Tailscale. The Producer Assist / Remote Admin Link is the link to send to trusted admins on your Tailscale network.",
     "USE_SIM_RACING_APPS": "Uses SIMRacingAppsServer for live 3D car renders and styled car numbers. If this is true, start SIMRacingAppsServer before the broadcast. If you are not using it, set this to false so the overlay does not waste time looking for it.",
     "USE_SPONSOR_READS": "Lets the AI work sponsor mentions into pre-race, caution, and race-update moments.",
     "SPONSOR_READ_CAUSE_NAME": "Short cause or awareness name shown on overlays and used by {cause}. Example: Autism Awareness.",
@@ -376,8 +358,6 @@ BROADCAST_FIELD_HELP = {
     "DRIVER_MODE": "Records the live session while you race. Studio voices, music, automatic cameras, and replay control remain off so they cannot interfere with driving.",
     "RECORDED_BROADCAST_FILE": "Select a Driver Mode .jsonl recording to broadcast afterward while its matching saved iRacing replay is open.",
     "POST_RACE_INTERVIEWS_ENABLED": "If true, the AI finishes the race recap/top 10 and then hands off to human post-race interviews for the top three. If false, it does the normal signoff.",
-    "RACE_ADMIN_MODE": "Enables hosted-race admin commands in Producer Assist. Keep off unless this PC has race admin rights.",
-    "RACE_ADMIN_SEND_MODE": "clipboard is safest for stream. open_chat/ui_paste can bring iRacing chat or the iRacing window onto the broadcast PC capture. For clean race control, use a trusted remote admin on another PC through Producer Assist/Tailscale.",
     "DISCORD_RACE_REPORT_ENABLED": "Posts an automatic post-race recap to a Discord webhook after the finish order stabilizes.",
     "DISCORD_RACE_REPORT_WEBHOOK_URL": "Required when Discord Race Report is true. Create this webhook in the Discord results channel.",
     "DISCORD_RACE_REPORT_USE_OPENAI": "Uses OpenAI for a more natural race recap. If off, the Studio posts a simpler generated recap.",
@@ -467,7 +447,6 @@ BOOLEAN_SETTING_KEYS = {
     "USE_SIM_RACING_APPS",
     "USE_SPONSOR_READS",
     "POST_RACE_INTERVIEWS_ENABLED",
-    "RACE_ADMIN_MODE",
     "DISCORD_RACE_REPORT_ENABLED",
     "DISCORD_RACE_REPORT_USE_OPENAI",
     "USE_LEAGUE_DRIVER_NOTES",
@@ -968,25 +947,6 @@ def build_health_status(values, root=ROOT, broadcast_running=False):
             )
         )
 
-    if str(values.get("OVERLAY_HOST", "127.0.0.1") or "").strip() == "0.0.0.0":
-        rows.append(
-            (
-                "Remote Producer Assist",
-                "Shared",
-                f"Send trusted helpers the Producer Assist link: {producer_link_for_host('0.0.0.0')}",
-                "ok",
-            )
-        )
-    else:
-        rows.append(
-            (
-                "Remote Producer Assist",
-                "Local only",
-                "Use Remote Producer Assist Access 0.0.0.0 when a trusted helper will connect through Tailscale.",
-                "off",
-            )
-        )
-
     if setting_enabled(values, "USE_LEAGUE_DRIVER_NOTES", "false"):
         drivers_path = resolve_project_path(values.get("LEAGUE_DRIVERS_CSV"), root)
         season_path = resolve_project_path(values.get("LEAGUE_SEASON_STATS_CSV"), root)
@@ -1112,7 +1072,6 @@ def build_first_time_setup_checklist(
         "League Profiles",
         "Practice Music",
         "Discord Race Report",
-        "Remote Producer Assist",
     ):
         state, detail, level = health.get(name, ("Unknown", "Refresh Broadcast Health.", "warn"))
         rows.append((name, state, detail, level))
@@ -2055,6 +2014,39 @@ def run_gui():
         )
         settings_grid_row += 1
 
+    add_settings_section("Broadcast Links")
+    for link_label, link_value, copied_message in (
+        ("Streamlabs / OBS Link", DEFAULT_OVERLAY_URL, "Copied overlay browser-source link for Streamlabs / OBS."),
+        ("Producer Assist (This PC)", DEFAULT_PRODUCER_URL, "Copied local Producer Assist link."),
+    ):
+        label(
+            settings_frame,
+            text=link_label,
+            anchor="w",
+            width=24,
+            bg=PANEL_BG,
+            fg=MUTED_FG,
+        ).grid(row=settings_grid_row, column=0, sticky="w", pady=3)
+        link_var = tk.StringVar(value=link_value)
+        link_entry = entry(
+            settings_frame,
+            textvariable=link_var,
+            width=72,
+            state="readonly",
+            readonlybackground=FIELD_BG,
+        )
+        link_entry.grid(row=settings_grid_row, column=1, sticky="ew", pady=3)
+        button(
+            settings_frame,
+            text="Copy Link",
+            command=lambda value=link_value, message=copied_message: (
+                copy_to_clipboard(root, value),
+                status.set(message),
+            ),
+            color="#334b64",
+        ).grid(row=settings_grid_row, column=2, padx=(8, 0), sticky="w")
+        settings_grid_row += 1
+
     for key, _default in LAUNCHER_FIELDS:
         if key == "STUDIO_VOLUME":
             continue
@@ -2109,14 +2101,6 @@ def run_gui():
                 width=69,
             )
             entry_widget.set(existing.get(key, "gpt-5.6-terra") or "gpt-5.6-terra")
-        elif key == "OVERLAY_HOST":
-            entry_widget = ttk.Combobox(
-                settings_frame,
-                values=("127.0.0.1", "0.0.0.0"),
-                width=69,
-                state="readonly",
-            )
-            entry_widget.set(existing.get(key, "127.0.0.1") or "127.0.0.1")
         elif key in BOOLEAN_SETTING_KEYS:
             entry_widget = ttk.Combobox(
                 settings_frame,
@@ -2125,14 +2109,6 @@ def run_gui():
                 state="readonly",
             )
             entry_widget.set(bool_setting_text(existing, key, _default))
-        elif key == "RACE_ADMIN_SEND_MODE":
-            entry_widget = ttk.Combobox(
-                settings_frame,
-                values=("clipboard", "open_chat", "ui_paste"),
-                width=69,
-                state="readonly",
-            )
-            entry_widget.set(existing.get(key, "clipboard") or "clipboard")
         else:
             entry_widget = entry(settings_frame, width=72)
             entry_widget.insert(0, existing.get(key, ""))
@@ -2158,104 +2134,6 @@ def run_gui():
                 "Example: Autism Awareness is about understanding, acceptance, and supporting families in our racing community."
             )
 
-        if key == "OVERLAY_HOST":
-            add_settings_hint(
-                "Use 127.0.0.1 for this PC only. Use 0.0.0.0 when a trusted helper will open Producer Assist through Tailscale. "
-                f"Tailscale download: {TAILSCALE_WINDOWS_DOWNLOAD_URL}"
-            )
-
-        if key == "REMOTE_PRODUCER_PIN":
-            add_settings_hint(
-                "Optional helper PIN label for trusted remote Producer Assist sessions. "
-                "For v1.0, use Tailscale with Remote Producer Assist Access set to 0.0.0.0."
-            )
-
-        if key == "RACE_ADMIN_MODE":
-            add_settings_hint(
-                "Hosted-race admin controls for cautions, penalties, wave-bys, EOLs, DQs, and removals. "
-                "Keep this off unless the broadcaster PC is an iRacing admin in the hosted session."
-            )
-
-        if key == "RACE_ADMIN_SEND_MODE":
-            add_settings_hint(
-                "clipboard is broadcast-safe and only copies the iRacing command for manual send. "
-                "open_chat copies it and opens iRacing text chat for quick Ctrl+V/Enter. "
-                "ui_paste is testing-only and may show iRacing chat/window on the stream. "
-                "If the broadcast PC is also the streaming PC, any mode that opens chat can interrupt what viewers see. "
-                "For the cleanest production, have a trusted race-control admin open Producer Assist from another PC through Tailscale."
-            )
-
-        if key == "OVERLAY_HOST":
-            label(
-                settings_frame,
-                text="Streamlabs / OBS Link",
-                anchor="w",
-                width=24,
-                bg=PANEL_BG,
-                fg=MUTED_FG,
-            ).grid(row=settings_grid_row, column=0, sticky="w", pady=3)
-            overlay_url_var = tk.StringVar(value=DEFAULT_OVERLAY_URL)
-            overlay_url_entry = entry(
-                settings_frame,
-                textvariable=overlay_url_var,
-                width=72,
-                state="readonly",
-                readonlybackground=FIELD_BG,
-            )
-            overlay_url_entry.grid(row=settings_grid_row, column=1, sticky="ew", pady=3)
-            button(
-                settings_frame,
-                text="Copy Overlay Link",
-                command=lambda: (
-                    copy_to_clipboard(root, DEFAULT_OVERLAY_URL),
-                    status.set("Copied overlay browser-source link for Streamlabs / OBS."),
-                ),
-                color="#334b64",
-            ).grid(row=settings_grid_row, column=2, padx=(8, 0), sticky="w")
-            settings_grid_row += 1
-
-            label(
-                settings_frame,
-                text="Producer Assist / Remote Admin Link",
-                anchor="w",
-                width=24,
-                bg=PANEL_BG,
-                fg=MUTED_FG,
-            ).grid(row=settings_grid_row, column=0, sticky="w", pady=3)
-            producer_url_var = tk.StringVar(value=DEFAULT_PRODUCER_URL)
-            producer_url_entry = entry(
-                settings_frame,
-                textvariable=producer_url_var,
-                width=72,
-                state="readonly",
-                readonlybackground=FIELD_BG,
-            )
-            producer_url_entry.grid(row=settings_grid_row, column=1, sticky="ew", pady=3)
-
-            def refresh_producer_link(*_):
-                host_widget = entries.get("OVERLAY_HOST")
-                host_value = host_widget.get() if host_widget else "127.0.0.1"
-                producer_url_var.set(producer_link_for_host(host_value))
-
-            if "OVERLAY_HOST" in entries:
-                entries["OVERLAY_HOST"].bind("<<ComboboxSelected>>", refresh_producer_link)
-                entries["OVERLAY_HOST"].bind("<KeyRelease>", refresh_producer_link)
-                refresh_producer_link()
-
-            button(
-                settings_frame,
-                text="Copy Admin Link",
-                command=lambda: (
-                    copy_to_clipboard(root, producer_url_var.get()),
-                    status.set("Copied Producer Assist / remote admin link. Send this to trusted admins on Tailscale."),
-                ),
-                color="#334b64",
-            ).grid(row=settings_grid_row, column=2, padx=(8, 0), sticky="w")
-            settings_grid_row += 1
-            add_settings_hint(
-                "This is the same Producer Assist control-room page. With access set to 0.0.0.0, this link uses the broadcast PC's Tailscale address so trusted admins on your Tailscale network can help. "
-                "Keep the Streamlabs / OBS Link local on the broadcast PC."
-            )
 
     def choose_graphics_for_field(field_name, title, status_label):
         paths = filedialog.askopenfilenames(
@@ -3614,12 +3492,6 @@ def build_help_tab(
     ).pack(side="left", padx=(0, 8))
     button(
         link_row,
-        text="Open Tailscale Download",
-        command=lambda: open_external_link(TAILSCALE_WINDOWS_DOWNLOAD_URL),
-        color="#334b64",
-    ).pack(side="left", padx=(0, 8))
-    button(
-        link_row,
         text="Open SIMRacingApps",
         command=lambda: open_external_link(SIM_RACING_APPS_HOME_URL),
         color="#334b64",
@@ -3843,7 +3715,7 @@ def build_help_tab(
     section(
         "9. Start Broadcast and Producer Assist",
         """
-        Start Broadcast runs the broadcast engine, overlay, Producer Assist control room, cameras, caution replay controls, and race control.
+        Start Broadcast runs the broadcast engine, overlay, Producer Assist control room, cameras, and caution replay controls.
         Producer Assist opens automatically after Start Broadcast. If you close it, use the Producer Assist link to open it again.
         Use Producer Assist to turn OpenAI, ElevenLabs, and auto cameras on or off during the same running broadcast.
         Manual driver or camera selection takes camera control and holds the selected driver card while the human broadcaster makes the call.
@@ -3854,10 +3726,6 @@ def build_help_tab(
         qualifying, grid, or race. Do not use Start Broadcast by itself to call a saved replay. Use Driver Mode and
         Play Recorded Broadcast for the supported recorded-race workflow described below.
 
-        Race Admin Send Mode controls how admin commands are handled. clipboard is broadcast-safe and copies the command for manual send.
-        open_chat copies the command and opens iRacing text chat for quick Ctrl+V/Enter. ui_paste is testing-only and may show iRacing chat/window on the broadcast.
-        If the broadcast PC is also the streaming PC, sending commands through iRacing chat can interrupt the viewer-facing broadcast capture.
-        For clean league race control, use a trusted admin on another PC through Producer Assist/Tailscale so any iRacing chat/admin workflow happens away from the broadcast screen.
         """,
     )
     section(
@@ -3881,7 +3749,7 @@ def build_help_tab(
         "11. Producer Assist broadcast tools",
         """
         Producer Assist is both the AI control room and a tool for human broadcasters. It shows director suggestions, current broadcast focus,
-        driver and league statistics, pit strategy, race events, possible incidents, points information, and camera/replay controls.
+        driver and league statistics, pit strategy, points information, broadcast notes, and camera/replay controls.
 
         Use the leaderboard selector for Top Down, Scroll, Flo, or Brazen without stepping through every style on air.
         Manual sponsor buttons play a chosen Sponsor 1-5 item. Crank It Up, caution music, and presentation graphics can also be triggered manually.
@@ -3893,31 +3761,14 @@ def build_help_tab(
         """,
     )
     section(
-        "12. Remote helper setup with Tailscale",
-        f"""
-        Recommended for trusted league admins in different locations: use Tailscale.
-        Download Tailscale for Windows here: {TAILSCALE_WINDOWS_DOWNLOAD_URL}
-
-        1. Install Tailscale on the broadcast PC.
-        2. Install Tailscale on the helper admin's PC.
-        3. Sign both PCs into the same Tailscale network.
-        4. In Broadcast Settings, set Remote Producer Assist Access to 0.0.0.0 and save settings.
-        5. Start Broadcast.
-        6. Copy the Producer Assist / Remote Admin Link and send it only to trusted helpers on your Tailscale network.
-
-        The stream overlay link should still use http://127.0.0.1:8765/overlay inside OBS/Streamlabs on the broadcast PC.
-        Tailscale is only for the private Producer Assist control-room page.
-        """,
-    )
-    section(
-        "13. Updates",
+        "12. Updates",
         """
         Use Check for Updates to compare this installed version against the latest GitHub Release.
         Early versions open the release/download page instead of auto-installing. This is safer while the app is still moving quickly.
         """,
     )
     section(
-        "14. Race-night checklist",
+        "13. Race-night checklist",
         """
         Open iRacing, open Streamlabs/OBS, confirm the browser overlay is visible, load your profile,
         refresh Broadcast Health, then start during practice. Run a short smoke test before league night:

@@ -298,7 +298,7 @@ Sponsor 5 Name / Logo / Spoken Read / Commercial Video
 
 Sponsor names are used in order for spoken reads during pre-race, caution breaks, and race updates. Choose one logo per sponsor; those logos rotate in the title overlay in sponsor order and are shown when a sponsor is mentioned. If a sponsor read is blank, the AI writes a natural sponsor mention. If a cause/awareness read is set, it is added to sponsor calls. If a sponsor commercial video is set, the broadcaster will make the sponsor read and then the overlay can play that video full-screen.
 
-The **Streamlabs / OBS Link** and **Producer Assist / Remote Admin Link** are in this same area so overlay setup and remote producer setup stay easy to find.
+The **Streamlabs / OBS Link** and local **Producer Assist** link are available at the top of Broadcast Settings.
 
 ## 11. Save settings and create a profile
 
@@ -361,7 +361,7 @@ Start Broadcast launches:
 - Producer Assist
 - camera direction
 - overlay graphics
-- race control and caution handling
+- caution presentation and replay controls
 
 Click:
 
@@ -372,10 +372,6 @@ Start Broadcast
 Then open Producer Assist if you want to switch between AI broadcast and human-broadcaster control during the same running session.
 
 Important: use Start Broadcast while the iRacing session is live. For a saved race, first capture it live with Driver Mode and then use Play Recorded Broadcast with the matching iRacing replay. Replay controls inside Producer Assist support both live-session caution review and manual camera review during recorded-broadcast playback.
-
-Race Control note: `Race Admin Send Mode = clipboard` is the broadcast-safe default. It copies commands like `!yellow` or `!eol #34` so the admin can send them without the program opening iRacing chat on stream. `open_chat` copies the command and opens iRacing text chat for quick Ctrl+V/Enter. `ui_paste` is testing-only and may show the iRacing window/chat box in the broadcast capture.
-
-Important broadcast warning: if the same PC is running the stream/recording and also sends iRacing chat/admin commands, the chat box or iRacing window can interrupt what viewers see. For the cleanest league production, use a second trusted race-control admin on another PC. Have that admin connect to Producer Assist through Tailscale and handle race-control commands away from the broadcast capture.
 
 Optional Discord race report:
 
@@ -390,40 +386,9 @@ Optional Discord race report:
    Use OpenAI Race Recap = true
    ```
 
-After the race, the Studio waits for the finishing order to stabilize, then posts a Discord recap with a short race breakdown, the top ten, biggest movers, available race stats, and Sim Racer Hub results/championship links. Those links come from the Season ID and imported Race Schedule CSV, so admins should not need to paste race links every week. The Discord interview bot fields are separate and can stay blank for now.
+After the race, the Studio waits for the finishing order to stabilize, then posts a Discord recap with a short race breakdown, the top ten, biggest movers, available race stats, and Sim Racer Hub or Velocity results/championship links.
 
-## 14. Remote Producer Assist with Tailscale
-
-Use Tailscale when a trusted admin in another location needs to help with Producer Assist, cameras, notes, incident review, or race control.
-
-Official Tailscale Windows download:
-
-<https://tailscale.com/download/windows>
-
-Setup:
-
-1. Install Tailscale on the broadcast PC.
-2. Install Tailscale on the helper admin's PC.
-3. Sign both PCs into the same Tailscale account/network.
-4. In RGC AI Broadcast Studio, set:
-
-   ```text
-   Remote Producer Assist Access = 0.0.0.0
-   ```
-
-5. Click **Save Settings**.
-6. Start the broadcast.
-7. Copy the **Producer Assist / Remote Admin Link** from the launcher.
-8. Send that link only to trusted helpers on your Tailscale network.
-
-Important:
-
-- Keep the Streamlabs / OBS overlay link as `http://127.0.0.1:8765/overlay` on the broadcast PC.
-- Tailscale is only for the private Producer Assist control-room link.
-- Do not use normal router port forwarding unless you have a separate security plan.
-- Camera control still uses the take/release button so only one producer moves cameras at a time.
-
-## 15. Recommended race-night flow
+## 14. Recommended race-night flow
 
 1. Open iRacing.
 2. Join the session as a spectator, admin, or driver depending on your workflow.
@@ -436,7 +401,7 @@ Important:
 9. Let the studio detect practice, qualifying, and race.
 10. Stop the broadcast after the race or after post-race coverage.
 
-## 16. Updating to a newer build
+## 15. Updating to a newer build
 
 For now, updates are handled by receiving a newer ZIP.
 
@@ -454,7 +419,7 @@ Recommended update method:
 
 Later versions may add a true installer/updater.
 
-## 17. Troubleshooting
+## 16. Troubleshooting
 
 ### The program will not install
 
@@ -488,16 +453,6 @@ Check:
 - browser source size is `1920 x 1080`
 - overlay source is above the iRacing capture
 
-### Helper cannot open Producer Assist
-
-Check:
-
-- Tailscale is installed on both PCs.
-- Both PCs are signed into the same Tailscale network.
-- Broadcast Settings has `Remote Producer Assist Access = 0.0.0.0`.
-- The broadcast is started.
-- The helper is using the Producer Assist link, not the OBS overlay link.
-
 ### Cameras do not move
 
 Check:
@@ -507,17 +462,7 @@ Check:
 - camera mode is enabled in the launcher
 - iRacing replay/camera controls are not blocked by another tool
 
-### Race Control button does not instantly throw a caution
-
-Check `Race Admin Send Mode`.
-
-- `clipboard` is broadcast-safe. It copies the command, but does not visibly open/send chat.
-- `open_chat` copies the command and opens iRacing text chat for quick Ctrl+V/Enter.
-- `ui_paste` tries to paste/send the command through iRacing chat and may show the chat box/window on stream.
-
-Until a true hidden iRacing admin-command method is confirmed, use clipboard mode for live broadcasts. If you need fast live race-control decisions without risking the broadcast screen, use a trusted remote admin through Producer Assist/Tailscale on a separate PC.
-
-## 18. Safety notes
+## 17. Safety notes
 
 - Never share API keys publicly.
 - Do not stream your launcher while keys are visible.

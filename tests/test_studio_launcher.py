@@ -121,8 +121,7 @@ def test_broadcast_settings_have_friendly_labels_and_sections():
     assert BROADCAST_FIELD_LABELS["OVERLAY_LEADERBOARD_STYLE"] == "Leaderboard Style"
     assert "flo uses a compact two-row top leaderboard" in BROADCAST_FIELD_HELP["OVERLAY_LEADERBOARD_STYLE"]
     assert "brazen uses a leader-focused top board" in BROADCAST_FIELD_HELP["OVERLAY_LEADERBOARD_STYLE"]
-    assert BROADCAST_FIELD_LABELS["OVERLAY_HOST"] == "Remote Producer Assist Access"
-    assert "trusted admins on your Tailscale network" in BROADCAST_FIELD_HELP["OVERLAY_HOST"]
+    assert "OVERLAY_HOST" not in BROADCAST_FIELD_LABELS
     assert BROADCAST_FIELD_LABELS["USE_SIM_RACING_APPS"] == "Use SIMRacingApps Car Graphics"
     assert "set this to false" in BROADCAST_FIELD_HELP["USE_SIM_RACING_APPS"]
     assert BROADCAST_FIELD_LABELS["LEAD_BROADCASTER_NAME"] == "Lead Broadcaster Name"
@@ -141,8 +140,8 @@ def test_broadcast_settings_have_friendly_labels_and_sections():
     assert BROADCAST_FIELD_LABELS["SPONSOR_READ_CAUSE_NAME"] == "Cause / Awareness Name"
     assert BROADCAST_FIELD_LABELS["SPONSOR_READ_CAUSE_LOGO"] == "Cause / Awareness Logo"
     assert BROADCAST_FIELD_LABELS["SPONSOR_READ_CAUSE_READ"] == "Cause / Awareness Spoken Read"
-    assert BROADCAST_FIELD_LABELS["RACE_ADMIN_MODE"] == "Race Admin Mode"
-    assert BROADCAST_FIELD_LABELS["RACE_ADMIN_SEND_MODE"] == "Race Admin Send Mode"
+    assert "RACE_ADMIN_MODE" not in BROADCAST_FIELD_LABELS
+    assert "RACE_ADMIN_SEND_MODE" not in BROADCAST_FIELD_LABELS
     assert BROADCAST_FIELD_LABELS["QUALIFYING_MUSIC_PLAYLIST"] == "Qualifying Music Playlist"
     assert "loop during qualifying" in BROADCAST_FIELD_HELP["QUALIFYING_MUSIC_PLAYLIST"]
     assert BROADCAST_FIELD_LABELS["DISCORD_RACE_REPORT_ENABLED"] == "Discord Race Report"
@@ -156,7 +155,7 @@ def test_broadcast_settings_have_friendly_labels_and_sections():
     assert BROADCAST_FIELD_SECTIONS["OVERLAY_EVENT_TITLE"] == "Event Sponsors / Overlay Links"
     assert "OVERLAY_HOST" not in BROADCAST_FIELD_SECTIONS
     assert BROADCAST_FIELD_SECTIONS["PRACTICE_MUSIC_PLAYLIST"] == "Practice / Qualifying / Caution Music"
-    assert BROADCAST_FIELD_SECTIONS["RACE_ADMIN_MODE"] == "Race Control"
+    assert "RACE_ADMIN_MODE" not in BROADCAST_FIELD_SECTIONS
     assert BROADCAST_FIELD_SECTIONS["DISCORD_RACE_REPORT_ENABLED"] == "Discord Race Report"
     launcher_keys = [key for key, _default in LAUNCHER_FIELDS]
     saved_keys = [key for key, _default in SAVED_FIELDS]
@@ -197,10 +196,9 @@ def test_start_broadcast_auto_opens_producer_assist():
 
     assert "root.after(1500, open_producer_assist_after_start)" in source
     assert "Producer Assist opens automatically after Start Broadcast" in source
-    assert 'text="Producer Assist / Remote Admin Link"' in source
-    assert 'text="Copy Admin Link"' in source
-    assert "This is the same Producer Assist control-room page" in source
-    assert "trusted admins on your Tailscale network" in source
+    assert '"Producer Assist (This PC)"' in source
+    assert 'text="Copy Link"' in source
+    assert "Remote Admin Link" not in source
 
 
 def test_help_guide_documents_driver_mode_and_current_producer_tools():
@@ -300,14 +298,9 @@ def test_launcher_defaults_include_split_league_stats_csvs():
     assert defaults["CAUTION_PRESENTATION_GRAPHICS"] == ""
     assert defaults["POST_RACE_INTERVIEWS_ENABLED"] == "false"
     assert defaults["USE_SIM_RACING_APPS"] == "true"
-    assert defaults["RACE_ADMIN_MODE"] == "false"
-    assert defaults["RACE_ADMIN_SEND_MODE"] == "clipboard"
-    assert defaults["DISCORD_BOT_ENABLED"] == "false"
-    assert defaults["DISCORD_BOT_TOKEN"] == ""
-    assert defaults["DISCORD_GUILD_ID"] == ""
-    assert defaults["DISCORD_BOOTH_CHANNEL_ID"] == ""
-    assert defaults["DISCORD_WAITING_CHANNEL_ID"] == ""
-    assert defaults["DISCORD_INTERVIEW_CHANNEL_ID"] == ""
+    assert "RACE_ADMIN_MODE" not in defaults
+    assert "RACE_ADMIN_SEND_MODE" not in defaults
+    assert "DISCORD_BOT_ENABLED" not in defaults
     assert defaults["SIMRACERHUB_SOURCE"] == "https://simracerhub.com"
     assert defaults["SIMRACERHUB_LEAGUE_ID"] == ""
     assert defaults["SIMRACERHUB_SERIES_ID"] == ""
@@ -321,36 +314,11 @@ def test_launcher_defaults_migrate_old_anthem_audio_to_qualifying_music():
     assert defaults["QUALIFYING_MUSIC_PLAYLIST"] == "D:/Music/old_anthem.mp3"
 
 
-def test_race_admin_send_mode_includes_open_chat_option():
+def test_studio_no_longer_exposes_race_admin_send_mode():
     source = Path("studio_launcher.py").read_text(encoding="utf-8")
 
-    assert '("clipboard", "open_chat", "ui_paste")' in source
-    assert "opens iRacing text chat for quick Ctrl+V/Enter" in source
-
-
-def test_remote_producer_link_requires_enabled_relay_and_session():
-    assert remote_producer_link(launcher_defaults({})) == ""
-    assert (
-        remote_producer_link(
-            launcher_defaults(
-                {
-                    "REMOTE_PRODUCER_ENABLED": "true",
-                    "REMOTE_PRODUCER_RELAY_URL": "https://producer.rgc-ai.com/",
-                    "REMOTE_PRODUCER_SESSION_CODE": "WFO12345",
-                    "REMOTE_PRODUCER_PIN": "2468",
-                }
-            )
-        )
-        == "https://producer.rgc-ai.com/producer/WFO12345?pin=2468"
-    )
-
-
-def test_generate_remote_session_code_is_admin_friendly():
-    code = generate_remote_session_code()
-
-    assert len(code) == 8
-    assert code.isalnum()
-    assert code == code.upper()
+    assert '("clipboard", "open_chat", "ui_paste")' not in source
+    assert "Race Admin Send Mode controls" not in source
 
 
 def test_launcher_health_reports_missing_ai_keys():
@@ -362,7 +330,7 @@ def test_launcher_health_reports_missing_ai_keys():
     assert row_map["OpenAI"][0] == "Needs key"
     assert row_map["ElevenLabs"][0] == "Needs setup"
     assert row_map["Discord Race Report"][0] == "Off"
-    assert row_map["Remote Producer Assist"][0] == "Local only"
+    assert "Remote Producer Assist" not in row_map
     assert row_map["Broadcast"][0] == "Stopped"
 
 
@@ -380,19 +348,6 @@ def test_launcher_health_reports_discord_race_report_setup():
 
     assert row_map["Discord Race Report"][0] == "Ready"
     assert "Season ID" in row_map["Discord Race Report"][1]
-
-
-def test_launcher_health_reports_tailscale_helper_access(monkeypatch):
-    import studio_launcher
-
-    monkeypatch.setattr(studio_launcher, "best_remote_helper_ip", lambda: "100.90.80.70")
-    values = launcher_defaults({"OVERLAY_HOST": "0.0.0.0"})
-
-    rows = build_health_status(values, root=Path("C:/RGC"), broadcast_running=False)
-    row_map = {name: (state, detail, level) for name, state, detail, level in rows}
-
-    assert row_map["Remote Producer Assist"][0] == "Shared"
-    assert "http://100.90.80.70:8765/producer" in row_map["Remote Producer Assist"][1]
 
 
 def test_launcher_health_reports_sim_racing_apps_optional_when_not_running(monkeypatch):

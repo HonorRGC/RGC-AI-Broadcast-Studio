@@ -2775,18 +2775,6 @@ PRODUCER_HTML = r"""<!doctype html>
         <h1>RGC Producer Assist</h1>
         <p class="subtitle" id="event-line">Waiting for broadcast state...</p>
       </div>
-      <div class="producer-share">
-        <div>
-          <div class="label">Helper Link</div>
-          <div class="share-link" id="producer-share-link">Start the broadcast to get the link.</div>
-        </div>
-        <div class="producer-share-row">
-          <input class="producer-name-input" id="producer-name-input" placeholder="Producer name" />
-          <button class="control-button" id="take-camera-control-button">Take Camera Control</button>
-          <button class="control-button warn" id="release-camera-control-button">Release</button>
-        </div>
-        <div class="camera-status" id="camera-control-status">Camera control is open.</div>
-      </div>
       <div class="flag unknown" id="flag-pill">Waiting</div>
     </header>
 
@@ -2803,7 +2791,7 @@ PRODUCER_HTML = r"""<!doctype html>
         <section class="leaderboard">
           <div class="section-head">
             <h2>Live Leaderboard</h2>
-            <span class="hint">Click a driver for notes</span>
+            <span class="hint">Click a driver for broadcast details</span>
           </div>
           <div class="rows" id="leaderboard-rows"></div>
         </section>
@@ -2948,7 +2936,6 @@ PRODUCER_HTML = r"""<!doctype html>
                 <option value="brazen">Brazen</option>
               </select>
             </label>
-            <button class="control-button danger" id="race-admin-button">Race Admin: OFF</button>
           </div>
           <div class="audio-control-row">
             <label>Broadcasters <span id="broadcaster-volume-label">65%</span></label>
@@ -2959,69 +2946,14 @@ PRODUCER_HTML = r"""<!doctype html>
         </div>
 
         <div class="panel full">
-          <h3>Race Control</h3>
-          <div class="race-admin-status" id="race-admin-status">Race Admin Mode is OFF</div>
-          <div class="small">Commands use the selected driver when needed. Broadcaster PC must be an iRacing hosted-session admin.</div>
-          <div class="button-row control-grid" style="margin-top: 10px;">
-            <button class="control-button danger race-control-button" data-race-action="throw_yellow" data-dangerous="true">Throw Caution</button>
-            <button class="control-button warn race-control-button" data-race-action="extend_caution">Extend Caution +1</button>
-            <button class="control-button warn race-control-button" data-race-action="one_to_green">Set One-To-Green</button>
-            <button class="control-button danger race-control-button" data-race-action="clear_all" data-dangerous="true">Clear All</button>
-          </div>
-          <div class="button-row control-grid" style="margin-top: 8px;">
-            <button class="control-button race-control-button" data-race-action="clear_penalty" data-driver-required="true">Clear Penalty</button>
-            <button class="control-button race-control-button" data-race-action="eol" data-driver-required="true">EOL</button>
-            <button class="control-button warn race-control-button" data-race-action="drive_through" data-driver-required="true">Drive Through</button>
-            <button class="control-button warn race-control-button" data-race-action="timed_black" data-driver-required="true">Timed Black</button>
-            <button class="control-button race-control-button" data-race-action="waveby" data-driver-required="true">Wave Around</button>
-            <button class="control-button danger race-control-button" data-race-action="dq" data-driver-required="true" data-dangerous="true">DQ</button>
-            <button class="control-button danger race-control-button" data-race-action="remove" data-driver-required="true" data-dangerous="true">Remove</button>
-          </div>
-        </div>
-
-        <div class="panel full">
-          <h3>Producer Notes</h3>
-          <textarea class="producer-textarea" id="producer-note-input" placeholder="Type a booth note, race-control reminder, or driver story..."></textarea>
+          <h3>Broadcast Notes</h3>
+          <textarea class="producer-textarea" id="producer-note-input" placeholder="Type a booth reminder or broadcast story..."></textarea>
           <div class="button-row">
             <button class="control-button" id="add-producer-note-button">Add Note</button>
-            <button class="control-button" id="add-driver-note-button">Note Selected Driver</button>
           </div>
           <div class="control-room-list" id="producer-notes-list" style="margin-top: 10px;">
             <div class="small">Manual notes will appear here.</div>
           </div>
-        </div>
-
-        <div class="panel">
-          <h3>Interview Queue</h3>
-          <div class="small">Manual for now. Discord bot hookup can use this same queue later.</div>
-          <div class="button-row" style="margin-top: 10px;">
-            <button class="control-button" id="queue-interview-button">Queue Selected Driver</button>
-            <button class="control-button" id="queue-top-three-button">Queue Top 3</button>
-          </div>
-          <div class="control-room-list" id="interview-queue-list" style="margin-top: 10px;">
-            <div class="small">Interview queue will appear here.</div>
-          </div>
-        </div>
-
-        <div class="panel wide">
-          <h3>Race Event Log</h3>
-          <div class="small">Automatic race events. Click Review to jump replay back, or Note to mark an event for admin/recap follow-up.</div>
-          <div class="event-log-table" id="race-event-log-list" style="margin-top: 10px;">
-            <div class="small">Race events will appear here.</div>
-          </div>
-        </div>
-
-        <div class="panel">
-          <h3>Race Control Audit</h3>
-          <div class="control-room-list" id="race-control-audit-list">
-            <div class="small">Admin command details sent from Producer Assist will appear here.</div>
-          </div>
-        </div>
-
-        <div class="panel">
-          <h3>Discord Setup</h3>
-          <div class="small">Prepared for later: bot token, server ID, booth channel, waiting room, and interview channel will live in Studio settings.</div>
-          <div class="small" id="discord-status" style="margin-top: 6px;">Discord bot is not connected yet.</div>
         </div>
 
       </aside>
@@ -3054,6 +2986,7 @@ PRODUCER_HTML = r"""<!doctype html>
     function initProducerIdentity() {
       producerClientId();
       const input = document.getElementById("producer-name-input");
+      if (!input) return;
       input.value = localStorage.getItem(PRODUCER_NAME_KEY) || "Producer";
       input.addEventListener("change", () => {
         localStorage.setItem(PRODUCER_NAME_KEY, currentProducerName());
@@ -3535,31 +3468,6 @@ PRODUCER_HTML = r"""<!doctype html>
           }
         ]
       );
-      renderControlRoomList(
-        "interview-queue-list",
-        state.interview_queue || [],
-        "Interview queue will appear here.",
-        [
-          {
-            label: "Interviewed",
-            className: "good",
-            show: item => item.status !== "interviewed",
-            handler: item => sendProducerCommand("interview_mark", { item_id: item.id, status: "interviewed" })
-          },
-          {
-            label: "Skip",
-            className: "warn",
-            show: item => item.status !== "skipped",
-            handler: item => sendProducerCommand("interview_mark", { item_id: item.id, status: "skipped" })
-          }
-        ]
-      );
-      renderRaceEventLog(state.race_event_log || []);
-      renderControlRoomList(
-        "race-control-audit-list",
-        state.race_control_audit || [],
-        "Admin command details sent from Producer Assist will appear here."
-      );
     }
 
     function controlEnabled(state, key) {
@@ -3574,11 +3482,6 @@ PRODUCER_HTML = r"""<!doctype html>
       if (["flo", "flo_top", "flo-top", "top_grid"].includes(style)) return "flo";
       if (["brazen", "brazen_top", "brazen-top", "leader_top"].includes(style)) return "brazen";
       return "side";
-    }
-
-    function renderProducerShare(state) {
-      const link = state.producer_share_url || state.producer_url || window.location.href;
-      text("producer-share-link", link);
     }
 
     function cameraControlHeldByOther(state) {
@@ -3604,35 +3507,14 @@ PRODUCER_HTML = r"""<!doctype html>
     }
 
     function renderCameraControl(state) {
-      const holder = (state || {}).camera_control || {};
-      const mine = Boolean(holder.holder_id && holder.holder_id === producerClientId());
-      const heldByOther = cameraControlHeldByOther(state);
-      const takeButton = document.getElementById("take-camera-control-button");
-      const releaseButton = document.getElementById("release-camera-control-button");
       const followButton = document.getElementById("follow-driver-button");
       const leaderButton = document.getElementById("leader-camera-button");
       const cameraShotSelect = document.getElementById("manual-camera-group-select");
-      const status = document.getElementById("camera-control-status");
-      if (mine) {
-        status.textContent = `You have camera control as ${holder.holder_name || currentProducerName()}.`;
-        takeButton.textContent = "Camera Control: Mine";
-        takeButton.className = "control-button good";
-      } else if (heldByOther) {
-        status.textContent = `${holder.holder_name || "Another producer"} has camera control.`;
-        takeButton.textContent = "Camera Control Taken";
-        takeButton.className = "control-button danger";
-      } else {
-        status.textContent = "Camera control is open.";
-        takeButton.textContent = "Take Camera Control";
-        takeButton.className = "control-button";
-      }
-      takeButton.disabled = heldByOther || mine;
-      releaseButton.disabled = !mine;
-      followButton.disabled = heldByOther;
-      leaderButton.disabled = heldByOther;
-      if (cameraShotSelect) cameraShotSelect.disabled = heldByOther;
+      followButton.disabled = false;
+      leaderButton.disabled = false;
+      if (cameraShotSelect) cameraShotSelect.disabled = false;
       for (const button of document.querySelectorAll(".camera-shot-button")) {
-        button.disabled = heldByOther;
+        button.disabled = false;
       }
       renderCameraExplain(state);
     }
@@ -3657,25 +3539,20 @@ PRODUCER_HTML = r"""<!doctype html>
       const openAiButton = document.getElementById("openai-button");
       const elevenButton = document.getElementById("elevenlabs-button");
       const leaderboardSelect = document.getElementById("leaderboard-style-select");
-      const raceAdminButton = document.getElementById("race-admin-button");
       const broadcasterSlider = document.getElementById("broadcaster-volume-slider");
       const musicSlider = document.getElementById("music-volume-slider");
       const autoOn = controlEnabled(state, "auto_camera");
       const openAiOn = controlEnabled(state, "openai");
       const elevenOn = controlEnabled(state, "elevenlabs");
-      const raceAdminOn = controlEnabled(state, "race_admin");
       const leaderboardStyle = currentLeaderboardStyle(state);
       autoButton.textContent = autoOn ? "Auto Camera: ON" : "Auto Camera: OFF";
       openAiButton.textContent = openAiOn ? "OpenAI: ON" : "OpenAI: OFF";
       elevenButton.textContent = elevenOn ? "ElevenLabs: ON" : "ElevenLabs: OFF";
-      raceAdminButton.textContent = raceAdminOn ? "Race Admin: ON" : "Race Admin: OFF";
       if (leaderboardSelect) leaderboardSelect.value = leaderboardStyle;
       autoButton.className = `control-button ${autoOn ? "good" : "danger"}`;
       openAiButton.className = `control-button ${openAiOn ? "good" : "danger"}`;
       elevenButton.className = `control-button ${elevenOn ? "good" : "danger"}`;
-      raceAdminButton.className = `control-button ${raceAdminOn ? "good" : "danger"}`;
       renderAudioSliders(state, broadcasterSlider, musicSlider);
-      renderRaceControl(state);
       renderCautionReviewSponsorSelect(state);
     }
 
@@ -3815,17 +3692,10 @@ PRODUCER_HTML = r"""<!doctype html>
       renderPitRoad(state);
       renderControlRoomPanels(state);
       renderProducerFeed(state);
-      renderProducerShare(state);
       renderCameraControl(state);
       renderControlButtons(state);
     }
 
-    document.getElementById("take-camera-control-button").addEventListener("click", () => {
-      sendProducerCommand("camera_claim");
-    });
-    document.getElementById("release-camera-control-button").addEventListener("click", () => {
-      sendProducerCommand("camera_release");
-    });
     document.getElementById("follow-driver-button").addEventListener("click", () => {
       sendManualDriverCamera();
     });
@@ -3874,10 +3744,6 @@ PRODUCER_HTML = r"""<!doctype html>
       const on = controlEnabled(lastState || {}, "elevenlabs");
       sendProducerCommand(on ? "elevenlabs_off" : "elevenlabs_on");
     });
-    document.getElementById("race-admin-button").addEventListener("click", () => {
-      const on = controlEnabled(lastState || {}, "race_admin");
-      sendProducerCommand(on ? "race_admin_off" : "race_admin_on");
-    });
     document.getElementById("leaderboard-style-select").addEventListener("change", (event) => {
       sendProducerCommand("set_leaderboard_style", {
         style: event.target.value || "side"
@@ -3885,20 +3751,6 @@ PRODUCER_HTML = r"""<!doctype html>
     });
     setupVolumeSlider("broadcaster-volume-slider", "broadcaster-volume-label", "broadcaster");
     setupVolumeSlider("music-volume-slider", "music-volume-label", "music");
-    for (const button of document.querySelectorAll(".race-control-button")) {
-      button.addEventListener("click", () => {
-        const action = button.dataset.raceAction;
-        const driver = selectedDriver(lastState || {});
-        if (button.dataset.driverRequired === "true" && !driver) {
-          alert("Select a driver from the leaderboard first.");
-          return;
-        }
-        if (!confirmRaceControl(button, action, driver)) return;
-        const payload = raceControlPayload(action, driver, button.dataset.driverRequired === "true");
-        if (!payload) return;
-        sendProducerCommand("race_control", payload);
-      });
-    }
 
     function setupVolumeSlider(sliderId, labelId, target) {
       const slider = document.getElementById(sliderId);
@@ -3926,46 +3778,6 @@ PRODUCER_HTML = r"""<!doctype html>
       if (!message) return;
       sendProducerCommand("producer_note_add", { message });
       input.value = "";
-    });
-    document.getElementById("add-driver-note-button").addEventListener("click", () => {
-      const driver = selectedDriver(lastState || {});
-      const input = document.getElementById("producer-note-input");
-      const message = (input.value || "").trim();
-      if (!driver || !message) {
-        alert("Select a driver and type a note first.");
-        return;
-      }
-      sendProducerCommand("producer_note_add", {
-        message,
-        car_idx: driver.car_idx,
-        car_number: driver.car_number || "",
-        driver_name: driver.driver_name || ""
-      });
-      input.value = "";
-    });
-    document.getElementById("queue-interview-button").addEventListener("click", () => {
-      const driver = selectedDriver(lastState || {});
-      if (!driver) {
-        alert("Select a driver from the leaderboard first.");
-        return;
-      }
-      sendProducerCommand("interview_queue_add", {
-        message: `Queued for post-race interview from ${ordinal(driver.position)}.`,
-        car_idx: driver.car_idx,
-        car_number: driver.car_number || "",
-        driver_name: driver.driver_name || ""
-      });
-    });
-    document.getElementById("queue-top-three-button").addEventListener("click", () => {
-      const leaderboard = (lastState || {}).leaderboard || [];
-      for (const driver of leaderboard.slice(0, 3)) {
-        sendProducerCommand("interview_queue_add", {
-          message: `Top-three interview queue from ${ordinal(driver.position)}.`,
-          car_idx: driver.car_idx,
-          car_number: driver.car_number || "",
-          driver_name: driver.driver_name || ""
-        });
-      }
     });
     document.getElementById("return-live-button").addEventListener("click", () => {
       sendProducerCommand("replay_return_live");

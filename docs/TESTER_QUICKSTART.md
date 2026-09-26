@@ -92,18 +92,6 @@ In the launcher:
 - Open Producer Assist to turn OpenAI, ElevenLabs, and auto cameras on or off while it is running.
 - Use **Stop Broadcast** to stop a broadcast launched from the program.
 
-## Remote helper with Tailscale
-
-If a trusted admin will help from another location, use Tailscale:
-
-<https://tailscale.com/download/windows>
-
-Install and sign into Tailscale on both PCs, using the same Tailscale network. In RGC AI Broadcast Studio, set **Remote Producer Assist Access** to `0.0.0.0`, save settings, start the broadcast, then copy the **Producer Assist / Remote Admin Link** and send it to the helper.
-
-Keep the OBS/Streamlabs overlay link on `127.0.0.1`; Tailscale is only for the private Producer Assist control room.
-
-Race-control warning: sending iRacing admin commands from the broadcast PC can show the chat box or iRacing window on stream. For league races, the cleanest setup is a trusted remote admin using Producer Assist/Tailscale from another PC so race-control commands do not interrupt the broadcast capture.
-
 ## Optional SIMRacingApps car graphics
 
 The broadcast works without SIMRacingApps, but live 3D car renders and styled car numbers require SIMRacingAppsServer to be running in the background.
