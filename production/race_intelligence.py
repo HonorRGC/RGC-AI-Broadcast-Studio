@@ -6,6 +6,7 @@ from production.story_manager import StoryManager, ManagedStory
 from production.battle_detector import BattleDetector, BattleStory
 from production.driver_memory import DriverMemory
 from production.momentum_tracker import MomentumTracker, MomentumProfile
+from production.multiclass import build_multiclass_context
 from production.race_state_tracker import RaceStateTracker, RaceState
 
 
@@ -45,6 +46,7 @@ class RaceIntelligence:
         self.active_battles: List[BattleStory] = []
 
         self.race_state: RaceState = self.race_state_tracker.get_state()
+        self.multiclass_context = build_multiclass_context([], {})
 
         self.current_lap = 0
 
@@ -87,6 +89,7 @@ class RaceIntelligence:
             results=results,
             driver_lookup=driver_lookup,
         )
+        self.multiclass_context = build_multiclass_context(results, driver_lookup)
 
         race_stories = self.story_engine.update(
             results=results,
@@ -108,13 +111,17 @@ class RaceIntelligence:
         if not results:
             return
 
+        zero_based_positions = any(
+            self.safe_int(car.get("Position", 999)) == 0 for car in results or []
+        )
         for car in results:
             car_idx = car.get("CarIdx")
 
             if car_idx is None:
                 continue
 
-            position = self.safe_int(car.get("Position", 0))
+            raw_position = self.safe_int(car.get("Position", 0))
+            position = raw_position + 1 if zero_based_positions else raw_position
 
             if position <= 0:
                 continue
@@ -140,6 +147,38 @@ class RaceIntelligence:
             summary.laps_seen += 1
             summary.last_updated_lap = current_lap
             summary.tags = self.build_driver_tags(summary)
+
+    def seed_starting_positions(self, results, driver_lookup=None):
+        driver_lookup = driver_lookup or {}
+        if not results:
+            return
+
+        zero_based_positions = any(
+            self.safe_int(car.get("Position", 999)) == 0 for car in results or []
+        )
+        for car in results or []:
+            car_idx = car.get("CarIdx")
+            if car_idx is None:
+                continue
+
+            raw_position = self.safe_int(car.get("Position", 0))
+            position = raw_position + 1 if zero_based_positions else raw_position
+            if position <= 0:
+                continue
+
+            driver_info = driver_lookup.get(car_idx, {})
+            driver_name = driver_info.get("name", f"Car {car_idx}")
+            car_number = driver_info.get("number", "?")
+            summary = self.get_or_create_driver_summary(
+                car_idx=car_idx,
+                driver_name=driver_name,
+                car_number=car_number,
+                position=position,
+            )
+            if summary.starting_position <= 0 or summary.starting_position == summary.current_position:
+                summary.starting_position = position
+            summary.driver_name = driver_name
+            summary.car_number = car_number
 
     def get_or_create_driver_summary(self, car_idx, driver_name, car_number, position):
         if car_idx not in self.driver_summaries:
@@ -196,6 +235,7 @@ class RaceIntelligence:
             "hottest_drivers": self.get_hottest_drivers(),
             "coldest_drivers": self.get_coldest_drivers(),
             "top_five": self.get_top_five(),
+            "multiclass": self.multiclass_context,
         }
 
     def get_race_state(self):

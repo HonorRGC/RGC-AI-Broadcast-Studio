@@ -1,13 +1,14 @@
 from openai import OpenAI
 
-from config import OPENAI_API_KEY, USE_OPENAI
+from config import OPENAI_API_KEY, OPENAI_MODEL, USE_OPENAI
 from production.prompt_builder import PromptBuilder
 
 
 class OpenAIDirector:
-    def __init__(self, model="gpt-5.5"):
+    def __init__(self, model=OPENAI_MODEL):
         self.model = model
         self.prompt_builder = PromptBuilder()
+        self.runtime_enabled = True
 
         if USE_OPENAI and OPENAI_API_KEY:
             self.client = OpenAI(api_key=OPENAI_API_KEY)
@@ -15,7 +16,10 @@ class OpenAIDirector:
             self.client = None
 
     def is_enabled(self):
-        return self.client is not None
+        return self.runtime_enabled and self.client is not None
+
+    def set_enabled(self, enabled):
+        self.runtime_enabled = bool(enabled)
 
     def generate_commentary(
         self,
@@ -48,12 +52,15 @@ class OpenAIDirector:
                         "content": prompt["user"],
                     },
                 ],
-                max_output_tokens=120,
+                max_output_tokens=300,
             )
 
             commentary = response.output_text.strip()
 
             if not commentary:
+                return fallback_text
+
+            if commentary[-1] not in ".!?\"'”’":
                 return fallback_text
 
             return commentary
