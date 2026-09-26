@@ -11,4 +11,9 @@ if not exist ".venv\Scripts\python.exe" (
     exit /b 1
 )
 
-start "RGC AI Broadcast Studio" ".venv\Scripts\pythonw.exe" "studio_launcher.py"
+if exist "launch_studio.vbs" (
+    start "" wscript.exe "%~dp0launch_studio.vbs"
+) else (
+    start "RGC AI Broadcast Studio" ".venv\Scripts\pythonw.exe" "studio_launcher.py"
+)
+exit /b 0

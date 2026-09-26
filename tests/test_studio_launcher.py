@@ -881,8 +881,9 @@ def test_launcher_detects_running_process():
 
 
 def test_launcher_finds_running_broadcast_pids(monkeypatch):
-    def fake_run(command, text, capture_output, check):
+    def fake_run(command, text, capture_output, check, creationflags=0):
         assert "powershell" in command[0].lower()
+        assert creationflags == broadcast_creation_flags()
         return SimpleNamespace(returncode=0, stdout="1234\nnot-a-pid\n5678\n")
 
     monkeypatch.setattr("studio_launcher.subprocess.run", fake_run)
@@ -893,8 +894,9 @@ def test_launcher_finds_running_broadcast_pids(monkeypatch):
 def test_launcher_counts_stopped_broadcast_processes(monkeypatch):
     calls = []
 
-    def fake_run(command, text, capture_output, check):
+    def fake_run(command, text, capture_output, check, creationflags=0):
         calls.append(command)
+        assert creationflags == broadcast_creation_flags()
         return SimpleNamespace(returncode=0, stdout="")
 
     monkeypatch.setattr("studio_launcher.subprocess.run", fake_run)

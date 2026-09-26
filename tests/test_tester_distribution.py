@@ -7,6 +7,7 @@ ROOT = Path(__file__).resolve().parents[1]
 def test_windows_tester_launch_files_exist():
     assert (ROOT / "setup_windows.bat").exists()
     assert (ROOT / "launch_studio.bat").exists()
+    assert (ROOT / "launch_studio.vbs").exists()
     assert (ROOT / "create_desktop_shortcut.ps1").exists()
 
 

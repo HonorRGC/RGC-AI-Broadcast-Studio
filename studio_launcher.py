@@ -1277,6 +1277,7 @@ def tailscale_ip():
             text=True,
             timeout=1.0,
             check=False,
+            creationflags=broadcast_creation_flags(),
         )
     except (OSError, subprocess.TimeoutExpired):
         return ""
@@ -1416,6 +1417,7 @@ def running_broadcast_pids(root=ROOT):
             text=True,
             capture_output=True,
             check=False,
+            creationflags=broadcast_creation_flags(),
         )
     except Exception:
         return []
@@ -1437,6 +1439,7 @@ def stop_broadcast_processes(pids):
             text=True,
             capture_output=True,
             check=False,
+            creationflags=broadcast_creation_flags(),
         )
         if result.returncode == 0:
             stopped += 1
@@ -1532,6 +1535,7 @@ def run_sim_racer_hub_import(
         text=True,
         capture_output=True,
         check=False,
+        creationflags=broadcast_creation_flags(),
     )
 
 
@@ -1587,6 +1591,7 @@ def run_velocity_league_import(
         text=True,
         capture_output=True,
         check=False,
+        creationflags=broadcast_creation_flags(),
     )
 
 

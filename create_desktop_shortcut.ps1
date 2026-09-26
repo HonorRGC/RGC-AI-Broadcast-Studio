@@ -1,11 +1,11 @@
 $ErrorActionPreference = "Stop"
 
 $projectRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
-$launcher = Join-Path $projectRoot "launch_studio.bat"
+$launcher = Join-Path $projectRoot "launch_studio.vbs"
 $icon = Join-Path $projectRoot "assets\rgc_ai_broadcast_studio.ico"
 
 if (-not (Test-Path -LiteralPath $launcher)) {
-    throw "Could not find launch_studio.bat next to this script."
+    throw "Could not find launch_studio.vbs next to this script."
 }
 
 $desktop = [Environment]::GetFolderPath("Desktop")
