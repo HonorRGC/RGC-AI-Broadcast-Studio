@@ -191,6 +191,17 @@ def test_studio_profile_buttons_use_clear_create_delete_language():
     assert "Save Profile Changes" not in source
 
 
+def test_studio_has_dedicated_customizable_league_manager_scoring_tab():
+    source = Path("studio_launcher.py").read_text(encoding="utf-8")
+
+    assert 'notebook.add(league_manager_tab, text="League Manager")' in source
+    assert 'notebook.add(league_tab, text="League Data / Imports")' in source
+    assert "Finishing Position Points" in source
+    assert "Bonus Points" in source
+    assert "Penalty Points" in source
+    assert "Save Scoring System" in source
+
+
 def test_start_broadcast_auto_opens_producer_assist():
     source = Path("studio_launcher.py").read_text(encoding="utf-8")
 

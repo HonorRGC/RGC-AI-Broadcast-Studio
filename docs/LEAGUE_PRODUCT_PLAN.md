@@ -1,5 +1,23 @@
 # League Product and Broadcast Overlay Plan
 
+## Current League Manager foundation
+
+The Studio now has a dedicated **League Manager** tab separate from public website imports and driver-profile editing. Its first foundation is profile-specific customizable scoring stored in:
+
+```text
+league/<profile>/scoring.json
+```
+
+League owners can configure:
+
+- points for every finishing position;
+- any number of named bonus-point rules;
+- any number of named penalty-point rules;
+- signed manual adjustments with a required reason in the scoring engine;
+- validation and a reason-by-reason points audit for future race results.
+
+The next League Manager phases are league/season identity, schedule management, roster management, race-result approval, standings calculation, and publishing/export.
+
 This document describes the next product layer for RGC AI Broadcast Studio: turning the current race-calling engine into something a league admin can download, configure, and run for a professional-looking broadcast.
 
 ## Product goal

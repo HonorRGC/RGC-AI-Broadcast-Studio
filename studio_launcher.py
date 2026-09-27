@@ -16,6 +16,14 @@ import webbrowser
 from pathlib import Path
 from tkinter import messagebox
 
+from production.league_manager import (
+    ScoringRule,
+    ScoringSystem,
+    default_scoring_system,
+    load_scoring_system,
+    save_scoring_system,
+)
+
 try:
     import tomllib
 except ModuleNotFoundError:  # pragma: no cover - Python < 3.11 fallback
@@ -1937,13 +1945,16 @@ def run_gui():
     health_panel.pack(fill="x", padx=18, pady=(8, 10))
 
     settings_tab = frame(notebook, bg=PANEL_BG)
+    league_manager_tab = frame(notebook, bg=PANEL_BG)
     league_tab = frame(notebook, bg=PANEL_BG)
     help_tab = frame(notebook, bg=PANEL_BG)
     notebook.add(settings_tab, text="Broadcast Settings")
-    notebook.add(league_tab, text="League / Sim Racer Hub")
+    notebook.add(league_manager_tab, text="League Manager")
+    notebook.add(league_tab, text="League Data / Imports")
     notebook.add(help_tab, text="Help / Setup Guide")
 
     settings_content = settings_tab
+    league_manager_content = league_manager_tab
     league_content = league_tab
     help_content = help_tab
 
@@ -2725,6 +2736,15 @@ def run_gui():
     def update_volume_label(value):
         return None
 
+    build_league_manager_tab(
+        league_manager_content,
+        status,
+        label,
+        frame,
+        entry,
+        button,
+        get_profile_name=lambda: profile_var.get().strip() or profile_name_var.get().strip(),
+    )
     build_league_tab(
         league_content,
         status,
@@ -2751,6 +2771,165 @@ def run_gui():
     root.protocol("WM_DELETE_WINDOW", on_close)
 
     root.mainloop()
+
+
+def build_league_manager_tab(parent, status, label, frame, entry, button, get_profile_name=None):
+    import tkinter as tk
+
+    def profile_scoring_path():
+        profile_name = (get_profile_name() if get_profile_name else "") or "default"
+        return ROOT / "league" / league_folder_slug(profile_name) / "scoring.json"
+
+    def format_finish_points(scoring):
+        return "\n".join(
+            f"{position}={format_points(points)}"
+            for position, points in sorted(scoring.finish_points.items())
+        )
+
+    def format_rules(rules):
+        return "\n".join(f"{rule.name}={format_points(rule.points)}" for rule in rules if rule.enabled)
+
+    def format_points(value):
+        number = float(value)
+        return str(int(number)) if number.is_integer() else str(number)
+
+    def parse_name_points(text, item_name):
+        parsed = []
+        for line_number, raw_line in enumerate(str(text or "").splitlines(), start=1):
+            line = raw_line.strip()
+            if not line or line.startswith("#"):
+                continue
+            if "=" not in line:
+                raise ValueError(f"{item_name} line {line_number} must use Name=Points.")
+            name, raw_points = line.split("=", 1)
+            name = name.strip()
+            if not name:
+                raise ValueError(f"{item_name} line {line_number} needs a name.")
+            parsed.append((name, float(raw_points.strip())))
+        return parsed
+
+    def scoring_from_form():
+        finish_points = {}
+        for name, points in parse_name_points(finish_text.get("1.0", "end"), "Finishing points"):
+            try:
+                position = int(name.removeprefix("P").removeprefix("p"))
+            except ValueError as error:
+                raise ValueError(f"Finishing position '{name}' must be a number such as 1=40.") from error
+            if position in finish_points:
+                raise ValueError(f"Finishing position P{position} is listed more than once.")
+            finish_points[position] = points
+        bonuses = [ScoringRule(name, points) for name, points in parse_name_points(bonus_text.get("1.0", "end"), "Bonus rule")]
+        penalties = [ScoringRule(name, points) for name, points in parse_name_points(penalty_text.get("1.0", "end"), "Penalty rule")]
+        return ScoringSystem(
+            name=scoring_name_var.get().strip(),
+            finish_points=finish_points,
+            bonus_rules=bonuses,
+            penalty_rules=penalties,
+        )
+
+    def populate(scoring):
+        scoring_name_var.set(scoring.name)
+        for widget, value in (
+            (finish_text, format_finish_points(scoring)),
+            (bonus_text, format_rules(scoring.bonus_rules)),
+            (penalty_text, format_rules(scoring.penalty_rules)),
+        ):
+            widget.delete("1.0", "end")
+            widget.insert("1.0", value)
+        update_preview(scoring)
+
+    def update_preview(scoring=None):
+        try:
+            scoring = scoring or scoring_from_form()
+            errors = scoring.validate()
+            if errors:
+                raise ValueError("\n".join(errors))
+            winner = scoring.calculate(1)
+            preview_var.set(
+                f"{len(scoring.finish_points)} finishing positions • "
+                f"{len(scoring.bonus_rules)} bonus rules • "
+                f"{len(scoring.penalty_rules)} penalty rules • "
+                f"Winner base: {format_points(winner['total'])} points"
+            )
+        except Exception as error:
+            preview_var.set(f"Needs attention: {error}")
+
+    def load_current():
+        path = profile_scoring_path()
+        try:
+            populate(load_scoring_system(path))
+            status.set(f"Loaded league scoring: {path}")
+        except Exception as error:
+            messagebox.showerror("Scoring load failed", str(error))
+
+    def save_current():
+        path = profile_scoring_path()
+        try:
+            scoring = scoring_from_form()
+            save_scoring_system(path, scoring)
+            update_preview(scoring)
+            status.set(f"Saved customizable league scoring: {path}")
+        except Exception as error:
+            messagebox.showerror("Scoring setup needs attention", str(error))
+
+    intro = frame(parent, bg="#0b1520")
+    intro.pack(fill="x", padx=14, pady=(12, 8))
+    label(
+        intro,
+        text="League Manager — Scoring Foundation",
+        bg="#0b1520",
+        fg=TEXT_FG,
+        font=("Segoe UI", 14, "bold"),
+        anchor="w",
+    ).pack(fill="x", padx=12, pady=(10, 2))
+    label(
+        intro,
+        text=(
+            "Create a scoring system for the selected profile. Finishing points, bonus points, and penalty points are fully customizable. "
+            "Each future race result will keep a reason-by-reason points audit."
+        ),
+        bg="#0b1520",
+        fg=MUTED_FG,
+        justify="left",
+        anchor="w",
+        wraplength=940,
+    ).pack(fill="x", padx=12, pady=(0, 10))
+
+    name_row = frame(parent, bg=PANEL_BG)
+    name_row.pack(fill="x", padx=14, pady=(2, 8))
+    label(name_row, text="Scoring System Name", bg=PANEL_BG, fg=MUTED_FG, width=22, anchor="w").pack(side="left")
+    scoring_name_var = tk.StringVar(value="Custom League Points")
+    entry(name_row, textvariable=scoring_name_var, width=54).pack(side="left", fill="x", expand=True)
+
+    editors = frame(parent, bg=PANEL_BG)
+    editors.pack(fill="both", expand=True, padx=14)
+    editor_specs = (
+        ("Finishing Position Points", "Use one position per line, such as 1=40", 18),
+        ("Bonus Points", "Use Name=Points, such as Fastest Lap=1", 12),
+        ("Penalty Points", "Use Name=Points; these values are subtracted", 12),
+    )
+    text_widgets = []
+    for column, (title, help_text, height) in enumerate(editor_specs):
+        panel = frame(editors, bg="#0b1520")
+        panel.grid(row=0, column=column, sticky="nsew", padx=(0 if column == 0 else 6, 0))
+        editors.columnconfigure(column, weight=1)
+        label(panel, text=title, bg="#0b1520", fg=TEXT_FG, font=("Segoe UI", 11, "bold"), anchor="w").pack(fill="x", padx=10, pady=(10, 2))
+        label(panel, text=help_text, bg="#0b1520", fg=MUTED_FG, anchor="w", wraplength=280).pack(fill="x", padx=10, pady=(0, 6))
+        widget = tk.Text(panel, height=height, width=28, bg=FIELD_BG, fg=TEXT_FG, insertbackground=TEXT_FG, relief="flat", font=("Consolas", 10))
+        widget.pack(fill="both", expand=True, padx=10, pady=(0, 10))
+        text_widgets.append(widget)
+    finish_text, bonus_text, penalty_text = text_widgets
+
+    actions = frame(parent, bg=PANEL_BG)
+    actions.pack(fill="x", padx=14, pady=10)
+    button(actions, text="Load Profile Scoring", command=load_current, color="#334b64").pack(side="left", padx=(0, 6))
+    button(actions, text="Preview / Validate", command=update_preview, color="#334b64").pack(side="left", padx=6)
+    button(actions, text="Reset Template", command=lambda: populate(default_scoring_system()), color="#8b6a1c").pack(side="left", padx=6)
+    button(actions, text="Save Scoring System", command=save_current, color=GREEN).pack(side="left", padx=6)
+
+    preview_var = tk.StringVar(value="Scoring system not loaded yet.")
+    label(parent, textvariable=preview_var, bg=PANEL_BG, fg=TEXT_FG, anchor="w", justify="left", wraplength=940).pack(fill="x", padx=16, pady=(0, 12))
+    load_current()
 
 
 def build_league_tab(
