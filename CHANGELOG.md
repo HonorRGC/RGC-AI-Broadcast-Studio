@@ -1,5 +1,22 @@
 # Changelog
 
+## Version 1.0.9 - Green Flag Pit Strategy
+
+### Added
+- Added a live green-flag pit-cycle graphic showing total pit-road time, service time, tire age, stop lap, current position, and the driver's position on the lap before pitting.
+- Added a completed-cycle Top 15 comparison ranked by quickest total trip through pit road.
+- Added a majority-complete strategy stage that identifies cars still on track after at least 70 percent of the active field has stopped.
+- Added Sarah commentary for drivers extending the fuel window, waiting for a possible caution, or attempting to eliminate a later stop.
+- Added total, green-flag, and caution pit-stop counts to Producer Assist.
+
+### Changed
+- Pit-entry position now comes from the previous completed lap so cars are not credited with positions lost while slowing for pit road.
+- Completed-cycle commentary highlights the quickest pit-lane trip and the largest unofficial position gain through the cycle.
+- Running positions for cars that still owe a stop are explicitly described as strategy positions rather than the settled race order.
+
+### Fixed
+- Corrected false one- and two-lap deficit displays caused by cars being on opposite sides of the scoring line during green-flag pit sequences.
+
 ## Version 1.0.8 - League Results and Pit-Cycle Intelligence
 
 ### Added

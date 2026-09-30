@@ -116,6 +116,8 @@ class BroadcastEngine:
         self.green_pit_cycle_active_until_lap = 0
         self.green_pit_cycle_last_activity_lap = 0
         self.green_pit_cycle_start_lap = 0
+        self.green_pit_cycle_completed_summary_queued = False
+        self.green_pit_cycle_holdout_story_queued = False
         self.green_pit_cycle_restart_lockout_until_lap = 0
         self.starting_lineup_sponsor_read_queued = False
         self.story_variant_counts = {}
@@ -1912,12 +1914,6 @@ class BroadcastEngine:
         if 0 < laps_remaining <= 5:
             return False
         self.reset_green_pit_cycle_if_settled(current_lap)
-        if (
-            self.green_pit_cycle_update_count >= 3
-            or current_lap - self.green_pit_cycle_last_update_lap < 4
-        ):
-            return False
-
         active_results = [
             car for car in results or []
             if not self.looks_like_parked_race_control_car(
@@ -1978,6 +1974,27 @@ class BroadcastEngine:
             if getattr(state, "car_idx", None) is not None
         )
 
+        if self._queue_green_pit_cycle_completion(
+            active_results,
+            driver_lookup,
+            current_lap,
+        ):
+            return True
+
+        if self._queue_green_pit_cycle_holdout_story(
+            active_results,
+            driver_lookup,
+            pit_road_status,
+            current_lap,
+        ):
+            return True
+
+        if (
+            self.green_pit_cycle_update_count >= 3
+            or current_lap - self.green_pit_cycle_last_update_lap < 4
+        ):
+            return False
+
         if not self.green_pit_cycle_announced:
             if len(green_cycle_car_indices) < 2 or not self.green_pit_cluster_is_tight(
                 green_cycle_car_indices,
@@ -1985,7 +2002,18 @@ class BroadcastEngine:
             ):
                 return False
             self.mark_green_pit_cycle_activity(current_lap)
-            self.green_pit_cycle_start_lap = current_lap
+            cycle_start_laps = [
+                self.safe_int(getattr(state, "last_pit_lap", 0), 0)
+                for state in self.pit_strategy_detector.driver_states.values()
+                if getattr(state, "car_idx", None) in green_cycle_car_indices
+                and self.safe_int(getattr(state, "last_pit_lap", 0), 0) > 0
+            ]
+            self.green_pit_cycle_start_lap = min(
+                cycle_start_laps,
+                default=self.safe_int(current_lap),
+            )
+            self.green_pit_cycle_completed_summary_queued = False
+            self.green_pit_cycle_holdout_story_queued = False
             message = self.rotate_story_variant(
                 "green_pit_cycle_start",
                 self.green_pit_cycle_start_messages(track_info),
@@ -2186,6 +2214,8 @@ class BroadcastEngine:
             self.green_pit_cycle_active_until_lap = 0
             self.green_pit_cycle_last_activity_lap = 0
             self.green_pit_cycle_start_lap = 0
+            self.green_pit_cycle_completed_summary_queued = False
+            self.green_pit_cycle_holdout_story_queued = False
 
     def is_green_pit_cycle_active(self, current_lap):
         return self.safe_int(current_lap) <= self.safe_int(
@@ -2238,6 +2268,190 @@ class BroadcastEngine:
             f"appear at the front right now. {remaining_count} "
             f"{'car still owes' if remaining_count == 1 else 'cars still owe'} service."
         )
+
+    def _queue_green_pit_cycle_completion(
+        self,
+        active_results,
+        driver_lookup,
+        current_lap,
+    ):
+        if (
+            not self.green_pit_cycle_announced
+            or self.green_pit_cycle_completed_summary_queued
+            or self.safe_int(self.green_pit_cycle_start_lap, 0) <= 0
+        ):
+            return False
+
+        active_indices = {
+            car.get("CarIdx")
+            for car in active_results or []
+            if car.get("CarIdx") is not None
+        }
+        completed_states = []
+        for state in self.pit_strategy_detector.driver_states.values():
+            if getattr(state, "car_idx", None) not in active_indices:
+                continue
+            if getattr(state, "on_pit_road", False):
+                continue
+            if self.safe_int(getattr(state, "last_pit_lap", 0), 0) < self.safe_int(
+                self.green_pit_cycle_start_lap,
+                0,
+            ):
+                continue
+            if float(getattr(state, "last_pit_lane_seconds", 0.0) or 0.0) <= 0:
+                continue
+            completed_states.append(state)
+
+        completed_indices = {
+            getattr(state, "car_idx", None) for state in completed_states
+        }
+        if len(active_indices) < 2 or completed_indices != active_indices:
+            return False
+
+        positions = {}
+        zero_based = any(
+            self.safe_int(car.get("Position"), 999) == 0
+            for car in active_results or []
+        )
+        for car in active_results or []:
+            position = self.safe_int(car.get("Position"), 0)
+            positions[car.get("CarIdx")] = position + 1 if zero_based else position
+
+        fastest = min(
+            completed_states,
+            key=lambda state: float(
+                getattr(state, "last_pit_lane_seconds", 9999.0) or 9999.0
+            ),
+        )
+        fastest_time = float(getattr(fastest, "last_pit_lane_seconds", 0.0) or 0.0)
+        gains = [
+            (
+                self.safe_int(getattr(state, "pit_entry_position", 0), 0)
+                - self.safe_int(positions.get(getattr(state, "car_idx", None), 0), 0),
+                state,
+            )
+            for state in completed_states
+        ]
+        best_gain, best_gainer = max(gains, key=lambda pair: pair[0])
+        fastest_label = self.pit_driver_label(fastest)
+        message = (
+            f"The green flag pit cycle is complete. {fastest_label} recorded the "
+            f"quickest total trip down pit road at {fastest_time:.1f} seconds."
+        )
+        if best_gain > 0:
+            message += (
+                f" {self.pit_driver_label(best_gainer)} is up {best_gain} "
+                f"{'position' if best_gain == 1 else 'positions'} from the lap before the stop, "
+                "an early sign that the timing and fresh tires paid off."
+            )
+        message += " The order is unofficial until everyone is fully back to race pace."
+        self.broadcast_queue.add(
+            message,
+            priority=9,
+            category="green_pit_cycle_complete",
+            protected=False,
+            speaker="sarah",
+            expires_after=45,
+            dedupe_key=f"green_pit_cycle_complete:{self.green_pit_cycle_start_lap}",
+        )
+        self.green_pit_cycle_completed_summary_queued = True
+        self.mark_green_pit_cycle_activity(current_lap)
+        return True
+
+    def _queue_green_pit_cycle_holdout_story(
+        self,
+        active_results,
+        driver_lookup,
+        pit_road_status,
+        current_lap,
+    ):
+        if (
+            not self.green_pit_cycle_announced
+            or self.green_pit_cycle_holdout_story_queued
+            or self.green_pit_cycle_completed_summary_queued
+            or self.safe_int(self.green_pit_cycle_start_lap, 0) <= 0
+            or self.safe_int(current_lap) - self.safe_int(self.green_pit_cycle_start_lap) < 2
+        ):
+            return False
+
+        active_indices = {
+            car.get("CarIdx")
+            for car in active_results or []
+            if car.get("CarIdx") is not None
+        }
+        if len(active_indices) < 5:
+            return False
+
+        completed = set()
+        for state in self.pit_strategy_detector.driver_states.values():
+            car_idx = getattr(state, "car_idx", None)
+            if car_idx not in active_indices:
+                continue
+            if self.safe_int(getattr(state, "last_pit_lap", 0), 0) < self.safe_int(
+                self.green_pit_cycle_start_lap,
+                0,
+            ):
+                continue
+            if float(getattr(state, "last_pit_lane_seconds", 0.0) or 0.0) <= 0:
+                continue
+            if not getattr(state, "on_pit_road", False):
+                completed.add(car_idx)
+
+        required_majority = max(3, int(len(active_indices) * 0.70 + 0.999))
+        if len(completed) < required_majority:
+            return False
+
+        currently_pitting = {
+            car_idx
+            for car_idx in active_indices
+            if self.is_on_pit_road(car_idx, pit_road_status)
+        }
+        holdouts = active_indices - completed - currently_pitting
+        if not holdouts:
+            return False
+
+        ordered = sorted(
+            [car for car in active_results or [] if car.get("CarIdx") in holdouts],
+            key=lambda car: self.safe_int(car.get("Position"), 999),
+        )
+        labels = []
+        for car in ordered[:3]:
+            car_idx = car.get("CarIdx")
+            driver = (driver_lookup or {}).get(car_idx, {}) or {}
+            name = str(driver.get("name") or f"Car {car_idx}")
+            number = str(driver.get("number") or "").strip()
+            labels.append(f"{name} in the number {number}" if number else name)
+        names = self.format_driver_names_for_sentence(labels)
+        remaining = len(holdouts)
+        message = (
+            f"Most of the field has completed this green flag pit cycle, but {names} "
+            f"{'remains' if remaining == 1 else 'remain'} on track. "
+            f"{'That team may be' if remaining == 1 else 'They may be'} stretching "
+            "the fuel window, hoping a caution falls before they stop, or trying to reduce "
+            "the number of stops needed later."
+        )
+        if remaining > len(labels):
+            message += f" There are {remaining} cars still outside the completed cycle."
+        message += " Their current running positions are strategy positions, not the settled order."
+        self.broadcast_queue.add(
+            message,
+            priority=9,
+            category="green_pit_cycle_holdouts",
+            protected=False,
+            speaker="sarah",
+            expires_after=45,
+            dedupe_key=f"green_pit_cycle_holdouts:{self.green_pit_cycle_start_lap}",
+            participant_car_indices=tuple(holdouts),
+        )
+        self.green_pit_cycle_holdout_story_queued = True
+        self.mark_green_pit_cycle_activity(current_lap)
+        return True
+
+    @staticmethod
+    def pit_driver_label(state):
+        name = str(getattr(state, "driver_name", "") or "the driver")
+        number = str(getattr(state, "car_number", "") or "").strip()
+        return f"{name} in the number {number}" if number else name
 
     def clear_green_pit_cycle_sensitive_editorials(self):
         sensitive_story_types = {

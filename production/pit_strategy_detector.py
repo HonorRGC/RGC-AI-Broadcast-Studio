@@ -43,6 +43,9 @@ class PitDriverState:
     green_flag_pit_stop_count: int = 0
     caution_pit_stop_count: int = 0
     last_pit_under_caution: bool = False
+    position_tracking_lap: int = -1
+    position_on_tracking_lap: int = 0
+    previous_lap_position: int = 0
 
 
 class PitStrategyDetector:
@@ -69,12 +72,18 @@ class PitStrategyDetector:
         if not results:
             return events
 
+        zero_based_positions = any(
+            self.safe_int(car.get("Position"), 999) == 0 for car in results
+        )
+
         for car in results:
             car_idx = car.get("CarIdx")
 
             if car_idx is None:
                 continue
             current_position = self.safe_int(car.get("Position", 0))
+            if zero_based_positions:
+                current_position += 1
 
             driver_info = driver_lookup.get(car_idx, {})
             driver_name = driver_info.get("name", f"Car {car_idx}")
@@ -95,6 +104,16 @@ class PitStrategyDetector:
 
             on_pit_road = self.is_car_on_pit_road(car_idx, pit_road_status)
             lap_pct = self.array_value(lap_dist_pct, car_idx)
+            car_lap = self.safe_int(
+                car.get("LapsComplete", car.get("Lap", current_lap)),
+                current_lap,
+            )
+            self.update_position_history(
+                state,
+                car_lap,
+                current_position,
+                on_pit_road,
+            )
 
             if not state.initialized:
                 state.initialized = True
@@ -116,7 +135,12 @@ class PitStrategyDetector:
                 continue
 
             if on_pit_road and not state.on_pit_road:
-                self.start_pit_timer(state, session_time, current_position, lap_pct)
+                entry_position = (
+                    state.previous_lap_position
+                    or state.position_on_tracking_lap
+                    or current_position
+                )
+                self.start_pit_timer(state, session_time, entry_position, lap_pct)
                 state.last_pit_lap = current_lap
                 if not under_caution:
                     event = self.build_pit_entry_event(
@@ -151,6 +175,35 @@ class PitStrategyDetector:
             state.on_pit_road = on_pit_road
 
         return events
+
+    def update_position_history(
+        self,
+        state,
+        car_lap,
+        current_position,
+        on_pit_road=False,
+    ):
+        """Remember the final scored position from the lap before a stop.
+
+        Position can tumble while a car slows for pit entry, so the entry rank
+        shown to viewers comes from the last completed on-track lap rather than
+        the scoring sample taken at the pit line.
+        """
+        car_lap = self.safe_int(car_lap, -1)
+        current_position = self.safe_int(current_position, 0)
+        if car_lap < 0 or current_position <= 0 or on_pit_road:
+            return
+        if state.position_tracking_lap < 0:
+            state.position_tracking_lap = car_lap
+            state.position_on_tracking_lap = current_position
+            return
+        if car_lap > state.position_tracking_lap:
+            state.previous_lap_position = state.position_on_tracking_lap
+            state.position_tracking_lap = car_lap
+            state.position_on_tracking_lap = current_position
+            return
+        if car_lap == state.position_tracking_lap:
+            state.position_on_tracking_lap = current_position
 
     def start_pit_timer(self, state, session_time, current_position, lap_pct):
         state.pit_entry_position = current_position

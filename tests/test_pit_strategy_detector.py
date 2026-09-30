@@ -83,7 +83,7 @@ def test_green_flag_pit_stop_waits_until_stop_is_complete():
     assert detector.driver_states[0].caution_pit_stop_count == 0
 
 
-def test_pit_detector_remembers_position_when_car_enters_pit_road():
+def test_pit_detector_remembers_position_from_lap_before_pit_entry():
     detector = PitStrategyDetector()
     drivers = {0: {"name": "Driver One", "number": "11"}}
 
@@ -102,7 +102,27 @@ def test_pit_detector_remembers_position_when_car_enters_pit_road():
         under_caution=False,
     )
 
-    assert detector.driver_states[0].pit_entry_position == 4
+    assert detector.driver_states[0].pit_entry_position == 5
+
+
+def test_pit_entry_position_uses_previous_lap_before_pit_slowdown():
+    detector = PitStrategyDetector()
+    drivers = {0: {"name": "Driver One", "number": "11"}}
+
+    detector.analyze(
+        results=[{"CarIdx": 0, "Position": 2, "LapsComplete": 20}],
+        driver_lookup=drivers, pit_road_status=[False], current_lap=20,
+    )
+    detector.analyze(
+        results=[{"CarIdx": 0, "Position": 2, "LapsComplete": 21}],
+        driver_lookup=drivers, pit_road_status=[False], current_lap=21,
+    )
+    detector.analyze(
+        results=[{"CarIdx": 0, "Position": 8, "LapsComplete": 21}],
+        driver_lookup=drivers, pit_road_status=[True], current_lap=21,
+    )
+
+    assert detector.driver_states[0].pit_entry_position == 2
 
 
 def test_pit_detector_tracks_pit_lane_and_estimated_service_time():

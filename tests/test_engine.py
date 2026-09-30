@@ -1117,6 +1117,83 @@ def test_green_pit_cycle_explains_leader_who_still_owes_a_stop():
     assert "still owes service" in item.message
 
 
+def test_green_pit_cycle_completion_calls_fastest_lane_time_and_gain():
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    engine.race_director.phase = RacePhase.GREEN
+    engine.race_intelligence.race_state.laps_remaining = 30
+    engine.green_pit_cycle_announced = True
+    engine.green_pit_cycle_start_lap = 30
+    engine.green_pit_cycle_last_update_lap = 31
+    engine.pit_strategy_detector.driver_states = {
+        0: SimpleNamespace(
+            car_idx=0, driver_name="Fast Stop", car_number="1",
+            last_pit_lap=30, on_pit_road=False,
+            last_pit_lane_seconds=38.1, pit_entry_position=4,
+        ),
+        1: SimpleNamespace(
+            car_idx=1, driver_name="Undercut", car_number="2",
+            last_pit_lap=31, on_pit_road=False,
+            last_pit_lane_seconds=41.0, pit_entry_position=7,
+        ),
+    }
+
+    queued = engine._queue_green_pit_cycle_update(
+        [],
+        [{"CarIdx": 0, "Position": 2}, {"CarIdx": 1, "Position": 4}],
+        {},
+        [False, False],
+        current_lap=32,
+    )
+
+    assert queued is True
+    item = engine.broadcast_queue.next_item()
+    assert item.category == "green_pit_cycle_complete"
+    assert "Fast Stop in the number 1" in item.message
+    assert "38.1 seconds" in item.message
+    assert "Undercut in the number 2 is up 3 positions" in item.message
+
+
+def test_green_pit_cycle_calls_strategy_holdouts_after_majority_stops():
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    engine.race_director.phase = RacePhase.GREEN
+    engine.race_intelligence.race_state.laps_remaining = 40
+    engine.green_pit_cycle_announced = True
+    engine.green_pit_cycle_start_lap = 20
+    engine.green_pit_cycle_last_update_lap = 22
+    engine.pit_strategy_detector.driver_states = {
+        car_idx: SimpleNamespace(
+            car_idx=car_idx,
+            driver_name=f"Driver {car_idx}",
+            car_number=str(car_idx),
+            last_pit_lap=22,
+            on_pit_road=False,
+            last_pit_lane_seconds=40.0 + car_idx,
+            pit_entry_position=car_idx + 1,
+        )
+        for car_idx in range(7)
+    }
+    results = [
+        {"CarIdx": car_idx, "Position": car_idx + 1}
+        for car_idx in range(10)
+    ]
+    lookup = {
+        car_idx: {"name": f"Driver {car_idx}", "number": str(car_idx)}
+        for car_idx in range(10)
+    }
+
+    queued = engine._queue_green_pit_cycle_update(
+        [], results, lookup, [False] * 10, current_lap=24,
+    )
+
+    assert queued is True
+    item = engine.broadcast_queue.next_item()
+    assert item.category == "green_pit_cycle_holdouts"
+    assert "Most of the field has completed" in item.message
+    assert "Driver 7 in the number 7" in item.message
+    assert "hoping a caution" in item.message
+    assert "reduce the number of stops" in item.message
+
+
 def test_green_flag_pit_cycle_does_not_start_from_spread_out_stops():
     engine = BroadcastEngine(openai_director=SilentOpenAI())
     engine.race_director.phase = RacePhase.GREEN
@@ -1205,6 +1282,27 @@ def test_multiple_green_flag_pit_stops_start_cycle_awareness():
 
     assert queued is True
     assert engine.is_green_pit_cycle_active(25) is True
+
+
+def test_green_pit_cycle_start_lap_includes_first_car_from_prior_lap():
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    engine.race_director.phase = RacePhase.GREEN
+    engine.race_intelligence.race_state.laps_remaining = 40
+    engine.pit_strategy_detector.driver_states = {
+        0: SimpleNamespace(car_idx=0, last_pit_lap=24),
+        1: SimpleNamespace(car_idx=1, last_pit_lap=25),
+    }
+
+    queued = engine._queue_green_pit_cycle_update(
+        [],
+        [{"CarIdx": 0, "Position": 1}, {"CarIdx": 1, "Position": 2}],
+        {},
+        [False, True],
+        current_lap=25,
+    )
+
+    assert queued is True
+    assert engine.green_pit_cycle_start_lap == 24
 
 
 def test_green_flag_pit_cycle_reset_allows_second_cycle():

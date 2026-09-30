@@ -1861,10 +1861,38 @@ def show_overlay_feature(item, overlay_server, source=None, engine=None):
             overlay_server.show_stat_panel(
                 kind="green_pit_cycle",
                 title="Green Flag Pit Cycle",
-                subtitle="Recent stops and estimated tire age",
+                subtitle="Entry position, total pit-lane time, tire age, and current position",
                 rows=rows,
-                duration=13.0,
+                duration=16.0,
                 dedupe_key=f"green_pit_cycle:{latest_pit_lap(engine)}",
+                minimum_interval=30.0,
+            )
+        return
+
+    if category == "green_pit_cycle_complete":
+        rows = build_pit_update_rows(source, engine, limit=15, completed=True)
+        if rows:
+            overlay_server.show_stat_panel(
+                kind="green_pit_cycle_complete",
+                title="Green Flag Pit Cycle Complete",
+                subtitle="Fastest total pit-lane times and unofficial position change",
+                rows=rows,
+                duration=22.0,
+                dedupe_key=f"green_pit_cycle_complete:{latest_pit_lap(engine)}",
+                minimum_interval=30.0,
+            )
+        return
+
+    if category == "green_pit_cycle_holdouts":
+        rows = build_pit_holdout_rows(source, engine, limit=15)
+        if rows:
+            overlay_server.show_stat_panel(
+                kind="green_pit_cycle_holdouts",
+                title="Green Flag Pit Strategy",
+                subtitle="Most have stopped; these drivers are stretching the fuel window",
+                rows=rows,
+                duration=18.0,
+                dedupe_key=f"green_pit_cycle_holdouts:{latest_pit_lap(engine)}",
                 minimum_interval=30.0,
             )
         return
@@ -3041,20 +3069,46 @@ def race_end_lead_lap_row(results):
     }
 
 
-def build_pit_update_rows(source, engine, limit=5):
+def build_pit_update_rows(source, engine, limit=15, completed=False):
     if not source or not engine:
         return []
     current_lap = safe_int(getattr(source, "get_lap", lambda: 0)(), 0)
     current_positions = build_current_position_lookup(source.get_results())
     states = list(getattr(engine.pit_strategy_detector, "driver_states", {}).values())
     states = [state for state in states if getattr(state, "last_pit_lap", 0) > 0]
-    states.sort(key=lambda state: getattr(state, "last_pit_lap", 0), reverse=True)
+    cycle_start_lap = safe_int(
+        getattr(engine, "green_pit_cycle_start_lap", 0), 0
+    )
+    if cycle_start_lap > 0:
+        states = [
+            state for state in states
+            if safe_int(getattr(state, "last_pit_lap", 0), 0) >= cycle_start_lap
+        ]
+    if completed:
+        states = [
+            state for state in states
+            if not getattr(state, "on_pit_road", False)
+            and float(getattr(state, "last_pit_lane_seconds", 0.0) or 0.0) > 0
+        ]
+        states.sort(
+            key=lambda state: (
+                float(getattr(state, "last_pit_lane_seconds", 9999.0) or 9999.0),
+                safe_int(getattr(state, "pit_entry_position", 999), 999),
+            )
+        )
+    else:
+        states.sort(
+            key=lambda state: (
+                0 if getattr(state, "on_pit_road", False) else 1,
+                -safe_int(getattr(state, "last_pit_lap", 0), 0),
+            )
+        )
     rows = []
     for state in states[:limit]:
         current_position = current_positions.get(state.car_idx, 0)
-        detail_parts = [f"Last stop lap {state.last_pit_lap}"]
+        detail_parts = [f"Pitted lap {state.last_pit_lap}"]
         if state.pit_entry_position:
-            detail_parts.append(f"entered P{state.pit_entry_position}")
+            detail_parts.append(f"previous lap P{state.pit_entry_position}")
         if current_position:
             detail_parts.append(f"now P{current_position}")
         tire_age = max(0, current_lap - safe_int(getattr(state, "last_pit_lap", 0), 0))
@@ -3071,7 +3125,7 @@ def build_pit_update_rows(source, engine, limit=5):
             else state.last_pit_stop_seconds
         )
         if lane_seconds > 0:
-            detail_parts.append(f"pit lane {format_seconds(lane_seconds)}")
+            detail_parts.append(f"total pit road {format_seconds(lane_seconds)}")
         if stop_seconds > 0:
             detail_parts.append(f"service {format_seconds(stop_seconds)}")
         rows.append(
@@ -3080,13 +3134,53 @@ def build_pit_update_rows(source, engine, limit=5):
                 "value": (
                     "Pitting"
                     if state.on_pit_road
-                    else f"{tire_age} lap tires" if tire_age > 0
+                    else f"{format_seconds(lane_seconds)} pit road"
+                    if lane_seconds > 0
                     else f"Lap {state.last_pit_lap}"
                 ),
                 "detail": " | ".join(detail_parts),
             }
         )
     return rows
+
+
+def build_pit_holdout_rows(source, engine, limit=15):
+    if not source or not engine:
+        return []
+    results = sorted_results_by_position(source.get_results() or [])
+    driver_lookup = source.get_driver_lookup() if hasattr(source, "get_driver_lookup") else {}
+    states = getattr(engine.pit_strategy_detector, "driver_states", {})
+    cycle_start_lap = safe_int(getattr(engine, "green_pit_cycle_start_lap", 0), 0)
+    current_lap = best_current_lap(source)
+    rows = []
+    for car in results:
+        car_idx = car.get("CarIdx")
+        state = states.get(car_idx)
+        stopped_this_cycle = bool(
+            state
+            and safe_int(getattr(state, "last_pit_lap", 0), 0) >= cycle_start_lap > 0
+            and float(getattr(state, "last_pit_lane_seconds", 0.0) or 0.0) > 0
+        )
+        if stopped_this_cycle or bool(getattr(state, "on_pit_road", False)):
+            continue
+        driver = (driver_lookup or {}).get(car_idx, {}) or {}
+        position = normalized_result_position(car, results)
+        last_pit_lap = safe_int(getattr(state, "last_pit_lap", 0), 0) if state else 0
+        tire_age = max(0, current_lap - last_pit_lap) if last_pit_lap > 0 else 0
+        details = [f"currently P{position}"]
+        if tire_age > 0:
+            details.append(f"approximately {tire_age} laps since last stop")
+        details.append("still owes service in this cycle")
+        rows.append(
+            {
+                "label": f"#{driver.get('number') or '?'} {driver.get('name') or f'Car {car_idx}'}",
+                "value": "Still out",
+                "detail": " | ".join(details),
+            }
+        )
+    if len(rows) < limit:
+        rows.extend(build_pit_update_rows(source, engine, limit=limit - len(rows)))
+    return rows[:limit]
 
 
 def build_caution_top_ten_rows(source, engine=None, limit=10):

@@ -393,9 +393,87 @@ def test_green_pit_cycle_update_shows_recent_stop_overlay():
     panel = overlay.stat_panels[0]
     assert panel["kind"] == "green_pit_cycle"
     assert panel["title"] == "Green Flag Pit Cycle"
-    assert panel["rows"][0]["value"] == "4 lap tires"
+    assert panel["rows"][0]["value"] == "42.0s pit road"
     assert "tires 4 laps old" in panel["rows"][0]["detail"]
+    assert "previous lap P8" in panel["rows"][0]["detail"]
+    assert "total pit road 42.0s" in panel["rows"][0]["detail"]
     assert panel["minimum_interval"] == 30.0
+
+
+def test_completed_green_pit_cycle_graphic_ranks_fastest_total_pit_time():
+    overlay = OverlaySpy()
+    states = {
+        4: SimpleNamespace(
+            car_idx=4, car_number="24", driver_name="Quick Driver",
+            last_pit_lap=30, pit_entry_position=8, on_pit_road=False,
+            last_pit_lane_seconds=38.2, last_pit_stop_seconds=7.0,
+        ),
+        5: SimpleNamespace(
+            car_idx=5, car_number="25", driver_name="Second Driver",
+            last_pit_lap=31, pit_entry_position=4, on_pit_road=False,
+            last_pit_lane_seconds=41.6, last_pit_stop_seconds=8.0,
+        ),
+    }
+    engine = SimpleNamespace(
+        green_pit_cycle_start_lap=30,
+        pit_strategy_detector=SimpleNamespace(driver_states=states),
+    )
+    source = SimpleNamespace(
+        get_lap=lambda: 34,
+        get_results=lambda: [
+            {"CarIdx": 4, "Position": 5},
+            {"CarIdx": 5, "Position": 6},
+        ],
+    )
+
+    show_overlay_feature(
+        item(category="green_pit_cycle_complete", target=None),
+        overlay,
+        source=source,
+        engine=engine,
+    )
+
+    panel = overlay.stat_panels[0]
+    assert panel["kind"] == "green_pit_cycle_complete"
+    assert panel["title"] == "Green Flag Pit Cycle Complete"
+    assert len(panel["rows"]) == 2
+    assert panel["rows"][0]["label"] == "#24 Quick Driver"
+    assert panel["rows"][0]["value"] == "38.2s pit road"
+
+
+def test_green_pit_holdout_graphic_identifies_cars_still_out():
+    overlay = OverlaySpy()
+    pitted = SimpleNamespace(
+        car_idx=4, car_number="24", driver_name="Pitted Driver",
+        last_pit_lap=30, pit_entry_position=5, on_pit_road=False,
+        last_pit_lane_seconds=39.0, last_pit_stop_seconds=7.0,
+    )
+    engine = SimpleNamespace(
+        green_pit_cycle_start_lap=30,
+        pit_strategy_detector=SimpleNamespace(driver_states={4: pitted}),
+    )
+    source = SimpleNamespace(
+        get_lap=lambda: 34,
+        get_results=lambda: [
+            {"CarIdx": 5, "Position": 1, "LapsComplete": 34},
+            {"CarIdx": 4, "Position": 2, "LapsComplete": 34},
+        ],
+        get_driver_lookup=lambda: {
+            5: {"name": "Fuel Stretcher", "number": "5"},
+            4: {"name": "Pitted Driver", "number": "24"},
+        },
+    )
+
+    show_overlay_feature(
+        item(category="green_pit_cycle_holdouts", target=None),
+        overlay, source=source, engine=engine,
+    )
+
+    panel = overlay.stat_panels[0]
+    assert panel["kind"] == "green_pit_cycle_holdouts"
+    assert panel["rows"][0]["label"] == "#5 Fuel Stretcher"
+    assert panel["rows"][0]["value"] == "Still out"
+    assert "still owes service" in panel["rows"][0]["detail"]
 
 
 def test_race_recap_overlay_shows_three_quarter_summary():
