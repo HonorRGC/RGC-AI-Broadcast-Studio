@@ -1,19 +1,94 @@
 from tools.velocity_league_import import (
     aggregate_series_career,
+    build_manager_results,
     build_standings_query,
     driver_rows_from_stats,
     extract_series_season_keys,
     extract_recap_urls,
+    extract_result_urls,
     fetch_first_html,
     merge_driver_sources,
+    manager_schedule_events,
     parse_structured_career,
     parse_structured_directory,
     parse_structured_standings,
+    parse_recap_result,
     preserve_existing_driver_details,
     parse_schedule_rows,
     parse_standings_rows,
     url_variants,
 )
+
+
+def test_velocity_round_history_seeds_manager_results_and_future_schedule():
+    records = [{
+        "cust_id": 1, "display_name": "Test Driver", "car_number": "7",
+        "raceEntries": [
+            {"round": 1, "finish_pos": 2, "start_pos": 5, "inc": 1, "points": 35},
+            {"round": 2, "finish_pos": 1, "start_pos": 2, "inc": 0, "points": 42},
+        ],
+    }]
+    schedule = [
+        {"track_name": "Daytona", "notes": "TUE SEP 15 - Test Series - 80 laps"},
+        {"track_name": "Atlanta", "notes": "TUE SEP 22 - Test Series - 100 laps"},
+        {"track_name": "Las Vegas", "notes": "TUE SEP 29 - Test Series - 120 laps"},
+    ]
+
+    results = build_manager_results(records, schedule)
+    events = manager_schedule_events(schedule, {race.round_number for race in results})
+
+    assert [race.round_number for race in results] == [1, 2]
+    assert results[1].entries[0].points == 42
+    assert [event.status for event in events] == ["Completed", "Completed", "Scheduled"]
+    assert events[2].event_date == "09-29-2026"
+    assert events[2].laps == 120
+
+
+def test_velocity_recap_supplies_laps_led_completed_and_fastest_lap():
+    recap = rsc_page(
+        {
+            "cust_id": 10,
+            "name": "Driver Name2",
+            "car_number": "81",
+            "start_pos": 5,
+            "finish_pos": 1,
+            "laps_comp": 125,
+            "laps_led": 42,
+            "inc": 2,
+            "league_points": 51,
+            "best_lap_ms": 312530,
+            "disqualified": False,
+            "team_name": "RGC Racing",
+            "country_code": "US",
+            "avg_lap_ms": 333330,
+            "interval": "+0.125s",
+            "pos_points": 40,
+            "bonus_points": 11,
+            "penalty_points": 1,
+            "stage_points": 2,
+            "time_penalty_seconds": 5,
+            "lap_penalty_laps": 1,
+            "reason_out": "Running",
+        }
+    )
+
+    result = parse_recap_result(
+        recap,
+        2,
+        {"track_name": "Atlanta", "notes": "WED SEP 23 - Test Series - 125 laps"},
+        {"10": {"name": "Driver Name", "car_number": "81"}},
+    )
+
+    assert result.round_number == 2
+    assert result.track_name == "Atlanta"
+    assert result.entries[0].name == "Driver Name"
+    assert result.entries[0].laps_completed == 125
+    assert result.entries[0].laps_led == 42
+    assert result.entries[0].fastest_lap == 31.253
+    assert result.entries[0].team_name == "RGC Racing"
+    assert result.entries[0].average_lap == 33.333
+    assert result.entries[0].bonus_points == 11
+    assert result.entries[0].penalty_points == 1
 
 
 def rsc_page(*objects):
@@ -37,6 +112,23 @@ def test_extracts_selected_series_velocity_recap_links():
 
     assert urls == [
         "https://www.velocityleague.gg/trrl/recap/88863839?series=whiskey-throttle-wednesday"
+    ]
+
+
+def test_extracts_dedicated_velocity_result_links():
+    page = (
+        '<a href="/trrl/results/88863839?series=whiskey-throttle-wednesday">Results</a>'
+        '<a href="/trrl/results/777?series=tuesday-night-trucks">Other</a>'
+    )
+
+    urls = extract_result_urls(
+        page,
+        "https://www.velocityleague.gg",
+        "whiskey-throttle-wednesday",
+    )
+
+    assert urls == [
+        "https://www.velocityleague.gg/trrl/results/88863839?series=whiskey-throttle-wednesday"
     ]
 
 
@@ -121,6 +213,23 @@ def test_structured_standings_uses_selected_series_table_rendered_last():
         ("1", "Wednesday Leader", "81"),
         ("2", "Wednesday Second", "34"),
     ]
+
+
+def test_structured_standings_selects_requested_series_from_multiple_tables():
+    page = rsc_page(
+        {"key": "tuesday-night-trucks", "name": "Taco Tuesday Truck Series"},
+        {"key": "whiskey-throttle-wednesday", "name": "Whiskey Throttle Wednesday"},
+        {"cust_id": 100, "display_name": "Tuesday Leader", "car_number": "31", "total_points": 78, "races": 2},
+        {"cust_id": 200, "display_name": "Shared Driver", "car_number": "10", "total_points": 74, "races": 2},
+        {"cust_id": 200, "display_name": "Wednesday Leader", "car_number": "81", "total_points": 87, "races": 2},
+        {"cust_id": 300, "display_name": "Wednesday Second", "car_number": "34", "total_points": 80, "races": 2},
+    )
+
+    tuesday = parse_structured_standings(page, "tuesday-night-trucks")
+    wednesday = parse_structured_standings(page, "whiskey-throttle-wednesday")
+
+    assert tuesday[0]["name"] == "Tuesday Leader"
+    assert wednesday[0]["name"] == "Wednesday Leader"
 
 
 def test_velocity_series_career_aggregates_only_selected_series_seasons():

@@ -115,6 +115,7 @@ class BroadcastEngine:
         self.green_pit_cycle_update_count = 0
         self.green_pit_cycle_active_until_lap = 0
         self.green_pit_cycle_last_activity_lap = 0
+        self.green_pit_cycle_start_lap = 0
         self.green_pit_cycle_restart_lockout_until_lap = 0
         self.starting_lineup_sponsor_read_queued = False
         self.story_variant_counts = {}
@@ -1984,6 +1985,7 @@ class BroadcastEngine:
             ):
                 return False
             self.mark_green_pit_cycle_activity(current_lap)
+            self.green_pit_cycle_start_lap = current_lap
             message = self.rotate_story_variant(
                 "green_pit_cycle_start",
                 self.green_pit_cycle_start_messages(track_info),
@@ -2001,6 +2003,16 @@ class BroadcastEngine:
                 self.green_pit_cycle_update_messages(pitted_count, track_info),
             )
             self.mark_green_pit_cycle_activity(current_lap)
+
+        context = self.green_pit_cycle_leader_context(
+            active_results,
+            driver_lookup,
+            green_cycle_car_indices,
+            recent_states,
+            current_lap,
+        )
+        if context:
+            message = f"{message} {context}"
 
         self.broadcast_queue.add(
             message,
@@ -2173,10 +2185,58 @@ class BroadcastEngine:
             self.green_pit_cycle_update_count = 0
             self.green_pit_cycle_active_until_lap = 0
             self.green_pit_cycle_last_activity_lap = 0
+            self.green_pit_cycle_start_lap = 0
 
     def is_green_pit_cycle_active(self, current_lap):
         return self.safe_int(current_lap) <= self.safe_int(
             self.green_pit_cycle_active_until_lap
+        )
+
+    def green_pit_cycle_leader_context(
+        self,
+        results,
+        driver_lookup,
+        current_cycle_indices,
+        recent_states,
+        current_lap,
+    ):
+        active = [car for car in results or [] if car.get("CarIdx") is not None]
+        if not active:
+            return ""
+        active.sort(key=lambda car: self.safe_int(car.get("Position"), 999))
+
+        start_lap = self.safe_int(self.green_pit_cycle_start_lap, 0)
+        if start_lap <= 0:
+            recent_laps = [
+                self.safe_int(getattr(state, "last_pit_lap", 0), 0)
+                for state in recent_states or []
+                if self.safe_int(getattr(state, "last_pit_lap", 0), 0) > 0
+            ]
+            start_lap = min(recent_laps, default=self.safe_int(current_lap))
+
+        pitted = {idx for idx in current_cycle_indices or set() if idx is not None}
+        for state in self.pit_strategy_detector.driver_states.values():
+            if (
+                self.safe_int(getattr(state, "last_pit_lap", 0), 0) >= start_lap
+                and not self.looks_like_green_repair_stop(state)
+            ):
+                pitted.add(getattr(state, "car_idx", None))
+
+        active_indices = {car.get("CarIdx") for car in active}
+        pitted &= active_indices
+        remaining = active_indices - pitted
+        leader_idx = active[0].get("CarIdx")
+        if leader_idx not in remaining or len(pitted) < 2:
+            return ""
+        driver = (driver_lookup or {}).get(leader_idx, {}) or {}
+        name = str(driver.get("name") or f"Car {leader_idx}")
+        number = str(driver.get("number") or "").strip()
+        label = f"{name} in the number {number}" if number else name
+        remaining_count = len(remaining)
+        return (
+            f"{label} has not stopped in this cycle, which is why that car may "
+            f"appear at the front right now. {remaining_count} "
+            f"{'car still owes' if remaining_count == 1 else 'cars still owe'} service."
         )
 
     def clear_green_pit_cycle_sensitive_editorials(self):

@@ -1,5 +1,27 @@
 # Changelog
 
+## Version 1.0.8 - League Results and Pit-Cycle Intelligence
+
+### Added
+- Added a full League Manager results system with automatic post-race result capture, customizable scoring, championship standings, driver statistics, schedule completion, and manual points review before publishing.
+- Added WordPress League Manager publishing with shared secure connection settings, league-specific public pages, and standings, schedule, results, and driver views.
+- Added richer Velocity League imports for selected-series schedules, standings, career records, individual race results, laps led, lap times, incidents, penalties, and driver identity matching.
+- Added up to 40 visible drivers in League Manager result, standings, and statistics tables.
+- Added total, green-flag, and caution pit-stop tracking with stop counts visible in Producer Assist.
+
+### Changed
+- League Manager pages now size themselves to their content instead of leaving large empty areas above Broadcast Health.
+- Green-flag pit-cycle commentary now identifies leaders who have not stopped and explains when the apparent lead is caused by cars still owing service.
+- WordPress league pages use a wider responsive layout with denser tables for easier schedule and statistics browsing.
+
+### Fixed
+- Automatic saved results now use the normalized iRacing driver name and car number instead of creating entries such as `Car 7`.
+- Restored track names in automatic result saves when telemetry uses normalized field names.
+- Fixed League Driver Statistics refresh failures caused by a hidden points-formatting error.
+- Fixed false two-laps-down labels by calculating lap deficits from completed laps plus each car's track position.
+- Prevented rejected lap-down calculations from returning as incorrect fallback labels during green-flag pit cycles and scoring-line transitions.
+- Corrected Velocity series isolation so Tuesday and Wednesday statistics are not mixed together.
+
 ## Version 1.0.7 - Broadcast and League Manager Foundation
 
 ### Changed

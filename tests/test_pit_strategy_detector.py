@@ -78,6 +78,9 @@ def test_green_flag_pit_stop_waits_until_stop_is_complete():
     assert len(events) == 1
     assert events[0].event_type == "PIT_STOP_COMPLETE"
     assert "cycles off pit road" in events[0].message
+    assert detector.driver_states[0].pit_stop_count == 1
+    assert detector.driver_states[0].green_flag_pit_stop_count == 1
+    assert detector.driver_states[0].caution_pit_stop_count == 0
 
 
 def test_pit_detector_remembers_position_when_car_enters_pit_road():

@@ -39,6 +39,10 @@ class PitDriverState:
     penalty_reason_during_stop: str = ""
     black_flag_active: bool = False
     last_penalty_reason: str = ""
+    pit_stop_count: int = 0
+    green_flag_pit_stop_count: int = 0
+    caution_pit_stop_count: int = 0
+    last_pit_under_caution: bool = False
 
 
 class PitStrategyDetector:
@@ -126,7 +130,13 @@ class PitStrategyDetector:
             elif on_pit_road:
                 self.update_pit_timer(state, session_time, lap_pct)
             elif state.on_pit_road and not on_pit_road:
-                self.finish_pit_timer(state, session_time, current_position, current_lap)
+                self.finish_pit_timer(
+                    state,
+                    session_time,
+                    current_position,
+                    current_lap,
+                    under_caution=under_caution,
+                )
                 event = self.build_pit_exit_event(
                     state=state,
                     current_lap=current_lap,
@@ -167,7 +177,14 @@ class PitStrategyDetector:
         state.previous_pit_update_time = session_time
         state.previous_lap_dist_pct = current_lap_pct
 
-    def finish_pit_timer(self, state, session_time, current_position=0, current_lap=0):
+    def finish_pit_timer(
+        self,
+        state,
+        session_time,
+        current_position=0,
+        current_lap=0,
+        under_caution=False,
+    ):
         if state.pit_entry_time > 0:
             state.current_pit_lane_seconds = max(session_time - state.pit_entry_time, 0.0)
         state.last_pit_lane_seconds = state.current_pit_lane_seconds
@@ -178,6 +195,12 @@ class PitStrategyDetector:
             0,
         )
         state.last_pit_exit_lap = current_lap
+        state.pit_stop_count += 1
+        state.last_pit_under_caution = bool(under_caution)
+        if under_caution:
+            state.caution_pit_stop_count += 1
+        else:
+            state.green_flag_pit_stop_count += 1
         state.current_pit_lane_seconds = 0.0
         state.current_pit_stop_seconds = 0.0
         state.pit_entry_time = 0.0

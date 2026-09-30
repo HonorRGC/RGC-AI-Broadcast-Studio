@@ -4,10 +4,25 @@ import html
 import json
 import re
 import sys
+from datetime import datetime
 from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.parse import parse_qs, urlencode, urljoin, urlparse, urlunparse
 from urllib.request import HTTPRedirectHandler, Request, build_opener
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from production.league_manager import (  # noqa: E402
+    LeagueProfile,
+    RaceResult,
+    RaceResultEntry,
+    ScheduleEvent,
+    save_league_profile,
+    save_race_results,
+    save_schedule,
+)
 
 
 STATS_FIELDS = [
@@ -47,6 +62,21 @@ SCHEDULE_FIELDS = ["track_name", "schedule_id", "results_url", "notes"]
 def extract_recap_urls(html_text, base_url, series_key=""):
     urls = []
     for raw_href in re.findall(r'href=["\']([^"\']*/recap/\d+[^"\']*)["\']', str(html_text or ""), flags=re.I):
+        href = html.unescape(raw_href)
+        url = urljoin(base_url, href)
+        if series_key:
+            query_series = parse_qs(urlparse(url).query).get("series", [""])[0]
+            if query_series and query_series.casefold() != series_key.casefold():
+                continue
+        if url not in urls:
+            urls.append(url)
+    return urls
+
+
+def extract_result_urls(html_text, base_url, series_key=""):
+    """Return dedicated Velocity race-results pages in schedule order."""
+    urls = []
+    for raw_href in re.findall(r'href=["\']([^"\']*/results/\d+[^"\']*)["\']', str(html_text or ""), flags=re.I):
         href = html.unescape(raw_href)
         url = urljoin(base_url, href)
         if series_key:
@@ -235,7 +265,7 @@ def extract_embedded_records(document, name_key="name"):
     return records
 
 
-def parse_structured_standings(document):
+def parse_structured_standings(document, series_key=""):
     records = extract_embedded_records(document, name_key="display_name")
     # Velocity embeds overview standings for its other series before the table
     # selected by the URL. A repeated customer marks the next complete table;
@@ -254,7 +284,7 @@ def parse_structured_standings(document):
             current_customers.add(cust_id)
     if current_group:
         groups.append(current_group)
-    selected_records = groups[-1] if groups else []
+    selected_records = select_series_group(document, groups, series_key)
 
     rows = []
     seen_customers = set()
@@ -302,6 +332,183 @@ def parse_structured_standings(document):
                 row["points_to_next"] = format_number(previous_points - points)
             previous_points = points
     return rows
+
+
+def selected_standings_records(document, series_key=""):
+    records = extract_embedded_records(document, name_key="display_name")
+    groups = []
+    current, customers = [], set()
+    for record in records:
+        cust_id = str(record.get("cust_id") or "").strip()
+        if cust_id and cust_id in customers and current:
+            groups.append(current)
+            current, customers = [], set()
+        current.append(record)
+        if cust_id:
+            customers.add(cust_id)
+    if current:
+        groups.append(current)
+    return select_series_group(document, groups, series_key)
+
+
+def embedded_series_keys(document):
+    decoded = html.unescape(str(document or "")).replace(r'\"', '"')
+    return unique(re.findall(r'\{"key":"([^"]+)","name":"[^"]+"', decoded, flags=re.I))
+
+
+def select_series_group(document, groups, series_key=""):
+    if not groups:
+        return []
+    keys = embedded_series_keys(document)
+    wanted = str(series_key or "").strip().casefold()
+    for index, key in enumerate(keys):
+        if key.casefold() == wanted and index < len(groups):
+            return groups[index]
+    return groups[-1]
+
+
+def build_manager_results(records, schedule_rows):
+    rounds = {}
+    for record in records:
+        for race in record.get("raceEntries") or []:
+            if not isinstance(race, dict) or not race.get("round"):
+                continue
+            round_number = int(race["round"])
+            schedule = schedule_rows[round_number - 1] if 0 < round_number <= len(schedule_rows) else {}
+            entries = rounds.setdefault(round_number, {"schedule": schedule, "entries": []})["entries"]
+            entries.append(RaceResultEntry(
+                position=int(race.get("finish_pos") or 0),
+                name=clean_driver_name(record.get("display_name")),
+                car_number=normalize_number(record.get("car_number")),
+                starting_position=int(race.get("start_pos")) if race.get("start_pos") is not None else None,
+                incidents=int(race.get("inc") or 0),
+                points=float(race.get("points") or 0),
+            ))
+    results = []
+    for round_number, payload in sorted(rounds.items()):
+        schedule = payload["schedule"]
+        results.append(RaceResult(round_number, schedule_event_name(schedule, round_number), schedule.get("track_name", ""), sorted(payload["entries"], key=lambda entry: entry.position)))
+    return results
+
+
+def parse_recap_result(document, round_number, schedule=None, canonical_by_customer=None):
+    """Build one native result from Velocity's recap payload.
+
+    The standings page exposes compact ``raceEntries`` records, but those do
+    not include laps completed, laps led, or lap times.  The recap page does,
+    so completed-race imports must prefer it when it is available.
+    """
+    schedule = schedule or {}
+    canonical_by_customer = canonical_by_customer or {}
+    entries = []
+    seen_customers = set()
+    for record in extract_embedded_records(document, name_key="name"):
+        if "finish_pos" not in record or "laps_comp" not in record:
+            continue
+        cust_id = str(record.get("cust_id") or "").strip()
+        identity = cust_id or f"{record.get('name')}|{record.get('car_number')}"
+        if identity in seen_customers:
+            continue
+        seen_customers.add(identity)
+        canonical = canonical_by_customer.get(cust_id, {})
+        name = clean_driver_name(canonical.get("name") or record.get("name"))
+        if not name:
+            continue
+        best_lap_ms = safe_float(record.get("best_lap_ms"))
+        entries.append(
+            RaceResultEntry(
+                position=int(record.get("finish_pos") or 0),
+                name=name,
+                car_number=normalize_number(canonical.get("car_number") or record.get("car_number")),
+                starting_position=int(record["start_pos"]) if record.get("start_pos") is not None else None,
+                laps_completed=int(record.get("laps_comp") or 0),
+                laps_led=int(record.get("laps_led") or 0),
+                # Velocity labels these values "_ms", but stores ten-thousandths
+                # of a second (310376 renders as 31.0376 seconds).
+                fastest_lap=(best_lap_ms / 10000.0) if best_lap_ms and best_lap_ms > 0 else None,
+                incidents=int(record["inc"]) if record.get("inc") is not None else None,
+                status="Disqualified" if record.get("disqualified") else str(record.get("reason_out") or ""),
+                points=float(record.get("league_points") or 0),
+                team_name=str(record.get("team_name") or ""),
+                country_code=str(record.get("country_code") or ""),
+                average_lap=(safe_float(record.get("avg_lap_ms")) / 10000.0) if safe_float(record.get("avg_lap_ms")) else None,
+                interval=str(record.get("interval") or ""),
+                position_points=float(record.get("pos_points") or 0),
+                bonus_points=float(record.get("bonus_points") or 0),
+                penalty_points=float(record.get("penalty_points") or 0),
+                stage_points=float(record.get("stage_points") or 0),
+                time_penalty_seconds=float(record.get("time_penalty_seconds") or 0),
+                lap_penalty_laps=int(record.get("lap_penalty_laps") or 0),
+            )
+        )
+    if not entries:
+        return None
+    return RaceResult(
+        int(round_number),
+        schedule_event_name(schedule, round_number),
+        str(schedule.get("track_name") or ""),
+        sorted(entries, key=lambda entry: entry.position),
+    )
+
+
+def replace_results_with_recaps(results, recap_documents, schedule_rows, canonical_by_customer=None):
+    """Replace compact standings-derived races with richer recap results."""
+    by_round = {result.round_number: result for result in results}
+    for round_number, document in enumerate(recap_documents, start=1):
+        schedule = schedule_rows[round_number - 1] if round_number <= len(schedule_rows) else {}
+        recap = parse_recap_result(
+            document,
+            round_number,
+            schedule,
+            canonical_by_customer=canonical_by_customer,
+        )
+        if recap:
+            by_round[round_number] = recap
+    return [by_round[key] for key in sorted(by_round)]
+
+
+def manager_schedule_events(schedule_rows, completed_rounds):
+    events = []
+    for index, row in enumerate(schedule_rows, start=1):
+        notes = str(row.get("notes") or "")
+        laps_match = re.search(r"(\d+)\s*laps?", notes, flags=re.I)
+        events.append(ScheduleEvent(
+            round_number=index,
+            event_date=schedule_event_date(notes),
+            event_name=schedule_event_name(row, index),
+            track_name=str(row.get("track_name") or ""),
+            configuration="",
+            laps=int(laps_match.group(1)) if laps_match else None,
+            duration_minutes=None if laps_match else 60,
+            status="Completed" if index in completed_rounds else "Scheduled",
+            notes=notes,
+        ))
+    return events
+
+
+def schedule_event_name(row, round_number):
+    notes = str((row or {}).get("notes") or "")
+    parts = [part.strip() for part in notes.split(" - ") if part.strip()]
+    series_name = parts[1] if len(parts) > 1 else ""
+    return f"{series_name} Round {round_number}" if series_name else f"Round {round_number}"
+
+
+def schedule_series_name(schedule_rows, fallback="Velocity League"):
+    if schedule_rows:
+        event_name = schedule_event_name(schedule_rows[0], 1)
+        return re.sub(r"\s+Round\s+1$", "", event_name).strip() or fallback
+    return fallback
+
+
+def schedule_event_date(notes, year=None):
+    match = re.search(r"\b(?:MON|TUE|WED|THU|FRI|SAT|SUN)\s+([A-Z]{3})\s+(\d{1,2})\b", str(notes or ""), flags=re.I)
+    if not match:
+        return ""
+    year = int(year or datetime.now().year)
+    try:
+        return datetime.strptime(f"{match.group(1)} {match.group(2)} {year}", "%b %d %Y").strftime("%m-%d-%Y")
+    except ValueError:
+        return ""
 
 
 def parse_structured_career(document):
@@ -872,7 +1079,8 @@ def run_import(args):
     drivers_url, drivers_html = fetch_first_html(unique(drivers_candidates))
     directory_url, directory_html = fetch_first_html(unique(directory_candidates))
 
-    standings_rows = parse_structured_standings(standings_html)
+    standings_rows = parse_structured_standings(standings_html, series_key)
+    standings_records = selected_standings_records(standings_html, series_key)
     if not standings_rows:
         standings_rows = parse_standings_rows(
             "\n".join([home_text, html_to_text(standings_html)]),
@@ -883,10 +1091,18 @@ def run_import(args):
         canonical_rows = parse_driver_profile_rows(html_to_text(drivers_html))
     directory_rows = parse_structured_directory(directory_html, series_key)
     standings_rows = apply_canonical_driver_names(standings_rows, canonical_rows)
+    canonical_by_customer = {str(row.get("_cust_id") or ""): row for row in canonical_rows if row.get("_cust_id")}
+    for record in standings_records:
+        canonical = canonical_by_customer.get(str(record.get("cust_id") or ""))
+        if canonical:
+            record["display_name"] = canonical.get("name") or record.get("display_name")
+            record["car_number"] = canonical.get("car_number") or record.get("car_number")
     schedule_rows = parse_schedule_rows(html_to_text(schedule_html) or home_text)
+    result_urls = extract_result_urls(schedule_html, league_root, series_key)
     recap_urls = extract_recap_urls(schedule_html, league_root, series_key)
-    for row, recap_url in zip(schedule_rows, recap_urls):
-        row["results_url"] = recap_url
+    detail_urls = result_urls or recap_urls
+    for row, result_url in zip(schedule_rows, detail_urls):
+        row["results_url"] = result_url
     season_rows = dedupe_stats(standings_rows)
     season_keys = extract_series_season_keys(standings_html)
     historical_seasons = []
@@ -895,7 +1111,7 @@ def run_import(args):
         _history_url, history_html = fetch_first_html(
             [f"{league_root}/standings?{history_query}"]
         )
-        history_rows = parse_structured_standings(history_html)
+        history_rows = parse_structured_standings(history_html, series_key)
         apply_canonical_driver_names(history_rows, canonical_rows)
         if history_rows:
             historical_seasons.append(dedupe_stats(history_rows))
@@ -903,6 +1119,20 @@ def run_import(args):
         historical_seasons = [season_rows]
     career_stats_rows = dedupe_stats(aggregate_series_career(historical_seasons))
     driver_rows = merge_driver_sources(directory_rows, standings_rows, canonical_rows)
+    manager_results = build_manager_results(standings_records, schedule_rows)
+    recap_documents = []
+    for recap_url in detail_urls:
+        try:
+            recap_documents.append(fetch_html(recap_url))
+        except Exception:
+            # The compact standings history still provides a usable fallback.
+            recap_documents.append("")
+    manager_results = replace_results_with_recaps(
+        manager_results,
+        recap_documents,
+        schedule_rows,
+        canonical_by_customer=canonical_by_customer,
+    )
 
     if args.dry_run:
         print(f"Velocity League URL: {home_url}")
@@ -915,6 +1145,7 @@ def run_import(args):
         print(f"Parsed career rows: {len(career_stats_rows)}")
         print(f"Parsed driver rows: {len(driver_rows)}")
         print(f"Parsed schedule rows: {len(schedule_rows)}")
+        print(f"Parsed completed League Manager races: {len(manager_results)}")
         for row in season_rows[:10]:
             print(f"STAT {row.get('points_position') or '--'} #{row.get('car_number') or '--'} {row.get('name')}")
         for row in career_stats_rows[:5]:
@@ -932,10 +1163,21 @@ def run_import(args):
         write_csv(args.drivers_output, DRIVER_FIELDS, driver_rows)
     if args.schedule_output:
         write_csv(args.schedule_output, SCHEDULE_FIELDS, schedule_rows)
+    if args.manager_folder:
+        manager_folder = Path(args.manager_folder)
+        series_title = schedule_series_name(
+            schedule_rows,
+            str(args.series or series_key or "Velocity League").replace("-", " ").title(),
+        )
+        save_league_profile(manager_folder / "league.json", LeagueProfile(name=series_title, short_name="", season_name="Season 1"))
+        save_schedule(manager_folder / "schedule.json", manager_schedule_events(schedule_rows, {race.round_number for race in manager_results}))
+        save_race_results(manager_folder / "results.json", manager_results)
     print(f"Imported {len(season_rows)} Velocity season row(s) to {args.stats_output}.")
     print(f"Imported {len(career_stats_rows)} Velocity career row(s) to {args.career_output}.")
     print(f"Imported {len(driver_rows)} Velocity driver row(s) to {args.drivers_output}.")
     print(f"Imported {len(schedule_rows)} Velocity schedule row(s) to {args.schedule_output}.")
+    if args.manager_folder:
+        print(f"Seeded {len(manager_results)} completed race(s) and {len(schedule_rows)} scheduled round(s) into League Manager at {args.manager_folder}.")
     return 0
 
 
@@ -947,6 +1189,7 @@ def build_parser():
     parser.add_argument("--career-output", default="league/career.csv")
     parser.add_argument("--drivers-output", default="league/drivers.csv")
     parser.add_argument("--schedule-output", default="league/race_schedule.csv")
+    parser.add_argument("--manager-folder", default="", help="Optional League Manager profile folder for native schedule/results seeding")
     parser.add_argument("--dry-run", action="store_true")
     return parser
 

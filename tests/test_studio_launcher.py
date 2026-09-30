@@ -41,6 +41,7 @@ from studio_launcher import (
     list_profiles,
     load_profile,
     migrate_legacy_velocity_profile_paths,
+    new_profile_defaults,
     load_env_file,
     profile_path,
     producer_assist_launch_url,
@@ -633,6 +634,19 @@ def test_launcher_builds_profile_specific_league_csv_paths():
         "league/career.csv",
         "league/race_schedule.csv",
     )
+
+
+def test_new_profile_defaults_do_not_inherit_previous_league_settings():
+    values = new_profile_defaults("Fresh Friday Series")
+
+    assert values["VELOCITY_LEAGUE_URL"] == ""
+    assert values["VELOCITY_SERIES_NAME"] == ""
+    assert values["SIMRACERHUB_LEAGUE_ID"] == ""
+    assert values["SIMRACERHUB_SEASON_ID"] == ""
+    assert values["OVERLAY_EVENT_TITLE"] == "RGC AI Broadcast"
+    assert values["LEAGUE_DRIVERS_CSV"] == "league/Fresh_Friday_Series/drivers.csv"
+    assert values["SIMRACERHUB_RACE_SCHEDULE_CSV"] == "league/Fresh_Friday_Series/race_schedule.csv"
+    assert values["VELOCITY_STATS_OUTPUT"] == "league/Fresh_Friday_Series/season.csv"
 
 
 def test_driver_roster_import_target_prefers_visible_driver_csv():
@@ -1233,3 +1247,20 @@ def test_launcher_sets_branded_window_icon():
     assert "set_windows_app_user_model_id()" in source
     assert "set_window_icon(root)" in source
     assert "rgc_ai_broadcast_studio.ico" in source
+
+
+def test_notebook_sizes_to_selected_tab_and_league_tables_allow_40_drivers():
+    source = Path("studio_launcher.py").read_text(encoding="utf-8")
+
+    assert "def resize_notebook_to_selected_tab" in source
+    assert '"<<NotebookTabChanged>>"' in source
+    assert "min(40, len(selected_race.entries)" in source
+    assert "min(40, len(standings)" in source
+
+
+def test_league_driver_stats_have_local_points_formatting_and_refresh_with_profile():
+    source = Path("studio_launcher.py").read_text(encoding="utf-8")
+
+    assert 'league_tab_state["refresh_driver_statistics"] = refresh_driver_statistics' in source
+    assert 'refresh_league_stats = league_tab_state.get("refresh_driver_statistics")' in source
+    assert 'points_text = str(int(points)) if points.is_integer()' in source

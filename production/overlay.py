@@ -353,6 +353,8 @@ class ProducerPitRoadRow:
     pit_stop_seconds: float = 0.0
     service_guess: str = ""
     position_summary: str = ""
+    pit_stop_count: int = 0
+    green_flag_pit_stop_count: int = 0
 
     def to_dict(self):
         return {
@@ -366,6 +368,8 @@ class ProducerPitRoadRow:
             "pit_stop_seconds": self.pit_stop_seconds,
             "service_guess": self.service_guess,
             "position_summary": self.position_summary,
+            "pit_stop_count": self.pit_stop_count,
+            "green_flag_pit_stop_count": self.green_flag_pit_stop_count,
         }
 
 
@@ -904,7 +908,11 @@ class OverlayStateBuilder:
             lap_word = "lap" if explicit_laps_down == 1 else "laps"
             return f"-{explicit_laps_down} {lap_word}"
         interval = self.format_interval(car)
-        laps_down = self.computed_laps_down(car, leader_laps)
+        laps_down = self.computed_laps_down(
+            car,
+            leader_laps,
+            leader_car or {},
+        )
         if laps_down > 0 and self.should_show_computed_laps_down(
             car,
             leader_car or {},
@@ -915,9 +923,9 @@ class OverlayStateBuilder:
             return f"-{laps_down} {lap_word}"
         if display_position != 1 and interval:
             return interval
-        if laps_down > 0:
-            lap_word = "lap" if laps_down == 1 else "laps"
-            return f"-{laps_down} {lap_word}"
+        # Do not restore an unverified completed-lap subtraction here. During
+        # pit cycles and start/finish transitions, cars can briefly sit on
+        # opposite sides of the scoring line without being another lap down.
         return "" if display_position == 1 else interval
 
     def explicit_laps_down(self, car):
@@ -927,10 +935,19 @@ class OverlayStateBuilder:
                 return value
         return 0
 
-    def computed_laps_down(self, car, leader_laps=0):
+    def computed_laps_down(self, car, leader_laps=0, leader_car=None):
         car_laps = self.safe_int(car.get("LapsComplete", car.get("Lap", 0)))
         if leader_laps > 0 and car_laps > 0:
-            return max(leader_laps - car_laps, 0)
+            raw_difference = max(leader_laps - car_laps, 0)
+            leader_pct = self.lap_distance_pct(leader_car or {})
+            car_pct = self.lap_distance_pct(car)
+            if leader_pct is not None and car_pct is not None:
+                progress_difference = (
+                    float(leader_laps) + leader_pct
+                    - float(car_laps) - car_pct
+                )
+                return max(int(progress_difference + 0.001), 0)
+            return raw_difference
         return 0
 
     def should_show_computed_laps_down(self, car, leader_car, laps_down, interval=""):
@@ -946,7 +963,19 @@ class OverlayStateBuilder:
 
         # Avoid the common start/finish flash: leader has just crossed the
         # stripe, while the next cars are still at the end of the previous lap.
-        if leader_pct <= 0.15 and car_pct >= 0.85:
+        completed_lap_difference = max(
+            self.safe_int(
+                leader_car.get("LapsComplete", leader_car.get("Lap", 0)),
+                0,
+            )
+            - self.safe_int(car.get("LapsComplete", car.get("Lap", 0)), 0),
+            0,
+        )
+        if (
+            completed_lap_difference <= 1
+            and leader_pct <= 0.15
+            and car_pct >= 0.85
+        ):
             return False
 
         return True
@@ -1505,6 +1534,12 @@ class OverlayServer:
                     pit_stop_seconds=float((row or {}).get("pit_stop_seconds") or 0.0),
                     service_guess=str((row or {}).get("service_guess", "")),
                     position_summary=str((row or {}).get("position_summary", "")),
+                    pit_stop_count=self.state_builder.safe_int(
+                        (row or {}).get("pit_stop_count")
+                    ),
+                    green_flag_pit_stop_count=self.state_builder.safe_int(
+                        (row or {}).get("green_flag_pit_stop_count")
+                    ),
                 )
                 for row in (rows or [])
             ][:12]
@@ -3285,11 +3320,14 @@ PRODUCER_HTML = r"""<!doctype html>
             ? `Lap ${row.last_pit_lap}`
             : "--";
         const tireText = row.laps_since_pit > 0 ? `${row.laps_since_pit} laps since stop` : "";
+        const stopText = Number(row.pit_stop_count || 0) > 0
+          ? `${row.pit_stop_count} stop${Number(row.pit_stop_count) === 1 ? "" : "s"}`
+          : "";
         node.innerHTML = `
           <div class="num">#${row.car_number || "--"}</div>
           <div>
             <div class="pit-road-main">${row.driver_name || "Unknown Driver"}</div>
-            <div class="pit-road-meta">${lapText}${tireText ? " • " + tireText : ""}${row.position_summary ? " • " + row.position_summary : ""}</div>
+            <div class="pit-road-meta">${lapText}${stopText ? " • " + stopText : ""}${tireText ? " • " + tireText : ""}${row.position_summary ? " • " + row.position_summary : ""}</div>
             <div class="pit-road-service">${row.service_guess || "Service unknown"}</div>
           </div>
           <div class="small">Stop ${formatPitRoadSeconds(row.pit_stop_seconds)}<br/>Lane ${formatPitRoadSeconds(row.pit_lane_seconds)}</div>

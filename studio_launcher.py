@@ -17,11 +17,31 @@ from pathlib import Path
 from tkinter import messagebox
 
 from production.league_manager import (
+    LeagueProfile,
+    RaceResult,
+    ScheduleEvent,
     ScoringRule,
     ScoringSystem,
+    active_iracing_league_snapshot,
+    active_iracing_race_result,
+    calculate_standings,
     default_scoring_system,
+    load_league_profile,
+    load_race_results,
+    load_schedule,
     load_scoring_system,
+    save_league_profile,
+    save_race_results,
+    save_schedule,
     save_scoring_system,
+    score_race_result,
+)
+from production.wordpress_publisher import (
+    WordPressPublishSettings,
+    build_wordpress_payload,
+    load_wordpress_settings,
+    publish_league_to_wordpress,
+    save_wordpress_settings,
 )
 
 try:
@@ -164,6 +184,7 @@ LAUNCHER_FIELDS = [
     ("DISCORD_RACE_REPORT_WEBHOOK_URL", ""),
     ("DISCORD_RACE_REPORT_USE_OPENAI", "true"),
     ("USE_LEAGUE_DRIVER_NOTES", "false"),
+    ("LEAGUE_MANAGER_ENABLED", "false"),
     ("LEAGUE_DRIVERS_CSV", "league/drivers.csv"),
     ("LEAGUE_SEASON_STATS_CSV", "league/season.csv"),
     ("LEAGUE_CAREER_STATS_CSV", "league/career.csv"),
@@ -282,6 +303,7 @@ BROADCAST_FIELD_LABELS = {
     "DISCORD_RACE_REPORT_WEBHOOK_URL": "Race Report Webhook URL",
     "DISCORD_RACE_REPORT_USE_OPENAI": "Use OpenAI Race Recap",
     "USE_LEAGUE_DRIVER_NOTES": "Use League Driver Profiles",
+    "LEAGUE_MANAGER_ENABLED": "Use League Manager for This Race",
     "LEAGUE_DRIVERS_CSV": "Driver Profiles CSV",
     "LEAGUE_SEASON_STATS_CSV": "Season Stats CSV",
     "LEAGUE_CAREER_STATS_CSV": "Career Stats CSV",
@@ -370,6 +392,7 @@ BROADCAST_FIELD_HELP = {
     "DISCORD_RACE_REPORT_WEBHOOK_URL": "Required when Discord Race Report is true. Create this webhook in the Discord results channel.",
     "DISCORD_RACE_REPORT_USE_OPENAI": "Uses OpenAI for a more natural race recap. If off, the Studio posts a simpler generated recap.",
     "USE_LEAGUE_DRIVER_NOTES": "Turns on league driver profiles, about stories, season stats, career stats, teams, sponsors, hometowns, and driving styles.",
+    "LEAGUE_MANAGER_ENABLED": "Automatically saves the completed iRacing results into this profile after the post-race broadcast finishes. With AI commentary off, it waits for the classified results to stabilize after the checkered flag.",
     "LEAGUE_DRIVERS_CSV": "Driver profile CSV used for About stories and league-specific info.",
     "LEAGUE_SEASON_STATS_CSV": "Current-season stats CSV imported from Sim Racer Hub.",
     "LEAGUE_CAREER_STATS_CSV": "Career/all-season stats CSV imported from Sim Racer Hub.",
@@ -442,6 +465,7 @@ INLINE_HELP_FIELDS = {
     "DISCORD_RACE_REPORT_ENABLED",
     "DISCORD_RACE_REPORT_WEBHOOK_URL",
     "USE_LEAGUE_DRIVER_NOTES",
+    "LEAGUE_MANAGER_ENABLED",
     "STAGE_END_LAPS",
     "LEAGUE_FUEL_PERCENT",
     "LEAGUE_ENGINE_POWER_PERCENT",
@@ -458,6 +482,7 @@ BOOLEAN_SETTING_KEYS = {
     "DISCORD_RACE_REPORT_ENABLED",
     "DISCORD_RACE_REPORT_USE_OPENAI",
     "USE_LEAGUE_DRIVER_NOTES",
+    "LEAGUE_MANAGER_ENABLED",
     "DRIVER_MODE",
 }
 
@@ -635,6 +660,28 @@ def launcher_defaults(existing=None):
     if "STUDIO_VOLUME" not in existing and "PRACTICE_MUSIC_VOLUME" in existing:
         defaults["STUDIO_VOLUME"] = existing["PRACTICE_MUSIC_VOLUME"]
     return defaults
+
+
+def new_profile_defaults(profile_name):
+    """Return clean defaults with isolated league files for a brand-new profile."""
+    values = launcher_defaults()
+    drivers_csv, season_csv, career_csv, schedule_csv = league_csv_paths_for_profile(profile_name)
+    values.update(
+        {
+            "LEAGUE_DRIVERS_CSV": drivers_csv,
+            "LEAGUE_SEASON_STATS_CSV": season_csv,
+            "LEAGUE_CAREER_STATS_CSV": career_csv,
+            "SIMRACERHUB_RACE_SCHEDULE_CSV": schedule_csv,
+            "SIMRACERHUB_SEASON_STATS_OUTPUT": season_csv,
+            "SIMRACERHUB_CAREER_STATS_OUTPUT": career_csv,
+            "SIMRACERHUB_DRIVERS_OUTPUT": drivers_csv,
+            "VELOCITY_STATS_OUTPUT": season_csv,
+            "VELOCITY_CAREER_OUTPUT": career_csv,
+            "VELOCITY_DRIVERS_OUTPUT": drivers_csv,
+            "VELOCITY_SCHEDULE_OUTPUT": schedule_csv,
+        }
+    )
+    return values
 
 
 def setting_enabled(values, key, default="false"):
@@ -1554,6 +1601,7 @@ def velocity_league_import_command(
     career_output="league/career.csv",
     drivers_output="league/drivers.csv",
     schedule_output="league/race_schedule.csv",
+    manager_folder="",
     dry_run=False,
 ):
     command = [
@@ -1571,6 +1619,8 @@ def velocity_league_import_command(
         command.extend(["--drivers-output", str(drivers_output)])
     if schedule_output:
         command.extend(["--schedule-output", str(schedule_output)])
+    if manager_folder:
+        command.extend(["--manager-folder", str(manager_folder)])
     if dry_run:
         command.append("--dry-run")
     return command
@@ -1583,6 +1633,7 @@ def run_velocity_league_import(
     career_output="league/career.csv",
     drivers_output="league/drivers.csv",
     schedule_output="league/race_schedule.csv",
+    manager_folder="",
     dry_run=False,
 ):
     return subprocess.run(
@@ -1593,6 +1644,7 @@ def run_velocity_league_import(
             career_output=career_output,
             drivers_output=drivers_output,
             schedule_output=schedule_output,
+            manager_folder=manager_folder,
             dry_run=dry_run,
         ),
         cwd=ROOT,
@@ -1989,6 +2041,7 @@ def run_gui():
     settings_rows_by_key = {}
     sim_racer_hub_state = {"entries": {}, "career_mode": None, "velocity_entries": {}}
     league_tab_state = {}
+    league_manager_state = {}
     settings_grid_row = 0
 
     def add_settings_section(title):
@@ -2462,11 +2515,27 @@ def run_gui():
                 "Type a name in New Profile Name, then click Create Profile.",
             )
             return
-        path = save_profile(name, collect_values())
-        profile_var.set(sanitize_profile_name(name))
+        clean_name = sanitize_profile_name(name)
+        clean_values = new_profile_defaults(clean_name)
+        ensure_profile_league_files(clean_name, root=ROOT)
+        manager_folder = ROOT / "league" / league_folder_slug(clean_name)
+        save_league_profile(manager_folder / "league.json", LeagueProfile(name=clean_name))
+        save_schedule(manager_folder / "schedule.json", [])
+        save_scoring_system(manager_folder / "scoring.json", default_scoring_system())
+        profile_var.set(clean_name)
         profile_name_var.set("")
+        apply_values_to_form(clean_values)
+        save_env_file(clean_values)
+        path = save_profile(clean_name, clean_values)
+        refresh_manager = league_manager_state.get("load_profile")
+        if refresh_manager:
+            refresh_manager()
+        refresh_league_stats = league_tab_state.get("refresh_driver_statistics")
+        if refresh_league_stats:
+            refresh_league_stats()
         refresh_profile_list()
-        status.set(f"Created profile: {path.name}")
+        profile_var.set(clean_name)
+        status.set(f"Created clean profile with default settings and separate league files: {path.name}")
 
     def load_selected_profile():
         name = profile_var.get().strip()
@@ -2480,6 +2549,12 @@ def run_gui():
             return
         ensure_profile_league_files(name, root=ROOT)
         apply_values_to_form(values)
+        refresh_manager = league_manager_state.get("load_profile")
+        if refresh_manager:
+            refresh_manager()
+        refresh_league_stats = league_tab_state.get("refresh_driver_statistics")
+        if refresh_league_stats:
+            refresh_league_stats()
         migrated_values = collect_values()
         save_env_file(migrated_values)
         save_profile(name, migrated_values)
@@ -2744,6 +2819,7 @@ def run_gui():
         entry,
         button,
         get_profile_name=lambda: profile_var.get().strip() or profile_name_var.get().strip(),
+        league_manager_state=league_manager_state,
     )
     build_league_tab(
         league_content,
@@ -2767,18 +2843,60 @@ def run_gui():
         broadcast_running=has_running_broadcast,
         status=status,
     )
+
+    def resize_notebook_to_selected_tab(_event=None):
+        """Do not reserve the tallest tab's height for every Studio section."""
+        try:
+            selected_name = notebook.select()
+            if not selected_name:
+                return
+            selected_tab = root.nametowidget(selected_name)
+            selected_tab.update_idletasks()
+            requested = max(120, selected_tab.winfo_reqheight())
+            if int(notebook.cget("height") or 0) != requested:
+                notebook.configure(height=requested)
+        except (tk.TclError, ValueError):
+            return
+
+    notebook.bind(
+        "<<NotebookTabChanged>>",
+        lambda event: root.after_idle(lambda: resize_notebook_to_selected_tab(event)),
+        add="+",
+    )
+    for studio_tab in (settings_tab, league_manager_tab, league_tab, help_tab):
+        studio_tab.bind(
+            "<Configure>",
+            lambda event: root.after_idle(lambda: resize_notebook_to_selected_tab(event)),
+            add="+",
+        )
+    root.after_idle(resize_notebook_to_selected_tab)
     refresh_health()
     root.protocol("WM_DELETE_WINDOW", on_close)
 
     root.mainloop()
 
 
-def build_league_manager_tab(parent, status, label, frame, entry, button, get_profile_name=None):
+def build_league_manager_tab(
+    parent,
+    status,
+    label,
+    frame,
+    entry,
+    button,
+    get_profile_name=None,
+    league_manager_state=None,
+):
     import tkinter as tk
+    from tkinter import ttk
+
+    league_manager_state = league_manager_state if league_manager_state is not None else {}
+
+    def league_folder():
+        profile_name = (get_profile_name() if get_profile_name else "") or "default"
+        return ROOT / "league" / league_folder_slug(profile_name)
 
     def profile_scoring_path():
-        profile_name = (get_profile_name() if get_profile_name else "") or "default"
-        return ROOT / "league" / league_folder_slug(profile_name) / "scoring.json"
+        return league_folder() / "scoring.json"
 
     def format_finish_points(scoring):
         return "\n".join(
@@ -2876,7 +2994,7 @@ def build_league_manager_tab(parent, status, label, frame, entry, button, get_pr
     intro.pack(fill="x", padx=14, pady=(12, 8))
     label(
         intro,
-        text="League Manager — Scoring Foundation",
+        text="League Manager",
         bg="#0b1520",
         fg=TEXT_FG,
         font=("Segoe UI", 14, "bold"),
@@ -2885,8 +3003,8 @@ def build_league_manager_tab(parent, status, label, frame, entry, button, get_pr
     label(
         intro,
         text=(
-            "Create a scoring system for the selected profile. Finishing points, bonus points, and penalty points are fully customizable. "
-            "Each future race result will keep a reason-by-reason points audit."
+            "Build the league profile, season schedule, and points system for the selected Studio profile. "
+            "Import Current iRacing Session reads the live simulator only—no iRacing password is stored or requested."
         ),
         bg="#0b1520",
         fg=MUTED_FG,
@@ -2895,6 +3013,168 @@ def build_league_manager_tab(parent, status, label, frame, entry, button, get_pr
         wraplength=940,
     ).pack(fill="x", padx=12, pady=(0, 10))
 
+    profile_panel = frame(parent, bg="#0b1520")
+    profile_panel.pack(fill="x", padx=14, pady=(2, 8))
+    label(profile_panel, text="League Profile", bg="#0b1520", fg=TEXT_FG, font=("Segoe UI", 12, "bold"), anchor="w").grid(row=0, column=0, columnspan=4, sticky="ew", padx=10, pady=(10, 6))
+    league_name_var = tk.StringVar()
+    league_short_var = tk.StringVar()
+    season_name_var = tk.StringVar()
+    league_id_var = tk.StringVar()
+    profile_fields = (
+        ("League Name", league_name_var), ("Short Name", league_short_var),
+        ("Season Name", season_name_var), ("iRacing League ID", league_id_var),
+    )
+    for index, (title, variable) in enumerate(profile_fields):
+        row, pair = 1 + index // 2, index % 2
+        label(profile_panel, text=title, bg="#0b1520", fg=MUTED_FG, anchor="w").grid(row=row, column=pair * 2, sticky="w", padx=(10, 5), pady=4)
+        entry(profile_panel, textvariable=variable, width=30).grid(row=row, column=pair * 2 + 1, sticky="ew", padx=(0, 10), pady=4)
+    profile_panel.columnconfigure(1, weight=1)
+    profile_panel.columnconfigure(3, weight=1)
+
+    schedule_events = []
+    schedule_panel = frame(parent, bg="#0b1520")
+    schedule_panel.pack(fill="x", padx=14, pady=8)
+    label(schedule_panel, text="Season Schedule", bg="#0b1520", fg=TEXT_FG, font=("Segoe UI", 12, "bold"), anchor="w").pack(fill="x", padx=10, pady=(10, 6))
+    schedule_form = frame(schedule_panel, bg="#0b1520")
+    schedule_form.pack(fill="x", padx=10)
+    round_var, date_var, event_name_var = tk.StringVar(), tk.StringVar(), tk.StringVar()
+    track_var, config_var, car_type_var = tk.StringVar(), tk.StringVar(), tk.StringVar()
+    laps_var, duration_var, practice_var = tk.StringVar(), tk.StringVar(), tk.StringVar()
+    qualifying_var, race_time_var = tk.StringVar(), tk.StringVar()
+    event_status_var = tk.StringVar(value="Scheduled")
+    first_row = (("Round", round_var, 6), ("Date MM-DD-YYYY", date_var, 13), ("Race Name", event_name_var, 24), ("Track", track_var, 24), ("Configuration", config_var, 15), ("Car Type", car_type_var, 16))
+    second_row = (("Laps", laps_var, 7), ("Timed Race Minutes", duration_var, 12), ("Practice Time", practice_var, 11), ("Qualifying Time", qualifying_var, 11), ("Race Start", race_time_var, 11))
+    for column, (title, variable, width) in enumerate(first_row):
+        cell = frame(schedule_form, bg="#0b1520")
+        cell.grid(row=0, column=column, sticky="ew", padx=(0, 6))
+        label(cell, text=title, bg="#0b1520", fg=MUTED_FG, anchor="w").pack(fill="x")
+        entry(cell, textvariable=variable, width=width).pack(fill="x")
+        schedule_form.columnconfigure(column, weight=2 if title in {"Race Name", "Track"} else 1)
+    for column, (title, variable, width) in enumerate(second_row):
+        cell = frame(schedule_form, bg="#0b1520")
+        cell.grid(row=1, column=column, sticky="ew", padx=(0, 6), pady=(7, 0))
+        label(cell, text=title, bg="#0b1520", fg=MUTED_FG, anchor="w").pack(fill="x")
+        entry(cell, textvariable=variable, width=width).pack(fill="x")
+    status_cell = frame(schedule_form, bg="#0b1520")
+    status_cell.grid(row=1, column=5, sticky="ew", pady=(7, 0))
+    label(status_cell, text="Status", bg="#0b1520", fg=MUTED_FG, anchor="w").pack(fill="x")
+    ttk.Combobox(status_cell, textvariable=event_status_var, values=("Scheduled", "Completed", "Cancelled"), state="readonly", width=11).pack(fill="x")
+
+    schedule_table = frame(schedule_panel, bg="#0b1520")
+    schedule_table.pack(fill="both", expand=True, padx=10, pady=8)
+    schedule_tree = ttk.Treeview(schedule_table, columns=("round", "date", "name", "track", "car", "distance", "race", "status"), show="headings", height=11)
+    for key, title, width in (("round", "Rd", 38), ("date", "Date", 85), ("name", "Race Name", 170), ("track", "Track", 190), ("car", "Car Type", 115), ("distance", "Distance", 85), ("race", "Race Start", 75), ("status", "Status", 75)):
+        schedule_tree.heading(key, text=title)
+        schedule_tree.column(key, width=width, anchor="center" if key in {"round", "laps"} else "w")
+    schedule_scrollbar = ttk.Scrollbar(schedule_table, orient="vertical", command=schedule_tree.yview)
+    schedule_tree.configure(yscrollcommand=schedule_scrollbar.set)
+    schedule_tree.pack(side="left", fill="both", expand=True)
+    schedule_scrollbar.pack(side="right", fill="y")
+    schedule_count_var = tk.StringVar(value="No schedule rounds saved yet.")
+    label(schedule_panel, textvariable=schedule_count_var, bg="#0b1520", fg=MUTED_FG, anchor="w").pack(fill="x", padx=10, pady=(0, 4))
+
+    def refresh_schedule():
+        schedule_tree.delete(*schedule_tree.get_children())
+        for event in sorted(schedule_events, key=lambda item: item.round_number):
+            distance = f"{event.laps} laps" if event.laps else f"{event.duration_minutes} min"
+            schedule_tree.insert("", "end", values=(event.round_number, event.event_date, event.event_name, event.track_name, event.car_type, distance, event.race_time, event.status))
+        schedule_count_var.set(
+            f"{len(schedule_events)} schedule round{'s' if len(schedule_events) != 1 else ''} • use the scrollbar to view the complete season"
+            if schedule_events else "No schedule rounds saved yet."
+        )
+
+    def save_profile_and_schedule():
+        try:
+            league_id = league_id_var.get().strip()
+            profile = LeagueProfile(league_name_var.get().strip(), league_short_var.get().strip(), season_name_var.get().strip(), int(league_id) if league_id else None)
+            save_league_profile(league_folder() / "league.json", profile)
+            save_schedule(league_folder() / "schedule.json", schedule_events)
+            status.set(f"Saved league profile and {len(schedule_events)} schedule events: {league_folder()}")
+        except Exception as error:
+            messagebox.showerror("League setup needs attention", str(error))
+
+    def load_profile_and_schedule():
+        nonlocal schedule_events
+        try:
+            profile = load_league_profile(league_folder() / "league.json")
+            league_name_var.set(profile.name)
+            league_short_var.set(profile.short_name)
+            season_name_var.set(profile.season_name)
+            league_id_var.set(profile.iracing_league_id or "")
+            schedule_events = load_schedule(league_folder() / "schedule.json")
+            refresh_schedule()
+        except Exception as error:
+            messagebox.showerror("League profile load failed", str(error))
+
+    def add_schedule_event():
+        try:
+            event = ScheduleEvent(
+                round_number=int(round_var.get()), event_date=date_var.get().strip(), track_name=track_var.get().strip(),
+                configuration=config_var.get().strip(), laps=int(laps_var.get()) if laps_var.get().strip() else None,
+                status=event_status_var.get(), event_name=event_name_var.get().strip(), car_type=car_type_var.get().strip(),
+                duration_minutes=int(duration_var.get()) if duration_var.get().strip() else None,
+                practice_time=practice_var.get().strip(), qualifying_time=qualifying_var.get().strip(), race_time=race_time_var.get().strip(),
+            )
+            event.validate()
+            schedule_events[:] = [item for item in schedule_events if item.round_number != event.round_number]
+            schedule_events.append(event)
+            refresh_schedule()
+            round_var.set(str(max((item.round_number for item in schedule_events), default=0) + 1))
+        except Exception as error:
+            messagebox.showerror("Schedule event needs attention", str(error))
+
+    def delete_schedule_event():
+        selected = schedule_tree.selection()
+        if selected:
+            selected_round = int(schedule_tree.item(selected[0], "values")[0])
+            schedule_events[:] = [item for item in schedule_events if item.round_number != selected_round]
+            refresh_schedule()
+
+    def edit_selected_schedule_event(_event=None):
+        selected = schedule_tree.selection()
+        if not selected:
+            return
+        selected_round = int(schedule_tree.item(selected[0], "values")[0])
+        event = next((item for item in schedule_events if item.round_number == selected_round), None)
+        if not event:
+            return
+        for variable, value in (
+            (round_var, event.round_number), (date_var, event.event_date), (event_name_var, event.event_name),
+            (track_var, event.track_name), (config_var, event.configuration), (car_type_var, event.car_type),
+            (laps_var, event.laps or ""), (duration_var, event.duration_minutes or ""),
+            (practice_var, event.practice_time), (qualifying_var, event.qualifying_time),
+            (race_time_var, event.race_time), (event_status_var, event.status),
+        ):
+            variable.set(value)
+
+    schedule_tree.bind("<<TreeviewSelect>>", edit_selected_schedule_event)
+
+    def import_active_session():
+        try:
+            snapshot = active_iracing_league_snapshot()
+            if snapshot["league_id"]:
+                league_id_var.set(snapshot["league_id"])
+            if snapshot["league_name"]:
+                league_name_var.set(snapshot["league_name"])
+            if snapshot["season_name"]:
+                season_name_var.set(snapshot["season_name"])
+            track_var.set(snapshot["track_name"])
+            config_var.set(snapshot["configuration"])
+            laps_var.set(snapshot["laps"] or "")
+            if not round_var.get():
+                round_var.set(str(max((item.round_number for item in schedule_events), default=0) + 1))
+            status.set("Imported league and current-event information from the active iRacing session. Review it, add the event, then save.")
+        except Exception as error:
+            messagebox.showerror("iRacing import unavailable", str(error))
+
+    schedule_actions = frame(schedule_panel, bg="#0b1520")
+    schedule_actions.pack(fill="x", padx=10, pady=(0, 10))
+    button(schedule_actions, text="Load League Profile", command=load_profile_and_schedule, color="#334b64").pack(side="left", padx=(0, 6))
+    button(schedule_actions, text="Import Current iRacing Session", command=import_active_session, color="#334b64").pack(side="left", padx=(0, 6))
+    button(schedule_actions, text="Add / Update Round", command=add_schedule_event, color="#334b64").pack(side="left", padx=6)
+    button(schedule_actions, text="Delete Selected Round", command=delete_schedule_event, color="#8b2d38").pack(side="left", padx=6)
+    button(schedule_actions, text="Save League & Schedule", command=save_profile_and_schedule, color=GREEN).pack(side="right")
+
     name_row = frame(parent, bg=PANEL_BG)
     name_row.pack(fill="x", padx=14, pady=(2, 8))
     label(name_row, text="Scoring System Name", bg=PANEL_BG, fg=MUTED_FG, width=22, anchor="w").pack(side="left")
@@ -2902,11 +3182,11 @@ def build_league_manager_tab(parent, status, label, frame, entry, button, get_pr
     entry(name_row, textvariable=scoring_name_var, width=54).pack(side="left", fill="x", expand=True)
 
     editors = frame(parent, bg=PANEL_BG)
-    editors.pack(fill="both", expand=True, padx=14)
+    editors.pack(fill="x", expand=False, padx=14)
     editor_specs = (
-        ("Finishing Position Points", "Use one position per line, such as 1=40", 18),
-        ("Bonus Points", "Use Name=Points, such as Fastest Lap=1", 12),
-        ("Penalty Points", "Use Name=Points; these values are subtracted", 12),
+        ("Finishing Position Points", "Use one position per line, such as 1=40", 11),
+        ("Bonus Points", "Use Name=Points, such as Fastest Lap=1", 8),
+        ("Penalty Points", "Use Name=Points; these values are subtracted", 8),
     )
     text_widgets = []
     for column, (title, help_text, height) in enumerate(editor_specs):
@@ -2929,7 +3209,290 @@ def build_league_manager_tab(parent, status, label, frame, entry, button, get_pr
 
     preview_var = tk.StringVar(value="Scoring system not loaded yet.")
     label(parent, textvariable=preview_var, bg=PANEL_BG, fg=TEXT_FG, anchor="w", justify="left", wraplength=940).pack(fill="x", padx=16, pady=(0, 12))
-    load_current()
+
+    race_results = []
+    results_panel = frame(parent, bg="#0b1520")
+    results_panel.pack(fill="x", expand=False, padx=14, pady=(2, 14))
+    results_header = frame(results_panel, bg="#0b1520")
+    results_header.pack(fill="x", padx=10, pady=(10, 6))
+    label(results_header, text="Results & Championship Standings", bg="#0b1520", fg=TEXT_FG, font=("Segoe UI", 12, "bold"), anchor="w").pack(side="left")
+    results_summary_var = tk.StringVar(value="No league results saved yet.")
+    label(results_header, textvariable=results_summary_var, bg="#0b1520", fg=MUTED_FG, anchor="w").pack(side="left", padx=14)
+    result_round_var = tk.StringVar()
+    label(results_header, text="Review Round", bg="#0b1520", fg=MUTED_FG, anchor="w").pack(side="right", padx=(8, 4))
+    result_round_combo = ttk.Combobox(results_header, textvariable=result_round_var, state="readonly", width=10)
+    result_round_combo.pack(side="right")
+
+    results_tables = frame(results_panel, bg="#0b1520")
+    results_tables.pack(fill="x", expand=False, padx=10)
+    result_tree = ttk.Treeview(results_tables, columns=("pos", "number", "driver", "start", "led", "points"), show="headings", height=8)
+    standings_tree = ttk.Treeview(results_tables, columns=("pos", "driver", "starts", "wins", "top5", "top10", "avg", "points"), show="headings", height=8)
+    for tree, specs in (
+        (result_tree, (("pos", "Pos", 40), ("number", "#", 45), ("driver", "Latest Race Results", 180), ("start", "Start", 45), ("led", "Led", 45), ("points", "Pts", 55))),
+        (standings_tree, (("pos", "Pos", 40), ("driver", "Championship", 160), ("starts", "Starts", 48), ("wins", "Wins", 42), ("top5", "Top 5", 45), ("top10", "Top 10", 50), ("avg", "Avg", 50), ("points", "Pts", 55))),
+    ):
+        for key, title, width in specs:
+            tree.heading(key, text=title)
+            tree.column(key, width=width, anchor="w" if key == "driver" else "center")
+    result_tree.pack(side="left", fill="both", expand=True, padx=(0, 5))
+    standings_tree.pack(side="left", fill="both", expand=True, padx=(5, 0))
+
+    def results_path():
+        return league_folder() / "results.json"
+
+    def selected_result_race():
+        try:
+            selected_round = int(result_round_var.get())
+        except (TypeError, ValueError):
+            selected_round = max((race.round_number for race in race_results), default=0)
+        return next((race for race in race_results if race.round_number == selected_round), None)
+
+    def refresh_results():
+        result_tree.delete(*result_tree.get_children())
+        standings_tree.delete(*standings_tree.get_children())
+        rounds = [str(race.round_number) for race in sorted(race_results, key=lambda item: item.round_number)]
+        result_round_combo.configure(values=rounds)
+        if rounds and result_round_var.get() not in rounds:
+            result_round_var.set(rounds[-1])
+        selected_race = selected_result_race()
+        if selected_race:
+            for item in sorted(selected_race.entries, key=lambda entry: entry.position):
+                result_tree.insert("", "end", values=(item.position, item.car_number, item.name, item.starting_position or "-", item.laps_led, format_points(item.points)))
+        standings = calculate_standings(race_results)
+        for position, item in enumerate(standings, start=1):
+            standings_tree.insert("", "end", values=(position, item["name"], item["starts"], item["wins"], item["top_fives"], item["top_tens"], item["average_finish"], format_points(item["points"])))
+        result_tree.configure(height=max(3, min(40, len(selected_race.entries) if selected_race else 3)))
+        standings_tree.configure(height=max(3, min(40, len(standings) or 3)))
+        results_summary_var.set(f"{len(race_results)} race(s) • {len(standings)} driver(s) automatically tracked" if race_results else "No league results saved yet.")
+
+    def load_results():
+        nonlocal race_results
+        race_results = load_race_results(results_path())
+        refresh_results()
+
+    def import_completed_race():
+        nonlocal race_results
+        try:
+            round_number = int(round_var.get())
+            scheduled = next((item for item in schedule_events if item.round_number == round_number), None)
+            event_name = event_name_var.get().strip() or (scheduled.event_name if scheduled else "")
+            result = score_race_result(active_iracing_race_result(round_number, event_name), scoring_from_form())
+            if not result.entries:
+                raise ValueError("No classified drivers were found in the completed race results.")
+            race_results = [race for race in race_results if race.round_number != round_number] + [result]
+            save_race_results(results_path(), race_results)
+            drivers_path = league_folder() / "drivers.csv"
+            driver_rows = load_driver_profile_rows(drivers_path)
+            known_names = {row.get("name", "").casefold().strip() for row in driver_rows}
+            known_numbers = {row.get("car_number", "").strip() for row in driver_rows if row.get("car_number", "").strip()}
+            added_drivers = 0
+            for entry_result in result.entries:
+                if entry_result.name.casefold().strip() in known_names or (entry_result.car_number and entry_result.car_number in known_numbers):
+                    continue
+                driver_rows.append({field: "" for field in DRIVER_PROFILE_FIELDS} | {"name": entry_result.name, "car_number": entry_result.car_number})
+                known_names.add(entry_result.name.casefold().strip())
+                if entry_result.car_number:
+                    known_numbers.add(entry_result.car_number)
+                added_drivers += 1
+            save_driver_profile_rows(drivers_path, driver_rows)
+            if scheduled:
+                scheduled.status = "Completed"
+                save_schedule(league_folder() / "schedule.json", schedule_events)
+                refresh_schedule()
+            refresh_results()
+            status.set(f"Imported Round {round_number}: {len(result.entries)} drivers scored, {added_drivers} new profile(s) created, and standings rebuilt.")
+        except Exception as error:
+            messagebox.showerror("Race results import unavailable", str(error))
+
+    def delete_latest_result():
+        nonlocal race_results
+        if not race_results:
+            return
+        latest_round = max(race.round_number for race in race_results)
+        if not messagebox.askyesno("Delete race results", f"Delete saved results for Round {latest_round} and rebuild the standings?"):
+            return
+        race_results = [race for race in race_results if race.round_number != latest_round]
+        save_race_results(results_path(), race_results)
+        refresh_results()
+
+    points_review = frame(results_panel, bg="#101a24")
+    points_review.pack(fill="x", padx=10, pady=(10, 2))
+    label(points_review, text="Post-Race Points Review", bg="#101a24", fg=TEXT_FG, font=("Segoe UI", 11, "bold"), anchor="w").grid(row=0, column=0, columnspan=7, sticky="ew", padx=10, pady=(9, 2))
+    review_driver_var = tk.StringVar(value="Select a driver from the race results above.")
+    label(points_review, textvariable=review_driver_var, bg="#101a24", fg=MUTED_FG, anchor="w").grid(row=1, column=0, columnspan=7, sticky="ew", padx=10, pady=(0, 6))
+    position_points_var = tk.StringVar()
+    bonus_points_var = tk.StringVar()
+    penalty_points_var = tk.StringVar()
+    stage_points_var = tk.StringVar()
+    manual_adjustment_var = tk.StringVar()
+    adjustment_reason_var = tk.StringVar()
+    total_points_var = tk.StringVar(value="—")
+    review_fields = (
+        ("Position Pts", position_points_var, 10),
+        ("Bonus Pts", bonus_points_var, 10),
+        ("Penalty Pts", penalty_points_var, 10),
+        ("Stage Pts", stage_points_var, 10),
+        ("Manual +/-", manual_adjustment_var, 10),
+        ("Reason", adjustment_reason_var, 32),
+    )
+    for column, (title, variable, width) in enumerate(review_fields):
+        cell = frame(points_review, bg="#101a24")
+        cell.grid(row=2, column=column, sticky="ew", padx=(10 if column == 0 else 3, 3), pady=(0, 9))
+        label(cell, text=title, bg="#101a24", fg=MUTED_FG, anchor="w").pack(fill="x")
+        entry(cell, textvariable=variable, width=width).pack(fill="x")
+        points_review.columnconfigure(column, weight=2 if title == "Reason" else 1)
+    total_cell = frame(points_review, bg="#101a24")
+    total_cell.grid(row=2, column=6, sticky="ew", padx=(3, 10), pady=(0, 9))
+    label(total_cell, text="Final Total", bg="#101a24", fg=MUTED_FG, anchor="w").pack(fill="x")
+    label(total_cell, textvariable=total_points_var, bg=FIELD_BG, fg=TEXT_FG, anchor="center", font=("Segoe UI", 10, "bold")).pack(fill="x", ipady=4)
+
+    def selected_result_entry():
+        selection = result_tree.selection()
+        race = selected_result_race()
+        if not selection or not race:
+            return None
+        values = result_tree.item(selection[0], "values")
+        if not values:
+            return None
+        position, number, name = int(values[0]), str(values[1]), str(values[2])
+        return next((item for item in race.entries if item.position == position and item.car_number == number and item.name == name), None)
+
+    def show_selected_points(_event=None):
+        item = selected_result_entry()
+        if not item:
+            return
+        review_driver_var.set(f"P{item.position}  #{item.car_number}  {item.name}")
+        has_breakdown = any((item.position_points, item.bonus_points, item.penalty_points, item.stage_points, item.manual_adjustment))
+        position_points_var.set(format_points(item.position_points if has_breakdown else item.points))
+        bonus_points_var.set(format_points(item.bonus_points))
+        penalty_points_var.set(format_points(item.penalty_points))
+        stage_points_var.set(format_points(item.stage_points))
+        manual_adjustment_var.set(format_points(item.manual_adjustment))
+        adjustment_reason_var.set(item.adjustment_reason)
+        total_points_var.set(format_points(item.points))
+
+    def save_reviewed_points():
+        item = selected_result_entry()
+        if not item:
+            messagebox.showerror("Select a driver", "Select a driver from the race-result table first.")
+            return
+        try:
+            item.position_points = float(position_points_var.get() or 0)
+            item.bonus_points = float(bonus_points_var.get() or 0)
+            item.penalty_points = abs(float(penalty_points_var.get() or 0))
+            item.stage_points = float(stage_points_var.get() or 0)
+            item.manual_adjustment = float(manual_adjustment_var.get() or 0)
+            item.adjustment_reason = adjustment_reason_var.get().strip()
+            item.points = item.position_points + item.bonus_points - item.penalty_points + item.stage_points + item.manual_adjustment
+            save_race_results(results_path(), race_results)
+            refresh_results()
+            total_points_var.set(format_points(item.points))
+            status.set(f"Saved the reviewed points for {item.name}. Standings rebuilt; publish when the race is finalized.")
+        except ValueError:
+            messagebox.showerror("Invalid points", "Position, bonus, penalty, stage, and manual adjustment values must be numbers.")
+
+    result_tree.bind("<<TreeviewSelect>>", show_selected_points)
+    result_round_combo.bind("<<ComboboxSelected>>", lambda _event: refresh_results())
+
+    results_actions = frame(results_panel, bg="#0b1520")
+    results_actions.pack(fill="x", padx=10, pady=10)
+    button(results_actions, text="Import Completed iRacing Race", command=import_completed_race, color=GREEN).pack(side="left", padx=(0, 6))
+    button(results_actions, text="Reload Saved Results", command=load_results, color="#334b64").pack(side="left", padx=6)
+    button(results_actions, text="Delete Latest Result", command=delete_latest_result, color="#8b2d38").pack(side="left", padx=6)
+    button(results_actions, text="Save Reviewed Driver Points", command=save_reviewed_points, color="#8b6a1c").pack(side="right", padx=6)
+
+    website_panel = frame(parent, bg="#0b1520")
+    website_panel.pack(fill="x", padx=14, pady=(0, 14))
+    label(website_panel, text="RGC WordPress Website", bg="#0b1520", fg=TEXT_FG, font=("Segoe UI", 12, "bold"), anchor="w").grid(row=0, column=0, columnspan=4, sticky="ew", padx=10, pady=(10, 2))
+    label(
+        website_panel,
+        text="Publishes this profile's schedule, results, standings, and driver stats. Create the Application Password in WordPress and keep it private.",
+        bg="#0b1520", fg=MUTED_FG, anchor="w", justify="left", wraplength=1000,
+    ).grid(row=1, column=0, columnspan=4, sticky="ew", padx=10, pady=(0, 7))
+    wordpress_endpoint_var = tk.StringVar(value="https://realisticgamingcrew.com/wp-json/rgc-league-manager/v1/sync")
+    wordpress_username_var = tk.StringVar()
+    wordpress_password_var = tk.StringVar()
+    wordpress_league_slug_var = tk.StringVar()
+    wordpress_season_slug_var = tk.StringVar()
+    wordpress_auto_var = tk.StringVar(value="false")
+    website_fields = (
+        ("Endpoint", wordpress_endpoint_var, 70, False),
+        ("WordPress Username", wordpress_username_var, 28, False),
+        ("Application Password", wordpress_password_var, 28, True),
+        ("League URL Slug", wordpress_league_slug_var, 28, False),
+        ("Season URL Slug", wordpress_season_slug_var, 28, False),
+    )
+    for index, (title, variable, width, secret) in enumerate(website_fields):
+        row = 2 + index // 2
+        pair = index % 2
+        label(website_panel, text=title, bg="#0b1520", fg=MUTED_FG, anchor="w").grid(row=row, column=pair * 2, sticky="w", padx=(10, 5), pady=4)
+        field = entry(website_panel, textvariable=variable, width=width)
+        if secret:
+            field.configure(show="•")
+        field.grid(row=row, column=pair * 2 + 1, sticky="ew", padx=(0, 10), pady=4)
+    label(website_panel, text="Publish Automatically After Race", bg="#0b1520", fg=MUTED_FG, anchor="w").grid(row=4, column=2, sticky="w", padx=(10, 5), pady=4)
+    ttk.Combobox(website_panel, textvariable=wordpress_auto_var, values=("false", "true"), state="readonly", width=12).grid(row=4, column=3, sticky="w", padx=(0, 10), pady=4)
+    website_panel.columnconfigure(1, weight=1)
+    website_panel.columnconfigure(3, weight=1)
+
+    def wordpress_settings_from_form():
+        return WordPressPublishSettings(
+            endpoint=wordpress_endpoint_var.get().strip(),
+            username=wordpress_username_var.get().strip(),
+            application_password=wordpress_password_var.get().strip(),
+            league_slug=wordpress_league_slug_var.get().strip(),
+            season_slug=wordpress_season_slug_var.get().strip(),
+            auto_publish=wordpress_auto_var.get().strip().lower() == "true",
+        )
+
+    def load_wordpress_form():
+        website = load_wordpress_settings(league_folder() / "wordpress.json")
+        wordpress_endpoint_var.set(website.endpoint)
+        wordpress_username_var.set(website.username)
+        wordpress_password_var.set(website.application_password)
+        wordpress_league_slug_var.set(website.league_slug)
+        wordpress_season_slug_var.set(website.season_slug)
+        wordpress_auto_var.set("true" if website.auto_publish else "false")
+
+    def save_wordpress_form():
+        website = wordpress_settings_from_form()
+        save_wordpress_settings(league_folder() / "wordpress.json", website)
+        status.set("Saved the WordPress connection for this league profile.")
+
+    def preview_wordpress_payload():
+        try:
+            payload = build_wordpress_payload(league_folder(), wordpress_settings_from_form())
+            messagebox.showinfo(
+                "WordPress Publish Preview",
+                f"League: {payload['league']['name']}\nSlug: {payload['league']['slug']}\nSeason: {payload['season']['name']}\nSchedule rounds: {len(payload['schedule'])}\nCompleted races: {len(payload['results'])}",
+            )
+        except Exception as error:
+            messagebox.showerror("WordPress preview unavailable", str(error))
+
+    def publish_wordpress_now():
+        try:
+            website = wordpress_settings_from_form()
+            save_wordpress_settings(league_folder() / "wordpress.json", website)
+            result = publish_league_to_wordpress(league_folder(), website)
+            status.set(f"Published {result.get('league')} / {result.get('season')} to realisticgamingcrew.com.")
+            messagebox.showinfo("Website Published", "The league schedule, results, standings, and driver stats are now on WordPress.")
+        except Exception as error:
+            messagebox.showerror("WordPress publish failed", str(error))
+
+    website_actions = frame(website_panel, bg="#0b1520")
+    website_actions.grid(row=5, column=0, columnspan=4, sticky="ew", padx=10, pady=(7, 10))
+    button(website_actions, text="Save Website Connection", command=save_wordpress_form, color="#334b64").pack(side="left", padx=(0, 6))
+    button(website_actions, text="Preview Website Data", command=preview_wordpress_payload, color="#334b64").pack(side="left", padx=6)
+    button(website_actions, text="Publish to Website Now", command=publish_wordpress_now, color=GREEN).pack(side="left", padx=6)
+
+    def reload_manager_profile():
+        load_profile_and_schedule()
+        load_current()
+        load_results()
+        load_wordpress_form()
+
+    league_manager_state["load_profile"] = reload_manager_profile
+    reload_manager_profile()
 
 
 def build_league_tab(
@@ -2946,8 +3509,7 @@ def build_league_tab(
     league_tab_state=None,
 ):
     import tkinter as tk
-    from tkinter import filedialog
-    from tkinter import simpledialog
+    from tkinter import filedialog, simpledialog, ttk
 
     existing = launcher_defaults(existing or {})
     sim_racer_hub_state = sim_racer_hub_state if sim_racer_hub_state is not None else {}
@@ -3038,7 +3600,7 @@ def build_league_tab(
 
     output_box = tk.Text(
         parent,
-        height=18,
+        height=12,
         wrap="none",
         bg="#08111a",
         fg=TEXT_FG,
@@ -3233,6 +3795,11 @@ def build_league_tab(
             career_output=data["VELOCITY_CAREER_OUTPUT"],
             drivers_output=data["VELOCITY_DRIVERS_OUTPUT"],
             schedule_output=data["VELOCITY_SCHEDULE_OUTPUT"],
+            manager_folder=(
+                str(ROOT / "league" / league_folder_slug(get_profile_name() or "default"))
+                if not dry_run and get_profile_name
+                else ""
+            ),
             dry_run=dry_run,
         )
         combined_output = result.stdout
@@ -3270,10 +3837,10 @@ def build_league_tab(
         color=GREEN,
     ).pack(side="left", padx=4)
 
-    output_box.pack(fill="both", expand=True, padx=14, pady=(8, 0))
+    output_box.pack(fill="x", expand=False, padx=14, pady=(8, 0))
 
     editor_panel = frame(parent, bg="#0b1520")
-    editor_panel.pack(fill="both", expand=True, padx=14, pady=(4, 14))
+    editor_panel.pack(fill="x", expand=False, padx=14, pady=(4, 14))
     label(
         editor_panel,
         text="League Driver Profile Editor",
@@ -3296,7 +3863,7 @@ def build_league_tab(
     ).pack(fill="x", padx=12, pady=(0, 8))
 
     editor_body = frame(editor_panel, bg="#0b1520")
-    editor_body.pack(fill="both", expand=True, padx=12, pady=(0, 12))
+    editor_body.pack(fill="x", expand=False, padx=12, pady=(0, 12))
 
     list_panel = frame(editor_body, bg="#0b1520")
     list_panel.pack(side="left", fill="both", expand=False, padx=(0, 14))
@@ -3310,7 +3877,7 @@ def build_league_tab(
     ).pack(fill="x", pady=(0, 4))
     driver_list = tk.Listbox(
         list_panel,
-        height=14,
+        height=18,
         width=34,
         bg=FIELD_BG,
         fg=TEXT_FG,
@@ -3603,7 +4170,36 @@ def build_league_tab(
         padx=6,
     )
 
+    driver_stats_panel = frame(parent, bg="#0b1520")
+    driver_stats_panel.pack(fill="x", expand=False, padx=14, pady=(0, 14))
+    driver_stats_header = frame(driver_stats_panel, bg="#0b1520")
+    driver_stats_header.pack(fill="x", padx=12, pady=(10, 6))
+    label(driver_stats_header, text="League Driver Statistics", bg="#0b1520", fg=TEXT_FG, font=("Segoe UI", 12, "bold"), anchor="w").pack(side="left")
+    driver_stats_summary = tk.StringVar(value="Results imported through League Manager will appear here.")
+    label(driver_stats_header, textvariable=driver_stats_summary, bg="#0b1520", fg=MUTED_FG, anchor="w").pack(side="left", padx=14)
+    driver_stats_tree = ttk.Treeview(driver_stats_panel, columns=("pos", "number", "driver", "starts", "wins", "top5", "top10", "poles", "led", "avg", "last", "points"), show="headings", height=10)
+    for key, title, width in (("pos", "Pos", 38), ("number", "#", 42), ("driver", "Driver", 180), ("starts", "Starts", 48), ("wins", "Wins", 42), ("top5", "Top 5", 45), ("top10", "Top 10", 50), ("poles", "Poles", 42), ("led", "Laps Led", 55), ("avg", "Avg Finish", 65), ("last", "Last", 42), ("points", "Points", 55)):
+        driver_stats_tree.heading(key, text=title)
+        driver_stats_tree.column(key, width=width, anchor="w" if key == "driver" else "center")
+    driver_stats_tree.pack(fill="x", expand=False, padx=12, pady=(0, 8))
+
+    def refresh_driver_statistics():
+        driver_stats_tree.delete(*driver_stats_tree.get_children())
+        profile_name = (get_profile_name() if get_profile_name else "") or "default"
+        saved_results = load_race_results(ROOT / "league" / league_folder_slug(profile_name) / "results.json")
+        standings = calculate_standings(saved_results)
+        for position, item in enumerate(standings, start=1):
+            points = float(item["points"])
+            points_text = str(int(points)) if points.is_integer() else str(round(points, 3)).rstrip("0").rstrip(".")
+            driver_stats_tree.insert("", "end", values=(position, item["car_number"], item["name"], item["starts"], item["wins"], item["top_fives"], item["top_tens"], item["poles"], item["laps_led"], item["average_finish"], item.get("last_finish", ""), points_text))
+        driver_stats_tree.configure(height=max(4, min(40, len(standings) or 4)))
+        driver_stats_summary.set(f"{len(standings)} driver(s) built from {len(saved_results)} saved race(s)." if standings else "Results imported through League Manager will appear here.")
+
+    button(driver_stats_header, text="Refresh Stats", command=refresh_driver_statistics, color="#334b64").pack(side="right")
+    league_tab_state["refresh_driver_statistics"] = refresh_driver_statistics
+
     load_driver_profiles()
+    refresh_driver_statistics()
 
 
 def build_help_tab(

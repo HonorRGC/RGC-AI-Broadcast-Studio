@@ -500,7 +500,20 @@ def test_overlay_shows_computed_laps_down_when_car_is_truly_lapped():
     state = OverlayStateBuilder().build_from_telemetry(LappedTelemetry()).to_dict()
 
     assert state["leaderboard"][1]["interval"] == "-1 lap"
-    assert state["leaderboard"][2]["interval"] == "-2 laps"
+    assert state["leaderboard"][2]["interval"] == "-1 lap"
+
+
+def test_overlay_uses_track_progress_to_avoid_false_two_laps_down():
+    class PitCycleTelemetry(OverlayTelemetry):
+        def get_results(self):
+            return [
+                {"CarIdx": 3, "Position": 0, "LapsComplete": 50, "Time": 0.0, "LapDistPct": 0.10},
+                {"CarIdx": 7, "Position": 1, "LapsComplete": 48, "Time": 34.2, "LapDistPct": 0.90},
+            ]
+
+    state = OverlayStateBuilder().build_from_telemetry(PitCycleTelemetry()).to_dict()
+
+    assert state["leaderboard"][1]["interval"] == "-1 lap"
 
 
 def test_overlay_shows_explicit_laps_down_before_time_gap():

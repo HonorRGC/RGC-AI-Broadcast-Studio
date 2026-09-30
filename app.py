@@ -10,6 +10,8 @@ from config import (
     CRANK_IT_UP_SPONSOR_GRAPHIC,
     FINAL_RESULTS_SPONSOR_NAME,
     FINAL_RESULTS_SPONSOR_LOGO,
+    LEAGUE_DRIVERS_CSV,
+    LEAGUE_MANAGER_ENABLED,
     LEAGUE_PLAYOFF_CUTOFF,
     OVERLAY_BRAND_GRAPHICS,
     OVERLAY_HOST,
@@ -49,6 +51,7 @@ from production.non_race_presentation import (
     QualifyingCameraDirector,
 )
 from production.live_broadcast_validator import LiveBroadcastValidator
+from production.league_results_recorder import AutomaticLeagueResultsRecorder
 from production.overlay import OverlayServer, OverlayStateBuilder
 from production.multiclass import build_multiclass_context
 from production.car_paint_preview import ensure_preview_file
@@ -362,6 +365,13 @@ def run_source(
     recorded_broadcast=False,
 ):
     recorded_audio_busy_until = 0.0
+    driver_csv_path = Path(LEAGUE_DRIVERS_CSV)
+    if not driver_csv_path.is_absolute():
+        driver_csv_path = Path(__file__).resolve().parent / driver_csv_path
+    league_results_recorder = AutomaticLeagueResultsRecorder(
+        enabled=LEAGUE_MANAGER_ENABLED and not recorded_broadcast,
+        league_folder=driver_csv_path.parent,
+    )
     while source.is_connected():
         if capture_recorder:
             capture_recorder.record_snapshot(source)
@@ -490,6 +500,10 @@ def run_source(
             engine,
             overlay_server,
         )
+        league_results_message = league_results_recorder.update(source, engine)
+        if league_results_message:
+            print(f"LEAGUE MANAGER: {league_results_message}")
+            publish_producer_event(overlay_server, "info", "League Manager", league_results_message)
         if item and manual_camera_control:
             if hasattr(source, "next_snapshot"):
                 source.next_snapshot()
@@ -3245,6 +3259,12 @@ def build_producer_pit_road_rows(source, engine, limit=12):
                 "position_summary": pit_position_summary(
                     state,
                     current_positions.get(getattr(state, "car_idx", None), 0),
+                ),
+                "pit_stop_count": safe_int(
+                    getattr(state, "pit_stop_count", 0), 0
+                ),
+                "green_flag_pit_stop_count": safe_int(
+                    getattr(state, "green_flag_pit_stop_count", 0), 0
                 ),
             }
         )

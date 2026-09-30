@@ -1090,6 +1090,33 @@ def test_green_flag_pit_cycle_update_reports_recent_stops_after_start():
     assert "2 cars have made green flag stops" in item.message
 
 
+def test_green_pit_cycle_explains_leader_who_still_owes_a_stop():
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    engine.race_director.phase = RacePhase.GREEN
+    engine.race_intelligence.race_state.laps_remaining = 35
+    engine.pit_strategy_detector.driver_states = {
+        1: SimpleNamespace(car_idx=1, last_pit_lap=30),
+        2: SimpleNamespace(car_idx=2, last_pit_lap=31),
+    }
+
+    queued = engine._queue_green_pit_cycle_update(
+        [],
+        [
+            {"CarIdx": 0, "Position": 1},
+            {"CarIdx": 1, "Position": 2},
+            {"CarIdx": 2, "Position": 3},
+        ],
+        {0: {"name": "Long Runner", "number": "40"}},
+        [False, False, False],
+        current_lap=32,
+    )
+
+    assert queued is True
+    item = engine.broadcast_queue.next_item()
+    assert "Long Runner in the number 40 has not stopped in this cycle" in item.message
+    assert "still owes service" in item.message
+
+
 def test_green_flag_pit_cycle_does_not_start_from_spread_out_stops():
     engine = BroadcastEngine(openai_director=SilentOpenAI())
     engine.race_director.phase = RacePhase.GREEN
