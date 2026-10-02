@@ -33,6 +33,7 @@ class OverlaySpy:
             graphics=["/assets/rgc.png"],
             **kwargs,
         )
+        return {"video_url": ""}
 
     def clear_special_presentation(self):
         self.special = None
@@ -254,7 +255,7 @@ def test_producer_can_show_and_clear_caution_review_slate():
     assert overlay.special["kind"] == "caution_review_slate"
     assert overlay.special["title"] == "Caution Review"
     assert overlay.special["graphics"] == ["/assets/rgc.png"]
-    assert audio.stops == 1
+    assert audio.stops == 0
     assert "review slate is live" in overlay.events[0]["message"].lower()
 
     handle_producer_command(
@@ -269,3 +270,22 @@ def test_producer_can_show_and_clear_caution_review_slate():
 
     assert overlay.special is None
     assert "cleared" in overlay.events[1]["message"].lower()
+
+
+def test_video_caution_review_slate_stops_caution_music():
+    overlay = OverlaySpy()
+    overlay.show_caution_review_slate = lambda **_kwargs: {"video_url": "/assets/review.mp4"}
+    audio = AudioBedSpy()
+
+    handle_producer_command(
+        "caution_review_slate_on",
+        {},
+        overlay,
+        source=SimpleNamespace(),
+        engine=None,
+        booth=None,
+        camera_director=SimpleNamespace(),
+        caution_audio_bed=audio,
+    )
+
+    assert audio.stops == 1

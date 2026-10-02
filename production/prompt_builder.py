@@ -197,6 +197,19 @@ class PromptBuilder:
                 "recovering, or losing ground, points position and points-to-next "
                 "are useful if they raise the stakes. Use at most one stat in the call."
             )
+            lines.append(
+                "Stat repetition: do not reuse a driver's previous-race finish in nearby calls. "
+                "Rotate to points position, points gap, season record, track history, sponsor, "
+                "home area, or no stat at all. For two drivers in the same battle, compare their "
+                "championship positions and explain the possible points swing when verified data "
+                "supports it; include a configured win bonus only when it is explicitly available."
+            )
+        lines.append(
+            "Fuel-strategy accuracy: do not say a driver must pit again or cannot reach the finish "
+            "unless exact fuel-range evidence is supplied. If only stint length and laps remaining "
+            "are known, say the stop may be the last one or that the team appears to be inside its "
+            "observed window, and clearly leave room for fuel saving or a different strategy."
+        )
         track_profile = (race_knowledge or {}).get("track_profile") or {}
         if track_profile.get("style") == "pack_draft":
             lines.append(

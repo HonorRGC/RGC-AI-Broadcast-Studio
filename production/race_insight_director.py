@@ -1,7 +1,9 @@
 from dataclasses import dataclass
+from pathlib import Path
 import random
 
 from production.track_style import is_true_pack_drafting_track
+from production.league_manager import load_scoring_system
 
 
 @dataclass(frozen=True)
@@ -17,7 +19,7 @@ class RaceInsight:
 class RaceInsightDirector:
     """Adds non-repeating racing knowledge at natural breaks."""
 
-    def __init__(self, seed=None):
+    def __init__(self, seed=None, scoring_path=None):
         self.random = random.Random(seed)
         self.used_topics = set()
         self.last_green_insight_lap = 0
@@ -25,6 +27,11 @@ class RaceInsightDirector:
         self.last_stat_filler_lap = 0
         self.sent_stat_keys = {}
         self.points_standings_sent = False
+        self.scoring = (
+            load_scoring_system(scoring_path)
+            if scoring_path and Path(scoring_path).exists()
+            else None
+        )
 
     def long_green_insight(self, race_state, current_lap, track_info=None):
         if not race_state or not race_state.is_green:
@@ -118,6 +125,18 @@ class RaceInsightDirector:
         if len(standings) < 3:
             return None
 
+        projected = self.projected_championship_battle(ordered, driver_lookup, standings)
+        if projected:
+            self.points_standings_sent = True
+            return RaceInsight(
+                message=projected["message"],
+                category=f"race_stat:points_standings:{current_lap // 10}",
+                priority=7,
+                speaker="jeff",
+                camera_target_car_idx=projected["target"],
+                participant_car_indices=projected["participants"],
+            )
+
         leader = standings[0]
         contenders = standings[1:4]
         leader_name = leader["name"]
@@ -173,12 +192,71 @@ class RaceInsightDirector:
                     "name": name or f"Car {number}",
                     "number": number,
                     "points_to_next": self.safe_int((stats or {}).get("points_to_next"), 0),
+                    "points": self.safe_float((stats or {}).get("points"), 0.0),
                     "wins": self.safe_int((stats or {}).get("wins"), 0),
                     "top_fives": self.safe_int((stats or {}).get("top_fives"), 0),
                 }
             )
         rows.sort(key=lambda row: row["points_position"])
         return rows
+
+    def projected_championship_battle(self, ordered, driver_lookup, standings):
+        if not self.scoring or len(standings) < 2:
+            return None
+        live = {}
+        for position, car in enumerate(ordered, start=1):
+            car_idx = car.get("CarIdx")
+            driver = (driver_lookup or {}).get(car_idx, {}) or {}
+            key = self.normalized_name(driver.get("name"))
+            if key:
+                live[key] = (position, car_idx)
+
+        win_bonus = sum(
+            float(rule.points)
+            for rule in self.scoring.bonus_rules
+            if rule.enabled and any(word in rule.name.casefold() for word in ("win", "victory"))
+        )
+        for lower in standings[1:8]:
+            upper_position = lower["points_position"] - 1
+            upper = next((row for row in standings if row["points_position"] == upper_position), None)
+            if not upper or upper["points"] <= 0 or lower["points"] <= 0:
+                continue
+            upper_live = live.get(self.normalized_name(upper["name"]))
+            lower_live = live.get(self.normalized_name(lower["name"]))
+            if not upper_live or not lower_live:
+                continue
+            upper_finish, upper_idx = upper_live
+            lower_finish, lower_idx = lower_live
+            upper_gain = float(self.scoring.finish_points.get(upper_finish, 0))
+            lower_gain = float(self.scoring.finish_points.get(lower_finish, 0))
+            if upper_finish == 1:
+                upper_gain += win_bonus
+            if lower_finish == 1:
+                lower_gain += win_bonus
+            entering_gap = upper["points"] - lower["points"]
+            projected_gap = (upper["points"] + upper_gain) - (lower["points"] + lower_gain)
+            if abs(projected_gap - entering_gap) < 1:
+                continue
+            if projected_gap < 0:
+                consequence = f"would move {lower['name']} ahead by about {abs(projected_gap):.0f} points"
+            else:
+                consequence = f"would leave them about {projected_gap:.0f} points apart"
+            bonus_text = (
+                f", including the configured {win_bonus:.0f}-point win bonus"
+                if win_bonus and (upper_finish == 1 or lower_finish == 1)
+                else ""
+            )
+            return {
+                "message": (
+                    f"There is a championship fight developing on track between {upper['name']} "
+                    f"and {lower['name']}. They entered separated by about {abs(entering_gap):.0f} "
+                    f"points, and their current running positions{bonus_text} {consequence}. "
+                    "That projection is unofficial until every bonus and penalty is applied."
+                ),
+                "target": lower_idx,
+                "participants": (upper_idx, lower_idx),
+            }
+        return None
 
     def closest_battle_insight(self, ordered, driver_lookup, current_lap):
         best = None

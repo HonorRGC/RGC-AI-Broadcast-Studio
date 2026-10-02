@@ -76,7 +76,8 @@ class BroadcastEngine:
         self.race_brain = RaceBrain()
         self.race_director = RaceDirector()
         self.race_intelligence = RaceIntelligence()
-        self.race_insight_director = RaceInsightDirector()
+        scoring_path = self.league_context.season_stats_csv_path.parent / "scoring.json"
+        self.race_insight_director = RaceInsightDirector(scoring_path=scoring_path)
         self.racecraft_director = RacecraftDirector()
         self.storyline_director = StorylineDirector()
         self.action_detector = ActionDetector()
@@ -3753,6 +3754,17 @@ class BroadcastEngine:
     def _queue_booth_follow_up(self, item, race_state):
         laps_remaining = self.safe_int(getattr(race_state, "laps_remaining", 999), 999)
         if laps_remaining <= 3:
+            return
+
+        # Routine battle calls already identify both cars and immediately show
+        # the fight. A second analyst call here was often perceived as the same
+        # battle being called twice. Save booth follow-ups for lead changes and
+        # larger driver story developments.
+        if str(getattr(item, "story_type", "") or "") in {
+            "battle", "battle_for_top_five", "battle_for_top_ten",
+            "side_by_side", "three_car_battle", "live_side_by_side",
+            "live_three_wide", "live_pass_clear", "live_pressure_battle",
+        }:
             return
 
         follow_up = self.booth_followup_director.follow_up_for(

@@ -1,4 +1,5 @@
 from production.race_insight_director import RaceInsightDirector
+from production.league_manager import ScoringRule, ScoringSystem, save_scoring_system
 from production.race_state_tracker import RaceState
 
 
@@ -275,6 +276,44 @@ def test_race_stat_filler_can_reset_championship_standings():
 
     second = director.race_stat_filler(results, drivers, state, current_lap=30)
     assert second is None or not second.category.startswith("race_stat:points_standings")
+
+
+def test_championship_call_projects_live_swing_and_configured_win_bonus(tmp_path):
+    scoring_path = tmp_path / "scoring.json"
+    save_scoring_system(
+        scoring_path,
+        ScoringSystem(
+            finish_points={1: 40, 2: 35, 3: 34},
+            bonus_rules=[ScoringRule("Race Win", 10)],
+        ),
+    )
+    director = RaceInsightDirector(seed=9, scoring_path=scoring_path)
+    state = RaceState(
+        current_lap=22, total_laps=80, laps_remaining=58,
+        green_lap_count=14, is_green=True,
+    )
+    results = [
+        {"CarIdx": 2, "Position": 0, "Time": 0.0},
+        {"CarIdx": 1, "Position": 1, "Time": 1.0},
+        {"CarIdx": 3, "Position": 2, "Time": 2.0},
+    ]
+    drivers = {
+        1: {"name": "Points Leader", "number": "1", "league_stats_by_scope": [
+            {"stats_scope": "season", "points_position": "1", "points": "100"}
+        ]},
+        2: {"name": "Title Challenger", "number": "2", "league_stats_by_scope": [
+            {"stats_scope": "season", "points_position": "2", "points": "95", "points_to_next": "5"}
+        ]},
+        3: {"name": "Third Driver", "number": "3", "league_stats_by_scope": [
+            {"stats_scope": "season", "points_position": "3", "points": "80"}
+        ]},
+    }
+
+    insight = director.race_stat_filler(results, drivers, state, current_lap=22)
+
+    assert "championship fight" in insight.message
+    assert "10-point win bonus" in insight.message
+    assert "unofficial" in insight.message.lower()
 
 
 def test_race_stat_filler_waits_for_green_run():

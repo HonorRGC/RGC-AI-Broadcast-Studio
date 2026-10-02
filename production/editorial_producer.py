@@ -278,6 +278,23 @@ class EditorialProducer:
         return None
 
     def build_story_id(self, item):
+        battle_types = {
+            "battle", "battle_for_lead", "battle_for_top_five",
+            "battle_for_top_ten", "side_by_side", "three_car_battle",
+            "live_side_by_side", "live_three_wide", "live_pass_clear",
+            "live_pressure_battle",
+        }
+        participants = tuple(
+            sorted(
+                str(value)
+                for value in (getattr(item, "participant_car_indices", ()) or ())
+                if value is not None
+            )
+        )
+        if item.story_type in battle_types and participants:
+            # Reversing which driver is listed first is still the same battle.
+            # Keep one stable ID so lead/color cannot call it as two stories.
+            return f"battle:{':'.join(participants)}"
         parts = [
             item.story_type or "story",
             item.driver_name or "",

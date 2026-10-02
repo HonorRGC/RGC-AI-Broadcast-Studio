@@ -12,6 +12,8 @@ class BroadcastStoryProducer:
         self.driver_angle_history = {}
         self.driver_start_position_mentions = {}
         self.start_position_cooldown_seconds = 20 * 60
+        self.driver_previous_result_mentions = {}
+        self.previous_result_cooldown_seconds = 12 * 60
 
     def frame(self, item, race_state=None, race_knowledge=None):
         if not item:
@@ -118,6 +120,15 @@ class BroadcastStoryProducer:
                 "angle for this driver."
             )
         self.remember_angle(driver_key, angle)
+
+        if self.has_previous_result_context(race_knowledge):
+            if self.can_mention_previous_result(driver_key):
+                self.driver_previous_result_mentions[driver_key] = time.time()
+            else:
+                notes.append(
+                    "Do not mention this driver's previous-race finish in this call; "
+                    "it was available to a recent story. Use another verified fact or no stat."
+                )
 
         setattr(item, "producer_notes", notes)
         return item
@@ -263,6 +274,18 @@ class BroadcastStoryProducer:
             if "championship points" in text or "points:" in text:
                 return True
         return False
+
+    def has_previous_result_context(self, race_knowledge):
+        return any(
+            "last race finish" in str(line or "").casefold()
+            for line in (race_knowledge or {}).get("league_driver_context") or ()
+        )
+
+    def can_mention_previous_result(self, driver_key):
+        if not driver_key:
+            return True
+        last = self.driver_previous_result_mentions.get(driver_key, 0.0)
+        return time.time() - last >= self.previous_result_cooldown_seconds
 
     def can_mention_start_position(self, driver_key):
         if not driver_key:

@@ -27,6 +27,8 @@ class ReplayTelemetry:
         self.controller_session_marker_observed = None
         self.controller_frame_polled_at = None
         self.manual_review_hold = False
+        self.manual_review_started_at = None
+        self.manual_review_start_timestamp = None
         self.pending_frame_reanchor = False
         self.pending_live_target = None
         self._lap_history_cache_index = -1
@@ -52,7 +54,46 @@ class ReplayTelemetry:
         return not self.controller or self.playback_ready
 
     def set_manual_review_hold(self, active):
-        self.manual_review_hold = bool(active)
+        active = bool(active)
+        if active and not self.manual_review_hold:
+            snapshot = self.current_snapshot()
+            self.manual_review_started_at = self.clock()
+            self.manual_review_start_timestamp = (
+                float(snapshot.timestamp or 0.0) if snapshot is not None else None
+            )
+        elif not active and self.manual_review_hold:
+            # Keep the start markers until return_to_live() consumes them. The
+            # producer clears manual camera control immediately after sending
+            # that command, so clearing them here would lose the review time.
+            pass
+        self.manual_review_hold = active
+
+    def _review_live_target_index(self):
+        """Locate where playback would be if the review had not stopped it."""
+        if not self.snapshots or self.manual_review_started_at is None:
+            return self.current_index
+        snapshot = self.current_snapshot()
+        if snapshot is None:
+            return self.current_index
+        start_timestamp = self.manual_review_start_timestamp
+        if start_timestamp is None:
+            start_timestamp = float(snapshot.timestamp or 0.0)
+        elapsed = max(0.0, self.clock() - float(self.manual_review_started_at))
+        target_timestamp = float(start_timestamp) + elapsed
+        session_num = int(snapshot.session_num)
+        session_type = self._session_type_family(snapshot.session_type)
+        best_index = self.current_index
+        for index in range(self.current_index, len(self.snapshots)):
+            candidate = self.snapshots[index]
+            if int(candidate.session_num) != session_num:
+                break
+            if self._session_type_family(candidate.session_type) != session_type:
+                break
+            if float(candidate.timestamp or 0.0) <= target_timestamp:
+                best_index = index
+            else:
+                break
+        return best_index
 
     def _controller_frame_number(self):
         if not self.controller:
@@ -445,6 +486,8 @@ class ReplayTelemetry:
         self.controller_session_marker_observed = None
         self.controller_frame_polled_at = None
         self.manual_review_hold = False
+        self.manual_review_started_at = None
+        self.manual_review_start_timestamp = None
         self.pending_frame_reanchor = False
         self.pending_live_target = None
         self._lap_history_cache_index = -1
@@ -532,6 +575,12 @@ class ReplayTelemetry:
 
     def return_to_live(self):
         if self.controller:
+            target_index = self._review_live_target_index()
+            if target_index > self.current_index:
+                # Calls that happened while the producer was reviewing an
+                # incident are stale now. Do not dump them into the restart.
+                self._mark_events_before(target_index + 1)
+                self.current_index = target_index
             snapshot = self.current_snapshot()
             if snapshot is None:
                 return False
@@ -549,6 +598,8 @@ class ReplayTelemetry:
                     "request_session_time": float(self.controller.get_session_time()),
                     "requested_at": self.clock(),
                 }
+                self.manual_review_started_at = None
+                self.manual_review_start_timestamp = None
             return accepted
         return False
 

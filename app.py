@@ -1256,15 +1256,19 @@ def handle_producer_command(
         return
 
     if command == "caution_review_slate_on":
-        stopper = getattr(caution_audio_bed, "stop", None)
-        if stopper:
-            stopper()
         shower = getattr(overlay_server, "show_caution_review_slate", None)
+        presentation = None
         if shower:
-            shower(
+            presentation = shower(
                 sponsor_name=payload.get("sponsor_name", ""),
                 sponsor_slot=payload.get("sponsor_slot", ""),
             )
+        # A still review slate is part of the caution presentation, so its
+        # music should continue. A video owns the full-screen audio mix.
+        if (presentation or {}).get("video_url"):
+            stopper = getattr(caution_audio_bed, "stop", None)
+            if stopper:
+                stopper()
         publish_producer_event(
             overlay_server,
             "warning",

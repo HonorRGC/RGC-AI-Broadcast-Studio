@@ -422,6 +422,30 @@ def test_return_to_live_waits_for_async_seek_before_reanchoring(tmp_path):
     assert replay.next_snapshot().lap == 6
 
 
+def test_return_to_live_catches_up_time_spent_in_manual_review(tmp_path):
+    path = tmp_path / "review_catch_up.jsonl"
+    snapshots = [
+        {"lap": lap, "timestamp": 1000.0 + lap, "session_num": 2,
+         "session_type": "Race", "session_time": 10.0 + lap}
+        for lap in range(1, 9)
+    ]
+    path.write_text("".join(json.dumps(item) + "\n" for item in snapshots), encoding="utf-8")
+    now = [50.0]
+    controller = FakeReplayController(2, 12.0, "Race", replay_frame=720)
+    replay = ReplayTelemetry(path, clock=lambda: now[0]).attach_controller(controller)
+    replay.playback_ready = True
+    replay.current_index = 1
+    replay.set_manual_review_hold(True)
+
+    # Five seconds are spent rewinding and finding the caution. The recorded
+    # race clock should continue in the background even though calls are held.
+    now[0] = 55.0
+    assert replay.return_to_live()
+
+    assert replay.current_snapshot().lap == 7
+    assert controller.seek_calls[-1] == (2, 17.0)
+
+
 def test_return_to_live_confirmation_timeout_cannot_freeze_broadcast(tmp_path):
     path = tmp_path / "return_live_timeout.jsonl"
     snapshots = [

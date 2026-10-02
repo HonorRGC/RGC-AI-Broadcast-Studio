@@ -76,6 +76,7 @@ class DriverStats:
     last_finish: str = ""
     points_position: str = ""
     points_to_next: str = ""
+    points: str = ""
     track_starts: str = ""
     track_wins: str = ""
     best_track_finish: str = ""
@@ -95,6 +96,7 @@ class DriverStats:
             "last_finish": self.last_finish,
             "points_position": self.points_position,
             "points_to_next": self.points_to_next,
+            "points": self.points,
             "track_starts": self.track_starts,
             "track_wins": self.track_wins,
             "best_track_finish": self.best_track_finish,
@@ -274,6 +276,7 @@ class LeagueContext:
             last_finish=self.clean(row.get("last_finish")),
             points_position=self.clean(row.get("points_position") or row.get("points_rank")),
             points_to_next=self.clean(row.get("points_to_next")),
+            points=self.clean(row.get("points") or row.get("total_points") or row.get("tot_pts")),
             track_starts=self.clean(row.get("track_starts")),
             track_wins=self.clean(row.get("track_wins")),
             best_track_finish=self.clean(row.get("best_track_finish")),
