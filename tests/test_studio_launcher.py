@@ -226,6 +226,10 @@ def test_help_guide_documents_driver_mode_and_current_producer_tools():
     assert "Caution Review Slate" in source
     assert "protects the remaining lineup calls" in source
     assert "Do not use Start Broadcast by itself to call a saved replay" in source
+    assert 'text="Download WordPress Plugin"' in source
+    assert 'text="Get Trading Paints"' in source
+    assert 'text="Reset Broadcast Settings"' in source
+    assert "def reset_broadcast_settings():" in source
 
 
 def test_studio_mousewheel_scrolls_from_full_window():

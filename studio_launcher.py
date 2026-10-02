@@ -80,6 +80,11 @@ WINDOWS_APP_USER_MODEL_ID = "RGC.AIBroadcastStudio.Studio"
 WINDOW_ICON_PATH = ROOT / "assets" / "rgc_ai_broadcast_studio.ico"
 WINDOW_ICON_IMAGE_PATH = ROOT / "assets" / "rgc_ai_broadcast_studio_icon.png"
 GITHUB_RELEASES_URL = "https://github.com/HonorRGC/RGC-AI-Broadcast-Studio/releases"
+WORDPRESS_PLUGIN_DOWNLOAD_URL = (
+    "https://github.com/HonorRGC/RGC-AI-Broadcast-Studio/releases/latest/download/"
+    "rgc-league-manager-0.3.0.zip"
+)
+TRADING_PAINTS_INSTALL_URL = "https://www.tradingpaints.com/page/Install"
 GITHUB_LATEST_RELEASE_API = (
     "https://api.github.com/repos/HonorRGC/RGC-AI-Broadcast-Studio/releases/latest"
 )
@@ -2507,6 +2512,33 @@ def run_gui():
             status.set(f"Saved settings to {ENV_PATH}")
         refresh_health()
 
+    def reset_broadcast_settings():
+        profile_name = profile_var.get().strip()
+        target = f"profile '{profile_name}'" if profile_name else "the active settings"
+        if not messagebox.askyesno(
+            "Reset broadcast settings",
+            (
+                f"Reset {target} to the same clean defaults used for a new profile?\n\n"
+                "This clears API keys, voice IDs, sponsor names and media, music, Discord settings, "
+                "and other broadcast options shown in the Studio. Existing league schedules, saved "
+                "results, driver files, and uploaded media files are not deleted."
+            ),
+        ):
+            return
+        defaults = (
+            new_profile_defaults(profile_name)
+            if profile_name
+            else launcher_defaults()
+        )
+        apply_values_to_form(defaults)
+        save_env_file(defaults)
+        if profile_name:
+            save_profile(profile_name, defaults)
+        refresh_health()
+        status.set(
+            f"Reset {target} to clean default broadcast settings. Existing league data was preserved."
+        )
+
     def create_profile_from_name():
         name = profile_name_var.get().strip()
         if not name:
@@ -2806,6 +2838,12 @@ def run_gui():
         padx=6,
         pady=8,
     )
+    button(
+        profile_action_bar,
+        text="Reset Broadcast Settings",
+        command=reset_broadcast_settings,
+        color="#8b6a1c",
+    ).pack(side="right", padx=6, pady=8)
     volume_var = tk.IntVar(value=int(existing.get("STUDIO_VOLUME", existing.get("PRACTICE_MUSIC_VOLUME", "65")) or 65))
 
     def update_volume_label(value):
@@ -4288,6 +4326,18 @@ def build_help_tab(
         command=lambda: open_external_link(GITHUB_RELEASES_URL),
         color="#334b64",
     ).pack(side="left", padx=(0, 8))
+    button(
+        link_row,
+        text="Download WordPress Plugin",
+        command=lambda: open_external_link(WORDPRESS_PLUGIN_DOWNLOAD_URL),
+        color="#334b64",
+    ).pack(side="left", padx=(0, 8))
+    button(
+        link_row,
+        text="Get Trading Paints",
+        command=lambda: open_external_link(TRADING_PAINTS_INSTALL_URL),
+        color="#334b64",
+    ).pack(side="left", padx=(0, 8))
 
     checklist_panel = frame(content, bg="#0b1520")
     checklist_panel.pack(fill="x", pady=(4, 14))
@@ -4532,6 +4582,9 @@ def build_help_tab(
         To make one, type a name in New Profile Name and click Create Profile. Later, choose it from the Profile list and click Load Profile.
         If a profile is selected, Save Settings updates both the active settings file and that selected profile.
         Use Delete beside the profile list to remove old test profiles you no longer need.
+        Reset Broadcast Settings returns the selected profile—or the active settings when no profile is selected—to clean new-profile defaults.
+        The reset clears keys, voices, sponsors, music, and other broadcast options, but it does not delete league schedules, saved results,
+        driver files, or uploaded media files. Review the confirmation carefully before continuing.
         Before race night, load the correct profile and refresh Broadcast Health.
         """,
     )

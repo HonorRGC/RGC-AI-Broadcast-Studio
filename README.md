@@ -38,6 +38,8 @@ Add the desired API keys and voice IDs to `.env`. Generated audio and telemetry 
 
 For outside testers, the preferred path is now a Windows `Setup.exe`; see [docs/WINDOWS_INSTALLER_BUILD.md](docs/WINDOWS_INSTALLER_BUILD.md). For a full step-by-step install and key setup tutorial, see [docs/INSTALL_AND_SETUP_GUIDE.md](docs/INSTALL_AND_SETUP_GUIDE.md). For a league admin handoff, see [docs/ADMIN_TESTER_HANDOFF.md](docs/ADMIN_TESTER_HANDOFF.md). The tester ZIP path in [docs/TESTER_QUICKSTART.md](docs/TESTER_QUICKSTART.md) remains available as a fallback while the installer is being polished.
 
+WordPress league pages use the separately installable [RGC League Manager plugin ZIP](https://github.com/HonorRGC/RGC-AI-Broadcast-Studio/releases/latest/download/rgc-league-manager-0.3.0.zip). In WordPress, open **Plugins → Add New → Upload Plugin**, upload the ZIP, activate it, then open **Tools → RGC League Manager** for its endpoint and shortcode instructions.
+
 ## Early desktop launcher
 
 An early Windows-friendly launcher is available:

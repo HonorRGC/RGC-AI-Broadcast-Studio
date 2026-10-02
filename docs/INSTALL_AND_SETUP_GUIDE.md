@@ -420,6 +420,8 @@ Select a driver from Latest Race Results to review position, bonus, penalty, sta
 
 Install the RGC League Manager WordPress plugin and create a dedicated WordPress Application Password. Enter the REST endpoint, WordPress username, Application Password, league slug, and season slug. One WordPress account/Application Password can publish multiple leagues, but each league profile needs a unique league slug.
 
+Download the plugin ZIP from the **Download WordPress Plugin** button in the Studio Help tab or from the [latest GitHub release](https://github.com/HonorRGC/RGC-AI-Broadcast-Studio/releases/latest/download/rgc-league-manager-0.3.0.zip). In WordPress, open **Plugins → Add New → Upload Plugin**, select the ZIP, install it, and activate it.
+
 Use **Preview Website Data** first. **Publish to Website Now** sends the schedule, results, standings, and driver statistics. When **Publish Automatically After Race** is true, publishing runs after the stabilized result has been saved. Add the plugin shortcode to a normal full-width WordPress page to display the league.
 
 Velocity or Sim Racer Hub imports can seed the roster, schedule, season, and career files. League Manager then builds its own saved-results and championship history for future races in that profile.
