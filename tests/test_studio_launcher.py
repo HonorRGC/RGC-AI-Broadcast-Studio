@@ -216,9 +216,13 @@ def test_start_broadcast_auto_opens_producer_assist():
 def test_help_guide_documents_driver_mode_and_current_producer_tools():
     source = Path("studio_launcher.py").read_text(encoding="utf-8")
 
-    assert '"10. Driver Mode and recorded broadcasts"' in source
+    assert '"8. League Manager"' in source
+    assert "Use League Manager for This Race" in source
+    assert "Publish Automatically After Race" in source
+    assert "Save Reviewed Driver Points" in source
+    assert '"11. Driver Mode and recorded broadcasts"' in source
     assert "the Studio waits silently until replay frames move" in source
-    assert '"11. Producer Assist broadcast tools"' in source
+    assert '"12. Producer Assist broadcast tools"' in source
     assert "Caution Review Slate" in source
     assert "protects the remaining lineup calls" in source
     assert "Do not use Start Broadcast by itself to call a saved replay" in source

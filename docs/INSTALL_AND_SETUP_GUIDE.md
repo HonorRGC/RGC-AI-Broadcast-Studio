@@ -388,6 +388,42 @@ Optional Discord race report:
 
 After the race, the Studio waits for the finishing order to stabilize, then posts a Discord recap with a short race breakdown, the top ten, biggest movers, available race stats, and Sim Racer Hub or Velocity results/championship links.
 
+## League Manager
+
+League Manager keeps each profile's league identity, season schedule, scoring system, saved race results, championship standings, driver statistics, and WordPress publishing connection together. Create or load the correct Studio profile before editing League Manager; every profile uses a separate league folder.
+
+### Build the season
+
+1. Enter the league name, short name, season name, and optional iRacing League ID.
+2. Add every scheduled round with its date in `MM-DD-YYYY`, event name, track, configuration, car type, and either a lap count or timed-race minutes.
+3. Optionally add practice, qualifying, and race-start times.
+4. Select an existing schedule row to edit it, then click **Add / Update Round**.
+5. Click **Save League & Schedule**.
+
+**Import Current iRacing Session** reads information exposed by the currently running simulator. It does not ask for or store an iRacing password.
+
+### Configure points
+
+Enter finishing points as `Position=Points`, one position per line. Enter bonus and penalty rules as `Name=Points`. Use **Preview / Validate** before saving. If the winner receives additional points, add an explicit rule such as `Race Win=10`; live championship projections can then include that bonus.
+
+### Automatically save a completed race
+
+Turn on **Use League Manager for This Race** in Broadcast Settings before starting the live event. After the checkered flag, the Studio waits for the classified finishing order to stabilize. With an AI broadcast, it saves after the post-race presentation finishes. Without AI commentary, it waits for the field to complete the final lap and for results to settle.
+
+Driver Mode can still save League Manager results because it runs during the original live race. Playing the recorded broadcast afterward does not add the result again. Keep iRacing and the Studio open until the League Manager save confirmation appears.
+
+If automatic saving did not run, use **Import Completed iRacing Race** while the completed live session is still available. **Reload Saved Results** refreshes the display. Choose a round from **Review Round** to inspect older results.
+
+Select a driver from Latest Race Results to review position, bonus, penalty, stage, and manual-adjustment points. **Save Reviewed Driver Points** recalculates that driver's total and rebuilds the standings. Publish only after the points review is complete.
+
+### Publish to WordPress
+
+Install the RGC League Manager WordPress plugin and create a dedicated WordPress Application Password. Enter the REST endpoint, WordPress username, Application Password, league slug, and season slug. One WordPress account/Application Password can publish multiple leagues, but each league profile needs a unique league slug.
+
+Use **Preview Website Data** first. **Publish to Website Now** sends the schedule, results, standings, and driver statistics. When **Publish Automatically After Race** is true, publishing runs after the stabilized result has been saved. Add the plugin shortcode to a normal full-width WordPress page to display the league.
+
+Velocity or Sim Racer Hub imports can seed the roster, schedule, season, and career files. League Manager then builds its own saved-results and championship history for future races in that profile.
+
 ## 14. Recommended race-night flow
 
 1. Open iRacing.

@@ -4483,7 +4483,50 @@ def build_help_tab(
         """,
     )
     section(
-        "8. Profiles",
+        "8. League Manager",
+        """
+        League Manager keeps a league's schedule, scoring rules, race results, championship standings, driver statistics,
+        and website connection together inside the selected Studio profile. Create or load the correct Studio profile first;
+        every profile receives its own league folder so two series do not share results or settings.
+
+        League profile and schedule:
+        1. Enter the league name, short name, season name, and optional iRacing League ID.
+        2. Add each round with MM-DD-YYYY date, race name, track, configuration, car type, and either laps or timed-race minutes.
+        3. Practice, qualifying, and race-start times are optional schedule details. Select a saved row to edit it.
+        4. Import Current iRacing Session can fill available league and event information from the running simulator. It does not request or store an iRacing password.
+        5. Click Save League & Schedule after making changes.
+
+        Custom scoring:
+        Enter finishing points as Position=Points, one per line. Add bonus and penalty rules as Name=Points.
+        Preview / Validate checks the system before saving. Include a Race Win bonus here when the league awards extra
+        winner points; championship projections can then account for it. Save the scoring system before importing results.
+
+        Results and standings:
+        Turn on Use League Manager for This Race in Broadcast Settings before starting the live event. After the checkered
+        flag, the Studio waits for the finishing order to stabilize and saves the completed results after the post-race
+        broadcast finishes. With AI commentary disabled, it waits for the classified field to finish instead. Driver Mode
+        still records League Manager results because it runs during the live event; playing a recorded broadcast later does
+        not create a second result. Keep the Studio and iRacing session open until the save confirmation appears.
+
+        Import Completed iRacing Race is the manual fallback while the completed live session is still available. Reload
+        Saved Results refreshes the tables. Use Review Round to inspect an older race. Select a driver in Latest Race Results
+        to review position, bonus, penalty, stage, and manual adjustment points. Save Reviewed Driver Points rebuilds the
+        championship immediately. Delete Latest Result is available when a round was imported incorrectly.
+
+        WordPress publishing:
+        Install the RGC League Manager WordPress plugin, create one dedicated WordPress Application Password, and enter the
+        endpoint, WordPress username, Application Password, league slug, and season slug. The same WordPress account can
+        publish multiple league profiles; each profile needs its own league slug. Preview Website Data before publishing.
+        Publish to Website Now sends schedule, results, standings, and driver stats. When Publish Automatically After Race is
+        true, publishing runs only after League Manager has saved the stabilized race result. Add the plugin shortcode to a
+        normal full-width WordPress page to display that league.
+
+        Velocity or Sim Racer Hub imports in the League Data tab can seed driver, schedule, season, and career information.
+        League Manager then builds its own results and championship history from races saved in this profile going forward.
+        """,
+    )
+    section(
+        "9. Profiles",
         """
         Profiles let you keep separate setups for league races, official testing, AI broadcast defaults, or human-broadcaster defaults.
         To make one, type a name in New Profile Name and click Create Profile. Later, choose it from the Profile list and click Load Profile.
@@ -4493,7 +4536,7 @@ def build_help_tab(
         """,
     )
     section(
-        "9. Start Broadcast and Producer Assist",
+        "10. Start Broadcast and Producer Assist",
         """
         Start Broadcast runs the broadcast engine, overlay, Producer Assist control room, cameras, and caution replay controls.
         Producer Assist opens automatically after Start Broadcast. If you close it, use the Producer Assist link to open it again.
@@ -4509,7 +4552,7 @@ def build_help_tab(
         """,
     )
     section(
-        "10. Driver Mode and recorded broadcasts",
+        "11. Driver Mode and recorded broadcasts",
         """
         Driver Mode records the live race while you drive without playing broadcaster audio or allowing automatic camera changes.
 
@@ -4526,7 +4569,7 @@ def build_help_tab(
         """,
     )
     section(
-        "11. Producer Assist broadcast tools",
+        "12. Producer Assist broadcast tools",
         """
         Producer Assist is both the AI control room and a tool for human broadcasters. It shows director suggestions, current broadcast focus,
         driver and league statistics, pit strategy, points information, broadcast notes, and camera/replay controls.
@@ -4541,14 +4584,14 @@ def build_help_tab(
         """,
     )
     section(
-        "12. Updates",
+        "13. Updates",
         """
         Use Check for Updates to compare this installed version against the latest GitHub Release.
         Early versions open the release/download page instead of auto-installing. This is safer while the app is still moving quickly.
         """,
     )
     section(
-        "13. Race-night checklist",
+        "14. Race-night checklist",
         """
         Open iRacing, open Streamlabs/OBS, confirm the browser overlay is visible, load your profile,
         refresh Broadcast Health, then start during practice. Run a short smoke test before league night:
