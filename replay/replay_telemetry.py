@@ -677,6 +677,24 @@ class ReplayTelemetry:
     def get_car_idx_est_time(self):
         return self._snapshot_list("est_time")
 
+    def get_car_idx_f2_time(self):
+        return self._snapshot_list("f2_time")
+
+    def get_car_idx_rpm(self):
+        return self._snapshot_list("car_rpm")
+
+    def get_car_idx_gear(self):
+        return self._snapshot_list("car_gear")
+
+    def get_car_speed_mph_lookup(self):
+        snapshot = self.current_snapshot()
+        if not snapshot:
+            return {}
+        return {
+            self._integer_key(key): value
+            for key, value in dict(snapshot.car_speed_mph or {}).items()
+        }
+
     def _snapshot_list(self, name):
         snapshot = self.current_snapshot()
         return getattr(snapshot, name) if snapshot else []

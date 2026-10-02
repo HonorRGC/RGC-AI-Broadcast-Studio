@@ -249,6 +249,9 @@ class FeaturedDriver:
     position_delta: int = 0
     interval: str = ""
     speed: str = ""
+    speed_mph: float = 0.0
+    rpm: float = 0.0
+    gear: int = 0
     expires_at: float = 0.0
 
     def to_dict(self):
@@ -268,6 +271,9 @@ class FeaturedDriver:
             "position_delta": self.position_delta,
             "interval": self.interval,
             "speed": self.speed,
+            "speed_mph": self.speed_mph,
+            "rpm": self.rpm,
+            "gear": self.gear,
         }
 
 
@@ -520,7 +526,13 @@ class OverlayStateBuilder:
             green=green,
         )
 
-        full_leaderboard = self.build_leaderboard(results, driver_lookup, session_type)
+        live_intervals = self.telemetry_lookup(telemetry, "get_car_idx_f2_time")
+        full_leaderboard = self.build_leaderboard(
+            results,
+            driver_lookup,
+            session_type,
+            live_intervals=live_intervals,
+        )
         if not full_leaderboard:
             grid_reader = getattr(telemetry, "get_starting_grid", None)
             grid = grid_reader() if callable(grid_reader) else []
@@ -529,6 +541,7 @@ class OverlayStateBuilder:
                     grid,
                     driver_lookup,
                     session_type,
+                    live_intervals=live_intervals,
                 )
         if full_leaderboard:
             self.last_leaderboard = full_leaderboard
@@ -590,7 +603,19 @@ class OverlayStateBuilder:
         except (TypeError, ValueError):
             return 0.0
 
-    def build_leaderboard(self, results, driver_lookup, session_type="Race"):
+    @staticmethod
+    def telemetry_lookup(telemetry, method_name):
+        reader = getattr(telemetry, method_name, None)
+        values = reader() if callable(reader) else []
+        return {index: value for index, value in enumerate(values or [])}
+
+    def build_leaderboard(
+        self,
+        results,
+        driver_lookup,
+        session_type="Race",
+        live_intervals=None,
+    ):
         valid_results = [
             dict(car)
             for car in results or []
@@ -654,6 +679,7 @@ class OverlayStateBuilder:
                         session_type,
                         leader_laps,
                         leader_car,
+                        live_interval=(live_intervals or {}).get(car_idx),
                     ),
                     fastest_lap=fastest_lap,
                     starting_position=starting_position,
@@ -900,6 +926,7 @@ class OverlayStateBuilder:
         session_type,
         leader_laps=0,
         leader_car=None,
+        live_interval=None,
     ):
         if self.is_timed_session(session_type):
             return self.format_lap_time(self.best_lap_value(car))
@@ -907,7 +934,9 @@ class OverlayStateBuilder:
         if explicit_laps_down > 0:
             lap_word = "lap" if explicit_laps_down == 1 else "laps"
             return f"-{explicit_laps_down} {lap_word}"
-        interval = self.format_interval(car)
+        interval = self.format_live_interval(live_interval, display_position)
+        if not interval:
+            interval = self.format_interval(car)
         laps_down = self.computed_laps_down(
             car,
             leader_laps,
@@ -927,6 +956,14 @@ class OverlayStateBuilder:
         # pit cycles and start/finish transitions, cars can briefly sit on
         # opposite sides of the scoring line without being another lap down.
         return "" if display_position == 1 else interval
+
+    def format_live_interval(self, value, display_position=0):
+        if self.safe_int(display_position) == 1:
+            return ""
+        seconds = self.safe_float(value, -1.0)
+        if seconds <= 0 or seconds >= 9999:
+            return ""
+        return f"+{seconds:.3f}"
 
     def explicit_laps_down(self, car):
         for key in ("LapsBehind", "LapsDown"):
@@ -1244,6 +1281,11 @@ class OverlayServer:
                 self.featured_driver
                 and self.featured_driver.expires_at > time.monotonic()
             ):
+                self.refresh_featured_driver_telemetry(
+                    self.featured_driver,
+                    telemetry,
+                    state,
+                )
                 state.featured_driver = self.featured_driver
             else:
                 self.featured_driver = None
@@ -1268,6 +1310,55 @@ class OverlayServer:
             else:
                 self.secondary_stat_panel = None
             self.state = state
+
+    def refresh_featured_driver_telemetry(self, featured, telemetry, state):
+        """Keep the visible driver card tied to the current live car data."""
+        car_idx = self.state_builder.safe_int(featured.car_idx, -1)
+        if car_idx < 0:
+            return
+
+        def array_value(method_name, default=0):
+            reader = getattr(telemetry, method_name, None)
+            values = reader() if callable(reader) else []
+            try:
+                value = values[car_idx]
+            except (IndexError, KeyError, TypeError):
+                return default
+            return default if value is None else value
+
+        featured.rpm = max(
+            0.0,
+            self.state_builder.safe_float(array_value("get_car_idx_rpm")),
+        )
+        featured.gear = self.state_builder.safe_int(
+            array_value("get_car_idx_gear"),
+            0,
+        )
+        speed_reader = getattr(telemetry, "get_car_speed_mph_lookup", None)
+        speed_lookup = speed_reader() if callable(speed_reader) else {}
+        featured.speed_mph = max(
+            0.0,
+            self.state_builder.safe_float((speed_lookup or {}).get(car_idx)),
+        )
+        featured.speed = (
+            f"{featured.speed_mph:.0f} MPH" if featured.speed_mph > 0 else ""
+        )
+
+        current_entry = next(
+            (
+                entry
+                for entry in state.producer_leaderboard
+                if self.state_builder.safe_int(entry.car_idx, -1) == car_idx
+            ),
+            None,
+        )
+        if current_entry is not None:
+            featured.position = current_entry.position
+            featured.class_name = current_entry.class_name
+            featured.class_position = current_entry.class_position
+            featured.class_size = current_entry.class_size
+            featured.position_delta = current_entry.position_delta
+            featured.interval = current_entry.interval
 
     @staticmethod
     def normalize_leaderboard_style(value):
@@ -1317,6 +1408,9 @@ class OverlayServer:
         position_delta=0,
         interval="",
         speed="",
+        speed_mph=0.0,
+        rpm=0.0,
+        gear=0,
         number_style=None,
     ):
         with self.lock:
@@ -1344,6 +1438,9 @@ class OverlayServer:
                 position_delta=self.state_builder.safe_int(position_delta),
                 interval=str(interval or ""),
                 speed=str(speed or ""),
+                speed_mph=max(0.0, self.state_builder.safe_float(speed_mph)),
+                rpm=max(0.0, self.state_builder.safe_float(rpm)),
+                gear=self.state_builder.safe_int(gear),
                 expires_at=time.monotonic() + float(duration),
             )
             self.state.featured_driver = self.featured_driver
@@ -5073,9 +5170,9 @@ OVERLAY_HTML = r"""<!doctype html>
       left: 360px;
       bottom: 54px;
       min-width: 430px;
-      max-width: 760px;
+      max-width: 920px;
       display: grid;
-      grid-template-columns: 104px minmax(0, 178px) 1fr;
+      grid-template-columns: 104px minmax(0, 178px) minmax(250px, 1fr) 174px;
       background: linear-gradient(90deg, rgba(7, 9, 13, 0.96), rgba(24, 30, 42, 0.92));
       border-left: 6px solid var(--rgc-red);
       box-shadow: 0 14px 34px rgba(0, 0, 0, 0.42);
@@ -5229,6 +5326,83 @@ OVERLAY_HTML = r"""<!doctype html>
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+    }
+
+    .driver-card-telemetry {
+      position: relative;
+      min-height: 92px;
+      padding: 7px 12px 8px;
+      box-sizing: border-box;
+      border-left: 1px solid rgba(255, 255, 255, 0.14);
+      background: linear-gradient(180deg, rgba(20, 24, 32, 0.98), rgba(4, 6, 10, 0.98));
+      color: #fff;
+    }
+
+    .telemetry-arc {
+      position: absolute;
+      left: 10px;
+      right: 10px;
+      top: 3px;
+      width: calc(100% - 20px);
+      height: 54px;
+      overflow: visible;
+    }
+
+    .telemetry-arc-bg,
+    .telemetry-arc-live {
+      fill: none;
+      stroke-width: 9;
+      stroke-linecap: round;
+    }
+
+    .telemetry-arc-bg { stroke: rgba(255, 255, 255, 0.13); }
+    .telemetry-arc-live {
+      stroke: #ffae24;
+      stroke-dasharray: 126;
+      stroke-dashoffset: 126;
+      transition: stroke-dashoffset 0.22s linear, stroke 0.2s linear;
+      filter: drop-shadow(0 0 5px rgba(255, 174, 36, 0.58));
+    }
+
+    .telemetry-readouts {
+      position: absolute;
+      left: 10px;
+      right: 10px;
+      bottom: 8px;
+      display: grid;
+      grid-template-columns: 42px 1fr 58px;
+      gap: 5px;
+      align-items: end;
+      text-align: center;
+    }
+
+    .telemetry-value {
+      font-size: 20px;
+      line-height: 1;
+      font-weight: 950;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .telemetry-label {
+      margin-top: 3px;
+      color: rgba(255, 255, 255, 0.58);
+      font-size: 8px;
+      font-weight: 900;
+      letter-spacing: 0.12em;
+    }
+
+    .telemetry-speed .telemetry-value { font-size: 24px; }
+
+    .telemetry-interval {
+      position: absolute;
+      top: 35px;
+      left: 0;
+      right: 0;
+      color: #dfe8f8;
+      font-size: 10px;
+      font-weight: 900;
+      text-align: center;
+      font-variant-numeric: tabular-nums;
     }
 
     .studio-stamp {
@@ -6021,6 +6195,27 @@ OVERLAY_HTML = r"""<!doctype html>
       <div id="driver-card-story" class="driver-card-story"></div>
       <div id="driver-card-country" class="driver-card-country"></div>
     </div>
+    <div id="driver-card-telemetry" class="driver-card-telemetry">
+      <svg class="telemetry-arc" viewBox="0 0 150 62" aria-hidden="true">
+        <path class="telemetry-arc-bg" pathLength="126" d="M 15 53 A 60 60 0 0 1 135 53" />
+        <path id="driver-card-rpm-arc" class="telemetry-arc-live" pathLength="126" d="M 15 53 A 60 60 0 0 1 135 53" />
+      </svg>
+      <div id="driver-card-live-interval" class="telemetry-interval"></div>
+      <div class="telemetry-readouts">
+        <div>
+          <div id="driver-card-gear" class="telemetry-value">N</div>
+          <div class="telemetry-label">Gear</div>
+        </div>
+        <div class="telemetry-speed">
+          <div id="driver-card-speed" class="telemetry-value">--</div>
+          <div class="telemetry-label">MPH</div>
+        </div>
+        <div>
+          <div id="driver-card-rpm" class="telemetry-value">--</div>
+          <div class="telemetry-label">RPM</div>
+        </div>
+      </div>
+    </div>
   </section>
 
   <section id="stat-panel" class="stat-panel hidden">
@@ -6608,7 +6803,26 @@ OVERLAY_HTML = r"""<!doctype html>
       card.dataset.driverKey = driverKey;
       setText("driver-card-position", buildDriverCardPositionLine(driver));
       setText("driver-card-story", cleanDriverCardStory(driver));
+      renderDriverCardTelemetry(driver);
       renderDriverCardImage(driver.car_image_url || "", driver);
+    }
+
+    function renderDriverCardTelemetry(driver) {
+      const rpm = Math.max(0, Number(driver.rpm || 0));
+      const speed = Math.max(0, Number(driver.speed_mph || 0));
+      const rawGear = Number(driver.gear || 0);
+      const gear = rawGear < 0 ? "R" : rawGear === 0 ? "N" : String(rawGear);
+      setText("driver-card-gear", gear);
+      setText("driver-card-speed", speed > 0 ? Math.round(speed) : "--");
+      setText("driver-card-rpm", rpm > 0 ? Math.round(rpm).toLocaleString("en-US") : "--");
+      setText("driver-card-live-interval", driver.interval || "LEADER");
+
+      // A 10,000 RPM visual scale works well across the stock-car and road-car
+      // fields we support. Values over the scale simply fill the arc.
+      const ratio = Math.max(0, Math.min(1, rpm / 10000));
+      const arc = document.getElementById("driver-card-rpm-arc");
+      arc.style.strokeDashoffset = String(126 * (1 - ratio));
+      arc.style.stroke = ratio >= 0.92 ? "#ff4b45" : ratio >= 0.78 ? "#ffd22e" : "#ffae24";
     }
 
     function applyDriverCardNumberStyle(style) {

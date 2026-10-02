@@ -54,6 +54,34 @@ class PreRaceYellowTelemetry(OverlayTelemetry):
         return 0x00000008
 
 
+class LiveDriverTelemetry(OverlayTelemetry):
+    def get_results(self):
+        return [
+            {"CarIdx": 7, "Position": 1, "LapsComplete": 12, "Time": 0.0},
+            {"CarIdx": 3, "Position": 2, "LapsComplete": 12, "Time": 0.8},
+            {"CarIdx": 9, "Position": 3, "LapsComplete": 12, "Time": 1.6},
+        ]
+
+    def get_car_idx_f2_time(self):
+        values = [0.0] * 10
+        values[3] = 0.4376
+        values[9] = 1.9234
+        return values
+
+    def get_car_idx_rpm(self):
+        values = [0.0] * 10
+        values[3] = 8353.0
+        return values
+
+    def get_car_idx_gear(self):
+        values = [0] * 10
+        values[3] = 5
+        return values
+
+    def get_car_speed_mph_lookup(self):
+        return {3: 191.4}
+
+
 def test_overlay_state_includes_title_sponsor_track_and_lap():
     builder = OverlayStateBuilder(
         event_config=OverlayEventConfig(
@@ -137,6 +165,34 @@ def test_overlay_leaderboard_sorts_and_formats_zero_based_positions():
     assert leaderboard[0]["car_number"] == "77"
     assert leaderboard[1]["driver_name"] == "Dean Marsh"
     assert leaderboard[2]["interval"] == "+1.60"
+
+
+def test_overlay_leaderboard_prefers_live_iracing_interval():
+    state = OverlayStateBuilder().build_from_telemetry(LiveDriverTelemetry()).to_dict()
+
+    assert state["leaderboard"][0]["interval"] == ""
+    assert state["leaderboard"][1]["interval"] == "+0.438"
+    assert state["leaderboard"][2]["interval"] == "+1.923"
+
+
+def test_visible_driver_card_refreshes_live_telemetry():
+    server = OverlayServer()
+    server.show_featured_driver(
+        car_number="77",
+        driver_name="Austin Peterson",
+        car_idx=3,
+        duration=30,
+    )
+
+    server.update_from_telemetry(LiveDriverTelemetry())
+    driver = server.current_state_dict()["featured_driver"]
+
+    assert driver["position"] == 2
+    assert driver["interval"] == "+0.438"
+    assert driver["gear"] == 5
+    assert driver["rpm"] == 8353.0
+    assert driver["speed_mph"] == 191.4
+    assert "driver-card-rpm-arc" in OVERLAY_HTML
 
 
 def test_overlay_leaderboard_can_include_live_number_style(monkeypatch):

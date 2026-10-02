@@ -22,6 +22,10 @@ class TelemetrySnapshot:
     track_surface_material: list[Any] = field(default_factory=list)
     lap_dist_pct: list[Any] = field(default_factory=list)
     est_time: list[Any] = field(default_factory=list)
+    f2_time: list[Any] = field(default_factory=list)
+    car_rpm: list[Any] = field(default_factory=list)
+    car_gear: list[Any] = field(default_factory=list)
+    car_speed_mph: dict[Any, Any] = field(default_factory=dict)
     car_idx_session_flags: list[Any] = field(default_factory=list)
     car_idx_penalty_reasons: list[Any] = field(default_factory=list)
 
@@ -55,6 +59,14 @@ class TelemetrySnapshot:
             track_surface_material=telemetry.get_car_idx_track_surface_material(),
             lap_dist_pct=telemetry.get_car_idx_lap_dist_pct(),
             est_time=telemetry.get_car_idx_est_time(),
+            f2_time=getattr(telemetry, "get_car_idx_f2_time", lambda: [])(),
+            car_rpm=getattr(telemetry, "get_car_idx_rpm", lambda: [])(),
+            car_gear=getattr(telemetry, "get_car_idx_gear", lambda: [])(),
+            car_speed_mph=getattr(
+                telemetry,
+                "get_car_speed_mph_lookup",
+                lambda: {},
+            )(),
             car_idx_session_flags=getattr(
                 telemetry,
                 "get_car_idx_session_flags",

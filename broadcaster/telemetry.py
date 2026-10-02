@@ -483,6 +483,16 @@ class IRacingTelemetry:
     def get_car_idx_est_time(self):
         return self.safe_array_read("CarIdxEstTime")
 
+    def get_car_idx_f2_time(self):
+        """Return iRacing's continuously updated relative-time array."""
+        return self.safe_array_read("CarIdxF2Time")
+
+    def get_car_idx_rpm(self):
+        return self.safe_array_read("CarIdxRPM")
+
+    def get_car_idx_gear(self):
+        return self.safe_array_read("CarIdxGear")
+
     def get_car_idx_session_flags(self):
         for key in ("CarIdxSessionFlags", "CarIdxFlags", "CarIdxRaceFlags"):
             values = self.safe_array_read(key)
