@@ -1,5 +1,24 @@
 # Changelog
 
+## Version 1.0.10 - Driver and Lineup Graphics
+
+### Added
+- Added a professional ten-driver starting-lineup panel that follows the opening rundown, highlights the driver being introduced, and automatically advances from positions 1–10 to 11–20 and later groups.
+- Expanded the driver card with season statistics, team and hometown information, country flags, race-position progression, live gear, speed, RPM, throttle, brake, and supported fuel-percentage telemetry.
+- Added live green throttle and red brake traces plus an E-to-F fuel bar; unavailable opponent fuel remains clearly unavailable instead of being estimated.
+- Added live interval deltas to all leaderboard layouts.
+
+### Changed
+- Renamed the Brazen leaderboard option to Top Scroll while keeping existing saved Brazen profiles compatible.
+- Restyled Top Scroll with the standard RGC black, charcoal, white, and red presentation used by the other leaderboard choices.
+- Moved the driver card left to leave more room for right-side race graphics while preserving space for the RGC broadcast stamp.
+- Lowered the starting-lineup panel beneath the Flo leaderboard.
+
+### Fixed
+- Prevented starting-lineup car images from flickering by preserving the image elements between unchanged overlay refreshes.
+- Fixed live leaderboard deltas being hidden by class-position labels.
+- Fixed Broadcast Health incorrectly reporting Trading Paints as unavailable when Windows blocks the primary process-list command.
+
 ## Version 1.0.9 - Green Flag Pit Strategy
 
 ### Added

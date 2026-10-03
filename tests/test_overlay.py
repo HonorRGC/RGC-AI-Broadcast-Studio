@@ -104,6 +104,21 @@ class LiveDriverTelemetry(OverlayTelemetry):
         values[3] = 5
         return values
 
+    def get_car_idx_throttle(self):
+        values = [0.0] * 10
+        values[3] = 0.82
+        return values
+
+    def get_car_idx_brake(self):
+        values = [0.0] * 10
+        values[3] = 0.17
+        return values
+
+    def get_car_idx_fuel_pct(self):
+        values = [-1.0] * 10
+        values[3] = 0.64
+        return values
+
     def get_car_speed_mph_lookup(self):
         return {3: 191.4}
 
@@ -242,13 +257,20 @@ def test_visible_driver_card_refreshes_live_telemetry():
     assert driver["interval"] == "+0.438"
     assert driver["gear"] == 5
     assert driver["rpm"] == 8353.0
+    assert driver["throttle"] == 0.82
+    assert driver["brake"] == 0.17
+    assert driver["fuel_pct"] == 0.64
     assert driver["speed_mph"] == 191.4
     assert driver["team_name"] == "Bell Family Racing"
     assert driver["hometown"] == "Charlotte"
     assert driver["state"] == "North Carolina"
     assert driver["season_stats"]["points_position"] == "2"
     assert driver["position_history"] == [{"lap": 12, "position": 2}]
-    assert "driver-card-rpm-arc" in OVERLAY_HTML
+    assert "driver-card-throttle-fill" in OVERLAY_HTML
+    assert "driver-card-brake-fill" in OVERLAY_HTML
+    assert "driver-card-fuel-fill" in OVERLAY_HTML
+    assert "grid.dataset.signature === signature" in OVERLAY_HTML
+    assert "body.leaderboard-flo-mode .lineup-panel { top: 246px; }" in OVERLAY_HTML
     assert "SEASON STATS · RACE PROGRESSION" in OVERLAY_HTML
     assert "driver-card-location" in OVERLAY_HTML
 
@@ -972,6 +994,10 @@ def test_overlay_has_brazen_leaderboard_style():
     assert "renderBrazenLeaderboard(state, leaderboardStyle)" in OVERLAY_HTML
     assert "renderBrazenRaceBar(state.lap_history || [])" in OVERLAY_HTML
     assert "brazenCautionCount(state)" in OVERLAY_HTML
+    assert '<option value="brazen">Top Scroll</option>' in PRODUCER_HTML
+    assert 'function leaderboardGapText(entry)' in OVERLAY_HTML
+    assert 'if (String(entry.interval || "").trim()) return String(entry.interval);' in OVERLAY_HTML
+    assert ".brazen-cell::after { display: none; }" in OVERLAY_HTML
     assert "function brazenCautionCount(state)" in OVERLAY_HTML
     assert 'status === "yellow" || status === "caution"' in OVERLAY_HTML
     assert 'lastStatus !== "yellow"' in OVERLAY_HTML

@@ -493,6 +493,36 @@ class IRacingTelemetry:
     def get_car_idx_gear(self):
         return self.safe_array_read("CarIdxGear")
 
+    def get_car_idx_throttle(self):
+        return self.safe_array_read("CarIdxThrottle")
+
+    def get_car_idx_brake(self):
+        return self.safe_array_read("CarIdxBrake")
+
+    def get_car_idx_fuel_pct(self):
+        """Return per-car fuel percentages when iRacing exposes them.
+
+        Opponent fuel is intentionally unavailable in many sessions. In that
+        case, preserve an unknown value and only populate the local driver's
+        real fuel percentage instead of presenting a made-up estimate.
+        """
+        for key in ("CarIdxFuelLevelPct", "CarIdxFuelPct"):
+            values = self.safe_array_read(key)
+            if values:
+                return values
+        player_car_idx = self.get_player_car_idx()
+        if player_car_idx is None or player_car_idx < 0:
+            return []
+        level = self.safe_read("FuelLevel")
+        capacity = self.safe_read("FuelLevelMax")
+        try:
+            percentage = float(level) / float(capacity)
+        except (TypeError, ValueError, ZeroDivisionError):
+            return []
+        values = [-1.0] * (player_car_idx + 1)
+        values[player_car_idx] = min(1.0, max(0.0, percentage))
+        return values
+
     def get_car_idx_session_flags(self):
         for key in ("CarIdxSessionFlags", "CarIdxFlags", "CarIdxRaceFlags"):
             values = self.safe_array_read(key)

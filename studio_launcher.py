@@ -352,7 +352,7 @@ BROADCAST_FIELD_HELP = {
     "OVERLAY_EVENT_TITLE": "Required for a polished overlay and Discord report title. Example: Autism Awareness 100.",
     "OVERLAY_SERIES_NAME": "League or series name. Example: WFO Wicked Wednesday Truck Series.",
     "OVERLAY_SERIES_LOGO": "Logo for the series. It can rotate in the title with sponsor and cause logos.",
-    "OVERLAY_LEADERBOARD_STYLE": "side keeps the NASCAR-style left leaderboard. ticker scrolls across the top under the title. flo uses a compact two-row top leaderboard. brazen uses a leader-focused top board with sponsor rotation, series logo, flag status, and a scrolling field row.",
+    "OVERLAY_LEADERBOARD_STYLE": "side keeps the NASCAR-style left leaderboard. ticker scrolls across the top under the title. flo uses a compact three-row top leaderboard. top_scroll uses a leader-focused RGC top board with sponsor rotation, series logo, flag status, and a scrolling field row.",
     "USE_SIM_RACING_APPS": "Uses SIMRacingAppsServer for live 3D car renders and styled car numbers. If this is true, start SIMRacingAppsServer before the broadcast. If you are not using it, set this to false so the overlay does not waste time looking for it.",
     "USE_SPONSOR_READS": "Lets the AI work sponsor mentions into pre-race, caution, and race-update moments.",
     "SPONSOR_READ_CAUSE_NAME": "Short cause or awareness name shown on overlays and used by {cause}. Example: Autism Awareness.",
@@ -2186,11 +2186,12 @@ def run_gui():
         elif key == "OVERLAY_LEADERBOARD_STYLE":
             entry_widget = ttk.Combobox(
                 settings_frame,
-                values=("side", "ticker", "flo", "brazen"),
+                values=("side", "ticker", "flo", "top_scroll"),
                 width=69,
                 state="readonly",
             )
-            entry_widget.set(existing.get(key, "side") or "side")
+            selected_style = existing.get(key, "side") or "side"
+            entry_widget.set("top_scroll" if selected_style == "brazen" else selected_style)
         elif key == "OPENAI_MODEL":
             entry_widget = ttk.Combobox(
                 settings_frame,
@@ -4650,7 +4651,7 @@ def build_help_tab(
         Producer Assist is both the AI control room and a tool for human broadcasters. It shows director suggestions, current broadcast focus,
         driver and league statistics, pit strategy, points information, broadcast notes, and camera/replay controls.
 
-        Use the leaderboard selector for Top Down, Scroll, Flo, or Brazen without stepping through every style on air.
+        Use the leaderboard selector for Top Down, Scroll, Flo, or Top Scroll without stepping through every style on air.
         Manual sponsor buttons play a chosen Sponsor 1-5 item. Crank It Up, caution music, and presentation graphics can also be triggered manually.
         During a caution, the full-screen Caution Review Slate or selected review video can hide camera searching and rewinding from viewers.
         The top-ten reset graphic, pit-road report, race recap, points, and final-results graphics are handled through the same running overlay.

@@ -242,6 +242,17 @@ def test_live_results_include_the_player_incident_total():
     assert "Incidents" not in results[1]
 
 
+def test_player_fuel_percentage_is_used_when_per_car_fuel_is_unavailable():
+    telemetry = IRacingTelemetry.__new__(IRacingTelemetry)
+    telemetry.ir = {
+        "PlayerCarIdx": 3,
+        "FuelLevel": 9.0,
+        "FuelLevelMax": 18.0,
+    }
+
+    assert telemetry.get_car_idx_fuel_pct() == [-1.0, -1.0, -1.0, 0.5]
+
+
 def test_live_results_include_per_car_incident_counts_when_available():
     telemetry = IRacingTelemetry.__new__(IRacingTelemetry)
     telemetry.ir = {

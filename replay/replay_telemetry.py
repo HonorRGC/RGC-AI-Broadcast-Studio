@@ -686,6 +686,15 @@ class ReplayTelemetry:
     def get_car_idx_gear(self):
         return self._snapshot_list("car_gear")
 
+    def get_car_idx_throttle(self):
+        return self._snapshot_list("car_throttle")
+
+    def get_car_idx_brake(self):
+        return self._snapshot_list("car_brake")
+
+    def get_car_idx_fuel_pct(self):
+        return self._snapshot_list("car_fuel_pct")
+
     def get_car_speed_mph_lookup(self):
         snapshot = self.current_snapshot()
         if not snapshot:

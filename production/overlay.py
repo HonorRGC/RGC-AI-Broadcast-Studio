@@ -252,6 +252,9 @@ class FeaturedDriver:
     speed_mph: float = 0.0
     rpm: float = 0.0
     gear: int = 0
+    throttle: float = 0.0
+    brake: float = 0.0
+    fuel_pct: float = -1.0
     team_name: str = ""
     hometown: str = ""
     state: str = ""
@@ -279,6 +282,9 @@ class FeaturedDriver:
             "speed_mph": self.speed_mph,
             "rpm": self.rpm,
             "gear": self.gear,
+            "throttle": self.throttle,
+            "brake": self.brake,
+            "fuel_pct": self.fuel_pct,
             "team_name": self.team_name,
             "hometown": self.hometown,
             "state": self.state,
@@ -1393,6 +1399,24 @@ class OverlayServer:
             array_value("get_car_idx_gear"),
             0,
         )
+        featured.throttle = min(
+            1.0,
+            max(0.0, self.state_builder.safe_float(array_value("get_car_idx_throttle"))),
+        )
+        featured.brake = min(
+            1.0,
+            max(0.0, self.state_builder.safe_float(array_value("get_car_idx_brake"))),
+        )
+        featured.fuel_pct = min(
+            1.0,
+            max(
+                -1.0,
+                self.state_builder.safe_float(
+                    array_value("get_car_idx_fuel_pct", None),
+                    -1.0,
+                ),
+            ),
+        )
         speed_reader = getattr(telemetry, "get_car_speed_mph_lookup", None)
         speed_lookup = speed_reader() if callable(speed_reader) else {}
         featured.speed_mph = max(
@@ -1439,7 +1463,14 @@ class OverlayServer:
             return "ticker"
         if style in ("flo", "flo_top", "flo-top", "top_grid"):
             return "flo"
-        if style in ("brazen", "brazen_top", "brazen-top", "leader_top"):
+        if style in (
+            "brazen",
+            "brazen_top",
+            "brazen-top",
+            "leader_top",
+            "top_scroll",
+            "top-scroll",
+        ):
             return "brazen"
         return "side"
 
@@ -1483,6 +1514,9 @@ class OverlayServer:
         speed_mph=0.0,
         rpm=0.0,
         gear=0,
+        throttle=0.0,
+        brake=0.0,
+        fuel_pct=-1.0,
         team_name="",
         hometown="",
         state="",
@@ -1517,6 +1551,12 @@ class OverlayServer:
                 speed_mph=max(0.0, self.state_builder.safe_float(speed_mph)),
                 rpm=max(0.0, self.state_builder.safe_float(rpm)),
                 gear=self.state_builder.safe_int(gear),
+                throttle=min(1.0, max(0.0, self.state_builder.safe_float(throttle))),
+                brake=min(1.0, max(0.0, self.state_builder.safe_float(brake))),
+                fuel_pct=min(
+                    1.0,
+                    max(-1.0, self.state_builder.safe_float(fuel_pct, -1.0)),
+                ),
                 team_name=str(team_name or ""),
                 hometown=str(hometown or ""),
                 state=str(state or ""),
@@ -3175,7 +3215,7 @@ PRODUCER_HTML = r"""<!doctype html>
                 <option value="side">Side</option>
                 <option value="ticker">Ticker</option>
                 <option value="flo">Flo Top</option>
-                <option value="brazen">Brazen</option>
+                <option value="brazen">Top Scroll</option>
               </select>
             </label>
           </div>
@@ -3725,7 +3765,7 @@ PRODUCER_HTML = r"""<!doctype html>
       const style = String(controlStyle || eventStyle || "side").toLowerCase().trim();
       if (["ticker", "scroll", "top"].includes(style)) return "ticker";
       if (["flo", "flo_top", "flo-top", "top_grid"].includes(style)) return "flo";
-      if (["brazen", "brazen_top", "brazen-top", "leader_top"].includes(style)) return "brazen";
+      if (["brazen", "brazen_top", "brazen-top", "leader_top", "top_scroll", "top-scroll"].includes(style)) return "brazen";
       return "side";
     }
 
@@ -5132,6 +5172,57 @@ OVERLAY_HTML = r"""<!doctype html>
       display: none;
     }
 
+    /* Top Scroll intentionally shares the neutral RGC broadcast family used
+       by Flo and the standard boards. The legacy `brazen` key remains only
+       for saved-profile compatibility. */
+    .brazen-leaderboard {
+      filter: none;
+    }
+
+    .brazen-cell {
+      border-color: rgba(255,255,255,.18);
+      background: linear-gradient(180deg, rgba(35,39,47,.97), rgba(7,9,13,.98));
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.12), inset 0 -8px 14px rgba(0,0,0,.34), 0 8px 18px rgba(0,0,0,.32);
+    }
+
+    .brazen-cell::after { display: none; }
+
+    .brazen-title {
+      background: linear-gradient(90deg, #951324, #d7192d 48%, #64101b);
+      text-shadow: 0 2px 7px rgba(0,0,0,.72);
+    }
+
+    .brazen-sponsor,
+    .brazen-series {
+      background: linear-gradient(180deg, rgba(34,38,46,.98), rgba(7,9,13,.99));
+    }
+
+    .brazen-sponsor img,
+    .brazen-series img {
+      filter: drop-shadow(0 8px 14px rgba(0,0,0,.76));
+    }
+
+    .brazen-field-entry {
+      border-left-color: rgba(255,255,255,.18);
+      background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(10,12,17,.94));
+    }
+
+    .brazen-field-entry.brazen-cycle-leader {
+      border-left-color: #d7192d;
+      background: linear-gradient(180deg, rgba(215,25,45,.18), rgba(10,12,17,.96));
+    }
+
+    .brazen-cycle-reset {
+      border-left-color: #d7192d;
+      border-right-color: #d7192d;
+      background: linear-gradient(135deg, rgba(74,8,16,.98), rgba(190,20,38,.95));
+      box-shadow: inset 0 0 14px rgba(255,255,255,.08);
+    }
+
+    .brazen-cycle-reset span::before { color: #fff; }
+    .brazen-position { border-color: rgba(255,255,255,.34); }
+    .brazen-race-bar { border-color: rgba(255,255,255,.18); }
+
     .ticker-leaderboard.green {
       border-bottom-color: #15c85f;
       box-shadow: inset 0 -9px 16px rgba(21, 200, 95, 0.20), 0 12px 30px rgba(0, 0, 0, 0.38);
@@ -5277,7 +5368,7 @@ OVERLAY_HTML = r"""<!doctype html>
 
     .driver-card {
       position: absolute;
-      left: 360px;
+      left: 158px;
       bottom: 54px;
       min-width: 430px;
       max-width: 1120px;
@@ -5462,37 +5553,89 @@ OVERLAY_HTML = r"""<!doctype html>
       color: #fff;
     }
 
-    .telemetry-arc {
+    .pedal-traces {
       position: absolute;
       left: 10px;
       right: 10px;
-      top: 3px;
-      width: calc(100% - 20px);
-      height: 54px;
-      overflow: visible;
+      top: 8px;
+      display: grid;
+      gap: 5px;
     }
 
-    .telemetry-arc-bg,
-    .telemetry-arc-live {
-      fill: none;
-      stroke-width: 9;
-      stroke-linecap: round;
+    .pedal-trace {
+      display: grid;
+      grid-template-columns: 15px minmax(0, 1fr) 30px;
+      gap: 5px;
+      align-items: center;
+      color: rgba(255,255,255,.72);
+      font-size: 8px;
+      font-weight: 950;
     }
 
-    .telemetry-arc-bg { stroke: rgba(255, 255, 255, 0.13); }
-    .telemetry-arc-live {
-      stroke: #ffae24;
-      stroke-dasharray: 126;
-      stroke-dashoffset: 126;
-      transition: stroke-dashoffset 0.22s linear, stroke 0.2s linear;
-      filter: drop-shadow(0 0 5px rgba(255, 174, 36, 0.58));
+    .pedal-trace-track {
+      height: 8px;
+      overflow: hidden;
+      border-radius: 2px;
+      background: rgba(255,255,255,.12);
+      box-shadow: inset 0 1px 3px rgba(0,0,0,.6);
     }
+
+    .pedal-trace-fill {
+      width: 0;
+      height: 100%;
+      transition: width .16s linear;
+    }
+
+    .pedal-trace.throttle .pedal-trace-fill {
+      background: #15d96a;
+      box-shadow: 0 0 8px rgba(21,217,106,.72);
+    }
+
+    .pedal-trace.brake .pedal-trace-fill {
+      background: #f13948;
+      box-shadow: 0 0 8px rgba(241,57,72,.72);
+    }
+
+    .pedal-trace-value { text-align: right; font-variant-numeric: tabular-nums; }
+
+    .fuel-gauge {
+      position: absolute;
+      left: 10px;
+      right: 10px;
+      bottom: 3px;
+      display: grid;
+      grid-template-columns: 10px minmax(0, 1fr) 10px 28px;
+      gap: 5px;
+      align-items: center;
+      color: rgba(255,255,255,.82);
+      font-size: 8px;
+      font-weight: 950;
+    }
+
+    .fuel-gauge-track {
+      height: 7px;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,.16);
+      background: rgba(255,255,255,.08);
+      box-shadow: inset 0 1px 3px rgba(0,0,0,.72);
+    }
+
+    .fuel-gauge-fill {
+      width: 0;
+      height: 100%;
+      background: linear-gradient(90deg, #e02733 0 18%, #ffbf22 38%, #16d568 68%);
+      transition: width .25s linear;
+      box-shadow: 0 0 7px rgba(22,213,104,.58);
+    }
+
+    .fuel-gauge.unavailable { opacity: .42; }
+    .fuel-gauge-value { text-align: right; font-variant-numeric: tabular-nums; }
 
     .telemetry-readouts {
       position: absolute;
       left: 10px;
       right: 10px;
-      bottom: 8px;
+      bottom: 17px;
       display: grid;
       grid-template-columns: 42px 1fr 58px;
       gap: 5px;
@@ -5606,6 +5749,8 @@ OVERLAY_HTML = r"""<!doctype html>
       overflow: hidden;
       z-index: 24;
     }
+
+    body.leaderboard-flo-mode .lineup-panel { top: 246px; }
 
     .lineup-panel-header {
       display: flex;
@@ -6494,10 +6639,14 @@ OVERLAY_HTML = r"""<!doctype html>
       <div id="driver-card-country" class="driver-card-country"></div>
     </div>
     <div id="driver-card-telemetry" class="driver-card-telemetry">
-      <svg class="telemetry-arc" viewBox="0 0 150 62" aria-hidden="true">
-        <path class="telemetry-arc-bg" pathLength="126" d="M 15 53 A 60 60 0 0 1 135 53" />
-        <path id="driver-card-rpm-arc" class="telemetry-arc-live" pathLength="126" d="M 15 53 A 60 60 0 0 1 135 53" />
-      </svg>
+      <div class="pedal-traces" aria-label="Live throttle and brake input">
+        <div class="pedal-trace throttle">
+          <span>THR</span><span class="pedal-trace-track"><span id="driver-card-throttle-fill" class="pedal-trace-fill"></span></span><span id="driver-card-throttle" class="pedal-trace-value">0%</span>
+        </div>
+        <div class="pedal-trace brake">
+          <span>BRK</span><span class="pedal-trace-track"><span id="driver-card-brake-fill" class="pedal-trace-fill"></span></span><span id="driver-card-brake" class="pedal-trace-value">0%</span>
+        </div>
+      </div>
       <div id="driver-card-live-interval" class="telemetry-interval"></div>
       <div class="telemetry-readouts">
         <div>
@@ -6512,6 +6661,12 @@ OVERLAY_HTML = r"""<!doctype html>
           <div id="driver-card-rpm" class="telemetry-value">--</div>
           <div class="telemetry-label">RPM</div>
         </div>
+      </div>
+      <div id="driver-card-fuel-gauge" class="fuel-gauge unavailable">
+        <span>E</span>
+        <span class="fuel-gauge-track"><span id="driver-card-fuel-fill" class="fuel-gauge-fill"></span></span>
+        <span>F</span>
+        <span id="driver-card-fuel" class="fuel-gauge-value">--</span>
       </div>
     </div>
     <div class="driver-card-race-story">
@@ -6622,7 +6777,7 @@ OVERLAY_HTML = r"""<!doctype html>
           <span class="pos">${entry.position}</span>
           <span class="num" style="${numberStyleAttribute(entry.number_style || {})}">${escapeHtml(entry.car_number || "?")}</span>
           <span class="name">${escapeHtml(entry.driver_name || "Unknown")}</span>
-          <span class="gap">${escapeHtml(entry.class_position ? `${entry.class_name || "CLS"} ${ordinal(entry.class_position)}` : entry.interval || "")}</span>
+          <span class="gap">${escapeHtml(leaderboardGapText(entry))}</span>
         `;
         rows.appendChild(row);
       }
@@ -6632,7 +6787,7 @@ OVERLAY_HTML = r"""<!doctype html>
       const style = String(value || "side").toLowerCase().trim();
       if (["ticker", "scroll", "top"].includes(style)) return "ticker";
       if (["flo", "flo_top", "flo-top", "top_grid"].includes(style)) return "flo";
-      if (["brazen", "brazen_top", "brazen-top", "leader_top"].includes(style)) return "brazen";
+      if (["brazen", "brazen_top", "brazen-top", "leader_top", "top_scroll", "top-scroll"].includes(style)) return "brazen";
       return "side";
     }
 
@@ -6660,7 +6815,7 @@ OVERLAY_HTML = r"""<!doctype html>
           <span class="ticker-pos">P${escapeHtml(entry.position || "")}</span>
           <span class="ticker-num" style="${numberStyleAttribute(entry.number_style || {})}">${escapeHtml(entry.car_number || "?")}</span>
           <span>${escapeHtml(entry.driver_name || "Unknown")}</span>
-          <span class="ticker-gap">${escapeHtml(entry.class_position ? `${entry.class_name || "CLS"} ${ordinal(entry.class_position)}` : entry.interval || "")}</span>
+          <span class="ticker-gap">${escapeHtml(leaderboardGapText(entry))}</span>
         </span>
       `).join("");
       const resetMarker = `<span class="ticker-reset">Back to Leader</span>`;
@@ -6767,7 +6922,7 @@ OVERLAY_HTML = r"""<!doctype html>
           <span class="brazen-position">${escapeHtml(entry.position || "")}</span>
           <span class="brazen-number" style="${numberStyleAttribute(entry.number_style || {})}">${escapeHtml(entry.car_number || "?")}</span>
           <span class="brazen-name">${escapeHtml(lastNameOrName(entry.driver_name || "Unknown"))}</span>
-          <span class="brazen-gap">${escapeHtml(entry.class_position ? `${entry.class_name || "CLS"} ${ordinal(entry.class_position)}` : entry.interval || "")}</span>
+          <span class="brazen-gap">${escapeHtml(leaderboardGapText(entry))}</span>
         </div>
       `;
     }
@@ -6855,7 +7010,7 @@ OVERLAY_HTML = r"""<!doctype html>
           <span class="flo-position">${escapeHtml(entry.position || "")}</span>
           <span class="flo-number" style="${numberStyleAttribute(entry.number_style || {})}">${escapeHtml(entry.car_number || "?")}</span>
           <span class="flo-name">${escapeHtml(lastNameOrName(entry.driver_name || "Unknown"))}</span>
-          <span class="flo-gap">${escapeHtml(entry.class_position ? `${entry.class_name || "CLS"} ${ordinal(entry.class_position)}` : entry.interval || "")}</span>
+          <span class="flo-gap">${escapeHtml(leaderboardGapText(entry))}</span>
         </div>
       `;
     }
@@ -7104,6 +7259,20 @@ OVERLAY_HTML = r"""<!doctype html>
       setText("lineup-panel-range", `Positions ${panel.page_start || 1}–${panel.page_end || 10}`);
       const activePosition = Number(panel.active_position || 0);
       const grid = document.getElementById("lineup-panel-grid");
+      const signature = JSON.stringify({
+        pageStart: panel.page_start,
+        activePosition,
+        entries: entries.map(entry => [
+          entry.position,
+          entry.car_idx,
+          entry.car_number,
+          entry.driver_name,
+          entry.car_image_url,
+          entry.number_style,
+        ]),
+      });
+      if (grid.dataset.signature === signature) return;
+      grid.dataset.signature = signature;
       grid.innerHTML = entries.map(entry => {
         const position = Number(entry.position || 0);
         const active = position === activePosition;
@@ -7200,19 +7369,24 @@ OVERLAY_HTML = r"""<!doctype html>
     function renderDriverCardTelemetry(driver) {
       const rpm = Math.max(0, Number(driver.rpm || 0));
       const speed = Math.max(0, Number(driver.speed_mph || 0));
+      const throttle = Math.max(0, Math.min(1, Number(driver.throttle || 0)));
+      const brake = Math.max(0, Math.min(1, Number(driver.brake || 0)));
+      const rawFuel = Number(driver.fuel_pct);
+      const fuelAvailable = Number.isFinite(rawFuel) && rawFuel >= 0;
+      const fuel = fuelAvailable ? Math.max(0, Math.min(1, rawFuel)) : 0;
       const rawGear = Number(driver.gear || 0);
       const gear = rawGear < 0 ? "R" : rawGear === 0 ? "N" : String(rawGear);
       setText("driver-card-gear", gear);
       setText("driver-card-speed", speed > 0 ? Math.round(speed) : "--");
       setText("driver-card-rpm", rpm > 0 ? Math.round(rpm).toLocaleString("en-US") : "--");
       setText("driver-card-live-interval", driver.interval || "LEADER");
-
-      // A 10,000 RPM visual scale works well across the stock-car and road-car
-      // fields we support. Values over the scale simply fill the arc.
-      const ratio = Math.max(0, Math.min(1, rpm / 10000));
-      const arc = document.getElementById("driver-card-rpm-arc");
-      arc.style.strokeDashoffset = String(126 * (1 - ratio));
-      arc.style.stroke = ratio >= 0.92 ? "#ff4b45" : ratio >= 0.78 ? "#ffd22e" : "#ffae24";
+      setText("driver-card-throttle", `${Math.round(throttle * 100)}%`);
+      setText("driver-card-brake", `${Math.round(brake * 100)}%`);
+      document.getElementById("driver-card-throttle-fill").style.width = `${throttle * 100}%`;
+      document.getElementById("driver-card-brake-fill").style.width = `${brake * 100}%`;
+      document.getElementById("driver-card-fuel-fill").style.width = `${fuel * 100}%`;
+      setText("driver-card-fuel", fuelAvailable ? `${Math.round(fuel * 100)}%` : "--");
+      document.getElementById("driver-card-fuel-gauge").classList.toggle("unavailable", !fuelAvailable);
     }
 
     function applyDriverCardNumberStyle(style) {
@@ -7486,6 +7660,13 @@ OVERLAY_HTML = r"""<!doctype html>
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#039;");
+    }
+
+    function leaderboardGapText(entry) {
+      if (Number(entry.position || 0) === 1) return "LEADER";
+      if (String(entry.interval || "").trim()) return String(entry.interval);
+      if (entry.class_position) return `${entry.class_name || "CLS"} ${ordinal(entry.class_position)}`;
+      return "";
     }
 
     function ordinal(n) {
