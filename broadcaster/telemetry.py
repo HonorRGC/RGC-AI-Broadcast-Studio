@@ -494,10 +494,29 @@ class IRacingTelemetry:
         return self.safe_array_read("CarIdxGear")
 
     def get_car_idx_throttle(self):
-        return self.safe_array_read("CarIdxThrottle")
+        values = self.safe_array_read("CarIdxThrottle")
+        if values:
+            return values
+        return self.player_control_as_car_array("Throttle")
 
     def get_car_idx_brake(self):
-        return self.safe_array_read("CarIdxBrake")
+        values = self.safe_array_read("CarIdxBrake")
+        if values:
+            return values
+        return self.player_control_as_car_array("Brake")
+
+    def player_control_as_car_array(self, key):
+        """Expose real pedal input only for the local car; opponents remain unknown."""
+        player_car_idx = self.get_player_car_idx()
+        if player_car_idx is None or player_car_idx < 0:
+            return []
+        try:
+            value = float(self.ir[key])
+        except (KeyError, TypeError, ValueError):
+            return []
+        values = [-1.0] * (player_car_idx + 1)
+        values[player_car_idx] = min(1.0, max(0.0, value))
+        return values
 
     def get_car_idx_fuel_pct(self):
         """Return per-car fuel percentages when iRacing exposes them.

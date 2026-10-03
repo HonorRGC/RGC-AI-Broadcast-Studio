@@ -269,7 +269,7 @@ def parse_args():
         default=DEFAULT_CRANK_IT_UP_SECONDS,
         help="Seconds to keep the Crank It Up overlay visible during --crank-it-up-test",
     )
-    parser.add_argument("--tick-seconds", type=float, default=1.0)
+    parser.add_argument("--tick-seconds", type=float, default=0.2)
     parser.add_argument(
         "--camera-mode",
         choices=CameraDirector.MODES,
@@ -2004,7 +2004,12 @@ def show_overlay_feature(item, overlay_server, source=None, engine=None):
         clearer = getattr(overlay_server, "clear_special_presentation", None)
         if clearer:
             clearer()
-        show_post_race_winner_card(overlay_server, source, engine)
+        podium_entries = build_podium_panel_entries(source, engine)
+        podium_shower = getattr(overlay_server, "show_podium_panel", None)
+        if podium_entries and callable(podium_shower):
+            podium_shower(podium_entries, duration=300.0)
+        else:
+            show_post_race_winner_card(overlay_server, source, engine)
         rows = build_race_end_cap_rows(source, engine)
         if rows:
             overlay_server.show_stat_panel(
@@ -3155,6 +3160,43 @@ def build_pit_update_rows(source, engine, limit=15, completed=False):
     return rows
 
 
+def build_podium_panel_entries(source, engine=None):
+    """Build the top-three finish graphic using the same paint source as driver cards."""
+    results = source.get_results() if source else []
+    driver_lookup = enriched_driver_lookup(source, engine)
+    entries = []
+    for car in sorted_results_by_position(results)[:3]:
+        car_idx = car.get("CarIdx")
+        position = normalized_result_position(car, results)
+        if car_idx is None or position <= 0:
+            continue
+        driver = dict(driver_lookup.get(car_idx, {}) or {})
+        driver["car_idx"] = car_idx
+        driver.setdefault("CarIdx", car_idx)
+        render_info = build_featured_driver_render_info(driver)
+        entries.append(
+            {
+                "position": position,
+                "car_number": str(
+                    driver.get("number")
+                    or driver.get("car_number")
+                    or car.get("CarNumber")
+                    or ""
+                ),
+                "driver_name": str(
+                    driver.get("name")
+                    or driver.get("driver_name")
+                    or car.get("UserName")
+                    or f"Car {car_idx}"
+                ),
+                "team_name": str(driver.get("team_name") or driver.get("team") or ""),
+                "car_image_url": render_info.get("image_url", ""),
+                "number_style": render_info.get("number_style", {}),
+            }
+        )
+    return entries
+
+
 def build_pit_holdout_rows(source, engine, limit=15):
     if not source or not engine:
         return []
@@ -3614,7 +3656,7 @@ def update_overlay_starting_lineup_panel(
         driver.setdefault("CarIdx", entry_car_idx)
         render_info = build_featured_driver_render_info(
             driver,
-            require_live_render_match=True,
+            require_live_render_match=False,
         )
         grid_entries.append(
             {

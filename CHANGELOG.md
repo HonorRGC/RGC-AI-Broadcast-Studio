@@ -7,15 +7,20 @@
 - Expanded the driver card with season statistics, team and hometown information, country flags, race-position progression, live gear, speed, RPM, throttle, brake, and supported fuel-percentage telemetry.
 - Added live green throttle and red brake traces plus an E-to-F fuel bar; unavailable opponent fuel remains clearly unavailable instead of being estimated.
 - Added live interval deltas to all leaderboard layouts.
+- Added an RGC-styled top-three podium presentation beside the final race recap.
 
 ### Changed
 - Renamed the Brazen leaderboard option to Top Scroll while keeping existing saved Brazen profiles compatible.
 - Restyled Top Scroll with the standard RGC black, charcoal, white, and red presentation used by the other leaderboard choices.
 - Moved the driver card left to leave more room for right-side race graphics while preserving space for the RGC broadcast stamp.
 - Lowered the starting-lineup panel beneath the Flo leaderboard.
+- Enlarged the ten-driver lineup panel and updated it to the RGC red, charcoal, black, and silver style.
+- Increased live overlay and leaderboard timing refreshes from once per second to five times per second.
+- Limited pedal traces to genuine available telemetry: local-player throttle and brake are shown live while unavailable opponent inputs display clearly as unavailable.
 
 ### Fixed
 - Prevented starting-lineup car images from flickering by preserving the image elements between unchanged overlay refreshes.
+- Preloaded and retained the ten starting-lineup car images while the active-driver highlight advances.
 - Fixed live leaderboard deltas being hidden by class-position labels.
 - Fixed Broadcast Health incorrectly reporting Trading Paints as unavailable when Windows blocks the primary process-list command.
 

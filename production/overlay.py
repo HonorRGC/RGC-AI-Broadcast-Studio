@@ -252,8 +252,8 @@ class FeaturedDriver:
     speed_mph: float = 0.0
     rpm: float = 0.0
     gear: int = 0
-    throttle: float = 0.0
-    brake: float = 0.0
+    throttle: float = -1.0
+    brake: float = -1.0
     fuel_pct: float = -1.0
     team_name: str = ""
     hometown: str = ""
@@ -308,6 +308,15 @@ class LineupPanel:
             "active_position": self.active_position,
             "entries": [dict(entry) for entry in self.entries],
         }
+
+
+@dataclass
+class PodiumPanel:
+    entries: list[dict[str, Any]] = field(default_factory=list)
+    expires_at: float = 0.0
+
+    def to_dict(self):
+        return {"entries": [dict(entry) for entry in self.entries]}
 
 
 @dataclass
@@ -463,6 +472,7 @@ class OverlayState:
     green: bool = False
     featured_driver: FeaturedDriver | None = None
     lineup_panel: LineupPanel | None = None
+    podium_panel: PodiumPanel | None = None
     special_presentation: SpecialPresentation | None = None
     stat_panel: StatPanel | None = None
     secondary_stat_panel: StatPanel | None = None
@@ -497,6 +507,7 @@ class OverlayState:
                 self.featured_driver.to_dict() if self.featured_driver else None
             ),
             "lineup_panel": self.lineup_panel.to_dict() if self.lineup_panel else None,
+            "podium_panel": self.podium_panel.to_dict() if self.podium_panel else None,
             "special_presentation": (
                 self.special_presentation.to_dict()
                 if self.special_presentation
@@ -1219,6 +1230,7 @@ class OverlayServer:
         self.lock = threading.Lock()
         self.featured_driver = None
         self.lineup_panel = None
+        self.podium_panel = None
         self.special_presentation = None
         self.stat_panel = None
         self.secondary_stat_panel = None
@@ -1354,6 +1366,10 @@ class OverlayServer:
                 state.lineup_panel = self.lineup_panel
             else:
                 self.lineup_panel = None
+            if self.podium_panel and self.podium_panel.expires_at > time.monotonic():
+                state.podium_panel = self.podium_panel
+            else:
+                self.podium_panel = None
             if (
                 self.special_presentation
                 and self.special_presentation.expires_at > time.monotonic()
@@ -1401,11 +1417,11 @@ class OverlayServer:
         )
         featured.throttle = min(
             1.0,
-            max(0.0, self.state_builder.safe_float(array_value("get_car_idx_throttle"))),
+            max(-1.0, self.state_builder.safe_float(array_value("get_car_idx_throttle", -1.0), -1.0)),
         )
         featured.brake = min(
             1.0,
-            max(0.0, self.state_builder.safe_float(array_value("get_car_idx_brake"))),
+            max(-1.0, self.state_builder.safe_float(array_value("get_car_idx_brake", -1.0), -1.0)),
         )
         featured.fuel_pct = min(
             1.0,
@@ -1514,8 +1530,8 @@ class OverlayServer:
         speed_mph=0.0,
         rpm=0.0,
         gear=0,
-        throttle=0.0,
-        brake=0.0,
+        throttle=-1.0,
+        brake=-1.0,
         fuel_pct=-1.0,
         team_name="",
         hometown="",
@@ -1551,8 +1567,8 @@ class OverlayServer:
                 speed_mph=max(0.0, self.state_builder.safe_float(speed_mph)),
                 rpm=max(0.0, self.state_builder.safe_float(rpm)),
                 gear=self.state_builder.safe_int(gear),
-                throttle=min(1.0, max(0.0, self.state_builder.safe_float(throttle))),
-                brake=min(1.0, max(0.0, self.state_builder.safe_float(brake))),
+                throttle=min(1.0, max(-1.0, self.state_builder.safe_float(throttle, -1.0))),
+                brake=min(1.0, max(-1.0, self.state_builder.safe_float(brake, -1.0))),
                 fuel_pct=min(
                     1.0,
                     max(-1.0, self.state_builder.safe_float(fuel_pct, -1.0)),
@@ -1599,6 +1615,33 @@ class OverlayServer:
         with self.lock:
             self.lineup_panel = None
             self.state.lineup_panel = None
+
+    def show_podium_panel(self, entries, duration=300.0):
+        clean_entries = []
+        for entry in list(entries or [])[:3]:
+            clean_entries.append(
+                {
+                    "position": self.state_builder.safe_int(entry.get("position")),
+                    "car_number": str(entry.get("car_number") or ""),
+                    "driver_name": str(entry.get("driver_name") or ""),
+                    "team_name": str(entry.get("team_name") or ""),
+                    "car_image_url": proxied_iracing_render_url(entry.get("car_image_url")),
+                    "number_style": sanitize_driver_number_style(entry.get("number_style")),
+                }
+            )
+        with self.lock:
+            self.podium_panel = PodiumPanel(
+                entries=clean_entries,
+                expires_at=time.monotonic() + float(duration),
+            )
+            self.featured_driver = None
+            self.state.featured_driver = None
+            self.state.podium_panel = self.podium_panel
+
+    def clear_podium_panel(self):
+        with self.lock:
+            self.podium_panel = None
+            self.state.podium_panel = None
 
     def show_special_presentation(
         self,
@@ -5735,22 +5778,22 @@ OVERLAY_HTML = r"""<!doctype html>
 
     .lineup-panel {
       position: absolute;
-      top: 112px;
+      top: 124px;
       right: 28px;
-      width: 390px;
+      width: 470px;
       padding: 8px;
       box-sizing: border-box;
       color: #fff;
-      background: linear-gradient(155deg, rgba(28, 7, 39, .97), rgba(5, 7, 12, .98) 62%);
-      border: 2px solid rgba(179, 55, 255, .82);
+      background: linear-gradient(155deg, rgba(22, 27, 36, .98), rgba(5, 7, 12, .99) 62%);
+      border: 2px solid rgba(225, 35, 55, .88);
       border-radius: 8px;
-      box-shadow: 0 16px 38px rgba(0, 0, 0, .54), inset 0 0 24px rgba(146, 37, 211, .12);
+      box-shadow: 0 16px 38px rgba(0, 0, 0, .54), inset 0 0 24px rgba(255, 255, 255, .04);
       text-transform: uppercase;
       overflow: hidden;
       z-index: 24;
     }
 
-    body.leaderboard-flo-mode .lineup-panel { top: 246px; }
+    body.leaderboard-flo-mode .lineup-panel { top: 276px; }
 
     .lineup-panel-header {
       display: flex;
@@ -5760,8 +5803,8 @@ OVERLAY_HTML = r"""<!doctype html>
       padding: 0 11px;
       margin-bottom: 7px;
       border-radius: 5px;
-      background: linear-gradient(90deg, #8e1027, #64147d 62%, #32104d);
-      border-bottom: 2px solid #ee365b;
+      background: linear-gradient(90deg, #c8102e, #771020 62%, #191d26);
+      border-bottom: 2px solid #f2f4f8;
     }
 
     .lineup-panel-title { font-size: 18px; font-weight: 950; letter-spacing: .08em; }
@@ -5775,12 +5818,12 @@ OVERLAY_HTML = r"""<!doctype html>
 
     .lineup-entry {
       position: relative;
-      min-height: 83px;
+      min-height: 98px;
       padding: 5px 7px 6px;
       box-sizing: border-box;
       border: 1px solid rgba(224, 53, 83, .55);
       border-top: 3px solid rgba(229, 37, 70, .82);
-      background: linear-gradient(145deg, rgba(54, 7, 18, .82), rgba(10, 11, 17, .94));
+      background: linear-gradient(145deg, rgba(35, 40, 50, .95), rgba(8, 10, 15, .98));
       transition: filter .2s linear, transform .2s linear, border-color .2s linear;
       overflow: hidden;
     }
@@ -5791,7 +5834,7 @@ OVERLAY_HTML = r"""<!doctype html>
       transform: scale(1.025);
       border-color: #fff;
       border-top-color: #ff335b;
-      background: linear-gradient(145deg, rgba(181, 18, 51, .96), rgba(76, 15, 108, .96));
+      background: linear-gradient(145deg, rgba(190, 17, 47, .98), rgba(44, 12, 20, .98));
       box-shadow: 0 0 0 2px rgba(255,255,255,.82), 0 0 22px rgba(255, 42, 94, .62);
       z-index: 2;
     }
@@ -5812,7 +5855,7 @@ OVERLAY_HTML = r"""<!doctype html>
     .lineup-entry-car {
       display: block;
       width: 100%;
-      height: 50px;
+      height: 64px;
       object-fit: contain;
       object-position: center;
       filter: drop-shadow(0 5px 5px rgba(0,0,0,.5));
@@ -5844,6 +5887,117 @@ OVERLAY_HTML = r"""<!doctype html>
       font-size: 12px;
       font-weight: 950;
       text-shadow: 0 2px 5px #000;
+    }
+
+    .podium-panel {
+      position: absolute;
+      left: 158px;
+      bottom: 70px;
+      width: 720px;
+      padding: 0 12px 14px;
+      box-sizing: border-box;
+      color: #fff;
+      background: linear-gradient(150deg, rgba(22, 27, 36, .98), rgba(5, 7, 12, .99) 68%);
+      border: 2px solid rgba(225, 35, 55, .88);
+      border-radius: 8px;
+      box-shadow: 0 18px 44px rgba(0,0,0,.58), inset 0 0 28px rgba(255,255,255,.035);
+      text-transform: uppercase;
+      overflow: hidden;
+      z-index: 25;
+    }
+
+    .podium-panel-header {
+      margin: 0 -12px 12px;
+      padding: 10px 18px 9px;
+      background: linear-gradient(90deg, #c8102e, #771020 60%, #191d26);
+      border-bottom: 2px solid #f2f4f8;
+      text-align: center;
+      font-size: 22px;
+      font-weight: 950;
+      letter-spacing: .12em;
+    }
+
+    .podium-panel-grid {
+      display: grid;
+      grid-template-columns: 1fr 1.14fr 1fr;
+      gap: 9px;
+      align-items: end;
+    }
+
+    .podium-entry {
+      position: relative;
+      min-width: 0;
+      min-height: 190px;
+      padding: 38px 10px 10px;
+      box-sizing: border-box;
+      background: linear-gradient(155deg, rgba(39,45,57,.98), rgba(10,12,18,.98));
+      border: 1px solid rgba(255,255,255,.20);
+      border-bottom: 4px solid #8f99a9;
+      border-radius: 7px;
+      overflow: hidden;
+    }
+
+    .podium-entry.position-1 {
+      min-height: 225px;
+      border-bottom-color: #d9b341;
+      box-shadow: inset 0 0 24px rgba(217,179,65,.08);
+    }
+    .podium-entry.position-2 { border-bottom-color: #b9c1ce; }
+    .podium-entry.position-3 { border-bottom-color: #bd7542; }
+
+    .podium-position {
+      position: absolute;
+      left: 9px;
+      top: 9px;
+      padding: 5px 9px;
+      border-radius: 5px;
+      background: #c8102e;
+      color: #fff;
+      font-size: 18px;
+      font-weight: 950;
+      box-shadow: 0 4px 10px rgba(0,0,0,.45);
+    }
+
+    .podium-number {
+      position: absolute;
+      right: 10px;
+      top: 12px;
+      color: #fff;
+      font-size: 17px;
+      font-weight: 950;
+      text-shadow: 0 2px 5px #000;
+    }
+
+    .podium-car {
+      display: block;
+      width: 100%;
+      height: 112px;
+      object-fit: contain;
+      filter: drop-shadow(0 8px 7px rgba(0,0,0,.58));
+    }
+    .podium-entry.position-1 .podium-car { height: 142px; }
+    .podium-entry.no-car { padding-top: 72px; }
+
+    .podium-driver {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      text-align: center;
+      font-size: 16px;
+      font-weight: 950;
+    }
+
+    .podium-team {
+      min-height: 13px;
+      margin-top: 3px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      text-align: center;
+      color: rgba(255,255,255,.60);
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: .05em;
     }
 
     .studio-stamp {
@@ -6056,11 +6210,11 @@ OVERLAY_HTML = r"""<!doctype html>
     }
 
     .stat-panel.race_end_cap {
-      left: 50%;
-      right: auto;
+      left: auto;
+      right: 34px;
       bottom: 74px;
-      transform: translateX(-50%);
-      width: 600px;
+      transform: none;
+      width: 560px;
       border-left-color: #ffffff;
       box-shadow: 0 18px 42px rgba(0, 0, 0, 0.50), 0 0 24px rgba(255, 255, 255, 0.10);
     }
@@ -6684,6 +6838,11 @@ OVERLAY_HTML = r"""<!doctype html>
     <div id="lineup-panel-grid" class="lineup-panel-grid"></div>
   </section>
 
+  <section id="podium-panel" class="podium-panel hidden">
+    <div class="podium-panel-header">Podium Finishers</div>
+    <div id="podium-panel-grid" class="podium-panel-grid"></div>
+  </section>
+
   <section id="stat-panel" class="stat-panel hidden">
     <div class="stat-panel-header">
       <div class="stat-panel-title"></div>
@@ -6764,6 +6923,7 @@ OVERLAY_HTML = r"""<!doctype html>
       renderSpecialPresentation(presentation);
       renderDriverCard(shouldHideDriverCardForPresentation(presentation) ? null : state.featured_driver);
       renderLineupPanel(shouldHideDriverCardForPresentation(presentation) ? null : state.lineup_panel);
+      renderPodiumPanel(state.podium_panel);
       renderStatPanel(state.stat_panel, "stat-panel");
       renderStatPanel(state.secondary_stat_panel, "stat-panel-secondary");
 
@@ -7261,7 +7421,6 @@ OVERLAY_HTML = r"""<!doctype html>
       const grid = document.getElementById("lineup-panel-grid");
       const signature = JSON.stringify({
         pageStart: panel.page_start,
-        activePosition,
         entries: entries.map(entry => [
           entry.position,
           entry.car_idx,
@@ -7271,23 +7430,85 @@ OVERLAY_HTML = r"""<!doctype html>
           entry.number_style,
         ]),
       });
-      if (grid.dataset.signature === signature) return;
-      grid.dataset.signature = signature;
-      grid.innerHTML = entries.map(entry => {
+      grid.dataset.activePosition = String(activePosition);
+      if (grid.dataset.signature === signature) {
+        applyLineupActiveState(grid, activePosition);
+        return;
+      }
+      if (grid.dataset.requestedSignature === signature) return;
+      grid.dataset.requestedSignature = signature;
+      const images = entries.map(entry => String(entry.car_image_url || "").trim()).filter(Boolean);
+      Promise.all(images.map(preloadOverlayImage)).then(() => {
+        if (grid.dataset.requestedSignature !== signature) return;
+        grid.dataset.signature = signature;
+        const latestActivePosition = Number(grid.dataset.activePosition || activePosition);
+        grid.innerHTML = entries.map(entry => {
         const position = Number(entry.position || 0);
-        const active = position === activePosition;
-        const called = position > 0 && position < activePosition;
+        const active = position === latestActivePosition;
+        const called = position > 0 && position < latestActivePosition;
         const image = String(entry.car_image_url || "").trim();
         const classes = ["lineup-entry", active ? "active" : "", called ? "called" : "", image ? "" : "no-car"].filter(Boolean).join(" ");
         const carImage = image
           ? `<img class="lineup-entry-car" src="${escapeHtml(image)}" alt="" onerror="this.remove(); this.parentElement.classList.add('no-car')">`
           : "";
         return `
-          <div class="${classes}">
+          <div class="${classes}" data-position="${position}">
             <div class="lineup-entry-position">P${position || "--"}</div>
             <div class="lineup-entry-number" style="${numberStyleAttribute(entry.number_style || {})}">#${escapeHtml(entry.car_number || "--")}</div>
             ${carImage}
             <div class="lineup-entry-name">${escapeHtml(entry.driver_name || "Unknown Driver")}</div>
+          </div>
+        `;
+        }).join("");
+      });
+    }
+
+    function preloadOverlayImage(src) {
+      return new Promise(resolve => {
+        const image = new Image();
+        image.onload = resolve;
+        image.onerror = resolve;
+        image.src = src;
+        if (image.complete) resolve();
+      });
+    }
+
+    function applyLineupActiveState(grid, activePosition) {
+      for (const entry of grid.querySelectorAll(".lineup-entry")) {
+        const position = Number(entry.dataset.position || 0);
+        entry.classList.toggle("active", position === activePosition);
+        entry.classList.toggle("called", position > 0 && position < activePosition);
+      }
+    }
+
+    function renderPodiumPanel(panel) {
+      const shell = document.getElementById("podium-panel");
+      const entries = panel && Array.isArray(panel.entries) ? panel.entries : [];
+      shell.classList.toggle("hidden", !entries.length);
+      if (!entries.length) return;
+      const grid = document.getElementById("podium-panel-grid");
+      const ordered = [...entries].sort((a, b) => Number(a.position || 99) - Number(b.position || 99));
+      const displayOrder = [ordered[1], ordered[0], ordered[2]].filter(Boolean);
+      const signature = JSON.stringify(displayOrder.map(entry => [
+        entry.position, entry.car_number, entry.driver_name, entry.team_name,
+        entry.car_image_url, entry.number_style,
+      ]));
+      if (grid.dataset.signature === signature) return;
+      grid.dataset.signature = signature;
+      grid.innerHTML = displayOrder.map(entry => {
+        const position = Number(entry.position || 0);
+        const image = String(entry.car_image_url || "").trim();
+        const classes = ["podium-entry", `position-${position || 0}`, image ? "" : "no-car"].filter(Boolean).join(" ");
+        const carImage = image
+          ? `<img class="podium-car" src="${escapeHtml(image)}" alt="" onerror="this.remove(); this.parentElement.classList.add('no-car')">`
+          : "";
+        return `
+          <div class="${classes}" data-position="${position}">
+            <div class="podium-position">P${position || "--"}</div>
+            <div class="podium-number" style="${numberStyleAttribute(entry.number_style || {})}">#${escapeHtml(entry.car_number || "--")}</div>
+            ${carImage}
+            <div class="podium-driver">${escapeHtml(entry.driver_name || "Unknown Driver")}</div>
+            <div class="podium-team">${escapeHtml(entry.team_name || "")}</div>
           </div>
         `;
       }).join("");
@@ -7369,8 +7590,12 @@ OVERLAY_HTML = r"""<!doctype html>
     function renderDriverCardTelemetry(driver) {
       const rpm = Math.max(0, Number(driver.rpm || 0));
       const speed = Math.max(0, Number(driver.speed_mph || 0));
-      const throttle = Math.max(0, Math.min(1, Number(driver.throttle || 0)));
-      const brake = Math.max(0, Math.min(1, Number(driver.brake || 0)));
+      const rawThrottle = Number(driver.throttle);
+      const rawBrake = Number(driver.brake);
+      const throttleAvailable = Number.isFinite(rawThrottle) && rawThrottle >= 0;
+      const brakeAvailable = Number.isFinite(rawBrake) && rawBrake >= 0;
+      const throttle = throttleAvailable ? Math.max(0, Math.min(1, rawThrottle)) : 0;
+      const brake = brakeAvailable ? Math.max(0, Math.min(1, rawBrake)) : 0;
       const rawFuel = Number(driver.fuel_pct);
       const fuelAvailable = Number.isFinite(rawFuel) && rawFuel >= 0;
       const fuel = fuelAvailable ? Math.max(0, Math.min(1, rawFuel)) : 0;
@@ -7380,8 +7605,8 @@ OVERLAY_HTML = r"""<!doctype html>
       setText("driver-card-speed", speed > 0 ? Math.round(speed) : "--");
       setText("driver-card-rpm", rpm > 0 ? Math.round(rpm).toLocaleString("en-US") : "--");
       setText("driver-card-live-interval", driver.interval || "LEADER");
-      setText("driver-card-throttle", `${Math.round(throttle * 100)}%`);
-      setText("driver-card-brake", `${Math.round(brake * 100)}%`);
+      setText("driver-card-throttle", throttleAvailable ? `${Math.round(throttle * 100)}%` : "--");
+      setText("driver-card-brake", brakeAvailable ? `${Math.round(brake * 100)}%` : "--");
       document.getElementById("driver-card-throttle-fill").style.width = `${throttle * 100}%`;
       document.getElementById("driver-card-brake-fill").style.width = `${brake * 100}%`;
       document.getElementById("driver-card-fuel-fill").style.width = `${fuel * 100}%`;
@@ -7686,7 +7911,7 @@ OVERLAY_HTML = r"""<!doctype html>
 
     installCommercialVideoHandlers();
     refreshOverlay();
-    setInterval(refreshOverlay, 1000);
+    setInterval(refreshOverlay, 200);
   </script>
 </body>
 </html>

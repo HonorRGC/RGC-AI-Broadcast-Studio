@@ -35,6 +35,29 @@ def test_lineup_panel_state_and_overlay_markup():
     assert ".lineup-entry.active" in OVERLAY_HTML
 
 
+def test_podium_panel_state_and_overlay_markup():
+    server = OverlayServer(state_builder=OverlayStateBuilder())
+    server.show_podium_panel(
+        [
+            {
+                "position": position,
+                "car_number": str(position),
+                "driver_name": f"Driver {position}",
+                "team_name": f"Team {position}",
+                "car_image_url": f"/paint-previews/{position}.png",
+            }
+            for position in range(1, 4)
+        ]
+    )
+
+    state = server.state.to_dict()["podium_panel"]
+    assert [entry["position"] for entry in state["entries"]] == [1, 2, 3]
+    assert state["entries"][0]["driver_name"] == "Driver 1"
+    assert 'id="podium-panel"' in OVERLAY_HTML
+    assert "renderPodiumPanel" in OVERLAY_HTML
+    assert ".podium-entry.position-1" in OVERLAY_HTML
+
+
 class OverlayTelemetry:
     def get_results(self):
         return [
@@ -270,7 +293,7 @@ def test_visible_driver_card_refreshes_live_telemetry():
     assert "driver-card-brake-fill" in OVERLAY_HTML
     assert "driver-card-fuel-fill" in OVERLAY_HTML
     assert "grid.dataset.signature === signature" in OVERLAY_HTML
-    assert "body.leaderboard-flo-mode .lineup-panel { top: 246px; }" in OVERLAY_HTML
+    assert "body.leaderboard-flo-mode .lineup-panel { top: 276px; }" in OVERLAY_HTML
     assert "SEASON STATS · RACE PROGRESSION" in OVERLAY_HTML
     assert "driver-card-location" in OVERLAY_HTML
 

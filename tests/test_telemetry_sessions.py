@@ -330,3 +330,15 @@ def test_live_driver_lookup_exposes_paint_matching_fields():
     assert driver["club"] == "Ohio"
     assert driver["division_name"] == "Division 2"
     assert driver["license"] == "A 4.99"
+
+
+def test_player_pedals_are_mapped_only_to_local_car_when_per_car_data_is_unavailable():
+    telemetry = IRacingTelemetry.__new__(IRacingTelemetry)
+    telemetry.ir = {
+        "PlayerCarIdx": 3,
+        "Throttle": 0.72,
+        "Brake": 0.18,
+    }
+
+    assert telemetry.get_car_idx_throttle() == [-1.0, -1.0, -1.0, 0.72]
+    assert telemetry.get_car_idx_brake() == [-1.0, -1.0, -1.0, 0.18]

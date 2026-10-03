@@ -11,6 +11,7 @@ from app import (
     build_points_standings_rows,
     build_caution_pit_summary_rows,
     build_race_recap_rows,
+    build_podium_panel_entries,
     featured_driver_position_info,
     maybe_show_league_points_panel,
     update_overlay_featured_driver,
@@ -116,6 +117,39 @@ def test_starting_lineup_panel_groups_ten_and_highlights_active_driver(monkeypat
     assert options["active_position"] == 15
     assert entries[4]["driver_name"] == "Driver 15"
     assert entries[4]["car_image_url"] == "/paint-previews/14.png"
+
+
+def test_podium_panel_entries_use_top_three_finishers_and_paint_renders(monkeypatch):
+    import app
+
+    source = SimpleNamespace(
+        get_results=lambda: [
+            {"CarIdx": 4, "Position": 2},
+            {"CarIdx": 7, "Position": 1},
+            {"CarIdx": 9, "Position": 3},
+            {"CarIdx": 12, "Position": 4},
+        ],
+        get_driver_lookup=lambda: {
+            4: {"name": "Second Driver", "number": "4", "team_name": "RGC Two"},
+            7: {"name": "Winner Driver", "number": "7", "team_name": "RGC One"},
+            9: {"name": "Third Driver", "number": "9", "team_name": "RGC Three"},
+        },
+    )
+    monkeypatch.setattr(
+        app,
+        "build_featured_driver_render_info",
+        lambda driver, require_live_render_match=False: {
+            "image_url": f"/paint-previews/{driver['car_idx']}.png",
+            "number_style": {},
+        },
+    )
+
+    entries = build_podium_panel_entries(source)
+
+    assert [entry["position"] for entry in entries] == [1, 2, 3]
+    assert entries[0]["driver_name"] == "Winner Driver"
+    assert entries[0]["car_image_url"] == "/paint-previews/7.png"
+    assert entries[1]["team_name"] == "RGC Two"
 
 
 class ProducerOverlaySpy:
