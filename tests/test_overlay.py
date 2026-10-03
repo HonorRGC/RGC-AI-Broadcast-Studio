@@ -9,6 +9,32 @@ from production.overlay import (
 import inspect
 
 
+def test_lineup_panel_state_and_overlay_markup():
+    server = OverlayServer(state_builder=OverlayStateBuilder())
+    server.show_lineup_panel(
+        [
+            {
+                "position": position,
+                "car_idx": position - 1,
+                "car_number": str(position),
+                "driver_name": f"Driver {position}",
+                "car_image_url": f"/paint-previews/{position}.png",
+            }
+            for position in range(1, 11)
+        ],
+        active_position=4,
+    )
+
+    state = server.state.to_dict()["lineup_panel"]
+    assert state["page_start"] == 1
+    assert state["page_end"] == 10
+    assert state["active_position"] == 4
+    assert len(state["entries"]) == 10
+    assert 'id="lineup-panel"' in OVERLAY_HTML
+    assert "renderLineupPanel" in OVERLAY_HTML
+    assert ".lineup-entry.active" in OVERLAY_HTML
+
+
 class OverlayTelemetry:
     def get_results(self):
         return [
@@ -80,6 +106,28 @@ class LiveDriverTelemetry(OverlayTelemetry):
 
     def get_car_speed_mph_lookup(self):
         return {3: 191.4}
+
+    def get_driver_lookup(self):
+        lookup = super().get_driver_lookup()
+        lookup[3].update(
+            {
+                "team_name": "Bell Family Racing",
+                "league_profile": {
+                    "hometown": "Charlotte",
+                    "state": "North Carolina",
+                    "country": "United States",
+                },
+                "league_stats": {
+                    "stats_scope": "season",
+                    "points_position": "2",
+                    "starts": "6",
+                    "wins": "1",
+                    "top_fives": "4",
+                    "top_tens": "6",
+                },
+            }
+        )
+        return lookup
 
 
 def test_overlay_state_includes_title_sponsor_track_and_lap():
@@ -181,6 +229,9 @@ def test_visible_driver_card_refreshes_live_telemetry():
         car_number="77",
         driver_name="Austin Peterson",
         car_idx=3,
+        team_name="Bell Family Racing",
+        hometown="Charlotte",
+        state="North Carolina",
         duration=30,
     )
 
@@ -192,7 +243,14 @@ def test_visible_driver_card_refreshes_live_telemetry():
     assert driver["gear"] == 5
     assert driver["rpm"] == 8353.0
     assert driver["speed_mph"] == 191.4
+    assert driver["team_name"] == "Bell Family Racing"
+    assert driver["hometown"] == "Charlotte"
+    assert driver["state"] == "North Carolina"
+    assert driver["season_stats"]["points_position"] == "2"
+    assert driver["position_history"] == [{"lap": 12, "position": 2}]
     assert "driver-card-rpm-arc" in OVERLAY_HTML
+    assert "SEASON STATS · RACE PROGRESSION" in OVERLAY_HTML
+    assert "driver-card-location" in OVERLAY_HTML
 
 
 def test_overlay_leaderboard_can_include_live_number_style(monkeypatch):

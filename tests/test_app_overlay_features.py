@@ -15,6 +15,7 @@ from app import (
     maybe_show_league_points_panel,
     update_overlay_featured_driver,
     update_overlay_focused_driver,
+    update_overlay_starting_lineup_panel,
     build_producer_pit_road_rows,
     find_brand_graphic_for_name,
     handle_producer_command,
@@ -79,6 +80,42 @@ def test_camera_update_overlay_refresh_only_for_lineup():
     assert not should_update_overlay_for_camera_update(SimpleNamespace(role="story"))
     assert not should_update_overlay_for_camera_update(SimpleNamespace(role="home"))
     assert not should_update_overlay_for_camera_update(SimpleNamespace(role=""))
+
+
+def test_starting_lineup_panel_groups_ten_and_highlights_active_driver(monkeypatch):
+    import app
+
+    panels = []
+    overlay = SimpleNamespace(show_lineup_panel=lambda entries, **kwargs: panels.append((entries, kwargs)))
+    grid = [{"CarIdx": idx, "Position": idx} for idx in range(20)]
+    source = SimpleNamespace(
+        get_starting_grid=lambda: grid,
+        get_driver_lookup=lambda: {
+            idx: {"name": f"Driver {idx + 1}", "number": str(idx + 1)}
+            for idx in range(20)
+        },
+        get_results=lambda: [],
+    )
+    monkeypatch.setattr(
+        app,
+        "build_featured_driver_render_info",
+        lambda driver, require_live_render_match=False: {
+            "image_url": f"/paint-previews/{driver['car_idx']}.png",
+            "number_style": {},
+        },
+    )
+
+    update_overlay_starting_lineup_panel(
+        overlay,
+        source,
+        SimpleNamespace(car_idx=14),
+    )
+
+    entries, options = panels[0]
+    assert [entry["position"] for entry in entries] == list(range(11, 21))
+    assert options["active_position"] == 15
+    assert entries[4]["driver_name"] == "Driver 15"
+    assert entries[4]["car_image_url"] == "/paint-previews/14.png"
 
 
 class ProducerOverlaySpy:

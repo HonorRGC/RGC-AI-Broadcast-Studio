@@ -252,6 +252,11 @@ class FeaturedDriver:
     speed_mph: float = 0.0
     rpm: float = 0.0
     gear: int = 0
+    team_name: str = ""
+    hometown: str = ""
+    state: str = ""
+    season_stats: dict[str, Any] = field(default_factory=dict)
+    position_history: list[dict[str, int]] = field(default_factory=list)
     expires_at: float = 0.0
 
     def to_dict(self):
@@ -274,6 +279,28 @@ class FeaturedDriver:
             "speed_mph": self.speed_mph,
             "rpm": self.rpm,
             "gear": self.gear,
+            "team_name": self.team_name,
+            "hometown": self.hometown,
+            "state": self.state,
+            "season_stats": dict(self.season_stats or {}),
+            "position_history": list(self.position_history or []),
+        }
+
+
+@dataclass
+class LineupPanel:
+    page_start: int = 1
+    page_end: int = 10
+    active_position: int = 0
+    entries: list[dict[str, Any]] = field(default_factory=list)
+    expires_at: float = 0.0
+
+    def to_dict(self):
+        return {
+            "page_start": self.page_start,
+            "page_end": self.page_end,
+            "active_position": self.active_position,
+            "entries": [dict(entry) for entry in self.entries],
         }
 
 
@@ -429,6 +456,7 @@ class OverlayState:
     caution: bool = False
     green: bool = False
     featured_driver: FeaturedDriver | None = None
+    lineup_panel: LineupPanel | None = None
     special_presentation: SpecialPresentation | None = None
     stat_panel: StatPanel | None = None
     secondary_stat_panel: StatPanel | None = None
@@ -462,6 +490,7 @@ class OverlayState:
             "featured_driver": (
                 self.featured_driver.to_dict() if self.featured_driver else None
             ),
+            "lineup_panel": self.lineup_panel.to_dict() if self.lineup_panel else None,
             "special_presentation": (
                 self.special_presentation.to_dict()
                 if self.special_presentation
@@ -501,6 +530,8 @@ class OverlayStateBuilder:
         self.lap_status_by_lap = {}
         self.starting_positions_by_car_idx = {}
         self.number_style_by_car_idx = {}
+        self.position_history_by_car_idx = {}
+        self.position_history_last_lap = 0
 
     def build_from_telemetry(self, telemetry):
         results = telemetry.get_results()
@@ -549,6 +580,7 @@ class OverlayStateBuilder:
             full_leaderboard = self.last_leaderboard
 
         leaderboard = self.visible_leaderboard_window(full_leaderboard)
+        self.update_position_history(session_type, lap, full_leaderboard)
 
         recorded_history_reader = getattr(telemetry, "get_recorded_lap_history", None)
         if callable(recorded_history_reader):
@@ -578,6 +610,26 @@ class OverlayStateBuilder:
             return bool(checker())
         except Exception:
             return False
+
+    def update_position_history(self, session_type, lap, leaderboard):
+        lap = self.safe_int(lap)
+        if not self.is_race_session(session_type) or lap <= 0:
+            return
+        if lap <= 1 and self.position_history_last_lap > 1:
+            self.position_history_by_car_idx = {}
+        self.position_history_last_lap = max(lap, self.position_history_last_lap)
+        for entry in leaderboard or []:
+            car_idx = self.safe_int(entry.car_idx, -1)
+            position = self.safe_int(entry.position)
+            if car_idx >= 0 and position > 0:
+                self.position_history_by_car_idx.setdefault(car_idx, {})[lap] = position
+
+    def position_history_for(self, car_idx, limit=36):
+        values = self.position_history_by_car_idx.get(self.safe_int(car_idx, -1), {})
+        return [
+            {"lap": lap, "position": position}
+            for lap, position in sorted(values.items())[-max(2, int(limit)):]
+        ]
 
     def enrich_driver_lookup(self, driver_lookup):
         enricher = getattr(self.league_context, "enrich_driver_lookup", None)
@@ -1160,6 +1212,7 @@ class OverlayServer:
         self.state = OverlayState(event=self.state_builder.event_config)
         self.lock = threading.Lock()
         self.featured_driver = None
+        self.lineup_panel = None
         self.special_presentation = None
         self.stat_panel = None
         self.secondary_stat_panel = None
@@ -1289,6 +1342,12 @@ class OverlayServer:
                 state.featured_driver = self.featured_driver
             else:
                 self.featured_driver = None
+            if state.green and state.lap > 0:
+                self.lineup_panel = None
+            if self.lineup_panel and self.lineup_panel.expires_at > time.monotonic():
+                state.lineup_panel = self.lineup_panel
+            else:
+                self.lineup_panel = None
             if (
                 self.special_presentation
                 and self.special_presentation.expires_at > time.monotonic()
@@ -1359,6 +1418,19 @@ class OverlayServer:
             featured.class_size = current_entry.class_size
             featured.position_delta = current_entry.position_delta
             featured.interval = current_entry.interval
+            profile = dict(current_entry.league_profile or {})
+            featured.hometown = str(profile.get("hometown") or featured.hometown or "")
+            featured.state = str(profile.get("state") or featured.state or "")
+            scoped = list(current_entry.league_stats_by_scope or [])
+            season = next(
+                (
+                    item for item in scoped
+                    if str(item.get("stats_scope") or "").strip().lower().replace(" ", "_") == "season"
+                ),
+                None,
+            )
+            featured.season_stats = dict(season or current_entry.league_stats or featured.season_stats or {})
+        featured.position_history = self.state_builder.position_history_for(car_idx)
 
     @staticmethod
     def normalize_leaderboard_style(value):
@@ -1411,6 +1483,10 @@ class OverlayServer:
         speed_mph=0.0,
         rpm=0.0,
         gear=0,
+        team_name="",
+        hometown="",
+        state="",
+        season_stats=None,
         number_style=None,
     ):
         with self.lock:
@@ -1441,6 +1517,10 @@ class OverlayServer:
                 speed_mph=max(0.0, self.state_builder.safe_float(speed_mph)),
                 rpm=max(0.0, self.state_builder.safe_float(rpm)),
                 gear=self.state_builder.safe_int(gear),
+                team_name=str(team_name or ""),
+                hometown=str(hometown or ""),
+                state=str(state or ""),
+                season_stats=dict(season_stats or {}),
                 expires_at=time.monotonic() + float(duration),
             )
             self.state.featured_driver = self.featured_driver
@@ -1449,6 +1529,36 @@ class OverlayServer:
         with self.lock:
             self.featured_driver = None
             self.state.featured_driver = None
+
+    def show_lineup_panel(self, entries, active_position, duration=12.0):
+        clean_entries = []
+        for entry in list(entries or [])[:10]:
+            clean_entries.append(
+                {
+                    "position": self.state_builder.safe_int(entry.get("position")),
+                    "car_idx": self.state_builder.safe_int(entry.get("car_idx"), -1),
+                    "car_number": str(entry.get("car_number") or ""),
+                    "driver_name": str(entry.get("driver_name") or ""),
+                    "car_image_url": proxied_iracing_render_url(entry.get("car_image_url")),
+                    "number_style": sanitize_driver_number_style(entry.get("number_style")),
+                }
+            )
+        active_position = self.state_builder.safe_int(active_position)
+        page_start = ((max(active_position, 1) - 1) // 10) * 10 + 1
+        with self.lock:
+            self.lineup_panel = LineupPanel(
+                page_start=page_start,
+                page_end=page_start + 9,
+                active_position=active_position,
+                entries=clean_entries,
+                expires_at=time.monotonic() + float(duration),
+            )
+            self.state.lineup_panel = self.lineup_panel
+
+    def clear_lineup_panel(self):
+        with self.lock:
+            self.lineup_panel = None
+            self.state.lineup_panel = None
 
     def show_special_presentation(
         self,
@@ -5170,9 +5280,9 @@ OVERLAY_HTML = r"""<!doctype html>
       left: 360px;
       bottom: 54px;
       min-width: 430px;
-      max-width: 920px;
+      max-width: 1120px;
       display: grid;
-      grid-template-columns: 104px minmax(0, 178px) minmax(250px, 1fr) 174px;
+      grid-template-columns: 92px minmax(0, 165px) minmax(220px, 1fr) 158px 330px;
       background: linear-gradient(90deg, rgba(7, 9, 13, 0.96), rgba(24, 30, 42, 0.92));
       border-left: 6px solid var(--rgc-red);
       box-shadow: 0 14px 34px rgba(0, 0, 0, 0.42);
@@ -5192,7 +5302,7 @@ OVERLAY_HTML = r"""<!doctype html>
 
     .driver-card-position-rank .rank {
       font-weight: 950;
-      font-size: 40px;
+      font-size: 35px;
       line-height: 0.95;
       letter-spacing: -0.05em;
     }
@@ -5268,11 +5378,11 @@ OVERLAY_HTML = r"""<!doctype html>
     }
 
     .driver-card-info {
-      padding: 12px 18px;
+      padding: 9px 14px;
     }
 
     .driver-card-name {
-      font-size: 26px;
+      font-size: 22px;
       font-weight: 900;
       white-space: nowrap;
       overflow: hidden;
@@ -5327,6 +5437,20 @@ OVERLAY_HTML = r"""<!doctype html>
       overflow: hidden;
       text-overflow: ellipsis;
     }
+
+    .driver-card-team,
+    .driver-card-location {
+      margin-top: 3px;
+      color: #dce3ef;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .06em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .driver-card-location { color: var(--rgc-muted); }
 
     .driver-card-telemetry {
       position: relative;
@@ -5403,6 +5527,178 @@ OVERLAY_HTML = r"""<!doctype html>
       font-weight: 900;
       text-align: center;
       font-variant-numeric: tabular-nums;
+    }
+
+    .driver-card-race-story {
+      min-height: 92px;
+      padding: 8px 12px 6px;
+      box-sizing: border-box;
+      border-left: 1px solid rgba(255,255,255,.14);
+      background: #0b0f17;
+    }
+
+    .driver-card-season-label {
+      color: #b7c1d1;
+      font-size: 8px;
+      font-weight: 900;
+      letter-spacing: .13em;
+    }
+
+    .driver-card-season-stats {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      margin-top: 3px;
+      gap: 6px;
+    }
+
+    .driver-card-season-stat { text-align: center; }
+    .driver-card-season-stat b {
+      display: block;
+      color: #fff;
+      font-size: 13px;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+    .driver-card-season-stat span {
+      display: block;
+      margin-top: 2px;
+      color: rgba(255,255,255,.48);
+      font-size: 7px;
+      font-weight: 900;
+      letter-spacing: .05em;
+    }
+
+    .driver-card-progress-chart {
+      width: 100%;
+      height: 45px;
+      margin-top: 5px;
+      display: block;
+      overflow: visible;
+    }
+
+    .driver-card-chart-grid { stroke: rgba(255,255,255,.12); stroke-width: 1; }
+    .driver-card-chart-line {
+      fill: none;
+      stroke: #a855f7;
+      stroke-width: 3;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .driver-card-chart-dot { fill: #a855f7; stroke: #fff; stroke-width: 1.5; }
+    .driver-card-chart-label {
+      fill: rgba(255,255,255,.56);
+      font: 7px Arial, sans-serif;
+    }
+
+    .lineup-panel {
+      position: absolute;
+      top: 112px;
+      right: 28px;
+      width: 390px;
+      padding: 8px;
+      box-sizing: border-box;
+      color: #fff;
+      background: linear-gradient(155deg, rgba(28, 7, 39, .97), rgba(5, 7, 12, .98) 62%);
+      border: 2px solid rgba(179, 55, 255, .82);
+      border-radius: 8px;
+      box-shadow: 0 16px 38px rgba(0, 0, 0, .54), inset 0 0 24px rgba(146, 37, 211, .12);
+      text-transform: uppercase;
+      overflow: hidden;
+      z-index: 24;
+    }
+
+    .lineup-panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 36px;
+      padding: 0 11px;
+      margin-bottom: 7px;
+      border-radius: 5px;
+      background: linear-gradient(90deg, #8e1027, #64147d 62%, #32104d);
+      border-bottom: 2px solid #ee365b;
+    }
+
+    .lineup-panel-title { font-size: 18px; font-weight: 950; letter-spacing: .08em; }
+    .lineup-panel-range { color: rgba(255,255,255,.72); font-size: 10px; font-weight: 900; letter-spacing: .12em; }
+
+    .lineup-panel-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    .lineup-entry {
+      position: relative;
+      min-height: 83px;
+      padding: 5px 7px 6px;
+      box-sizing: border-box;
+      border: 1px solid rgba(224, 53, 83, .55);
+      border-top: 3px solid rgba(229, 37, 70, .82);
+      background: linear-gradient(145deg, rgba(54, 7, 18, .82), rgba(10, 11, 17, .94));
+      transition: filter .2s linear, transform .2s linear, border-color .2s linear;
+      overflow: hidden;
+    }
+
+    .lineup-entry.called { opacity: .74; }
+    .lineup-entry.active {
+      opacity: 1;
+      transform: scale(1.025);
+      border-color: #fff;
+      border-top-color: #ff335b;
+      background: linear-gradient(145deg, rgba(181, 18, 51, .96), rgba(76, 15, 108, .96));
+      box-shadow: 0 0 0 2px rgba(255,255,255,.82), 0 0 22px rgba(255, 42, 94, .62);
+      z-index: 2;
+    }
+
+    .lineup-entry-position {
+      position: absolute;
+      left: 6px;
+      top: 6px;
+      z-index: 2;
+      padding: 3px 7px;
+      border-radius: 4px;
+      background: #d31536;
+      box-shadow: 0 3px 8px rgba(0,0,0,.45);
+      font-size: 14px;
+      font-weight: 950;
+    }
+
+    .lineup-entry-car {
+      display: block;
+      width: 100%;
+      height: 50px;
+      object-fit: contain;
+      object-position: center;
+      filter: drop-shadow(0 5px 5px rgba(0,0,0,.5));
+    }
+
+    .lineup-entry.no-car { padding-top: 32px; }
+    .lineup-entry-number {
+      position: absolute;
+      right: 8px;
+      top: 7px;
+      min-width: 30px;
+      text-align: center;
+      color: #fff;
+      font-size: 13px;
+      font-weight: 950;
+      text-shadow: 0 2px 5px #000;
+    }
+
+    .lineup-entry-name {
+      position: absolute;
+      left: 6px;
+      right: 6px;
+      bottom: 5px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      text-align: center;
+      color: #fff;
+      font-size: 12px;
+      font-weight: 950;
+      text-shadow: 0 2px 5px #000;
     }
 
     .studio-stamp {
@@ -6192,6 +6488,8 @@ OVERLAY_HTML = r"""<!doctype html>
     <div class="driver-card-info">
       <div id="driver-card-name" class="driver-card-name"></div>
       <div id="driver-card-position" class="driver-card-position"></div>
+      <div id="driver-card-team" class="driver-card-team hidden"></div>
+      <div id="driver-card-location" class="driver-card-location hidden"></div>
       <div id="driver-card-story" class="driver-card-story"></div>
       <div id="driver-card-country" class="driver-card-country"></div>
     </div>
@@ -6216,6 +6514,19 @@ OVERLAY_HTML = r"""<!doctype html>
         </div>
       </div>
     </div>
+    <div class="driver-card-race-story">
+      <div class="driver-card-season-label">SEASON STATS · RACE PROGRESSION</div>
+      <div id="driver-card-season-stats" class="driver-card-season-stats"></div>
+      <svg id="driver-card-progress-chart" class="driver-card-progress-chart" viewBox="0 0 300 45" role="img" aria-label="Position through the race"></svg>
+    </div>
+  </section>
+
+  <section id="lineup-panel" class="lineup-panel hidden">
+    <div class="lineup-panel-header">
+      <div class="lineup-panel-title">Starting Lineup</div>
+      <div id="lineup-panel-range" class="lineup-panel-range"></div>
+    </div>
+    <div id="lineup-panel-grid" class="lineup-panel-grid"></div>
   </section>
 
   <section id="stat-panel" class="stat-panel hidden">
@@ -6297,6 +6608,7 @@ OVERLAY_HTML = r"""<!doctype html>
       const presentation = effectiveSpecialPresentation(state);
       renderSpecialPresentation(presentation);
       renderDriverCard(shouldHideDriverCardForPresentation(presentation) ? null : state.featured_driver);
+      renderLineupPanel(shouldHideDriverCardForPresentation(presentation) ? null : state.lineup_panel);
       renderStatPanel(state.stat_panel, "stat-panel");
       renderStatPanel(state.secondary_stat_panel, "stat-panel-secondary");
 
@@ -6783,6 +7095,35 @@ OVERLAY_HTML = r"""<!doctype html>
       img.src = src || "";
     }
 
+    function renderLineupPanel(panel) {
+      const shell = document.getElementById("lineup-panel");
+      const entries = panel && Array.isArray(panel.entries) ? panel.entries : [];
+      shell.classList.toggle("hidden", !entries.length);
+      if (!entries.length) return;
+
+      setText("lineup-panel-range", `Positions ${panel.page_start || 1}–${panel.page_end || 10}`);
+      const activePosition = Number(panel.active_position || 0);
+      const grid = document.getElementById("lineup-panel-grid");
+      grid.innerHTML = entries.map(entry => {
+        const position = Number(entry.position || 0);
+        const active = position === activePosition;
+        const called = position > 0 && position < activePosition;
+        const image = String(entry.car_image_url || "").trim();
+        const classes = ["lineup-entry", active ? "active" : "", called ? "called" : "", image ? "" : "no-car"].filter(Boolean).join(" ");
+        const carImage = image
+          ? `<img class="lineup-entry-car" src="${escapeHtml(image)}" alt="" onerror="this.remove(); this.parentElement.classList.add('no-car')">`
+          : "";
+        return `
+          <div class="${classes}">
+            <div class="lineup-entry-position">P${position || "--"}</div>
+            <div class="lineup-entry-number" style="${numberStyleAttribute(entry.number_style || {})}">#${escapeHtml(entry.car_number || "--")}</div>
+            ${carImage}
+            <div class="lineup-entry-name">${escapeHtml(entry.driver_name || "Unknown Driver")}</div>
+          </div>
+        `;
+      }).join("");
+    }
+
     function renderDriverCard(driver) {
       const card = document.getElementById("driver-card");
       const hasDriver = !!(driver && (driver.driver_name || driver.car_number));
@@ -6803,8 +7144,57 @@ OVERLAY_HTML = r"""<!doctype html>
       card.dataset.driverKey = driverKey;
       setText("driver-card-position", buildDriverCardPositionLine(driver));
       setText("driver-card-story", cleanDriverCardStory(driver));
+      renderDriverCardProfile(driver);
       renderDriverCardTelemetry(driver);
+      renderDriverCardRaceStory(driver);
       renderDriverCardImage(driver.car_image_url || "", driver);
+    }
+
+    function renderDriverCardProfile(driver) {
+      const team = String(driver.team_name || "").trim();
+      const location = [driver.hometown, driver.state].filter(Boolean).join(", ");
+      setText("driver-card-team", team ? `Team · ${team}` : "");
+      setText("driver-card-location", location);
+      document.getElementById("driver-card-team").classList.toggle("hidden", !team);
+      document.getElementById("driver-card-location").classList.toggle("hidden", !location);
+    }
+
+    function renderDriverCardRaceStory(driver) {
+      const stats = driver.season_stats || {};
+      const values = [
+        [stats.points_position ? ordinal(stats.points_position) : "--", "POINTS"],
+        [stats.starts || "--", "STARTS"],
+        [stats.wins || "0", "WINS"],
+        [stats.top_fives || stats.top5 || "0", "TOP 5"],
+        [stats.top_tens || stats.top10 || "0", "TOP 10"],
+      ];
+      document.getElementById("driver-card-season-stats").innerHTML = values.map(([value, label]) =>
+        `<div class="driver-card-season-stat"><b>${escapeHtml(value)}</b><span>${escapeHtml(label)}</span></div>`
+      ).join("");
+
+      const svg = document.getElementById("driver-card-progress-chart");
+      const history = (driver.position_history || []).filter(item => Number(item.lap) > 0 && Number(item.position) > 0);
+      if (!history.length) {
+        svg.innerHTML = '<text x="150" y="29" text-anchor="middle" class="driver-card-chart-label">Position history begins after Lap 1</text>';
+        return;
+      }
+      const minLap = Number(history[0].lap);
+      const maxLap = Math.max(Number(history[history.length - 1].lap), minLap + 1);
+      const maxPosition = Math.max(5, ...history.map(item => Number(item.position)));
+      const x = lap => 17 + ((Number(lap) - minLap) / (maxLap - minLap)) * 273;
+      const y = position => 7 + ((Number(position) - 1) / Math.max(maxPosition - 1, 1)) * 29;
+      const points = history.map(item => `${x(item.lap).toFixed(1)},${y(item.position).toFixed(1)}`).join(" ");
+      const current = history[history.length - 1];
+      svg.innerHTML = `
+        <line class="driver-card-chart-grid" x1="17" y1="7" x2="290" y2="7"></line>
+        <line class="driver-card-chart-grid" x1="17" y1="36" x2="290" y2="36"></line>
+        <text class="driver-card-chart-label" x="0" y="10">P1</text>
+        <text class="driver-card-chart-label" x="0" y="39">P${maxPosition}</text>
+        <polyline class="driver-card-chart-line" points="${points}"></polyline>
+        <circle class="driver-card-chart-dot" cx="${x(current.lap).toFixed(1)}" cy="${y(current.position).toFixed(1)}" r="3.5"></circle>
+        <text class="driver-card-chart-label" x="17" y="44">L${minLap}</text>
+        <text class="driver-card-chart-label" x="290" y="44" text-anchor="end">L${current.lap}</text>
+      `;
     }
 
     function renderDriverCardTelemetry(driver) {

@@ -448,6 +448,13 @@ def run_source(
                 ),
                 engine=engine,
             )
+            if camera_category.startswith("opening_field_rundown"):
+                update_overlay_starting_lineup_panel(
+                    overlay_server,
+                    source,
+                    camera_update_decision,
+                    engine=engine,
+                )
         non_race_camera_decision = None
         if not driver_mode:
             non_race_camera_decision = qualifying_camera_director.update(
@@ -3533,6 +3540,13 @@ def update_overlay_featured_driver(overlay_server, item, source, camera_decision
         number_only_card=rundown_number_only,
         engine=engine,
     )
+    if opening_intro:
+        update_overlay_starting_lineup_panel(
+            overlay_server,
+            source,
+            camera_decision,
+            engine=engine,
+        )
 
 
 def show_post_race_winner_card(overlay_server, source, engine=None):
@@ -3565,6 +3579,78 @@ def show_post_race_winner_card(overlay_server, source, engine=None):
 
 def should_update_overlay_for_camera_update(camera_decision):
     return getattr(camera_decision, "role", "") == "lineup"
+
+
+def update_overlay_starting_lineup_panel(
+    overlay_server,
+    source,
+    camera_decision,
+    engine=None,
+    duration=12.0,
+):
+    """Show the active ten-car starting-grid page during opening introductions."""
+    if not overlay_server or not source or camera_decision is None:
+        return
+    show_panel = getattr(overlay_server, "show_lineup_panel", None)
+    if not callable(show_panel):
+        return
+    car_idx = getattr(camera_decision, "car_idx", None)
+    if car_idx is None:
+        return
+    grid = featured_driver_results(source, opening_intro=True)
+    if not grid:
+        return
+    driver_lookup = enriched_driver_lookup(source, engine)
+    ordered = sorted_results_by_position(grid)
+    active_position = 0
+    grid_entries = []
+    for car in ordered:
+        entry_car_idx = car.get("CarIdx")
+        position = normalized_result_position(car, grid)
+        if position <= 0 or entry_car_idx is None:
+            continue
+        driver = dict(driver_lookup.get(entry_car_idx, {}) or {})
+        driver["car_idx"] = entry_car_idx
+        driver.setdefault("CarIdx", entry_car_idx)
+        render_info = build_featured_driver_render_info(
+            driver,
+            require_live_render_match=True,
+        )
+        grid_entries.append(
+            {
+                "position": position,
+                "car_idx": entry_car_idx,
+                "car_number": str(
+                    driver.get("number")
+                    or driver.get("car_number")
+                    or car.get("CarNumber")
+                    or ""
+                ),
+                "driver_name": str(
+                    driver.get("name")
+                    or driver.get("driver_name")
+                    or car.get("UserName")
+                    or "Unknown Driver"
+                ),
+                "car_image_url": render_info.get("image_url", ""),
+                "number_style": render_info.get("number_style", {}),
+            }
+        )
+        if entry_car_idx == car_idx:
+            active_position = position
+    if active_position <= 0:
+        return
+    page_start = ((active_position - 1) // 10) * 10 + 1
+    page_entries = [
+        entry
+        for entry in grid_entries
+        if page_start <= entry["position"] <= page_start + 9
+    ]
+    show_panel(
+        page_entries,
+        active_position=active_position,
+        duration=duration,
+    )
 
 
 def update_overlay_focused_driver(
@@ -3648,6 +3734,10 @@ def update_overlay_focused_driver(
         position_delta=position_info["position_delta"],
         interval=position_info["interval"],
         speed="",
+        team_name=str(driver.get("team_name") or ""),
+        hometown=str(driver.get("hometown") or driver.get("home_town") or ""),
+        state=str(driver.get("state") or ""),
+        season_stats=dict(driver.get("league_stats") or {}),
     )
 
 
