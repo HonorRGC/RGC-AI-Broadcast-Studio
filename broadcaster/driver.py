@@ -42,9 +42,3 @@ class Driver:
     last_mentioned_lap: int = 0
     mention_count: int = 0
     story_score: int = 0
-
-    def positions_gained(self):
-        if self.starting_position == 0 or self.current_position == 0:
-            return 0
-
-        return self.starting_position - self.current_position
