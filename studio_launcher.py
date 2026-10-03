@@ -898,24 +898,47 @@ def sim_racing_apps_is_running(url=SIM_RACING_APPS_HEALTH_URL, timeout=0.35):
 
 def trading_paints_is_running(process_output=None):
     """Return True when the Trading Paints desktop client appears to be running."""
-    try:
-        if process_output is None:
-            if os.name == "nt":
+    if process_output is None:
+        outputs = []
+        if os.name == "nt":
+            try:
                 process_output = subprocess.check_output(
                     ["tasklist", "/fo", "csv", "/nh"],
                     text=True,
                     stderr=subprocess.DEVNULL,
                     timeout=1.0,
                 )
-            else:
+                outputs.append(process_output)
+            except Exception:
+                pass
+            try:
+                process_output = subprocess.check_output(
+                    [
+                        "powershell.exe",
+                        "-NoProfile",
+                        "-NonInteractive",
+                        "-Command",
+                        "Get-Process | Select-Object -ExpandProperty ProcessName",
+                    ],
+                    text=True,
+                    stderr=subprocess.DEVNULL,
+                    timeout=2.0,
+                )
+                outputs.append(process_output)
+            except Exception:
+                pass
+        else:
+            try:
                 process_output = subprocess.check_output(
                     ["ps", "-A", "-o", "comm="],
                     text=True,
                     stderr=subprocess.DEVNULL,
                     timeout=1.0,
                 )
-    except Exception:
-        return False
+                outputs.append(process_output)
+            except Exception:
+                pass
+        process_output = "\n".join(str(output or "") for output in outputs)
 
     normalized = str(process_output or "").lower().replace(" ", "")
     return "tradingpaints" in normalized

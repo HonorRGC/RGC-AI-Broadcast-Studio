@@ -463,6 +463,24 @@ def test_trading_paints_process_detection_accepts_spaced_or_compact_names():
     assert not studio_launcher.trading_paints_is_running("iRacingSim64DX11.exe")
 
 
+def test_trading_paints_process_detection_falls_back_when_tasklist_is_blocked(monkeypatch):
+    import studio_launcher
+
+    calls = []
+
+    def fake_check_output(command, **kwargs):
+        calls.append(command)
+        if command[0] == "tasklist":
+            raise subprocess.CalledProcessError(1, command, stderr="Access denied")
+        return "System\nTrading Paints\niRacingSim64DX11"
+
+    monkeypatch.setattr(studio_launcher.subprocess, "check_output", fake_check_output)
+
+    assert studio_launcher.trading_paints_is_running()
+    assert calls[0][0] == "tasklist"
+    assert calls[1][0] == "powershell.exe"
+
+
 def test_first_time_setup_checklist_flags_missing_profile_and_keys(tmp_path):
     values = launcher_defaults({})
 
