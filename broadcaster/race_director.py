@@ -357,7 +357,7 @@ class RaceDirector:
             expires_after=30,
             dedupe_key=dedupe_key,
             camera_focus_incident=camera_focus_incident,
-            camera_incident_group="Far Chase",
+            camera_incident_group="Chase",
         )
 
         self.yellow_announced = True

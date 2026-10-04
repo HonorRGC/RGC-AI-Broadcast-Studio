@@ -1668,7 +1668,7 @@ def test_race_event_review_jumps_replay_without_following_driver():
     assert camera.mode == "off"
     assert camera.focused == []
     assert replay.manual_started == 1
-    assert producer_manual_camera_control_active(camera) is False
+    assert producer_manual_camera_control_active(camera) is True
     assert any("Loaded review lap 51" in event["message"] for event in overlay.events)
 
 

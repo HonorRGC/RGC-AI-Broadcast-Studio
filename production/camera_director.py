@@ -58,6 +58,15 @@ class CameraDirector:
         self.sequence_return_home = False
 
     def update(self, telemetry):
+        if self.manual_control_active:
+            return CameraDecision(
+                "held",
+                "Manual producer camera control is active.",
+                car_idx=self.current_car_idx,
+                group_number=self.current_group_number,
+                role="manual",
+            )
+
         if self.mode == "off" or not self.is_race_session(telemetry):
             return CameraDecision("ignored", "Camera direction is inactive.")
 
@@ -184,7 +193,7 @@ class CameraDirector:
             self.clear_sequence()
             self.return_home_at = now + self.incident_return_after_seconds
             return self.focus_incident_replay(
-                getattr(item, "camera_incident_group", "Far Chase"),
+                getattr(item, "camera_incident_group", "Chase"),
                 telemetry,
             )
 

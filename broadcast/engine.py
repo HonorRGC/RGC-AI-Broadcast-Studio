@@ -3491,7 +3491,7 @@ class BroadcastEngine:
                     event.trouble_type == "pack wreck"
                     and not audio_only_final_lap_pack_wreck
                 ),
-                camera_incident_group="Far Chase",
+                camera_incident_group="Chase",
                 replay_session_num=(
                     caution_replay_session_num
                     if use_incident_marker_replay

@@ -17,7 +17,7 @@ class ScheduledBroadcast:
     participant_car_indices: Tuple[int, ...] = ()
     source_story_type: str = ""
     camera_focus_incident: bool = False
-    camera_incident_group: str = "Far Chase"
+    camera_incident_group: str = "Chase"
     camera_sequence: Tuple[int, ...] = ()
     camera_sequence_steps: Tuple[tuple, ...] = ()
     replay_session_num: int | None = None
@@ -62,7 +62,7 @@ class BroadcastQueue:
         participant_car_indices=(),
         source_story_type="",
         camera_focus_incident=False,
-        camera_incident_group="Far Chase",
+        camera_incident_group="Chase",
         camera_sequence=(),
         camera_sequence_steps=(),
         replay_session_num=None,
@@ -96,7 +96,7 @@ class BroadcastQueue:
                 participant_car_indices=tuple(participant_car_indices),
                 source_story_type=str(source_story_type or ""),
                 camera_focus_incident=bool(camera_focus_incident),
-                camera_incident_group=str(camera_incident_group or "Far Chase"),
+                camera_incident_group=str(camera_incident_group or "Chase"),
                 camera_sequence=tuple(camera_sequence),
                 camera_sequence_steps=tuple(camera_sequence_steps),
                 replay_session_num=replay_session_num,

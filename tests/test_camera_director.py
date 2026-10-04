@@ -652,6 +652,22 @@ def test_manual_camera_control_blocks_replay_return_home_until_released():
     assert telemetry.switches == [("14", 4, 0), ("77", 5, 0)]
 
 
+def test_manual_takeover_stops_pending_automatic_camera_movement():
+    telemetry = CameraTelemetry()
+    director = CameraDirector(mode="auto")
+    director.current_car_idx = 3
+    director.current_group_number = 4
+    director.current_role = "replay"
+    director.return_home_at = 0.0
+
+    director.begin_manual_control()
+    decision = director.update(telemetry)
+
+    assert decision.status == "held"
+    assert decision.role == "manual"
+    assert telemetry.switches == []
+
+
 def test_crank_fixed_skips_scenic_before_onboard_fallback():
     telemetry = CameraTelemetry()
     telemetry.get_camera_groups = lambda: [

@@ -369,7 +369,7 @@ def test_caution_uses_immediate_trouble_language():
     assert "caution is out" in queue.items[0].message
     assert "could have brought out the caution" not in queue.items[0].message
     assert queue.items[0].camera_focus_incident is True
-    assert queue.items[0].camera_incident_group == "Far Chase"
+    assert queue.items[0].camera_incident_group == "Chase"
 
 
 def test_admin_caution_is_called_as_race_control_caution():

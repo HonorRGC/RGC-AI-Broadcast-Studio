@@ -1,5 +1,18 @@
 # Changelog
 
+## Version 1.0.11 - Caution Review Control
+
+### Changed
+- Caution incident review now selects the closer Chase camera instead of Far Chase for a clearer view down the track.
+- Simplified the driver card by removing the position timeline while retaining season statistics and useful live race metrics.
+- Restyled the caution restart Top 10 and pit-road panels with the standard RGC presentation.
+
+### Fixed
+- Manual replay controls now immediately suspend automatic camera movement, allowing the producer to reverse, pause, or change angles without the studio jumping to another car.
+- Automatic camera control remains suspended until Return Live is selected.
+- Moved the Flo green/yellow history strip fully below the cycling driver rows and above the lap counter.
+- Removed the duplicate interval shown above the RPM arc while preserving the interval in the driver-information line.
+
 ## Version 1.0.10 - Driver and Lineup Graphics
 
 ### Added

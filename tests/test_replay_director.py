@@ -226,7 +226,7 @@ def test_default_caution_replay_package_uses_one_stable_angle():
 
     assert started.total_angles == 1
     assert finished.status == "live"
-    assert camera.focuses == [(3, "Far Chase")]
+    assert camera.focuses == [(3, "Chase")]
 
 
 def test_caution_replay_holds_until_configured_duration():
@@ -389,7 +389,7 @@ def test_timed_incident_marker_replay_seeks_to_absolute_caution_time():
     assert started.status == "started"
     assert telemetry.seeks == [(2, 100.0)]
     assert telemetry.rewinds == [1200]
-    assert camera.focuses == [("incident", "Far Chase")]
+    assert camera.focuses == [("incident", "Chase")]
 
 
 def test_incident_marker_replay_pre_roll_frames_are_configurable():
@@ -434,7 +434,7 @@ def test_incident_marker_replay_starts_even_when_live_edge_status_is_stale():
     assert decision.status == "started"
     assert telemetry.seeks == [("previous_incident_marker", 0)]
     assert telemetry.rewinds == [720]
-    assert camera.focuses == [("incident", "Far Chase")]
+    assert camera.focuses == [("incident", "Chase")]
     assert camera.replay_active is True
 
 
@@ -462,7 +462,7 @@ def test_replay_starts_when_seek_confirms_replay_is_behind_live():
     decision = director.handle_item(incident_marker_item(), telemetry, camera)
 
     assert decision.status == "started"
-    assert camera.focuses == [("incident", "Far Chase")]
+    assert camera.focuses == [("incident", "Chase")]
     assert telemetry.rewinds == [720]
 
 

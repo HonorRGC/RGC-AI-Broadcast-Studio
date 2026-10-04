@@ -1749,7 +1749,10 @@ def clear_overlay_featured_driver(overlay_server):
 
 
 def producer_manual_camera_control_active(camera_director):
-    return bool(getattr(camera_director, "producer_driver_focus_hold", False))
+    return bool(
+        getattr(camera_director, "manual_control_active", False)
+        or getattr(camera_director, "producer_driver_focus_hold", False)
+    )
 
 
 def set_producer_replay_speed(source, speed):
