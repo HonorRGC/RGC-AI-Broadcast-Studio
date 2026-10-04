@@ -107,7 +107,16 @@ class LiveDriverTelemetry(OverlayTelemetry):
     def get_results(self):
         return [
             {"CarIdx": 7, "Position": 1, "LapsComplete": 12, "Time": 0.0},
-            {"CarIdx": 3, "Position": 2, "LapsComplete": 12, "Time": 0.8},
+            {
+                "CarIdx": 3,
+                "Position": 2,
+                "LapsComplete": 12,
+                "Time": 0.8,
+                "StartingPosition": 5,
+                "FastestTime": 31.456,
+                "LapsLed": 3,
+                "LastPitLap": 8,
+            },
             {"CarIdx": 9, "Position": 3, "LapsComplete": 12, "Time": 1.6},
         ]
 
@@ -289,12 +298,16 @@ def test_visible_driver_card_refreshes_live_telemetry():
     assert driver["state"] == "North Carolina"
     assert driver["season_stats"]["points_position"] == "2"
     assert driver["position_history"] == [{"lap": 12, "position": 2}]
-    assert "driver-card-throttle-fill" in OVERLAY_HTML
-    assert "driver-card-brake-fill" in OVERLAY_HTML
-    assert "driver-card-fuel-fill" in OVERLAY_HTML
+    assert driver["fastest_lap"] == "31.456"
+    assert driver["laps_led"] == 3
+    assert driver["last_pit_lap"] == 8
+    assert "driver-card-rpm-arc" in OVERLAY_HTML
+    assert "driver-card-last-pit" in OVERLAY_HTML
+    assert "driver-card-high-pos" in OVERLAY_HTML
     assert "grid.dataset.signature === signature" in OVERLAY_HTML
-    assert "body.leaderboard-flo-mode .lineup-panel { top: 276px; }" in OVERLAY_HTML
-    assert "SEASON STATS · RACE PROGRESSION" in OVERLAY_HTML
+    assert "body.leaderboard-flo-mode .lineup-panel { top: 304px; }" in OVERLAY_HTML
+    assert "bottom: -20px;" in OVERLAY_HTML
+    assert "SEASON STATS" in OVERLAY_HTML
     assert "driver-card-location" in OVERLAY_HTML
 
 
@@ -956,7 +969,7 @@ def test_overlay_has_optional_ticker_leaderboard_and_compact_lap_bar():
     assert "renderFloRaceBar(state.lap_history || [])" in OVERLAY_HTML
     assert "renderFloRaceBar([])" in OVERLAY_HTML
     assert ".flo-race-bar" in OVERLAY_HTML
-    assert "top: calc(100% + 6px);" in OVERLAY_HTML
+    assert "bottom: -20px;" in OVERLAY_HTML
     assert "body.leaderboard-flo-mode .stat-panel.caution_top_ten" in OVERLAY_HTML
     assert "top: 274px;" in OVERLAY_HTML
     assert "top: calc(100% + 20px)" in OVERLAY_HTML

@@ -269,7 +269,7 @@ def parse_args():
         default=DEFAULT_CRANK_IT_UP_SECONDS,
         help="Seconds to keep the Crank It Up overlay visible during --crank-it-up-test",
     )
-    parser.add_argument("--tick-seconds", type=float, default=0.2)
+    parser.add_argument("--tick-seconds", type=float, default=0.1)
     parser.add_argument(
         "--camera-mode",
         choices=CameraDirector.MODES,

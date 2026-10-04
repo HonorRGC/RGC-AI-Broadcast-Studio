@@ -248,6 +248,9 @@ class FeaturedDriver:
     starting_position: int = 0
     position_delta: int = 0
     interval: str = ""
+    fastest_lap: str = ""
+    laps_led: int = 0
+    last_pit_lap: int = 0
     speed: str = ""
     speed_mph: float = 0.0
     rpm: float = 0.0
@@ -278,6 +281,9 @@ class FeaturedDriver:
             "starting_position": self.starting_position,
             "position_delta": self.position_delta,
             "interval": self.interval,
+            "fastest_lap": self.fastest_lap,
+            "laps_led": self.laps_led,
+            "last_pit_lap": self.last_pit_lap,
             "speed": self.speed,
             "speed_mph": self.speed_mph,
             "rpm": self.rpm,
@@ -1458,6 +1464,9 @@ class OverlayServer:
             featured.class_size = current_entry.class_size
             featured.position_delta = current_entry.position_delta
             featured.interval = current_entry.interval
+            featured.fastest_lap = current_entry.fastest_lap
+            featured.laps_led = current_entry.laps_led
+            featured.last_pit_lap = current_entry.last_pit_lap
             profile = dict(current_entry.league_profile or {})
             featured.hometown = str(profile.get("hometown") or featured.hometown or "")
             featured.state = str(profile.get("state") or featured.state or "")
@@ -4700,9 +4709,10 @@ OVERLAY_HTML = r"""<!doctype html>
       position: absolute;
       left: 0;
       right: 0;
-      /* Keep the history strip in its own channel: directly below the
-         leaderboard and fully above the lap counter. */
-      top: calc(100% + 6px);
+      /* Anchor from the board's bottom edge so grid-row sizing can never
+         pull the history strip back over the cycling driver row. */
+      top: auto;
+      bottom: -20px;
       display: flex;
       gap: 0;
       height: 13px;
@@ -5776,6 +5786,174 @@ OVERLAY_HTML = r"""<!doctype html>
       font: 7px Arial, sans-serif;
     }
 
+    /* Expanded driver story card: one compact header plus a taller telemetry row. */
+    .driver-card {
+      width: 1180px;
+      max-width: calc(100vw - 330px);
+      grid-template-columns: 88px 178px 245px 185px minmax(360px, 1fr);
+      grid-template-rows: 38px 124px;
+    }
+
+    .driver-card-header {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: minmax(280px, 1fr) auto minmax(390px, auto) 150px;
+      align-items: center;
+      gap: 14px;
+      min-width: 0;
+      padding: 0 15px;
+      border-bottom: 2px solid var(--rgc-red);
+      background: linear-gradient(90deg, rgba(27,31,39,.99), rgba(8,10,14,.99));
+    }
+
+    .driver-card-header-identity {
+      display: flex;
+      align-items: center;
+      min-width: 0;
+      gap: 10px;
+    }
+
+    .driver-card-header-number {
+      color: #fff;
+      font-size: 22px;
+      font-weight: 950;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .driver-card-name { font-size: 20px; }
+    .driver-card-timeline-label,
+    .driver-card-season-label {
+      color: rgba(255,255,255,.62);
+      font-size: 9px;
+      font-weight: 900;
+      letter-spacing: .11em;
+      white-space: nowrap;
+    }
+    .driver-card-timeline-label {
+      padding-left: 13px;
+      border-left: 1px solid rgba(255,255,255,.22);
+      text-align: right;
+    }
+
+    .driver-card-season-stats {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 15px;
+      margin: 0;
+    }
+    .driver-card-season-stat {
+      display: flex;
+      align-items: baseline;
+      gap: 4px;
+      white-space: nowrap;
+    }
+    .driver-card-season-stat b { font-size: 14px; }
+    .driver-card-season-stat span { margin: 0; font-size: 8px; }
+
+    .driver-card-position-rank,
+    .driver-card-image,
+    .driver-card-info,
+    .driver-card-telemetry,
+    .driver-card-race-story { min-height: 124px; }
+
+    .driver-card-image img { min-height: 124px; }
+    .driver-card-info { padding: 8px 12px; }
+    .driver-card-position { margin-top: 0; font-size: 13px; }
+    .driver-card-story { margin-top: 2px; font-size: 10px; }
+    .driver-card-team,
+    .driver-card-location { margin-top: 2px; font-size: 9px; }
+    .driver-card-country { margin-top: 2px; font-size: 9px; }
+
+    .driver-card-race-metrics {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4px 12px;
+      margin-top: 7px;
+      padding-top: 6px;
+      border-top: 1px solid rgba(255,255,255,.13);
+    }
+    .driver-card-race-metrics div {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      min-width: 0;
+    }
+    .driver-card-race-metrics span,
+    .driver-card-timeline-summary span {
+      color: rgba(255,255,255,.48);
+      font-size: 8px;
+      font-weight: 900;
+      letter-spacing: .06em;
+    }
+    .driver-card-race-metrics b,
+    .driver-card-timeline-summary b {
+      color: #fff;
+      font-size: 11px;
+      font-weight: 950;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .driver-card-telemetry {
+      min-height: 124px;
+      padding: 0;
+      overflow: hidden;
+    }
+    .rpm-arc {
+      position: absolute;
+      left: 7px;
+      right: 7px;
+      bottom: 1px;
+      width: calc(100% - 14px);
+      height: 106px;
+      overflow: visible;
+    }
+    .rpm-arc-track,
+    .rpm-arc-fill {
+      fill: none;
+      stroke-width: 10;
+      stroke-linecap: round;
+    }
+    .rpm-arc-track { stroke: rgba(255,255,255,.13); }
+    .rpm-arc-fill {
+      stroke: #ffb31a;
+      stroke-dasharray: 0 100;
+      filter: drop-shadow(0 0 5px rgba(255,179,26,.72));
+      transition: stroke-dasharray .10s linear;
+    }
+    .telemetry-readouts {
+      left: 17px;
+      right: 17px;
+      bottom: 15px;
+      grid-template-columns: 38px 1fr 57px;
+      z-index: 2;
+    }
+    .telemetry-interval { top: 8px; font-size: 9px; }
+
+    .driver-card-race-story {
+      display: grid;
+      grid-template-columns: 72px minmax(0, 1fr);
+      align-items: stretch;
+      gap: 8px;
+      min-height: 124px;
+      padding: 7px 10px 5px;
+    }
+    .driver-card-timeline-summary {
+      display: grid;
+      align-content: center;
+      gap: 6px;
+      padding-right: 8px;
+      border-right: 1px solid rgba(255,255,255,.14);
+    }
+    .driver-card-timeline-summary div { display: grid; gap: 1px; }
+    .driver-card-timeline-summary b { font-size: 14px; }
+    .driver-card-timeline-summary div:last-child b { color: #ffd400; }
+    .driver-card-progress-chart {
+      height: 105px;
+      margin-top: 4px;
+    }
+
     .lineup-panel {
       position: absolute;
       top: 124px;
@@ -5793,7 +5971,7 @@ OVERLAY_HTML = r"""<!doctype html>
       z-index: 24;
     }
 
-    body.leaderboard-flo-mode .lineup-panel { top: 276px; }
+    body.leaderboard-flo-mode .lineup-panel { top: 304px; }
 
     .lineup-panel-header {
       display: flex;
@@ -6776,6 +6954,15 @@ OVERLAY_HTML = r"""<!doctype html>
   </section>
 
   <section id="driver-card" class="driver-card hidden">
+    <div class="driver-card-header">
+      <div class="driver-card-header-identity">
+        <span id="driver-card-header-number" class="driver-card-header-number">#--</span>
+        <span id="driver-card-name" class="driver-card-name"></span>
+      </div>
+      <div class="driver-card-season-label">SEASON STATS</div>
+      <div id="driver-card-season-stats" class="driver-card-season-stats"></div>
+      <div class="driver-card-timeline-label">TIMELINE &amp; STATS</div>
+    </div>
     <div class="driver-card-position-rank">
       <div id="driver-card-position-rank" class="rank">P--</div>
       <div class="label">Position</div>
@@ -6785,22 +6972,23 @@ OVERLAY_HTML = r"""<!doctype html>
       <div id="driver-card-number" class="driver-card-number"></div>
     </div>
     <div class="driver-card-info">
-      <div id="driver-card-name" class="driver-card-name"></div>
       <div id="driver-card-position" class="driver-card-position"></div>
       <div id="driver-card-team" class="driver-card-team hidden"></div>
       <div id="driver-card-location" class="driver-card-location hidden"></div>
       <div id="driver-card-story" class="driver-card-story"></div>
       <div id="driver-card-country" class="driver-card-country"></div>
+      <div class="driver-card-race-metrics">
+        <div><span>Start</span><b id="driver-card-start">--</b></div>
+        <div><span>Net Gain</span><b id="driver-card-net">--</b></div>
+        <div><span>Best Lap</span><b id="driver-card-best-lap">--</b></div>
+        <div><span>Last Pit</span><b id="driver-card-last-pit">--</b></div>
+      </div>
     </div>
     <div id="driver-card-telemetry" class="driver-card-telemetry">
-      <div class="pedal-traces" aria-label="Live throttle and brake input">
-        <div class="pedal-trace throttle">
-          <span>THR</span><span class="pedal-trace-track"><span id="driver-card-throttle-fill" class="pedal-trace-fill"></span></span><span id="driver-card-throttle" class="pedal-trace-value">0%</span>
-        </div>
-        <div class="pedal-trace brake">
-          <span>BRK</span><span class="pedal-trace-track"><span id="driver-card-brake-fill" class="pedal-trace-fill"></span></span><span id="driver-card-brake" class="pedal-trace-value">0%</span>
-        </div>
-      </div>
+      <svg class="rpm-arc" viewBox="0 0 170 102" aria-label="Live RPM">
+        <path class="rpm-arc-track" pathLength="100" d="M15 87 A70 70 0 0 1 155 87"></path>
+        <path id="driver-card-rpm-arc" class="rpm-arc-fill" pathLength="100" d="M15 87 A70 70 0 0 1 155 87"></path>
+      </svg>
       <div id="driver-card-live-interval" class="telemetry-interval"></div>
       <div class="telemetry-readouts">
         <div>
@@ -6816,17 +7004,15 @@ OVERLAY_HTML = r"""<!doctype html>
           <div class="telemetry-label">RPM</div>
         </div>
       </div>
-      <div id="driver-card-fuel-gauge" class="fuel-gauge unavailable">
-        <span>E</span>
-        <span class="fuel-gauge-track"><span id="driver-card-fuel-fill" class="fuel-gauge-fill"></span></span>
-        <span>F</span>
-        <span id="driver-card-fuel" class="fuel-gauge-value">--</span>
-      </div>
     </div>
     <div class="driver-card-race-story">
-      <div class="driver-card-season-label">SEASON STATS · RACE PROGRESSION</div>
-      <div id="driver-card-season-stats" class="driver-card-season-stats"></div>
-      <svg id="driver-card-progress-chart" class="driver-card-progress-chart" viewBox="0 0 300 45" role="img" aria-label="Position through the race"></svg>
+      <div class="driver-card-timeline-summary">
+        <div><span>Current</span><b id="driver-card-current-pos">--</b></div>
+        <div><span>High</span><b id="driver-card-high-pos">--</b></div>
+        <div><span>Low</span><b id="driver-card-low-pos">--</b></div>
+        <div><span>Laps Led</span><b id="driver-card-laps-led">0</b></div>
+      </div>
+      <svg id="driver-card-progress-chart" class="driver-card-progress-chart" viewBox="0 0 390 78" role="img" aria-label="Position through the race"></svg>
     </div>
   </section>
 
@@ -7521,6 +7707,7 @@ OVERLAY_HTML = r"""<!doctype html>
       if (!hasDriver) return;
       const driverKey = `${driver.car_idx || ""}|${driver.car_number || ""}|${driver.driver_name || ""}`;
       setText("driver-card-number", driver.car_number || "?");
+      setText("driver-card-header-number", `#${driver.car_number || "?"}`);
       applyDriverCardNumberStyle(driver.number_style || {});
       setText("driver-card-name", driver.driver_name || "Unknown Driver");
       renderDriverCardCountry(driver);
@@ -7562,56 +7749,59 @@ OVERLAY_HTML = r"""<!doctype html>
         `<div class="driver-card-season-stat"><b>${escapeHtml(value)}</b><span>${escapeHtml(label)}</span></div>`
       ).join("");
 
+      const start = Number(driver.starting_position || 0);
+      const currentPosition = Number(driver.position || 0);
+      const net = Number(driver.position_delta || 0);
+      setText("driver-card-start", start > 0 ? `P${start}` : "--");
+      setText("driver-card-net", net > 0 ? `▲ ${net}` : net < 0 ? `▼ ${Math.abs(net)}` : "—");
+      setText("driver-card-best-lap", driver.fastest_lap || "--");
+      setText("driver-card-last-pit", Number(driver.last_pit_lap || 0) > 0 ? `L${driver.last_pit_lap}` : "--");
+
       const svg = document.getElementById("driver-card-progress-chart");
       const history = (driver.position_history || []).filter(item => Number(item.lap) > 0 && Number(item.position) > 0);
+      const positions = history.map(item => Number(item.position));
+      if (start > 0) positions.push(start);
+      if (currentPosition > 0) positions.push(currentPosition);
+      const highPosition = positions.length ? Math.min(...positions) : 0;
+      const lowPosition = positions.length ? Math.max(...positions) : 0;
+      setText("driver-card-current-pos", currentPosition > 0 ? `P${currentPosition}` : "--");
+      setText("driver-card-high-pos", highPosition > 0 ? `P${highPosition}` : "--");
+      setText("driver-card-low-pos", lowPosition > 0 ? `P${lowPosition}` : "--");
+      setText("driver-card-laps-led", String(Number(driver.laps_led || 0)));
       if (!history.length) {
-        svg.innerHTML = '<text x="150" y="29" text-anchor="middle" class="driver-card-chart-label">Position history begins after Lap 1</text>';
+        svg.innerHTML = '<text x="195" y="43" text-anchor="middle" class="driver-card-chart-label">Position history begins after Lap 1</text>';
         return;
       }
       const minLap = Number(history[0].lap);
       const maxLap = Math.max(Number(history[history.length - 1].lap), minLap + 1);
       const maxPosition = Math.max(5, ...history.map(item => Number(item.position)));
-      const x = lap => 17 + ((Number(lap) - minLap) / (maxLap - minLap)) * 273;
-      const y = position => 7 + ((Number(position) - 1) / Math.max(maxPosition - 1, 1)) * 29;
+      const x = lap => 20 + ((Number(lap) - minLap) / (maxLap - minLap)) * 358;
+      const y = position => 8 + ((Number(position) - 1) / Math.max(maxPosition - 1, 1)) * 50;
       const points = history.map(item => `${x(item.lap).toFixed(1)},${y(item.position).toFixed(1)}`).join(" ");
       const current = history[history.length - 1];
       svg.innerHTML = `
-        <line class="driver-card-chart-grid" x1="17" y1="7" x2="290" y2="7"></line>
-        <line class="driver-card-chart-grid" x1="17" y1="36" x2="290" y2="36"></line>
+        <line class="driver-card-chart-grid" x1="20" y1="8" x2="378" y2="8"></line>
+        <line class="driver-card-chart-grid" x1="20" y1="58" x2="378" y2="58"></line>
         <text class="driver-card-chart-label" x="0" y="10">P1</text>
-        <text class="driver-card-chart-label" x="0" y="39">P${maxPosition}</text>
+        <text class="driver-card-chart-label" x="0" y="61">P${maxPosition}</text>
         <polyline class="driver-card-chart-line" points="${points}"></polyline>
         <circle class="driver-card-chart-dot" cx="${x(current.lap).toFixed(1)}" cy="${y(current.position).toFixed(1)}" r="3.5"></circle>
-        <text class="driver-card-chart-label" x="17" y="44">L${minLap}</text>
-        <text class="driver-card-chart-label" x="290" y="44" text-anchor="end">L${current.lap}</text>
+        <text class="driver-card-chart-label" x="20" y="74">L${minLap}</text>
+        <text class="driver-card-chart-label" x="378" y="74" text-anchor="end">L${current.lap}</text>
       `;
     }
 
     function renderDriverCardTelemetry(driver) {
       const rpm = Math.max(0, Number(driver.rpm || 0));
       const speed = Math.max(0, Number(driver.speed_mph || 0));
-      const rawThrottle = Number(driver.throttle);
-      const rawBrake = Number(driver.brake);
-      const throttleAvailable = Number.isFinite(rawThrottle) && rawThrottle >= 0;
-      const brakeAvailable = Number.isFinite(rawBrake) && rawBrake >= 0;
-      const throttle = throttleAvailable ? Math.max(0, Math.min(1, rawThrottle)) : 0;
-      const brake = brakeAvailable ? Math.max(0, Math.min(1, rawBrake)) : 0;
-      const rawFuel = Number(driver.fuel_pct);
-      const fuelAvailable = Number.isFinite(rawFuel) && rawFuel >= 0;
-      const fuel = fuelAvailable ? Math.max(0, Math.min(1, rawFuel)) : 0;
       const rawGear = Number(driver.gear || 0);
       const gear = rawGear < 0 ? "R" : rawGear === 0 ? "N" : String(rawGear);
+      const rpmPercent = Math.max(0, Math.min(100, (rpm / 10000) * 100));
       setText("driver-card-gear", gear);
       setText("driver-card-speed", speed > 0 ? Math.round(speed) : "--");
       setText("driver-card-rpm", rpm > 0 ? Math.round(rpm).toLocaleString("en-US") : "--");
       setText("driver-card-live-interval", driver.interval || "LEADER");
-      setText("driver-card-throttle", throttleAvailable ? `${Math.round(throttle * 100)}%` : "--");
-      setText("driver-card-brake", brakeAvailable ? `${Math.round(brake * 100)}%` : "--");
-      document.getElementById("driver-card-throttle-fill").style.width = `${throttle * 100}%`;
-      document.getElementById("driver-card-brake-fill").style.width = `${brake * 100}%`;
-      document.getElementById("driver-card-fuel-fill").style.width = `${fuel * 100}%`;
-      setText("driver-card-fuel", fuelAvailable ? `${Math.round(fuel * 100)}%` : "--");
-      document.getElementById("driver-card-fuel-gauge").classList.toggle("unavailable", !fuelAvailable);
+      document.getElementById("driver-card-rpm-arc").style.strokeDasharray = `${rpmPercent} 100`;
     }
 
     function applyDriverCardNumberStyle(style) {
@@ -7911,7 +8101,7 @@ OVERLAY_HTML = r"""<!doctype html>
 
     installCommercialVideoHandlers();
     refreshOverlay();
-    setInterval(refreshOverlay, 200);
+    setInterval(refreshOverlay, 100);
   </script>
 </body>
 </html>

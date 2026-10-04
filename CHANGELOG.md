@@ -17,10 +17,14 @@
 - Enlarged the ten-driver lineup panel and updated it to the RGC red, charcoal, black, and silver style.
 - Increased live overlay and leaderboard timing refreshes from once per second to five times per second.
 - Limited pedal traces to genuine available telemetry: local-player throttle and brake are shown live while unavailable opponent inputs display clearly as unavailable.
+- Increased live overlay and leaderboard timing to ten updates per second for smoother interval changes.
+- Reworked the driver card with a complete live RPM arc, a dedicated season-stat header, a larger position timeline, and live start, net gain/loss, best lap, last pit lap, current/high/low position, and laps-led fields.
 
 ### Fixed
 - Prevented starting-lineup car images from flickering by preserving the image elements between unchanged overlay refreshes.
 - Preloaded and retained the ten starting-lineup car images while the active-driver highlight advances.
+- Moved the Flo starting-lineup panel below the complete leaderboard and lap-counter package.
+- Anchored the Flo green/yellow history strip outside the cycling driver row so it cannot overlap driver entries.
 - Fixed live leaderboard deltas being hidden by class-position labels.
 - Fixed Broadcast Health incorrectly reporting Trading Paints as unavailable when Windows blocks the primary process-list command.
 
