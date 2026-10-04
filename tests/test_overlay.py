@@ -306,7 +306,8 @@ def test_visible_driver_card_refreshes_live_telemetry():
     assert "driver-card-high-pos" in OVERLAY_HTML
     assert "grid.dataset.signature === signature" in OVERLAY_HTML
     assert "body.leaderboard-flo-mode .lineup-panel { top: 304px; }" in OVERLAY_HTML
-    assert "bottom: -20px;" in OVERLAY_HTML
+    assert "top: calc(100% + 4px);" in OVERLAY_HTML
+    assert 'id="driver-card-progress-chart"' not in OVERLAY_HTML
     assert "SEASON STATS" in OVERLAY_HTML
     assert "driver-card-location" in OVERLAY_HTML
 
@@ -969,9 +970,9 @@ def test_overlay_has_optional_ticker_leaderboard_and_compact_lap_bar():
     assert "renderFloRaceBar(state.lap_history || [])" in OVERLAY_HTML
     assert "renderFloRaceBar([])" in OVERLAY_HTML
     assert ".flo-race-bar" in OVERLAY_HTML
-    assert "bottom: -20px;" in OVERLAY_HTML
+    assert "top: calc(100% + 4px);" in OVERLAY_HTML
     assert "body.leaderboard-flo-mode .stat-panel.caution_top_ten" in OVERLAY_HTML
-    assert "top: 274px;" in OVERLAY_HTML
+    assert "top: 314px;" in OVERLAY_HTML
     assert "top: calc(100% + 20px)" in OVERLAY_HTML
     assert "grid-template-columns: minmax(94px, auto) minmax(0, 1fr)" in OVERLAY_HTML
     assert "flo-row-cycle .flo-entry" in OVERLAY_HTML

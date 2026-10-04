@@ -4569,7 +4569,7 @@ OVERLAY_HTML = r"""<!doctype html>
       left: 24px;
       right: 24px;
       top: 62px;
-      height: 116px;
+      height: 132px;
       display: grid;
       grid-template-columns: 210px minmax(0, 1fr) 210px;
       background:
@@ -4711,8 +4711,8 @@ OVERLAY_HTML = r"""<!doctype html>
       right: 0;
       /* Anchor from the board's bottom edge so grid-row sizing can never
          pull the history strip back over the cycling driver row. */
-      top: auto;
-      bottom: -20px;
+      top: calc(100% + 4px);
+      bottom: auto;
       display: flex;
       gap: 0;
       height: 13px;
@@ -4730,7 +4730,7 @@ OVERLAY_HTML = r"""<!doctype html>
 
     .flo-grid {
       display: grid;
-      grid-template-rows: 1fr 1fr 1fr;
+      grid-template-rows: repeat(3, 44px);
       min-width: 0;
     }
 
@@ -5713,18 +5713,6 @@ OVERLAY_HTML = r"""<!doctype html>
 
     .telemetry-speed .telemetry-value { font-size: 24px; }
 
-    .telemetry-interval {
-      position: absolute;
-      top: 35px;
-      left: 0;
-      right: 0;
-      color: #dfe8f8;
-      font-size: 10px;
-      font-weight: 900;
-      text-align: center;
-      font-variant-numeric: tabular-nums;
-    }
-
     .driver-card-race-story {
       min-height: 92px;
       padding: 8px 12px 6px;
@@ -5786,18 +5774,18 @@ OVERLAY_HTML = r"""<!doctype html>
       font: 7px Arial, sans-serif;
     }
 
-    /* Expanded driver story card: one compact header plus a taller telemetry row. */
+    /* Compact driver card: season context above race metrics and live telemetry. */
     .driver-card {
-      width: 1180px;
+      width: 940px;
       max-width: calc(100vw - 330px);
-      grid-template-columns: 88px 178px 245px 185px minmax(360px, 1fr);
-      grid-template-rows: 38px 124px;
+      grid-template-columns: 88px 178px minmax(390px, 1fr) 220px;
+      grid-template-rows: 38px 116px;
     }
 
     .driver-card-header {
       grid-column: 1 / -1;
       display: grid;
-      grid-template-columns: minmax(280px, 1fr) auto minmax(390px, auto) 150px;
+      grid-template-columns: minmax(280px, 1fr) auto minmax(390px, auto);
       align-items: center;
       gap: 14px;
       min-width: 0;
@@ -5821,7 +5809,6 @@ OVERLAY_HTML = r"""<!doctype html>
     }
 
     .driver-card-name { font-size: 20px; }
-    .driver-card-timeline-label,
     .driver-card-season-label {
       color: rgba(255,255,255,.62);
       font-size: 9px;
@@ -5829,12 +5816,6 @@ OVERLAY_HTML = r"""<!doctype html>
       letter-spacing: .11em;
       white-space: nowrap;
     }
-    .driver-card-timeline-label {
-      padding-left: 13px;
-      border-left: 1px solid rgba(255,255,255,.22);
-      text-align: right;
-    }
-
     .driver-card-season-stats {
       display: flex;
       align-items: center;
@@ -5854,10 +5835,9 @@ OVERLAY_HTML = r"""<!doctype html>
     .driver-card-position-rank,
     .driver-card-image,
     .driver-card-info,
-    .driver-card-telemetry,
-    .driver-card-race-story { min-height: 124px; }
+    .driver-card-telemetry { min-height: 116px; }
 
-    .driver-card-image img { min-height: 124px; }
+    .driver-card-image img { min-height: 116px; }
     .driver-card-info { padding: 8px 12px; }
     .driver-card-position { margin-top: 0; font-size: 13px; }
     .driver-card-story { margin-top: 2px; font-size: 10px; }
@@ -5867,7 +5847,7 @@ OVERLAY_HTML = r"""<!doctype html>
 
     .driver-card-race-metrics {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 4px 12px;
       margin-top: 7px;
       padding-top: 6px;
@@ -5879,15 +5859,13 @@ OVERLAY_HTML = r"""<!doctype html>
       gap: 8px;
       min-width: 0;
     }
-    .driver-card-race-metrics span,
-    .driver-card-timeline-summary span {
+    .driver-card-race-metrics span {
       color: rgba(255,255,255,.48);
       font-size: 8px;
       font-weight: 900;
       letter-spacing: .06em;
     }
-    .driver-card-race-metrics b,
-    .driver-card-timeline-summary b {
+    .driver-card-race-metrics b {
       color: #fff;
       font-size: 11px;
       font-weight: 950;
@@ -5896,7 +5874,7 @@ OVERLAY_HTML = r"""<!doctype html>
     }
 
     .driver-card-telemetry {
-      min-height: 124px;
+      min-height: 116px;
       padding: 0;
       overflow: hidden;
     }
@@ -5904,9 +5882,10 @@ OVERLAY_HTML = r"""<!doctype html>
       position: absolute;
       left: 7px;
       right: 7px;
-      bottom: 1px;
+      top: 21px;
+      bottom: auto;
       width: calc(100% - 14px);
-      height: 106px;
+      height: 68px;
       overflow: visible;
     }
     .rpm-arc-track,
@@ -5925,35 +5904,10 @@ OVERLAY_HTML = r"""<!doctype html>
     .telemetry-readouts {
       left: 17px;
       right: 17px;
-      bottom: 15px;
+      bottom: 6px;
       grid-template-columns: 38px 1fr 57px;
       z-index: 2;
     }
-    .telemetry-interval { top: 8px; font-size: 9px; }
-
-    .driver-card-race-story {
-      display: grid;
-      grid-template-columns: 72px minmax(0, 1fr);
-      align-items: stretch;
-      gap: 8px;
-      min-height: 124px;
-      padding: 7px 10px 5px;
-    }
-    .driver-card-timeline-summary {
-      display: grid;
-      align-content: center;
-      gap: 6px;
-      padding-right: 8px;
-      border-right: 1px solid rgba(255,255,255,.14);
-    }
-    .driver-card-timeline-summary div { display: grid; gap: 1px; }
-    .driver-card-timeline-summary b { font-size: 14px; }
-    .driver-card-timeline-summary div:last-child b { color: #ffd400; }
-    .driver-card-progress-chart {
-      height: 105px;
-      margin-top: 4px;
-    }
-
     .lineup-panel {
       position: absolute;
       top: 124px;
@@ -6316,21 +6270,27 @@ OVERLAY_HTML = r"""<!doctype html>
     }
 
     .stat-panel.caution_pit {
-      width: 500px;
+      width: 540px;
       right: 34px;
       bottom: 66px;
-      border-left-color: #ffd400;
-      background: linear-gradient(90deg, rgba(12, 10, 5, 0.97), rgba(42, 32, 10, 0.94));
+      border-left-color: #d8172f;
+      background: linear-gradient(145deg, rgba(24, 28, 36, 0.98), rgba(5, 7, 11, 0.98));
     }
 
     .stat-panel.caution_top_ten {
-      width: 430px;
+      width: 570px;
       left: 34px;
       right: auto;
       bottom: 66px;
-      border-left-color: #ffd400;
-      background: linear-gradient(90deg, rgba(7, 9, 13, 0.98), rgba(30, 25, 8, 0.96));
-      border-right: 2px solid rgba(255, 212, 0, 0.35);
+      border-left-color: #d8172f;
+      background: linear-gradient(145deg, rgba(24, 28, 36, 0.98), rgba(5, 7, 11, 0.98));
+      border-right: 2px solid rgba(216, 23, 47, 0.45);
+    }
+
+    .stat-panel.caution_pit .stat-panel-header,
+    .stat-panel.caution_top_ten .stat-panel-header {
+      background: linear-gradient(90deg, #c8102e, #741020 48%, #161a22);
+      border-bottom: 2px solid rgba(255, 255, 255, 0.82);
     }
 
     .stat-panel.caution_pit .stat-panel-row {
@@ -6346,7 +6306,7 @@ OVERLAY_HTML = r"""<!doctype html>
     }
 
     .stat-panel.caution_pit .stat-panel-value {
-      color: #ffd400;
+      color: #ffffff;
       font-size: 15px;
       font-weight: 950;
       text-align: right;
@@ -6358,16 +6318,28 @@ OVERLAY_HTML = r"""<!doctype html>
       font-weight: 800;
     }
 
+    .stat-panel.caution_top_ten .stat-panel-rows {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 7px;
+      padding: 9px;
+    }
+
     .stat-panel.caution_top_ten .stat-panel-row {
-      padding: 8px 14px;
-      grid-template-columns: 58px minmax(0, 1fr);
-      gap: 10px;
-      background: rgba(255, 255, 255, 0.035);
+      padding: 8px 10px;
+      grid-template-columns: 45px minmax(0, 1fr);
+      gap: 8px;
+      background: linear-gradient(135deg, rgba(34, 39, 49, .98), rgba(10, 12, 17, .98));
+      border: 1px solid rgba(216, 23, 47, .55);
+      border-top: 3px solid #d8172f;
     }
 
     .stat-panel.caution_top_ten .stat-panel-label {
-      color: #ffd400;
-      font-size: 16px;
+      display: grid;
+      place-items: center;
+      color: #ffffff;
+      background: #c8102e;
+      font-size: 15px;
       font-weight: 950;
     }
 
@@ -6377,13 +6349,13 @@ OVERLAY_HTML = r"""<!doctype html>
 
     .stat-panel.caution_top_ten .stat-panel-detail {
       color: #ffffff;
-      font-size: 16px;
+      font-size: 15px;
       font-weight: 900;
     }
 
     body.leaderboard-flo-mode .stat-panel.caution_top_ten,
     body.leaderboard-flo-mode .stat-panel.caution_pit {
-      top: 274px;
+      top: 314px;
       bottom: auto;
     }
 
@@ -6961,7 +6933,6 @@ OVERLAY_HTML = r"""<!doctype html>
       </div>
       <div class="driver-card-season-label">SEASON STATS</div>
       <div id="driver-card-season-stats" class="driver-card-season-stats"></div>
-      <div class="driver-card-timeline-label">TIMELINE &amp; STATS</div>
     </div>
     <div class="driver-card-position-rank">
       <div id="driver-card-position-rank" class="rank">P--</div>
@@ -6982,14 +6953,17 @@ OVERLAY_HTML = r"""<!doctype html>
         <div><span>Net Gain</span><b id="driver-card-net">--</b></div>
         <div><span>Best Lap</span><b id="driver-card-best-lap">--</b></div>
         <div><span>Last Pit</span><b id="driver-card-last-pit">--</b></div>
+        <div><span>Current</span><b id="driver-card-current-pos">--</b></div>
+        <div><span>High</span><b id="driver-card-high-pos">--</b></div>
+        <div><span>Low</span><b id="driver-card-low-pos">--</b></div>
+        <div><span>Laps Led</span><b id="driver-card-laps-led">0</b></div>
       </div>
     </div>
     <div id="driver-card-telemetry" class="driver-card-telemetry">
-      <svg class="rpm-arc" viewBox="0 0 170 102" aria-label="Live RPM">
-        <path class="rpm-arc-track" pathLength="100" d="M15 87 A70 70 0 0 1 155 87"></path>
-        <path id="driver-card-rpm-arc" class="rpm-arc-fill" pathLength="100" d="M15 87 A70 70 0 0 1 155 87"></path>
+      <svg class="rpm-arc" viewBox="0 0 170 82" aria-label="Live RPM">
+        <path class="rpm-arc-track" pathLength="100" d="M15 72 A70 70 0 0 1 155 72"></path>
+        <path id="driver-card-rpm-arc" class="rpm-arc-fill" pathLength="100" d="M15 72 A70 70 0 0 1 155 72"></path>
       </svg>
-      <div id="driver-card-live-interval" class="telemetry-interval"></div>
       <div class="telemetry-readouts">
         <div>
           <div id="driver-card-gear" class="telemetry-value">N</div>
@@ -7004,15 +6978,6 @@ OVERLAY_HTML = r"""<!doctype html>
           <div class="telemetry-label">RPM</div>
         </div>
       </div>
-    </div>
-    <div class="driver-card-race-story">
-      <div class="driver-card-timeline-summary">
-        <div><span>Current</span><b id="driver-card-current-pos">--</b></div>
-        <div><span>High</span><b id="driver-card-high-pos">--</b></div>
-        <div><span>Low</span><b id="driver-card-low-pos">--</b></div>
-        <div><span>Laps Led</span><b id="driver-card-laps-led">0</b></div>
-      </div>
-      <svg id="driver-card-progress-chart" class="driver-card-progress-chart" viewBox="0 0 390 78" role="img" aria-label="Position through the race"></svg>
     </div>
   </section>
 
@@ -7757,7 +7722,6 @@ OVERLAY_HTML = r"""<!doctype html>
       setText("driver-card-best-lap", driver.fastest_lap || "--");
       setText("driver-card-last-pit", Number(driver.last_pit_lap || 0) > 0 ? `L${driver.last_pit_lap}` : "--");
 
-      const svg = document.getElementById("driver-card-progress-chart");
       const history = (driver.position_history || []).filter(item => Number(item.lap) > 0 && Number(item.position) > 0);
       const positions = history.map(item => Number(item.position));
       if (start > 0) positions.push(start);
@@ -7768,27 +7732,6 @@ OVERLAY_HTML = r"""<!doctype html>
       setText("driver-card-high-pos", highPosition > 0 ? `P${highPosition}` : "--");
       setText("driver-card-low-pos", lowPosition > 0 ? `P${lowPosition}` : "--");
       setText("driver-card-laps-led", String(Number(driver.laps_led || 0)));
-      if (!history.length) {
-        svg.innerHTML = '<text x="195" y="43" text-anchor="middle" class="driver-card-chart-label">Position history begins after Lap 1</text>';
-        return;
-      }
-      const minLap = Number(history[0].lap);
-      const maxLap = Math.max(Number(history[history.length - 1].lap), minLap + 1);
-      const maxPosition = Math.max(5, ...history.map(item => Number(item.position)));
-      const x = lap => 20 + ((Number(lap) - minLap) / (maxLap - minLap)) * 358;
-      const y = position => 8 + ((Number(position) - 1) / Math.max(maxPosition - 1, 1)) * 50;
-      const points = history.map(item => `${x(item.lap).toFixed(1)},${y(item.position).toFixed(1)}`).join(" ");
-      const current = history[history.length - 1];
-      svg.innerHTML = `
-        <line class="driver-card-chart-grid" x1="20" y1="8" x2="378" y2="8"></line>
-        <line class="driver-card-chart-grid" x1="20" y1="58" x2="378" y2="58"></line>
-        <text class="driver-card-chart-label" x="0" y="10">P1</text>
-        <text class="driver-card-chart-label" x="0" y="61">P${maxPosition}</text>
-        <polyline class="driver-card-chart-line" points="${points}"></polyline>
-        <circle class="driver-card-chart-dot" cx="${x(current.lap).toFixed(1)}" cy="${y(current.position).toFixed(1)}" r="3.5"></circle>
-        <text class="driver-card-chart-label" x="20" y="74">L${minLap}</text>
-        <text class="driver-card-chart-label" x="378" y="74" text-anchor="end">L${current.lap}</text>
-      `;
     }
 
     function renderDriverCardTelemetry(driver) {
@@ -7800,7 +7743,6 @@ OVERLAY_HTML = r"""<!doctype html>
       setText("driver-card-gear", gear);
       setText("driver-card-speed", speed > 0 ? Math.round(speed) : "--");
       setText("driver-card-rpm", rpm > 0 ? Math.round(rpm).toLocaleString("en-US") : "--");
-      setText("driver-card-live-interval", driver.interval || "LEADER");
       document.getElementById("driver-card-rpm-arc").style.strokeDasharray = `${rpmPercent} 100`;
     }
 
