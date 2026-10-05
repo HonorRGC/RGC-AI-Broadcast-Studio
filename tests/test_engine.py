@@ -1714,7 +1714,7 @@ def test_engine_queues_quiet_green_race_stat_filler_with_camera_target():
 
     assert queued is True
     assert engine.broadcast_queue.items[0].category.startswith("race_stat:")
-    assert engine.broadcast_queue.items[0].camera_target_car_idx == 2
+    assert engine.broadcast_queue.items[0].camera_target_car_idx == 1
 
 
 def test_incident_is_collected_after_race_enters_caution():

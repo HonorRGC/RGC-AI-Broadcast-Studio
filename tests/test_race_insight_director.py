@@ -127,7 +127,7 @@ def test_late_caution_insights_do_not_repeat_all_used_topics():
     assert third is None
 
 
-def test_race_stat_filler_finds_closest_battle():
+def test_race_stat_filler_prefers_non_battle_topic_during_quiet_run():
     director = RaceInsightDirector(seed=5)
     state = RaceState(
         current_lap=12,
@@ -150,14 +150,10 @@ def test_race_stat_filler_finds_closest_battle():
     insight = director.race_stat_filler(results, drivers, state, current_lap=12)
 
     assert insight is not None
-    assert insight.category.startswith("race_stat:closest_battle")
-    assert "keep an eye" not in insight.message.lower()
-    assert any(
-        phrase in insight.message.lower()
-        for phrase in ("good fight", "battle for", "putting on a good show", "another spot to watch", "deserves a camera")
-    )
-    assert insight.camera_target_car_idx == 2
-    assert insight.participant_car_indices == (1, 2)
+    assert insight.category.startswith("race_stat:leader_pace")
+    assert "battle" not in insight.message.lower()
+    assert insight.camera_target_car_idx == 1
+    assert insight.participant_car_indices == (1,)
 
 
 def test_race_stat_filler_finds_biggest_mover_without_close_battle():

@@ -5,7 +5,10 @@
 ### Changed
 - Caution incident review now selects the closer Chase camera instead of Far Chase for a clearer view down the track.
 - Simplified the driver card by removing the position timeline while retaining season statistics and useful live race metrics.
+- Increased driver-card text and telemetry sizes, raised the RPM arc clear of the readouts, and limited team/location profile lines to league drivers while retaining country flags for official races.
 - Restyled the caution restart Top 10 and pit-road panels with the standard RGC presentation.
+- Made battle selection more selective with verified same-lap intervals, multi-tick confirmation, restart settling, battle-call spacing, and longer repeat cooldowns.
+- Added grounded quiet-race OpenAI features that rotate through championship context, driver profiles, movers, leader pace, season statistics, and track history without inventing on-track action.
 
 ### Fixed
 - Manual replay controls now immediately suspend automatic camera movement, allowing the producer to reverse, pause, or change angles without the studio jumping to another car.

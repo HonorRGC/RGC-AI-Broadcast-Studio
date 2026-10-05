@@ -5779,7 +5779,7 @@ OVERLAY_HTML = r"""<!doctype html>
       width: 940px;
       max-width: calc(100vw - 330px);
       grid-template-columns: 88px 178px minmax(390px, 1fr) 220px;
-      grid-template-rows: 38px 116px;
+      grid-template-rows: 40px 126px;
     }
 
     .driver-card-header {
@@ -5803,15 +5803,15 @@ OVERLAY_HTML = r"""<!doctype html>
 
     .driver-card-header-number {
       color: #fff;
-      font-size: 22px;
+      font-size: 24px;
       font-weight: 950;
       font-variant-numeric: tabular-nums;
     }
 
-    .driver-card-name { font-size: 20px; }
+    .driver-card-name { font-size: 22px; }
     .driver-card-season-label {
       color: rgba(255,255,255,.62);
-      font-size: 9px;
+      font-size: 10px;
       font-weight: 900;
       letter-spacing: .11em;
       white-space: nowrap;
@@ -5829,21 +5829,21 @@ OVERLAY_HTML = r"""<!doctype html>
       gap: 4px;
       white-space: nowrap;
     }
-    .driver-card-season-stat b { font-size: 14px; }
-    .driver-card-season-stat span { margin: 0; font-size: 8px; }
+    .driver-card-season-stat b { font-size: 16px; }
+    .driver-card-season-stat span { margin: 0; font-size: 9px; }
 
     .driver-card-position-rank,
     .driver-card-image,
     .driver-card-info,
-    .driver-card-telemetry { min-height: 116px; }
+    .driver-card-telemetry { min-height: 126px; }
 
-    .driver-card-image img { min-height: 116px; }
-    .driver-card-info { padding: 8px 12px; }
-    .driver-card-position { margin-top: 0; font-size: 13px; }
-    .driver-card-story { margin-top: 2px; font-size: 10px; }
+    .driver-card-image img { min-height: 126px; }
+    .driver-card-info { padding: 9px 12px; }
+    .driver-card-position { margin-top: 0; font-size: 15px; }
+    .driver-card-story { margin-top: 2px; font-size: 12px; }
     .driver-card-team,
-    .driver-card-location { margin-top: 2px; font-size: 9px; }
-    .driver-card-country { margin-top: 2px; font-size: 9px; }
+    .driver-card-location { margin-top: 2px; font-size: 11px; }
+    .driver-card-country { margin-top: 2px; font-size: 11px; }
 
     .driver-card-race-metrics {
       display: grid;
@@ -5861,20 +5861,20 @@ OVERLAY_HTML = r"""<!doctype html>
     }
     .driver-card-race-metrics span {
       color: rgba(255,255,255,.48);
-      font-size: 8px;
+      font-size: 9px;
       font-weight: 900;
       letter-spacing: .06em;
     }
     .driver-card-race-metrics b {
       color: #fff;
-      font-size: 11px;
+      font-size: 12px;
       font-weight: 950;
       font-variant-numeric: tabular-nums;
       white-space: nowrap;
     }
 
     .driver-card-telemetry {
-      min-height: 116px;
+      min-height: 126px;
       padding: 0;
       overflow: hidden;
     }
@@ -5882,7 +5882,7 @@ OVERLAY_HTML = r"""<!doctype html>
       position: absolute;
       left: 7px;
       right: 7px;
-      top: 21px;
+      top: 8px;
       bottom: auto;
       width: calc(100% - 14px);
       height: 68px;
@@ -5908,6 +5908,9 @@ OVERLAY_HTML = r"""<!doctype html>
       grid-template-columns: 38px 1fr 57px;
       z-index: 2;
     }
+    .driver-card-telemetry .telemetry-value { font-size: 22px; }
+    .driver-card-telemetry .telemetry-speed .telemetry-value { font-size: 26px; }
+    .driver-card-telemetry .telemetry-label { font-size: 9px; }
     .lineup-panel {
       position: absolute;
       top: 124px;
@@ -7695,10 +7698,16 @@ OVERLAY_HTML = r"""<!doctype html>
     function renderDriverCardProfile(driver) {
       const team = String(driver.team_name || "").trim();
       const location = [driver.hometown, driver.state].filter(Boolean).join(", ");
-      setText("driver-card-team", team ? `Team · ${team}` : "");
-      setText("driver-card-location", location);
-      document.getElementById("driver-card-team").classList.toggle("hidden", !team);
-      document.getElementById("driver-card-location").classList.toggle("hidden", !location);
+      const seasonStats = driver.season_stats || {};
+      const isLeagueDriver = Boolean(
+        location || Object.keys(seasonStats).length
+      );
+      const leagueTeam = isLeagueDriver ? team : "";
+      const leagueLocation = isLeagueDriver ? location : "";
+      setText("driver-card-team", leagueTeam ? `Team · ${leagueTeam}` : "");
+      setText("driver-card-location", leagueLocation);
+      document.getElementById("driver-card-team").classList.toggle("hidden", !leagueTeam);
+      document.getElementById("driver-card-location").classList.toggle("hidden", !leagueLocation);
     }
 
     function renderDriverCardRaceStory(driver) {

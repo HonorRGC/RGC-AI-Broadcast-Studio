@@ -229,3 +229,18 @@ def test_prompt_includes_multiclass_discipline():
     assert "GT3" in prompt["user"]
     assert "Multiclass discipline" in prompt["user"]
     assert "overall lead" in prompt["user"]
+
+
+def test_quiet_race_prompt_forbids_manufactured_battle_or_strategy():
+    assignment = EditorialItem(
+        story_type="quiet_race_topic",
+        headline="Quiet green-flag feature",
+        summary="The number 24 has gained five positions from the start.",
+        broadcast_angle="Use a verified race-development topic.",
+    )
+
+    prompt = PromptBuilder().build_prompt("jeff", assignment)
+
+    assert "deliberately not a battle assignment" in prompt["user"]
+    assert "Do not imply cars are close" in prompt["user"]
+    assert "Do not manufacture strategy" in prompt["user"]

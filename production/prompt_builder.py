@@ -82,6 +82,14 @@ class PromptBuilder:
                 "or outside lane, side-by-side formation, three-wide formation, "
                 "contact, or a completed pass."
             )
+        if getattr(assignment, "story_type", "") == "quiet_race_topic":
+            lines.append(
+                "Quiet-race accuracy: this is deliberately not a battle assignment. "
+                "Use the verified driver, season, championship, pace, track, or schedule "
+                "facts supplied here to make one natural racing observation. Do not imply "
+                "cars are close, side by side, passing, or about to pass unless the assignment "
+                "explicitly states that. Do not manufacture strategy."
+            )
         if getattr(assignment, "story_type", "") == "formation_multiple_packs":
             lines.append(
                 "Accuracy: Talk only about the packs and gap stated in the "

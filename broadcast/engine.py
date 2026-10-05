@@ -15,7 +15,7 @@ from production.action_detector import ActionDetector
 from production.broadcast_story_producer import BroadcastStoryProducer
 from production.booth_followup_director import BoothFollowupDirector
 from production.booth_conversation_director import BoothConversationDirector
-from production.editorial_producer import EditorialDecisionType, EditorialProducer
+from production.editorial_producer import EditorialDecisionType, EditorialItem, EditorialProducer
 from production.field_rundown_director import FieldRundownDirector
 from production.fastest_lap_tracker import FastestLapTracker
 from production.formation_detector import FormationDetector
@@ -490,6 +490,7 @@ class BroadcastEngine:
                 driver_lookup,
                 race_state,
                 current_lap,
+                race_knowledge,
             )
             if queued_stat_filler:
                 return self.broadcast_queue.next_item()
@@ -2740,7 +2741,14 @@ class BroadcastEngine:
             if item.category in preserved_categories
         ]
 
-    def _queue_race_stat_filler(self, results, driver_lookup, race_state, current_lap):
+    def _queue_race_stat_filler(
+        self,
+        results,
+        driver_lookup,
+        race_state,
+        current_lap,
+        race_knowledge=None,
+    ):
         if self.broadcast_queue.items or not self.broadcast_queue.can_speak():
             return False
         insight = self.race_insight_director.race_stat_filler(
@@ -2751,8 +2759,44 @@ class BroadcastEngine:
         )
         if not insight:
             return False
+        assignment = EditorialItem(
+            story_type="quiet_race_topic",
+            headline="A verified race story to carry a quiet green-flag stretch",
+            summary=insight.message,
+            priority=insight.priority,
+            source="race_insight_director",
+            speaker=insight.speaker,
+            category=insight.category,
+            camera_target_car_idx=insight.camera_target_car_idx,
+            participant_car_indices=insight.participant_car_indices,
+            broadcast_angle=(
+                "Choose the most entertaining grounded angle in this assignment. "
+                "Do not invent a battle, pass, strategy, or driver fact. It is fine "
+                "to spotlight one driver, reset the championship, discuss verified "
+                "pace, or briefly let the pictures breathe."
+            ),
+            producer_notes=(
+                "This is a quiet-race feature, not a battle call.",
+                "Use only the verified facts supplied in the assignment and race context.",
+                "Avoid generic tire-wear or fuel-saving analysis unless explicitly supplied.",
+            ),
+        )
+        enriched_knowledge = dict(race_knowledge or {})
+        league_driver_context = self.league_context.context_for_item(
+            assignment,
+            driver_lookup,
+        )
+        if league_driver_context:
+            enriched_knowledge["league_driver_context"] = league_driver_context
+        commentary = self.openai_director.generate_commentary(
+            speaker=insight.speaker,
+            assignment=assignment,
+            race_state=race_state,
+            race_knowledge=enriched_knowledge,
+            fallback_text=insight.message,
+        )
         self.broadcast_queue.add(
-            insight.message,
+            self.commentary_cleaner.clean(commentary),
             priority=insight.priority,
             category=insight.category,
             protected=False,

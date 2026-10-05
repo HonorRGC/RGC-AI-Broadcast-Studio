@@ -108,3 +108,63 @@ def test_urgent_driver_story_bypasses_airtime_limit():
     decision = producer.choose_next_item()
 
     assert decision.decision_type.value == "AIR_NOW"
+
+
+def test_restart_settling_holds_routine_pressure_battle():
+    producer = EditorialProducer()
+    item = EditorialItem(
+        story_type="live_pressure_battle",
+        headline="Pressure for seventh",
+        summary="The trailing car is close in scoring.",
+        priority=8,
+        participant_car_indices=(7, 8),
+    )
+    producer.add_item(item)
+    producer.submit_to_timeline(item)
+
+    decision = producer.choose_next_item(
+        race_state=SimpleNamespace(laps_remaining=40, restart_count=1, green_lap_count=2)
+    )
+
+    assert decision.decision_type.value == "HOLD"
+    assert "restart" in decision.reason.lower()
+
+
+def test_restart_settling_allows_verified_side_by_side_action():
+    producer = EditorialProducer()
+    item = EditorialItem(
+        story_type="live_side_by_side",
+        headline="Side by side for seventh",
+        summary="Two cars are physically alongside.",
+        priority=9,
+        participant_car_indices=(7, 8),
+    )
+    producer.add_item(item)
+    producer.submit_to_timeline(item)
+
+    decision = producer.choose_next_item(
+        race_state=SimpleNamespace(laps_remaining=40, restart_count=1, green_lap_count=2)
+    )
+
+    assert decision.decision_type.value == "AIR_NOW"
+
+
+def test_routine_battle_budget_spaces_calls_apart():
+    producer = EditorialProducer()
+    producer.last_battle_aired_at = time.time()
+    item = EditorialItem(
+        story_type="battle_for_top_ten",
+        headline="Developing fight for ninth",
+        summary="A verified close interval is developing.",
+        priority=7,
+        participant_car_indices=(9, 10),
+    )
+    producer.add_item(item)
+    producer.submit_to_timeline(item)
+
+    decision = producer.choose_next_item(
+        race_state=SimpleNamespace(laps_remaining=40, restart_count=0, green_lap_count=12)
+    )
+
+    assert decision.decision_type.value == "HOLD"
+    assert "cooling down" in decision.reason.lower()

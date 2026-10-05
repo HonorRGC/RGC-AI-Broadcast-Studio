@@ -24,9 +24,9 @@ class BattleStory:
 class BattleDetector:
     def __init__(self):
         self.minimum_valid_gap = 0.05
-        self.lead_battle_gap = 0.50
-        self.top_five_battle_gap = 0.75
-        self.top_ten_battle_gap = 1.00
+        self.lead_battle_gap = 0.40
+        self.top_five_battle_gap = 0.50
+        self.top_ten_battle_gap = 0.60
 
     def analyze(self, results, driver_lookup) -> List[BattleStory]:
         battles = []
@@ -44,7 +44,13 @@ class BattleDetector:
             chasing_car = sorted_results[index + 1]
 
             position = self.safe_int(lead_car.get("Position", 999))
-            gap = self.safe_float(chasing_car.get("Time", 999.0))
+            lead_lap = self.safe_int(lead_car.get("LapsComplete", lead_car.get("Lap", 0)))
+            chasing_lap = self.safe_int(chasing_car.get("LapsComplete", chasing_car.get("Lap", 0)))
+            if lead_lap != chasing_lap:
+                continue
+            lead_time = self.safe_float(lead_car.get("Time", lead_car.get("Gap", 0.0)))
+            chasing_time = self.safe_float(chasing_car.get("Time", chasing_car.get("Gap", 999.0)))
+            gap = chasing_time - max(lead_time, 0.0)
 
             if gap < self.minimum_valid_gap:
                 continue

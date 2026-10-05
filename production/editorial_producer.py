@@ -55,6 +55,8 @@ class EditorialProducer:
         self.minimum_driver_repeat_seconds = 150
         self.max_normal_driver_stories = 2
         self.max_items = 50
+        self.last_battle_aired_at = 0.0
+        self.minimum_battle_spacing_seconds = 42.0
 
     # ---------------------------------------------------------
     # Story Intake
@@ -225,8 +227,16 @@ class EditorialProducer:
                 reason="Driver has already had enough routine story airtime.",
             )
 
+        if self.should_hold_for_battle_budget(matching_item, race_state):
+            return EditorialDecision(
+                decision_type=EditorialDecisionType.HOLD,
+                reason="Routine battle budget is cooling down or the restart is still settling.",
+            )
+
         matching_item.aired_count += 1
         matching_item.last_aired_at = time.time()
+        if self.is_battle_story(matching_item):
+            self.last_battle_aired_at = matching_item.last_aired_at
         self.recent_headlines[matching_item.headline] = time.time()
         if matching_item.driver_name:
             self.recent_driver_mentions[matching_item.driver_name.casefold()] = time.time()
@@ -407,6 +417,30 @@ class EditorialProducer:
             return True
 
         return time.time() - last_time >= self.minimum_repeat_seconds
+
+    @staticmethod
+    def is_battle_story(item):
+        return str(getattr(item, "story_type", "") or "") in {
+            "battle", "battle_for_lead", "battle_for_top_five", "battle_for_top_ten",
+            "side_by_side", "three_car_battle", "live_side_by_side",
+            "live_three_wide", "live_pass_clear", "live_pressure_battle",
+        }
+
+    def should_hold_for_battle_budget(self, item, race_state=None):
+        if not self.is_battle_story(item):
+            return False
+        story_type = str(getattr(item, "story_type", "") or "")
+        unmistakable = story_type in {"side_by_side", "three_car_battle", "live_side_by_side", "live_three_wide"}
+        if race_state and getattr(race_state, "restart_count", 0) > 0:
+            green_laps = int(getattr(race_state, "green_lap_count", 0) or 0)
+            if green_laps <= 3 and not unmistakable:
+                return True
+        if unmistakable or story_type == "battle_for_lead":
+            return False
+        return bool(
+            self.last_battle_aired_at
+            and time.time() - self.last_battle_aired_at < self.minimum_battle_spacing_seconds
+        )
 
     def choose_speaker(self, story_type):
         if story_type in [

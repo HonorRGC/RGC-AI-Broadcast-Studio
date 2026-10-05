@@ -35,11 +35,11 @@ class LiveBattleDetector:
         self.pending_side_by_side = {}
         self.pending_three_wide = {}
         self.last_story_at = {}
-        self.story_cooldown_seconds = 24.0
-        self.high_priority_cooldown_seconds = 9.0
-        self.side_by_side_required_ticks = 2
-        self.three_wide_required_ticks = 2
-        self.clear_required_ticks = 3
+        self.story_cooldown_seconds = 50.0
+        self.high_priority_cooldown_seconds = 18.0
+        self.side_by_side_required_ticks = 3
+        self.three_wide_required_ticks = 3
+        self.clear_required_ticks = 4
         self.position_followup_window_seconds = 150.0
 
     def analyze(
@@ -76,9 +76,13 @@ class LiveBattleDetector:
         if three_wide:
             stories.append(three_wide)
 
-        clear = self.detect_confident_clear(cars, driver_lookup, current_lap, total_laps)
-        if clear:
-            stories.append(clear)
+        # The first few laps after a restart naturally compress the field and
+        # create noisy scoring changes. Only unmistakable alongside action is
+        # eligible until the order has had time to settle.
+        if green_lap_count > 3:
+            clear = self.detect_confident_clear(cars, driver_lookup, current_lap, total_laps)
+            if clear:
+                stories.append(clear)
 
         alongside = self.detect_side_by_side(cars, driver_lookup, current_lap, total_laps)
         if alongside:
@@ -166,7 +170,7 @@ class LiveBattleDetector:
             position = min(first["position"], second["position"])
             if position > self.PACK_MAX_POSITION:
                 continue
-            if self.scoring_gap_between(first, second) > 0.95:
+            if self.scoring_gap_between(first, second) > 0.55:
                 continue
             if abs(first["progress"] - second["progress"]) > self.ALONGSIDE_DELTA:
                 continue
@@ -254,7 +258,7 @@ class LiveBattleDetector:
             challenger = by_position.get(position + 1)
             if not leader or not challenger:
                 continue
-            if self.scoring_gap_between(leader, challenger) > 1.05:
+            if self.scoring_gap_between(leader, challenger) > 0.65:
                 continue
             delta = challenger["progress"] - leader["progress"]
             key = ("clear", challenger["car_idx"], leader["car_idx"], position)

@@ -310,6 +310,9 @@ def test_visible_driver_card_refreshes_live_telemetry():
     assert 'id="driver-card-progress-chart"' not in OVERLAY_HTML
     assert "SEASON STATS" in OVERLAY_HTML
     assert "driver-card-location" in OVERLAY_HTML
+    assert "Object.keys(seasonStats).length" in OVERLAY_HTML
+    assert 'const leagueTeam = isLeagueDriver ? team : ""' in OVERLAY_HTML
+    assert "top: 8px;" in OVERLAY_HTML
 
 
 def test_overlay_leaderboard_can_include_live_number_style(monkeypatch):

@@ -94,7 +94,7 @@ class RaceInsightDirector:
             return None
         if race_state.laps_remaining and race_state.laps_remaining <= 10:
             return None
-        if self.last_stat_filler_lap and current_lap - self.last_stat_filler_lap < 5:
+        if self.last_stat_filler_lap and current_lap - self.last_stat_filler_lap < 7:
             return None
 
         ordered = self.sorted_running_order(results)
@@ -103,11 +103,10 @@ class RaceInsightDirector:
 
         insight = (
             self.points_standings_insight(ordered, driver_lookup, race_state, current_lap)
-            or
-            self.closest_battle_insight(ordered, driver_lookup, current_lap)
             or self.driver_context_insight(ordered, driver_lookup, current_lap)
             or self.biggest_mover_insight(ordered, driver_lookup, current_lap)
             or self.leader_pace_insight(ordered, driver_lookup, current_lap)
+            or self.closest_battle_insight(ordered, driver_lookup, current_lap)
         )
         if insight:
             self.last_stat_filler_lap = current_lap
@@ -264,7 +263,7 @@ class RaceInsightDirector:
             front = ordered[index - 1]
             chasing = ordered[index]
             gap = self.gap_between_adjacent(front, chasing)
-            if gap <= 0 or gap > 0.75:
+            if gap <= 0 or gap > 0.45:
                 continue
             if best is None or gap < best[2]:
                 best = (front, chasing, gap)

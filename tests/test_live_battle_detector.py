@@ -28,6 +28,7 @@ def test_detects_live_side_by_side_without_declaring_pass():
     )
 
     first = detector.analyze(**payload)
+    detector.analyze(**payload)
     stories = detector.analyze(**payload)
 
     assert first == []
@@ -76,6 +77,7 @@ def test_side_by_side_pair_blocks_immediate_pressure_repeat():
     )
 
     detector.analyze(**side_payload)
+    detector.analyze(**side_payload)
     side_stories = detector.analyze(**side_payload)
     pressure_payload = dict(side_payload)
     pressure_payload["lap_dist_pct_status"] = [0.5000, 0.5060]
@@ -101,11 +103,13 @@ def test_repeated_battle_for_same_position_becomes_followup():
     )
 
     detector.analyze(**payload)
+    detector.analyze(**payload)
     first_story = detector.analyze(**payload)[0]
     for key in list(detector.last_story_at):
         detector.last_story_at[key] -= detector.story_cooldown_seconds + 1.0
     detector.pending_side_by_side = {}
 
+    detector.analyze(**payload)
     detector.analyze(**payload)
     followup_story = detector.analyze(**payload)[0]
 
@@ -130,6 +134,7 @@ def test_detects_live_three_wide_before_two_wide():
     )
 
     first = detector.analyze(**payload)
+    detector.analyze(**payload)
     stories = detector.analyze(**payload)
 
     assert first == []
@@ -154,10 +159,12 @@ def test_confident_clear_requires_three_consecutive_ticks():
     first = detector.analyze(**payload)
     second = detector.analyze(**payload)
     third = detector.analyze(**payload)
+    fourth = detector.analyze(**payload)
 
     assert not any(story.story_type == "live_pressure_battle" for story in first)
     assert not any(story.story_type == "live_pressure_battle" for story in second)
-    clear_story = next(story for story in third if story.story_type == "live_pressure_battle")
+    assert not any(story.story_type == "live_pressure_battle" for story in third)
+    clear_story = next(story for story in fourth if story.story_type == "live_pressure_battle")
     assert any(
         phrase in clear_story.summary.lower()
         for phrase in ("pressuring", "battle", "company", "worth watching")
@@ -179,6 +186,7 @@ def test_pressure_battle_does_not_immediately_repeat_for_same_pair_reversed():
         green_lap_count=6,
     )
 
+    detector.analyze(**first_payload)
     detector.analyze(**first_payload)
     detector.analyze(**first_payload)
     first_story = next(
