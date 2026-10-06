@@ -814,7 +814,9 @@ class BroadcastEngine:
     def _queue_leader_story(self, results, driver_lookup, current_lap, total_laps):
         if current_lap < 3 or not results:
             return
-        if self.last_leader_story_lap and current_lap - self.last_leader_story_lap < 5:
+        # The leader is already visible on every leaderboard. Save routine leader
+        # updates for wider intervals so the rest of the field can carry the show.
+        if self.last_leader_story_lap and current_lap - self.last_leader_story_lap < 10:
             return
         if self.broadcast_queue.items:
             return
@@ -843,9 +845,27 @@ class BroadcastEngine:
         driver = driver_lookup.get(leader_idx, {})
         name = driver.get("name", f"Car {leader_idx}")
         number = driver.get("number", "?")
-        message = (
-            f"{name} in the number {number} has led {laps_led_total} "
-            f"{lap_word} tonight. {gap_text}{trend}"
+        leader_tenure = max(current_lap - self.current_leader_started_lap + 1, 1)
+        message = self.rotate_story_variant(
+            f"routine_leader:{leader_idx}",
+            [
+                (
+                    f"{name} in the number {number} has led {laps_led_total} "
+                    f"{lap_word} tonight. {gap_text}{trend}"
+                ),
+                (
+                    f"The number {number} of {name} has controlled the last "
+                    f"{leader_tenure} laps. {gap_text}{trend}"
+                ),
+                (
+                    f"A check of the front shows {name} still setting the target "
+                    f"in the number {number}. {gap_text}{trend}"
+                ),
+                (
+                    f"The race for the lead remains in {name}'s hands for now. "
+                    f"{gap_text}{trend}"
+                ),
+            ],
         )
         self.broadcast_queue.add(
             message,
@@ -854,7 +874,7 @@ class BroadcastEngine:
             protected=False,
             speaker="jeff",
             expires_after=35,
-            dedupe_key=f"leader_story:{leader_idx}:{current_lap // 5}",
+            dedupe_key=f"leader_story:{leader_idx}:{current_lap // 10}",
             camera_target_car_idx=leader_idx,
             participant_car_indices=(leader_idx,),
         )

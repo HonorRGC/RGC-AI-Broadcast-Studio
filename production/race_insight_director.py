@@ -275,7 +275,7 @@ class RaceInsightDirector:
         chasing_idx = chasing.get("CarIdx")
         front_idx = front.get("CarIdx")
         key = ("closest_battle", tuple(sorted(idx for idx in (chasing_idx, front_idx) if idx is not None)))
-        if self.was_recently_sent(key, current_lap, 10):
+        if self.was_recently_sent(key, current_lap, 18):
             return None
 
         position = self.display_position(chasing, ordered)

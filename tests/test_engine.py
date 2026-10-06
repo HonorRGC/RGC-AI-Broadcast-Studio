@@ -2732,6 +2732,29 @@ def test_leader_story_uses_singular_lap_word():
     assert "1 laps" not in engine.broadcast_queue.items[0].message
 
 
+def test_routine_leader_story_waits_ten_laps_and_rotates_the_angle():
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    drivers = {
+        0: {"name": "Race Leader", "number": "77"},
+        1: {"name": "Chaser", "number": "24"},
+    }
+    results = [
+        {"CarIdx": 0, "Position": 0, "Time": 0.0},
+        {"CarIdx": 1, "Position": 1, "Time": 1.2},
+    ]
+
+    engine._queue_leader_story(results, drivers, current_lap=3, total_laps=80)
+    first = engine.broadcast_queue.items.pop(0).message
+    engine._queue_leader_story(results, drivers, current_lap=9, total_laps=80)
+    assert engine.broadcast_queue.items == []
+
+    engine._queue_leader_story(results, drivers, current_lap=13, total_laps=80)
+    second = engine.broadcast_queue.items[0].message
+
+    assert "has led" in first
+    assert "has controlled the last" in second
+
+
 def test_green_phase_change_clears_stale_editorial_stories():
     engine = BroadcastEngine(openai_director=SilentOpenAI())
     engine.editorial_producer.submit_story(

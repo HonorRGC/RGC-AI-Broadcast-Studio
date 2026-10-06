@@ -5776,16 +5776,16 @@ OVERLAY_HTML = r"""<!doctype html>
 
     /* Compact driver card: season context above race metrics and live telemetry. */
     .driver-card {
-      width: 940px;
-      max-width: calc(100vw - 330px);
-      grid-template-columns: 88px 178px minmax(390px, 1fr) 220px;
-      grid-template-rows: 40px 126px;
+      width: 860px;
+      max-width: calc(100vw - 360px);
+      grid-template-columns: 80px 158px minmax(355px, 1fr) 205px;
+      grid-template-rows: 40px 118px;
     }
 
     .driver-card-header {
       grid-column: 1 / -1;
       display: grid;
-      grid-template-columns: minmax(280px, 1fr) auto minmax(390px, auto);
+      grid-template-columns: minmax(240px, 1fr) auto minmax(340px, auto);
       align-items: center;
       gap: 14px;
       min-width: 0;
@@ -5820,7 +5820,7 @@ OVERLAY_HTML = r"""<!doctype html>
       display: flex;
       align-items: center;
       justify-content: flex-end;
-      gap: 15px;
+      gap: 10px;
       margin: 0;
     }
     .driver-card-season-stat {
@@ -5835,10 +5835,10 @@ OVERLAY_HTML = r"""<!doctype html>
     .driver-card-position-rank,
     .driver-card-image,
     .driver-card-info,
-    .driver-card-telemetry { min-height: 126px; }
+    .driver-card-telemetry { min-height: 118px; }
 
-    .driver-card-image img { min-height: 126px; }
-    .driver-card-info { padding: 9px 12px; }
+    .driver-card-image img { min-height: 118px; }
+    .driver-card-info { padding: 7px 10px; }
     .driver-card-position { margin-top: 0; font-size: 15px; }
     .driver-card-story { margin-top: 2px; font-size: 12px; }
     .driver-card-team,
@@ -5849,8 +5849,8 @@ OVERLAY_HTML = r"""<!doctype html>
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 4px 12px;
-      margin-top: 7px;
-      padding-top: 6px;
+      margin-top: 5px;
+      padding-top: 5px;
       border-top: 1px solid rgba(255,255,255,.13);
     }
     .driver-card-race-metrics div {
@@ -5874,7 +5874,7 @@ OVERLAY_HTML = r"""<!doctype html>
     }
 
     .driver-card-telemetry {
-      min-height: 126px;
+      min-height: 118px;
       padding: 0;
       overflow: hidden;
     }
@@ -5882,10 +5882,10 @@ OVERLAY_HTML = r"""<!doctype html>
       position: absolute;
       left: 7px;
       right: 7px;
-      top: 8px;
+      top: 2px;
       bottom: auto;
       width: calc(100% - 14px);
-      height: 68px;
+      height: 65px;
       overflow: visible;
     }
     .rpm-arc-track,
