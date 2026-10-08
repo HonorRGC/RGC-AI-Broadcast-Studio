@@ -1,3 +1,5 @@
+import pytest
+
 from tools.velocity_league_import import (
     aggregate_series_career,
     build_manager_results,
@@ -511,3 +513,39 @@ def test_fetch_first_html_retries_after_redirect_loop(monkeypatch):
     assert url == "https://good.velocityleague.gg/"
     assert document == "<html>Drivers</html>"
     assert attempts == ["https://bad.velocityleague.gg/", "https://good.velocityleague.gg/"]
+
+
+@pytest.mark.parametrize("series", ["Taco Tuesday Truck Series", "Whiskey Throttle Wednesday"])
+def test_repeated_manager_import_preserves_results_and_manual_schedule(tmp_path, series):
+    from dataclasses import asdict
+    from production.league_manager import (
+        RaceResult, RaceResultEntry, ScheduleEvent, calculate_standings,
+        load_race_results, load_schedule, save_race_results, save_schedule,
+    )
+    from tools.velocity_league_import import merge_manager_import
+
+    original = RaceResult(1, "Manual race", "Daytona", [
+        RaceResultEntry(1, "Driver", "7", points=44, manual_adjustment=4),
+    ])
+    manual = ScheduleEvent(2, track_name="Edited track", laps=120,
+                           notes="Manual notes", race_time="8:30 PM")
+    save_race_results(tmp_path / "results.json", [original])
+    save_schedule(tmp_path / "schedule.json", [manual])
+    incoming = [RaceResult(1, "Imported", "Daytona", [RaceResultEntry(2, "Driver", points=35)]),
+                RaceResult(2, "New race", "Atlanta", [RaceResultEntry(2, "Driver", "7", points=35)])]
+    schedule = [{"track_name": "Daytona", "notes": f"TUE SEP 15 - {series} - 80 laps"},
+                {"track_name": "Atlanta", "notes": f"TUE SEP 22 - {series} - 100 laps"}]
+    for _ in range(2):
+        merge_manager_import(tmp_path, incoming, schedule)
+    # A temporarily missing source round must not erase saved history.
+    merge_manager_import(tmp_path, incoming[:1], schedule)
+    results = load_race_results(tmp_path / "results.json")
+    assert [race.round_number for race in results] == [1, 2]
+    assert asdict(results[0]) == asdict(original)
+    event = load_schedule(tmp_path / "schedule.json")[1]
+    assert asdict(event) == {**asdict(manual), "status": "Completed"}
+    stats = calculate_standings(results)[0]
+    assert stats["starts"] == 2
+    assert stats["points"] == 79
+    assert stats["wins"] == 1
+    assert stats["average_finish"] == 1.5

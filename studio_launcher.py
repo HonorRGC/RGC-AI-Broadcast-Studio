@@ -2895,6 +2895,7 @@ def run_gui():
         settings_entries=entries,
         get_profile_name=lambda: profile_var.get().strip() or profile_name_var.get().strip(),
         league_tab_state=league_tab_state,
+        league_manager_state=league_manager_state,
     )
     build_help_tab(
         help_content,
@@ -3569,6 +3570,7 @@ def build_league_tab(
     settings_entries=None,
     get_profile_name=None,
     league_tab_state=None,
+    league_manager_state=None,
 ):
     import tkinter as tk
     from tkinter import filedialog, simpledialog, ttk
@@ -3577,6 +3579,7 @@ def build_league_tab(
     sim_racer_hub_state = sim_racer_hub_state if sim_racer_hub_state is not None else {}
     settings_entries = settings_entries or {}
     league_tab_state = league_tab_state if league_tab_state is not None else {}
+    league_manager_state = league_manager_state if league_manager_state is not None else {}
 
     intro = (
         "Import league stats from Sim Racer Hub. You can use the clean URL "
@@ -3877,6 +3880,12 @@ def build_league_tab(
                     data["VELOCITY_SCHEDULE_OUTPUT"],
                 )
                 load_driver_profiles()
+                refresh_manager = league_manager_state.get("load_profile")
+                if refresh_manager:
+                    refresh_manager()
+                refresh_stats = league_tab_state.get("refresh_driver_statistics")
+                if refresh_stats:
+                    refresh_stats()
             status.set(
                 ("Previewed" if dry_run else "Imported")
                 + " Velocity League stats, drivers, and schedule."

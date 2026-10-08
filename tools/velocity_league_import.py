@@ -19,6 +19,8 @@ from production.league_manager import (  # noqa: E402
     RaceResult,
     RaceResultEntry,
     ScheduleEvent,
+    load_race_results,
+    load_schedule,
     save_league_profile,
     save_race_results,
     save_schedule,
@@ -1053,6 +1055,25 @@ def preserve_existing_driver_details(path, incoming_rows):
     return incoming_rows
 
 
+def merge_manager_import(folder, incoming_results, schedule_rows):
+    """Append completed rounds while retaining saved results and schedule edits."""
+    folder = Path(folder)
+    by_round = {}
+    for race in load_race_results(folder / "results.json") + incoming_results:
+        if race.entries:
+            by_round.setdefault(race.round_number, race)
+    results = [by_round[key] for key in sorted(by_round)]
+    events = {event.round_number: event for event in load_schedule(folder / "schedule.json")}
+    for event in manager_schedule_events(schedule_rows, set(by_round)):
+        events.setdefault(event.round_number, event)
+    for round_number, event in events.items():
+        if round_number in by_round:
+            event.status = "Completed"
+    save_schedule(folder / "schedule.json", list(events.values()))
+    save_race_results(folder / "results.json", results)
+    return results
+
+
 def run_import(args):
     home_url, home_html = fetch_first_html(url_variants(args.url))
     home_text = html_to_text(home_html)
@@ -1169,9 +1190,9 @@ def run_import(args):
             schedule_rows,
             str(args.series or series_key or "Velocity League").replace("-", " ").title(),
         )
-        save_league_profile(manager_folder / "league.json", LeagueProfile(name=series_title, short_name="", season_name="Season 1"))
-        save_schedule(manager_folder / "schedule.json", manager_schedule_events(schedule_rows, {race.round_number for race in manager_results}))
-        save_race_results(manager_folder / "results.json", manager_results)
+        if not (manager_folder / "league.json").exists():
+            save_league_profile(manager_folder / "league.json", LeagueProfile(name=series_title, short_name="", season_name="Season 1"))
+        manager_results = merge_manager_import(manager_folder, manager_results, schedule_rows)
     print(f"Imported {len(season_rows)} Velocity season row(s) to {args.stats_output}.")
     print(f"Imported {len(career_stats_rows)} Velocity career row(s) to {args.career_output}.")
     print(f"Imported {len(driver_rows)} Velocity driver row(s) to {args.drivers_output}.")
