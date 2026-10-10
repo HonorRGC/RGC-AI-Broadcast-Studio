@@ -1,6 +1,8 @@
 # Project State
 
-Current version: **v1.0.1 - Early Access Build Refresh**
+Current version: **v1.0.13 - Live Timing and RGC Race Reports**
+
+Latest changes: live leader gaps and next-car intervals, fixed driver-card timing and telemetry, RGC pit and movers tables, and hidden unavailable official season statistics. Official online season-stat retrieval is not connected. Pit service descriptions are estimates from timing. See [LIVE_TIMING.md](LIVE_TIMING.md) for timing behavior and validation limits.
 
 ## Working foundation
 

@@ -1,5 +1,25 @@
 # Changelog
 
+## Version 1.0.13 - Live Timing and RGC Race Reports
+
+### Added
+- Continuously refreshed gaps to the leader and intervals to the next car, using live track-position timing history with projected timing fallback.
+- Leaderboard timing cycles between clearly labeled TO LEADER and TO NEXT views.
+- RGC pit report tables with laps since pit, pit lane time, stationary stop time, and estimated service during pit commentary.
+- Matching RGC Biggest Movers tables with starting position, running position, and places gained.
+
+### Fixed
+- Driver cards retain both timing values without cycling, and initialize live RPM and gear when featured.
+- Driver cards clear the side leaderboard and hide season statistics in official sessions or when statistics are empty.
+- Recorded telemetry preserves completed laps and official-session metadata for newly captured sessions.
+
+Live timing estimates still need validation across tracks and session types; see docs/LIVE_TIMING.md.
+
+## Version 1.0.12 - Repeated Velocity Imports
+
+- Repeated Velocity imports append newly completed races while preserving existing results and manual schedule edits.
+- League Manager standings and driver statistics rebuild from merged results without duplicate rounds.
+
 ## Version 1.0.11 - Caution Review Control
 
 ### Changed

@@ -376,7 +376,8 @@ def run_source(
         if capture_recorder:
             capture_recorder.record_snapshot(source)
         if overlay_server:
-            overlay_server.update_from_telemetry(source)
+            if not getattr(overlay_server, "live_refresh_active", False):
+                overlay_server.update_from_telemetry(source)
             overlay_server.set_director_suggestions(
                 build_director_suggestions(overlay_server.current_state_dict())
             )
@@ -2027,6 +2028,17 @@ def show_overlay_feature(item, overlay_server, source=None, engine=None):
         return
 
     if category == "pit_strategy":
+        rows = build_pit_update_rows(source, engine, limit=12) if getattr(engine, "pit_strategy_detector", None) else []
+        if rows:
+            overlay_server.show_stat_panel(
+                kind="pit_last_stop",
+                title="Last Pit Stop Info",
+                subtitle="Pit lane and stationary stop timing",
+                rows=rows,
+                duration=16.0,
+                dedupe_key=f"pit_last_stop:{latest_pit_lap(engine)}",
+                minimum_interval=20.0,
+            )
         return
 
     if should_show_movers_graphic(item, engine):
@@ -2724,7 +2736,9 @@ def build_biggest_movers_rows(engine, limit=5):
             continue
         rows.append(
             {
-                "label": f"P{mover.current_position}  #{mover.car_number} {mover.driver_name}",
+                "label": f"#{mover.car_number} {mover.driver_name}",
+                "position": str(mover.current_position or "--"),
+                "starting_position": str(mover.starting_position or "--"),
                 "value": f"+{gained}",
                 "detail": f"Started {ordinal(mover.starting_position)}",
             }
@@ -3150,6 +3164,11 @@ def build_pit_update_rows(source, engine, limit=15, completed=False):
         rows.append(
             {
                 "label": f"#{state.car_number} {state.driver_name}",
+                "position": str(current_position or "--"),
+                "laps_since_pit": "Pitting" if state.on_pit_road else str(tire_age),
+                "pit_lane_time": format_seconds(lane_seconds) if lane_seconds > 0 else "--",
+                "pit_stop_time": format_seconds(stop_seconds) if stop_seconds > 0 else "--",
+                "pit_service": caution_pit_service_label(state, state.on_pit_road),
                 "value": (
                     "Pitting"
                     if state.on_pit_road
@@ -3318,6 +3337,11 @@ def build_caution_pit_summary_rows(source, engine, limit=12):
                 ),
                 "sort_lap": last_pit_lap,
                 "label": f"#{getattr(state, 'car_number', '')} {getattr(state, 'driver_name', '')}".strip(),
+                "position": str(current_positions.get(getattr(state, "car_idx", None), 0) or "--"),
+                "laps_since_pit": "Pitting" if on_pit_road else str(max(0, current_lap - last_pit_lap)),
+                "pit_lane_time": format_seconds(lane_seconds) if lane_seconds > 0 else "--",
+                "pit_stop_time": format_seconds(stop_seconds) if stop_seconds > 0 else "--",
+                "pit_service": caution_pit_service_label(state, on_pit_road),
                 "value": caution_pit_service_label(state, on_pit_road),
                 "detail": " | ".join(timing_parts) or "Timing still developing",
             }
@@ -3783,6 +3807,7 @@ def update_overlay_focused_driver(
         hometown=str(driver.get("hometown") or driver.get("home_town") or ""),
         state=str(driver.get("state") or ""),
         season_stats=dict(driver.get("league_stats") or {}),
+        telemetry=source,
     )
 
 
@@ -4335,6 +4360,8 @@ def main():
             )
             print(f"Driver Mode recording: {capture_recorder.telemetry_path}")
         try:
+            if overlay_server:
+                overlay_server.start_live_refresh(source)
             run_source(
                 source,
                 engine,
@@ -4355,6 +4382,8 @@ def main():
                 driver_mode=args.driver_mode,
             )
         finally:
+            if overlay_server:
+                overlay_server.stop_live_refresh()
             if capture_recorder:
                 capture_recorder.close()
                 print(f"Driver Mode recording saved: {capture_recorder.telemetry_path}")

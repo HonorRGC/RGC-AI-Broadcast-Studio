@@ -674,6 +674,9 @@ class ReplayTelemetry:
     def get_car_idx_lap_dist_pct(self):
         return self._snapshot_list("lap_dist_pct")
 
+    def get_car_idx_lap_completed(self):
+        return self._snapshot_list("lap_completed")
+
     def get_car_idx_est_time(self):
         return self._snapshot_list("est_time")
 

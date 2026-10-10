@@ -21,6 +21,7 @@ class TelemetrySnapshot:
     track_surface: list[Any] = field(default_factory=list)
     track_surface_material: list[Any] = field(default_factory=list)
     lap_dist_pct: list[Any] = field(default_factory=list)
+    lap_completed: list[Any] = field(default_factory=list)
     est_time: list[Any] = field(default_factory=list)
     f2_time: list[Any] = field(default_factory=list)
     car_rpm: list[Any] = field(default_factory=list)
@@ -61,6 +62,7 @@ class TelemetrySnapshot:
             track_surface=telemetry.get_car_idx_track_surface(),
             track_surface_material=telemetry.get_car_idx_track_surface_material(),
             lap_dist_pct=telemetry.get_car_idx_lap_dist_pct(),
+            lap_completed=getattr(telemetry, "get_car_idx_lap_completed", lambda: [])(),
             est_time=telemetry.get_car_idx_est_time(),
             f2_time=getattr(telemetry, "get_car_idx_f2_time", lambda: [])(),
             car_rpm=getattr(telemetry, "get_car_idx_rpm", lambda: [])(),

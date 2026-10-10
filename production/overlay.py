@@ -4,6 +4,7 @@ import socket
 import subprocess
 import threading
 import time
+from production.live_timing import LiveTimingTracker
 from dataclasses import dataclass, field
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -177,6 +178,8 @@ class LeaderboardEntry:
     number_style: dict[str, str] = field(default_factory=dict)
     laps_complete: int = 0
     interval: str = ""
+    gap_to_leader: str = ""
+    interval_to_ahead: str = ""
     fastest_lap: str = ""
     class_id: str = ""
     class_name: str = ""
@@ -208,6 +211,8 @@ class LeaderboardEntry:
             "number_style": dict(self.number_style or {}),
             "laps_complete": self.laps_complete,
             "interval": self.interval,
+            "gap_to_leader": self.gap_to_leader,
+            "interval_to_ahead": self.interval_to_ahead,
             "fastest_lap": self.fastest_lap,
             "class_id": self.class_id,
             "class_name": self.class_name,
@@ -248,6 +253,8 @@ class FeaturedDriver:
     starting_position: int = 0
     position_delta: int = 0
     interval: str = ""
+    gap_to_leader: str = ""
+    interval_to_ahead: str = ""
     fastest_lap: str = ""
     laps_led: int = 0
     last_pit_lap: int = 0
@@ -262,6 +269,7 @@ class FeaturedDriver:
     hometown: str = ""
     state: str = ""
     season_stats: dict[str, Any] = field(default_factory=dict)
+    hide_season_stats: bool = False
     position_history: list[dict[str, int]] = field(default_factory=list)
     expires_at: float = 0.0
 
@@ -281,6 +289,8 @@ class FeaturedDriver:
             "starting_position": self.starting_position,
             "position_delta": self.position_delta,
             "interval": self.interval,
+            "gap_to_leader": self.gap_to_leader,
+            "interval_to_ahead": self.interval_to_ahead,
             "fastest_lap": self.fastest_lap,
             "laps_led": self.laps_led,
             "last_pit_lap": self.last_pit_lap,
@@ -295,6 +305,7 @@ class FeaturedDriver:
             "hometown": self.hometown,
             "state": self.state,
             "season_stats": dict(self.season_stats or {}),
+            "hide_season_stats": self.hide_season_stats,
             "position_history": list(self.position_history or []),
         }
 
@@ -350,6 +361,12 @@ class StatPanelRow:
     value: str = ""
     detail: str = ""
     highlight: bool = False
+    position: str = ""
+    laps_since_pit: str = ""
+    starting_position: str = ""
+    pit_lane_time: str = ""
+    pit_stop_time: str = ""
+    pit_service: str = ""
 
     def to_dict(self):
         return {
@@ -357,6 +374,12 @@ class StatPanelRow:
             "value": self.value,
             "detail": self.detail,
             "highlight": self.highlight,
+            "position": self.position,
+            "laps_since_pit": self.laps_since_pit,
+            "starting_position": self.starting_position,
+            "pit_lane_time": self.pit_lane_time,
+            "pit_stop_time": self.pit_stop_time,
+            "pit_service": self.pit_service,
         }
 
 
@@ -550,6 +573,7 @@ class OverlayStateBuilder:
         self.clock = clock or time.monotonic
         self.league_context = league_context
         self.last_leaderboard = []
+        self.live_timing = LiveTimingTracker()
         self.lap_status_by_lap = {}
         self.starting_positions_by_car_idx = {}
         self.number_style_by_car_idx = {}
@@ -581,11 +605,26 @@ class OverlayStateBuilder:
         )
 
         live_intervals = self.telemetry_lookup(telemetry, "get_car_idx_f2_time")
+        time_reader = getattr(telemetry, "get_session_time", None)
+        session_reader = getattr(telemetry, "get_current_session_num", None)
+        continuous_timing = self.live_timing.update(
+            now=time_reader() if callable(time_reader) else None,
+            session=(session_type, session_reader() if callable(session_reader) else None,
+                     track_info.get("track_name")),
+            results=results or [],
+            positions=self.telemetry_lookup(telemetry, "get_car_idx_lap_dist_pct"),
+            completed_laps=self.telemetry_lookup(telemetry, "get_car_idx_lap_completed"),
+            estimated_times=self.telemetry_lookup(telemetry, "get_car_idx_est_time"),
+            surfaces=self.telemetry_lookup(telemetry, "get_car_idx_track_surface"),
+            pit_road=self.telemetry_lookup(telemetry, "get_car_idx_on_pit_road"),
+            race=self.is_race_session(session_type),
+        )
         full_leaderboard = self.build_leaderboard(
             results,
             driver_lookup,
             session_type,
             live_intervals=live_intervals,
+            continuous_timing=continuous_timing,
         )
         if not full_leaderboard:
             grid_reader = getattr(telemetry, "get_starting_grid", None)
@@ -690,6 +729,7 @@ class OverlayStateBuilder:
         driver_lookup,
         session_type="Race",
         live_intervals=None,
+        continuous_timing=None,
     ):
         valid_results = [
             dict(car)
@@ -711,6 +751,7 @@ class OverlayStateBuilder:
         leaderboard = []
         for car in valid_results:
             car_idx = car.get("CarIdx")
+            timing = (continuous_timing or {}).get(car_idx, {})
             driver = (driver_lookup or {}).get(car_idx, {})
             driver_info = dict(driver or {})
             driver_info.setdefault("car_idx", car_idx)
@@ -754,8 +795,11 @@ class OverlayStateBuilder:
                         session_type,
                         leader_laps,
                         leader_car,
-                        live_interval=(live_intervals or {}).get(car_idx),
+                        live_interval=(timing.get("gap") if isinstance(timing.get("gap"), (int, float))
+                                       else (live_intervals or {}).get(car_idx)),
                     ),
+                    gap_to_leader=self.format_continuous_timing(timing.get("gap")),
+                    interval_to_ahead=self.format_continuous_timing(timing.get("interval")),
                     fastest_lap=fastest_lap,
                     starting_position=starting_position,
                     position_delta=position_delta,
@@ -1039,6 +1083,12 @@ class OverlayStateBuilder:
         if seconds <= 0 or seconds >= 9999:
             return ""
         return f"+{seconds:.3f}"
+
+    @staticmethod
+    def format_continuous_timing(value):
+        if isinstance(value, str):
+            return value
+        return f"{value:+.2f}" if value is not None else ""
 
     def explicit_laps_down(self, car):
         for key in ("LapsBehind", "LapsDown"):
@@ -1345,10 +1395,51 @@ class OverlayServer:
         return self.url
 
     def stop(self):
+        self.stop_live_refresh()
         if self.httpd:
             self.httpd.shutdown()
             self.httpd.server_close()
             self.httpd = None
+
+    @property
+    def live_refresh_active(self):
+        worker = getattr(self, "live_refresh_thread", None)
+        return bool(worker and worker.is_alive())
+
+    def start_live_refresh(self, telemetry):
+        """Keep telemetry moving even while the broadcast loop generates speech."""
+        self.stop_live_refresh()
+        if self.live_refresh_active:
+            raise RuntimeError("Previous overlay telemetry worker has not stopped.")
+        stopped = threading.Event()
+        self.live_refresh_stop = stopped
+        self.live_refresh_error = None
+
+        def refresh():
+            while not stopped.is_set():
+                try:
+                    if not telemetry.is_connected():
+                        break
+                    self.update_from_telemetry(telemetry)
+                    self.live_refresh_error = None
+                except Exception as error:
+                    if self.live_refresh_error is None:
+                        print(f"Overlay telemetry refresh failed: {error}")
+                    self.live_refresh_error = str(error)
+                stopped.wait(0.1)
+
+        self.live_refresh_thread = threading.Thread(
+            target=refresh, name="rgc-live-overlay-telemetry", daemon=True,
+        )
+        self.live_refresh_thread.start()
+
+    def stop_live_refresh(self):
+        stopped = getattr(self, "live_refresh_stop", None)
+        if stopped:
+            stopped.set()
+        worker = getattr(self, "live_refresh_thread", None)
+        if worker and worker is not threading.current_thread():
+            worker.join(timeout=2)
 
     def update_from_telemetry(self, telemetry):
         state = self.state_builder.build_from_telemetry(telemetry)
@@ -1400,6 +1491,14 @@ class OverlayServer:
 
     def refresh_featured_driver_telemetry(self, featured, telemetry, state):
         """Keep the visible driver card tied to the current live car data."""
+        weekend_reader = getattr(telemetry, "get_weekend_info", None)
+        weekend = (weekend_reader() or {}) if callable(weekend_reader) else {}
+        track_reader = getattr(telemetry, "get_track_info", None)
+        track = (track_reader() or {}) if callable(track_reader) else {}
+        featured.hide_season_stats = (
+            str(weekend.get("Official", track.get("official", ""))).strip().lower() in ("1", "true")
+            and self.state_builder.safe_int(weekend.get("LeagueID", track.get("league_id")), 0) == 0
+        )
         car_idx = self.state_builder.safe_int(featured.car_idx, -1)
         if car_idx < 0:
             return
@@ -1464,6 +1563,8 @@ class OverlayServer:
             featured.class_size = current_entry.class_size
             featured.position_delta = current_entry.position_delta
             featured.interval = current_entry.interval
+            featured.gap_to_leader = current_entry.gap_to_leader
+            featured.interval_to_ahead = current_entry.interval_to_ahead
             featured.fastest_lap = current_entry.fastest_lap
             featured.laps_led = current_entry.laps_led
             featured.last_pit_lap = current_entry.last_pit_lap
@@ -1547,6 +1648,7 @@ class OverlayServer:
         state="",
         season_stats=None,
         number_style=None,
+        telemetry=None,
     ):
         with self.lock:
             if (
@@ -1588,6 +1690,8 @@ class OverlayServer:
                 season_stats=dict(season_stats or {}),
                 expires_at=time.monotonic() + float(duration),
             )
+            if telemetry is not None:
+                self.refresh_featured_driver_telemetry(self.featured_driver, telemetry, self.state)
             self.state.featured_driver = self.featured_driver
 
     def clear_featured_driver(self):
@@ -1777,6 +1881,12 @@ class OverlayServer:
                         value=str((row or {}).get("value", "")),
                         detail=str((row or {}).get("detail", "")),
                         highlight=bool((row or {}).get("highlight", False)),
+                        position=str((row or {}).get("position", "")),
+                        laps_since_pit=str((row or {}).get("laps_since_pit", "")),
+                        starting_position=str((row or {}).get("starting_position", "")),
+                        pit_lane_time=str((row or {}).get("pit_lane_time", "")),
+                        pit_stop_time=str((row or {}).get("pit_stop_time", "")),
+                        pit_service=str((row or {}).get("pit_service", "")),
                     )
                     for row in (rows or [])
                 ],
@@ -5416,7 +5526,25 @@ OVERLAY_HTML = r"""<!doctype html>
 
     .gap {
       color: var(--rgc-muted);
+      font-size: 14px;
+    }
+
+    .timing-label {
+      padding: 4px 10px;
+      color: #fff;
+      background: rgba(0, 0, 0, 0.65);
       font-size: 12px;
+      font-weight: 900;
+      letter-spacing: .06em;
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    .flo-series .timing-label,
+    .brazen-series .timing-label {
+      padding: 3px 5px;
+      font-size: 12px;
+      text-align: center;
     }
 
     .driver-card {
@@ -5775,6 +5903,10 @@ OVERLAY_HTML = r"""<!doctype html>
     }
 
     /* Compact driver card: season context above race metrics and live telemetry. */
+    body:not(.leaderboard-ticker-mode):not(.leaderboard-flo-mode):not(.leaderboard-brazen-mode) .driver-card {
+      left: 318px;
+    }
+
     .driver-card {
       width: 860px;
       max-width: calc(100vw - 360px);
@@ -6372,6 +6504,47 @@ OVERLAY_HTML = r"""<!doctype html>
       box-shadow: 0 18px 42px rgba(0, 0, 0, 0.50), 0 0 24px rgba(255, 255, 255, 0.10);
     }
 
+    .stat-panel.rgc-pit-table,
+    .stat-panel.rgc-movers-table {
+      width: 750px;
+      left: auto;
+      right: 34px;
+      bottom: 66px;
+      transform: none;
+      border-left: 5px solid #d8172f;
+      background: rgba(12, 15, 21, .97);
+    }
+    .stat-panel.rgc-pit-table .stat-panel-header,
+    .stat-panel.rgc-movers-table .stat-panel-header {
+      background: linear-gradient(100deg, #c8102e, #741020 55%, #161a22);
+      border-bottom: 2px solid #ffffff;
+    }
+    .stat-panel.rgc-pit-table .stat-panel-title,
+    .stat-panel.rgc-movers-table .stat-panel-title { font-size: 22px; }
+    .stat-panel.rgc-pit-table .stat-panel-rows,
+    .stat-panel.rgc-movers-table .stat-panel-rows { display: block; padding: 0; }
+    .rgc-movers-table .pit-table-row { grid-template-columns: 42px minmax(0, 1fr) 95px 95px 110px; font-size: 17px; padding: 10px 12px; }
+    .rgc-movers-table .pit-table-row span:last-child { color: #5de593; font-weight: 950; }
+    .rgc-movers-table .pit-table-columns { font-size: 11px; }
+    .rgc-movers-table .pit-table-columns span:last-child { color: #dfe4ed; }
+    .pit-table-row {
+      display: grid;
+      grid-template-columns: 38px minmax(0, 1fr) 94px 83px 83px 120px;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      background: #202631;
+      border-bottom: 1px solid rgba(255, 255, 255, .12);
+      font-size: 15px;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+    }
+    .pit-table-row:nth-child(odd) { background: #171c25; }
+    .pit-table-row span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: center; }
+    .pit-table-row span:nth-child(2) { text-align: left; }
+    .pit-table-row span:first-child { color: #ff6476; font-weight: 950; }
+    .pit-table-row.pit-table-columns { background: #080b10; font-size: 11px; color: #dfe4ed; }
+
     .stat-panel-header {
       padding: 12px 16px 10px;
       background: rgba(0, 0, 0, 0.32);
@@ -6852,6 +7025,7 @@ OVERLAY_HTML = r"""<!doctype html>
       <span>Leaderboard</span>
       <span id="lap" class="lap">Lap --</span>
     </div>
+    <div id="side-timing-label" class="timing-label">TO LEADER</div>
     <div id="lap-history" class="lap-history hidden"></div>
     <div id="leaderboard-rows"></div>
     <div id="leaderboard-series" class="leaderboard-series hidden"></div>
@@ -6880,6 +7054,7 @@ OVERLAY_HTML = r"""<!doctype html>
       <div id="flo-row-cycle" class="flo-row flo-row-cycle"></div>
     </div>
     <div class="flo-series">
+      <div id="flo-timing-label" class="timing-label">TO LEADER</div>
       <img id="flo-series-logo" alt="" />
       <div id="flo-series-text" class="flo-series-text"></div>
       <div id="flo-track-text" class="flo-track-text"></div>
@@ -6922,6 +7097,7 @@ OVERLAY_HTML = r"""<!doctype html>
       <div id="brazen-field-track" class="brazen-field-track"></div>
     </div>
     <div class="brazen-cell brazen-series">
+      <div id="brazen-timing-label" class="timing-label">TO LEADER</div>
       <img id="brazen-series-logo" alt="" />
       <div id="brazen-series-text" class="brazen-series-text"></div>
     </div>
@@ -6934,7 +7110,7 @@ OVERLAY_HTML = r"""<!doctype html>
         <span id="driver-card-header-number" class="driver-card-header-number">#--</span>
         <span id="driver-card-name" class="driver-card-name"></span>
       </div>
-      <div class="driver-card-season-label">SEASON STATS</div>
+      <div id="driver-card-season-label" class="driver-card-season-label">SEASON STATS</div>
       <div id="driver-card-season-stats" class="driver-card-season-stats"></div>
     </div>
     <div class="driver-card-position-rank">
@@ -6952,6 +7128,8 @@ OVERLAY_HTML = r"""<!doctype html>
       <div id="driver-card-story" class="driver-card-story"></div>
       <div id="driver-card-country" class="driver-card-country"></div>
       <div class="driver-card-race-metrics">
+        <div><span>To Leader</span><b id="driver-card-to-leader">--</b></div>
+        <div><span>To Next</span><b id="driver-card-to-next">--</b></div>
         <div><span>Start</span><b id="driver-card-start">--</b></div>
         <div><span>Net Gain</span><b id="driver-card-net">--</b></div>
         <div><span>Best Lap</span><b id="driver-card-best-lap">--</b></div>
@@ -7041,7 +7219,19 @@ OVERLAY_HTML = r"""<!doctype html>
       }
     }
 
+    let timingMode = "leader";
+    let timingLabel = "TO LEADER";
+    let hasLiveTiming = false;
+
     function renderOverlay(state) {
+      const timingEntries = state.producer_leaderboard || state.leaderboard || [];
+      hasLiveTiming = timingEntries.some(entry => entry.gap_to_leader || entry.interval_to_ahead);
+      timingMode = hasLiveTiming && Math.floor(Date.now() / 8000) % 2 ? "next" : "leader";
+      timingLabel = hasLiveTiming ? (timingMode === "next" ? "TO NEXT" : "TO LEADER")
+        : (isTimedSession(state.session_type) ? "BEST LAP" : "TO LEADER");
+      for (const id of ["side-timing-label", "flo-timing-label", "brazen-timing-label"]) {
+        setText(id, timingLabel);
+      }
       const event = state.event || {};
       setText("event-title", event.title || "RGC AI Broadcast");
       setText("series", event.series || "");
@@ -7091,7 +7281,7 @@ OVERLAY_HTML = r"""<!doctype html>
           <span class="pos">${entry.position}</span>
           <span class="num" style="${numberStyleAttribute(entry.number_style || {})}">${escapeHtml(entry.car_number || "?")}</span>
           <span class="name">${escapeHtml(entry.driver_name || "Unknown")}</span>
-          <span class="gap">${escapeHtml(leaderboardGapText(entry))}</span>
+          <span class="gap">${leaderboardTimingHtml(entry)}</span>
         `;
         rows.appendChild(row);
       }
@@ -7117,7 +7307,7 @@ OVERLAY_HTML = r"""<!doctype html>
       const layer = document.getElementById("ticker-leaderboard");
       const track = document.getElementById("ticker-track");
       const active = leaderboardStyle === "ticker" && leaderboard.length;
-      setText("ticker-label", "Leaderboard");
+      setText("ticker-label", timingLabel);
       layer.classList.toggle("hidden", !active);
       if (!active) {
         track.innerHTML = "";
@@ -7129,7 +7319,7 @@ OVERLAY_HTML = r"""<!doctype html>
           <span class="ticker-pos">P${escapeHtml(entry.position || "")}</span>
           <span class="ticker-num" style="${numberStyleAttribute(entry.number_style || {})}">${escapeHtml(entry.car_number || "?")}</span>
           <span>${escapeHtml(entry.driver_name || "Unknown")}</span>
-          <span class="ticker-gap">${escapeHtml(leaderboardGapText(entry))}</span>
+          <span class="ticker-gap">${leaderboardTimingHtml(entry)}</span>
         </span>
       `).join("");
       const resetMarker = `<span class="ticker-reset">Back to Leader</span>`;
@@ -7236,7 +7426,7 @@ OVERLAY_HTML = r"""<!doctype html>
           <span class="brazen-position">${escapeHtml(entry.position || "")}</span>
           <span class="brazen-number" style="${numberStyleAttribute(entry.number_style || {})}">${escapeHtml(entry.car_number || "?")}</span>
           <span class="brazen-name">${escapeHtml(lastNameOrName(entry.driver_name || "Unknown"))}</span>
-          <span class="brazen-gap">${escapeHtml(leaderboardGapText(entry))}</span>
+          <span class="brazen-gap">${leaderboardTimingHtml(entry)}</span>
         </div>
       `;
     }
@@ -7324,7 +7514,7 @@ OVERLAY_HTML = r"""<!doctype html>
           <span class="flo-position">${escapeHtml(entry.position || "")}</span>
           <span class="flo-number" style="${numberStyleAttribute(entry.number_style || {})}">${escapeHtml(entry.car_number || "?")}</span>
           <span class="flo-name">${escapeHtml(lastNameOrName(entry.driver_name || "Unknown"))}</span>
-          <span class="flo-gap">${escapeHtml(leaderboardGapText(entry))}</span>
+          <span class="flo-gap">${leaderboardTimingHtml(entry)}</span>
         </div>
       `;
     }
@@ -7496,15 +7686,37 @@ OVERLAY_HTML = r"""<!doctype html>
     function renderStatPanel(panel, elementId = "stat-panel") {
       const layer = document.getElementById(elementId);
       const active = !!(panel && panel.kind);
-      layer.className = `stat-panel ${active ? panel.kind : "hidden"}`;
+      const pitTable = active && ["pit_last_stop", "caution_pit", "green_pit_cycle", "green_pit_cycle_complete"].includes(panel.kind);
+      const moversTable = active && panel.kind === "biggest_movers";
+      layer.className = `stat-panel ${active ? panel.kind : "hidden"}${pitTable ? " rgc-pit-table" : moversTable ? " rgc-movers-table" : ""}`;
       if (!active) return;
       const title = layer.querySelector(".stat-panel-title");
       const subtitle = layer.querySelector(".stat-panel-subtitle");
       const rows = layer.querySelector(".stat-panel-rows");
       if (title) title.textContent = panel.title || "Race Update";
-      if (subtitle) subtitle.textContent = panel.subtitle || "";
+      if (subtitle) subtitle.textContent = pitTable ? "RGC PIT REPORT · Lane = entry to exit · Stop = stationary · *Service estimated" : (panel.subtitle || "");
       if (!rows) return;
       rows.innerHTML = "";
+      if (moversTable) {
+        rows.innerHTML = '<div class="pit-table-row pit-table-columns"><span>POS</span><span>DRIVER</span><span>STARTED</span><span>RUNNING</span><span>GAINED</span></div>';
+        for (const row of (panel.rows || []).slice(0, 10)) {
+          const item = document.createElement("div");
+          item.className = "pit-table-row";
+          item.innerHTML = [row.position || "--", row.label, row.starting_position ? `P${row.starting_position}` : "--", row.position ? `P${row.position}` : "--", row.value].map(value => `<span>${escapeHtml(value || "--")}</span>`).join("");
+          rows.appendChild(item);
+        }
+        return;
+      }
+      if (pitTable) {
+        rows.innerHTML = '<div class="pit-table-row pit-table-columns"><span>POS</span><span>DRIVER</span><span>LAPS SINCE PIT</span><span>PIT LANE</span><span>STOP TIME</span><span>SERVICE*</span></div>';
+        for (const row of (panel.rows || []).slice(0, 15)) {
+          const item = document.createElement("div");
+          item.className = "pit-table-row";
+          item.innerHTML = [row.position, row.label, row.laps_since_pit, row.pit_lane_time, row.pit_stop_time, row.pit_service || row.value].map(value => `<span>${escapeHtml(value === "" || value == null ? "--" : value)}</span>`).join("");
+          rows.appendChild(item);
+        }
+        return;
+      }
       const maxRows =
         ["points_standings", "points_standings_pre_race"].includes(panel.kind) ? 20 :
         panel.kind === "caution_pit" ? 12 :
@@ -7712,6 +7924,9 @@ OVERLAY_HTML = r"""<!doctype html>
 
     function renderDriverCardRaceStory(driver) {
       const stats = driver.season_stats || {};
+      const showSeasonStats = !driver.hide_season_stats && Object.values(stats).some(value => value !== "" && value !== null && value !== undefined);
+      document.getElementById("driver-card-season-label").classList.toggle("hidden", !showSeasonStats);
+      document.getElementById("driver-card-season-stats").classList.toggle("hidden", !showSeasonStats);
       const values = [
         [stats.points_position ? ordinal(stats.points_position) : "--", "POINTS"],
         [stats.starts || "--", "STARTS"],
@@ -7730,6 +7945,8 @@ OVERLAY_HTML = r"""<!doctype html>
       setText("driver-card-net", net > 0 ? `▲ ${net}` : net < 0 ? `▼ ${Math.abs(net)}` : "—");
       setText("driver-card-best-lap", driver.fastest_lap || "--");
       setText("driver-card-last-pit", Number(driver.last_pit_lap || 0) > 0 ? `L${driver.last_pit_lap}` : "--");
+      setText("driver-card-to-leader", Number(driver.position) === 1 ? "LEADER" : (driver.gap_to_leader || "--"));
+      setText("driver-card-to-next", Number(driver.position) === 1 ? "--" : (driver.interval_to_ahead || "--"));
 
       const history = (driver.position_history || []).filter(item => Number(item.lap) > 0 && Number(item.position) > 0);
       const positions = history.map(item => Number(item.position));
@@ -7952,7 +8169,6 @@ OVERLAY_HTML = r"""<!doctype html>
         const word = Math.abs(delta) === 1 ? "spot" : "spots";
         pieces.push(`${sign}${delta} ${word}`);
       }
-      if (driver.interval) pieces.push(driver.interval);
       return pieces.join(" • ");
     }
 
@@ -8033,6 +8249,13 @@ OVERLAY_HTML = r"""<!doctype html>
       if (String(entry.interval || "").trim()) return String(entry.interval);
       if (entry.class_position) return `${entry.class_name || "CLS"} ${ordinal(entry.class_position)}`;
       return "";
+    }
+
+    function leaderboardTimingHtml(entry) {
+      if (Number(entry.position) === 1) return "LEADER";
+      const value = timingMode === "next" ? entry.interval_to_ahead
+        : (entry.gap_to_leader || (!hasLiveTiming ? leaderboardGapText(entry) : ""));
+      return `<span style="font-size:14px;font-weight:900;font-variant-numeric:tabular-nums">${escapeHtml(value || "--")}</span>`;
     }
 
     function ordinal(n) {

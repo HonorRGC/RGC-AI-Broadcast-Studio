@@ -461,6 +461,9 @@ class IRacingTelemetry:
     def get_car_idx_lap_dist_pct(self):
         return self.safe_array_read("CarIdxLapDistPct")
 
+    def get_car_idx_lap_completed(self):
+        return self.safe_array_read("CarIdxLapCompleted")
+
     def get_car_speed_mph_lookup(self):
         for key in ("CarIdxSpeed", "CarIdxSpeedMPS", "CarIdxTrackSpeed"):
             speeds = self.safe_array_read(key)
@@ -572,6 +575,8 @@ class IRacingTelemetry:
 
         return {
             "track_name": track_name,
+            "official": weekend_info.get("Official", False),
+            "league_id": weekend_info.get("LeagueID", 0),
             "track_config": weekend_info.get("TrackConfigName", ""),
             "track_city": weekend_info.get("TrackCity", ""),
             "track_state": weekend_info.get("TrackState", ""),
