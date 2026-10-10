@@ -23,9 +23,10 @@ class BattleStory:
 
 class BattleDetector:
     def __init__(self):
-        self.lead_battle_gap = 0.50
-        self.top_five_battle_gap = 0.75
-        self.top_ten_battle_gap = 1.00
+        self.minimum_valid_gap = 0.05
+        self.lead_battle_gap = 0.40
+        self.top_five_battle_gap = 0.50
+        self.top_ten_battle_gap = 0.60
 
     def analyze(self, results, driver_lookup) -> List[BattleStory]:
         battles = []
@@ -43,7 +44,16 @@ class BattleDetector:
             chasing_car = sorted_results[index + 1]
 
             position = self.safe_int(lead_car.get("Position", 999))
-            gap = self.safe_float(chasing_car.get("Time", 999.0))
+            lead_lap = self.safe_int(lead_car.get("LapsComplete", lead_car.get("Lap", 0)))
+            chasing_lap = self.safe_int(chasing_car.get("LapsComplete", chasing_car.get("Lap", 0)))
+            if lead_lap != chasing_lap:
+                continue
+            lead_time = self.safe_float(lead_car.get("Time", lead_car.get("Gap", 0.0)))
+            chasing_time = self.safe_float(chasing_car.get("Time", chasing_car.get("Gap", 999.0)))
+            gap = chasing_time - max(lead_time, 0.0)
+
+            if gap < self.minimum_valid_gap:
+                continue
 
             if position <= 1 and gap <= self.lead_battle_gap:
                 battles.append(
@@ -113,11 +123,43 @@ class BattleDetector:
         chasing_name = chasing_info.get("name", f"Car {chasing_car_idx}")
         chasing_number = chasing_info.get("number", "?")
 
-        summary = (
-            f"{chasing_name} in the number {chasing_number} is right there "
-            f"behind {lead_name} in the number {lead_number}, with the gap "
-            f"around {gap:.2f} seconds."
-        )
+        position_text = self.ordinal(position)
+        variants = [
+            (
+                f"This is a good fight for {position_text}. {lead_name} in the "
+                f"number {lead_number} has {chasing_name} in the number "
+                f"{chasing_number} close enough that the camera should stay with it."
+            ),
+            (
+                f"Not every good race is for the lead. Around {position_text}, "
+                f"{lead_name} in the number {lead_number} and {chasing_name} in "
+                f"the number {chasing_number} are putting together a nice battle."
+            ),
+            (
+                f"{chasing_name} in the number {chasing_number} is keeping "
+                f"{lead_name} in the number {lead_number} honest for "
+                f"{position_text}; the gap is about {gap:.2f} seconds."
+            ),
+            (
+                f"Let's put some attention on {position_text}. {lead_name} in "
+                f"the number {lead_number} and {chasing_name} in the number "
+                f"{chasing_number} have been close enough to make this worth watching."
+            ),
+            (
+                f"The fight around {position_text} has some life to it. "
+                f"{chasing_name} in the number {chasing_number} is hanging with "
+                f"{lead_name} in the number {lead_number} without needing this "
+                "to become a full strategy lesson."
+            ),
+        ]
+        summary = variants[
+            (
+                self.safe_int(lead_car_idx)
+                + self.safe_int(chasing_car_idx)
+                + self.safe_int(position)
+            )
+            % len(variants)
+        ]
 
         return BattleStory(
             story_type=story_type,
@@ -145,3 +187,15 @@ class BattleDetector:
             return float(value)
         except Exception:
             return 999.0
+
+    @staticmethod
+    def ordinal(value):
+        try:
+            number = int(value)
+        except (TypeError, ValueError):
+            return "that position"
+        if 10 <= number % 100 <= 20:
+            suffix = "th"
+        else:
+            suffix = {1: "st", 2: "nd", 3: "rd"}.get(number % 10, "th")
+        return f"{number}{suffix}"

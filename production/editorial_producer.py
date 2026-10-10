@@ -1,10 +1,9 @@
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 import time
 
 from production.editorial_timeline import EditorialTimeline, TimelineStory
-from production.assignment_engine import AssignmentEngine, AssignmentTarget
 
 
 class EditorialDecisionType(Enum):
@@ -27,6 +26,10 @@ class EditorialItem:
 
     speaker: str = "lead"
     category: str = "editorial"
+    camera_target_car_idx: int | None = None
+    participant_car_indices: Tuple[int, ...] = ()
+    broadcast_angle: str = ""
+    producer_notes: Tuple[str, ...] = ()
 
     created_at: float = field(default_factory=time.time)
     last_aired_at: float = 0.0
@@ -44,12 +47,16 @@ class EditorialProducer:
     def __init__(self):
         self.items: List[EditorialItem] = []
         self.recent_headlines: Dict[str, float] = {}
+        self.recent_driver_mentions: Dict[str, float] = {}
+        self.driver_normal_story_counts: Dict[str, int] = {}
 
         self.timeline = EditorialTimeline()
-        self.assignment_engine = AssignmentEngine()
-
-        self.minimum_repeat_seconds = 45
+        self.minimum_repeat_seconds = 120
+        self.minimum_driver_repeat_seconds = 150
+        self.max_normal_driver_stories = 2
         self.max_items = 50
+        self.last_battle_aired_at = 0.0
+        self.minimum_battle_spacing_seconds = 42.0
 
     # ---------------------------------------------------------
     # Story Intake
@@ -64,6 +71,9 @@ class EditorialProducer:
         source="unknown",
         driver_name="",
         car_number="",
+        speaker="",
+        camera_target_car_idx=None,
+        participant_car_indices=(),
     ):
         if not headline:
             return None
@@ -76,8 +86,10 @@ class EditorialProducer:
             source=source,
             driver_name=driver_name,
             car_number=car_number,
-            speaker=self.choose_speaker(story_type),
+            speaker=speaker or self.choose_speaker(story_type),
             category="race_story",
+            camera_target_car_idx=camera_target_car_idx,
+            participant_car_indices=tuple(participant_car_indices),
         )
 
         self.add_item(item)
@@ -96,6 +108,8 @@ class EditorialProducer:
             car_number=getattr(pit_event, "car_number", ""),
             speaker="sarah",
             category="pit_strategy",
+            camera_target_car_idx=None,
+            participant_car_indices=(),
         )
 
         self.add_item(item)
@@ -119,6 +133,12 @@ class EditorialProducer:
                 source="race_intelligence",
                 driver_name=getattr(top_story, "driver_name", ""),
                 car_number=getattr(top_story, "car_number", ""),
+                camera_target_car_idx=getattr(top_story, "car_idx", None),
+                participant_car_indices=tuple(
+                    car_idx
+                    for car_idx in (getattr(top_story, "car_idx", None),)
+                    if car_idx is not None
+                ),
             )
             if item:
                 created_items.append(item)
@@ -133,6 +153,15 @@ class EditorialProducer:
                 source="battle_detector",
                 driver_name=getattr(best_battle, "chasing_driver_name", ""),
                 car_number=getattr(best_battle, "chasing_car_number", ""),
+                camera_target_car_idx=getattr(best_battle, "chasing_car_idx", None),
+                participant_car_indices=tuple(
+                    car_idx
+                    for car_idx in (
+                        getattr(best_battle, "lead_car_idx", None),
+                        getattr(best_battle, "chasing_car_idx", None),
+                    )
+                    if car_idx is not None
+                ),
             )
             if item:
                 created_items.append(item)
@@ -158,67 +187,6 @@ class EditorialProducer:
         )
 
         self.timeline.submit(timeline_story)
-
-    # ---------------------------------------------------------
-    # Assignment Creation
-    # ---------------------------------------------------------
-
-    def create_assignment_from_item(self, item):
-        target = self.choose_assignment_target(item)
-
-        self.assignment_engine.submit(
-            assignment_id=self.build_story_id(item),
-            target=target,
-            headline=item.headline,
-            summary=item.summary,
-            priority=item.priority,
-            expires_after=45,
-        )
-
-    def choose_assignment_target(self, item):
-        if item.speaker == "jeff":
-            return AssignmentTarget.JEFF
-
-        if item.speaker == "sarah":
-            return AssignmentTarget.SARAH
-
-        return AssignmentTarget.LEAD
-
-    # ---------------------------------------------------------
-    # Assignment Dispatch
-    # ---------------------------------------------------------
-
-    def get_next_assignment(self, speaker):
-        target = self.speaker_to_assignment_target(speaker)
-
-        if not target:
-            return None
-
-        return self.assignment_engine.next_assignment(target)
-
-    def complete_assignment(self, assignment):
-        if assignment:
-            self.assignment_engine.complete(assignment)
-
-    def speaker_to_assignment_target(self, speaker):
-        speaker = str(speaker or "").lower()
-
-        if speaker == "lead":
-            return AssignmentTarget.LEAD
-
-        if speaker == "jeff":
-            return AssignmentTarget.JEFF
-
-        if speaker == "sarah":
-            return AssignmentTarget.SARAH
-
-        if speaker == "openai":
-            return AssignmentTarget.OPENAI
-
-        if speaker == "camera":
-            return AssignmentTarget.CAMERA
-
-        return None
 
     # ---------------------------------------------------------
     # Decision Layer
@@ -247,26 +215,41 @@ class EditorialProducer:
                 reason="Item was recently aired.",
             )
 
-        self.create_assignment_from_item(matching_item)
-
-        assignment = self.get_next_assignment(matching_item.speaker)
-
-        if not assignment:
+        if self.should_hold_for_late_race(matching_item, race_state):
             return EditorialDecision(
                 decision_type=EditorialDecisionType.HOLD,
-                reason="Assignment was not ready.",
+                reason="Late race is focused on the leaders.",
+            )
+
+        if self.should_hold_for_driver_saturation(matching_item):
+            return EditorialDecision(
+                decision_type=EditorialDecisionType.HOLD,
+                reason="Driver has already had enough routine story airtime.",
+            )
+
+        if self.should_hold_for_battle_budget(matching_item, race_state):
+            return EditorialDecision(
+                decision_type=EditorialDecisionType.HOLD,
+                reason="Routine battle budget is cooling down or the restart is still settling.",
             )
 
         matching_item.aired_count += 1
         matching_item.last_aired_at = time.time()
+        if self.is_battle_story(matching_item):
+            self.last_battle_aired_at = matching_item.last_aired_at
         self.recent_headlines[matching_item.headline] = time.time()
-
-        self.complete_assignment(assignment)
+        if matching_item.driver_name:
+            self.recent_driver_mentions[matching_item.driver_name.casefold()] = time.time()
+            if self.is_normal_driver_story(matching_item):
+                key = matching_item.driver_name.casefold()
+                self.driver_normal_story_counts[key] = (
+                    self.driver_normal_story_counts.get(key, 0) + 1
+                )
 
         return EditorialDecision(
             decision_type=EditorialDecisionType.AIR_NOW,
             item=matching_item,
-            reason=f"Assignment sent to {matching_item.speaker}.",
+            reason=f"Story assigned to {matching_item.speaker}.",
         )
 
     # ---------------------------------------------------------
@@ -305,6 +288,23 @@ class EditorialProducer:
         return None
 
     def build_story_id(self, item):
+        battle_types = {
+            "battle", "battle_for_lead", "battle_for_top_five",
+            "battle_for_top_ten", "side_by_side", "three_car_battle",
+            "live_side_by_side", "live_three_wide", "live_pass_clear",
+            "live_pressure_battle",
+        }
+        participants = tuple(
+            sorted(
+                str(value)
+                for value in (getattr(item, "participant_car_indices", ()) or ())
+                if value is not None
+            )
+        )
+        if item.story_type in battle_types and participants:
+            # Reversing which driver is listed first is still the same battle.
+            # Keep one stable ID so lead/color cannot call it as two stories.
+            return f"battle:{':'.join(participants)}"
         parts = [
             item.story_type or "story",
             item.driver_name or "",
@@ -321,6 +321,12 @@ class EditorialProducer:
             "battle_for_top_ten",
             "race_leader",
             "lead_change",
+            "side_by_side",
+            "three_car_battle",
+            "live_side_by_side",
+            "live_three_wide",
+            "live_pass_clear",
+            "live_pressure_battle",
         ]:
             return 0
 
@@ -337,13 +343,104 @@ class EditorialProducer:
 
         return 8
 
+    def should_hold_for_late_race(self, item, race_state):
+        if not race_state:
+            return False
+
+        laps_remaining = getattr(race_state, "laps_remaining", 999)
+        try:
+            laps_remaining = int(laps_remaining)
+        except Exception:
+            laps_remaining = 999
+
+        if laps_remaining > 5:
+            return False
+
+        leader_story_types = {
+            "battle_for_lead",
+            "lead_change",
+            "race_leader",
+            "side_by_side",
+            "three_car_battle",
+            "live_side_by_side",
+            "live_three_wide",
+            "live_pass_clear",
+            "live_pressure_battle",
+        }
+        if item.story_type in leader_story_types:
+            return False
+        if item.priority >= 10:
+            return False
+        return True
+
+    def should_hold_for_driver_saturation(self, item):
+        if not self.is_normal_driver_story(item):
+            return False
+
+        key = item.driver_name.casefold()
+        return (
+            self.driver_normal_story_counts.get(key, 0)
+            >= self.max_normal_driver_stories
+        )
+
+    def is_normal_driver_story(self, item):
+        if not item.driver_name:
+            return False
+        if item.priority >= 9:
+            return False
+        return item.story_type in {
+            "biggest_mover",
+            "top_five_charge",
+            "momentum",
+            "fading_driver",
+            "race_recovery",
+            "race_fade",
+            "pit_cycle_memory",
+            "pit_strategy_context",
+        }
+
     def can_air(self, item):
+        if item.driver_name and item.priority < 10:
+            last_driver_time = self.recent_driver_mentions.get(
+                item.driver_name.casefold()
+            )
+            if (
+                last_driver_time is not None
+                and time.time() - last_driver_time
+                < self.minimum_driver_repeat_seconds
+            ):
+                return False
+
         last_time = self.recent_headlines.get(item.headline)
 
         if last_time is None:
             return True
 
         return time.time() - last_time >= self.minimum_repeat_seconds
+
+    @staticmethod
+    def is_battle_story(item):
+        return str(getattr(item, "story_type", "") or "") in {
+            "battle", "battle_for_lead", "battle_for_top_five", "battle_for_top_ten",
+            "side_by_side", "three_car_battle", "live_side_by_side",
+            "live_three_wide", "live_pass_clear", "live_pressure_battle",
+        }
+
+    def should_hold_for_battle_budget(self, item, race_state=None):
+        if not self.is_battle_story(item):
+            return False
+        story_type = str(getattr(item, "story_type", "") or "")
+        unmistakable = story_type in {"side_by_side", "three_car_battle", "live_side_by_side", "live_three_wide"}
+        if race_state and getattr(race_state, "restart_count", 0) > 0:
+            green_laps = int(getattr(race_state, "green_lap_count", 0) or 0)
+            if green_laps <= 3 and not unmistakable:
+                return True
+        if unmistakable or story_type == "battle_for_lead":
+            return False
+        return bool(
+            self.last_battle_aired_at
+            and time.time() - self.last_battle_aired_at < self.minimum_battle_spacing_seconds
+        )
 
     def choose_speaker(self, story_type):
         if story_type in [
@@ -369,5 +466,6 @@ class EditorialProducer:
     def clear(self):
         self.items = []
         self.recent_headlines = {}
+        self.recent_driver_mentions = {}
+        self.driver_normal_story_counts = {}
         self.timeline = EditorialTimeline()
-        self.assignment_engine = AssignmentEngine()

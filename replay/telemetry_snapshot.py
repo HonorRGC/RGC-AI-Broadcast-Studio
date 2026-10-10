@@ -1,0 +1,104 @@
+from dataclasses import dataclass, field
+from typing import Any
+
+
+@dataclass
+class TelemetrySnapshot:
+    timestamp: float = 0.0
+    lap: int = 0
+    total_laps: int = 0
+    session_type: str = "Race"
+    session_flags: int = 0
+    session_state: int = 0
+    session_num: int = 0
+    session_time: float = 0.0
+    session_time_remaining: float = 0.0
+    track_info: dict[str, Any] = field(default_factory=dict)
+    results: list[dict[str, Any]] = field(default_factory=list)
+    starting_grid: list[dict[str, Any]] = field(default_factory=list)
+    driver_lookup: dict[Any, dict[str, Any]] = field(default_factory=dict)
+    pit_road_status: list[Any] = field(default_factory=list)
+    track_surface: list[Any] = field(default_factory=list)
+    track_surface_material: list[Any] = field(default_factory=list)
+    lap_dist_pct: list[Any] = field(default_factory=list)
+    lap_completed: list[Any] = field(default_factory=list)
+    est_time: list[Any] = field(default_factory=list)
+    f2_time: list[Any] = field(default_factory=list)
+    car_rpm: list[Any] = field(default_factory=list)
+    car_gear: list[Any] = field(default_factory=list)
+    car_throttle: list[Any] = field(default_factory=list)
+    car_brake: list[Any] = field(default_factory=list)
+    car_fuel_pct: list[Any] = field(default_factory=list)
+    car_speed_mph: dict[Any, Any] = field(default_factory=dict)
+    car_idx_session_flags: list[Any] = field(default_factory=list)
+    car_idx_penalty_reasons: list[Any] = field(default_factory=list)
+
+    @classmethod
+    def from_dict(cls, data):
+        fields = cls.__dataclass_fields__
+        return cls(**{key: data[key] for key in fields if key in data})
+
+    @classmethod
+    def from_telemetry(cls, telemetry, timestamp=0.0):
+        return cls(
+            timestamp=timestamp,
+            lap=telemetry.get_lap(),
+            total_laps=telemetry.get_total_laps(),
+            session_type=telemetry.get_session_type(),
+            session_flags=telemetry.get_session_flags(),
+            session_state=getattr(telemetry, "get_session_state", lambda: 0)(),
+            session_num=getattr(telemetry, "get_current_session_num", lambda: 0)(),
+            session_time=getattr(telemetry, "get_session_time", lambda: 0.0)(),
+            session_time_remaining=getattr(
+                telemetry,
+                "get_session_time_remaining",
+                lambda: 0.0,
+            )(),
+            track_info=telemetry.get_track_info(),
+            results=telemetry.get_results(),
+            starting_grid=getattr(telemetry, "get_starting_grid", telemetry.get_results)(),
+            driver_lookup=telemetry.get_driver_lookup(),
+            pit_road_status=telemetry.get_car_idx_on_pit_road(),
+            track_surface=telemetry.get_car_idx_track_surface(),
+            track_surface_material=telemetry.get_car_idx_track_surface_material(),
+            lap_dist_pct=telemetry.get_car_idx_lap_dist_pct(),
+            lap_completed=getattr(telemetry, "get_car_idx_lap_completed", lambda: [])(),
+            est_time=telemetry.get_car_idx_est_time(),
+            f2_time=getattr(telemetry, "get_car_idx_f2_time", lambda: [])(),
+            car_rpm=getattr(telemetry, "get_car_idx_rpm", lambda: [])(),
+            car_gear=getattr(telemetry, "get_car_idx_gear", lambda: [])(),
+            car_throttle=getattr(telemetry, "get_car_idx_throttle", lambda: [])(),
+            car_brake=getattr(telemetry, "get_car_idx_brake", lambda: [])(),
+            car_fuel_pct=getattr(telemetry, "get_car_idx_fuel_pct", lambda: [])(),
+            car_speed_mph=getattr(
+                telemetry,
+                "get_car_speed_mph_lookup",
+                lambda: {},
+            )(),
+            car_idx_session_flags=getattr(
+                telemetry,
+                "get_car_idx_session_flags",
+                lambda: [],
+            )(),
+            car_idx_penalty_reasons=getattr(
+                telemetry,
+                "get_car_idx_penalty_reasons",
+                lambda: [],
+            )(),
+        )
+
+    def to_dict(self):
+        return {key: getattr(self, key) for key in self.__dataclass_fields__}
+
+    def race_lap(self):
+        laps = [self._safe_int(self.lap)]
+        for car in self.results:
+            laps.append(self._safe_int(car.get("LapsComplete", car.get("Lap", 0))))
+        return max(laps, default=0)
+
+    @staticmethod
+    def _safe_int(value):
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return 0
