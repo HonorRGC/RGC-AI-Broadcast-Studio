@@ -262,7 +262,7 @@ RACE_SPONSOR_VIDEOS = {
 }
 _DEFAULT_BRAND_GRAPHICS = env_list(
     "OVERLAY_BRAND_GRAPHICS",
-    "/assets/rgc_motorsports.png,/assets/autism_awareness.png,/assets/keep_it_real.webp",
+    "/assets/rgc_motorsports.png,/assets/keep_it_real.webp",
 )
 _SPONSOR_BRAND_GRAPHICS = unique_list(
     RACE_SPONSOR_LOGOS

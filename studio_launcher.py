@@ -227,7 +227,7 @@ VELOCITY_LEAGUE_FIELDS = [
 LEGACY_SPONSOR_FIELDS = [
     (
         "OVERLAY_BRAND_GRAPHICS",
-        "/assets/rgc_motorsports.png,/assets/autism_awareness.png,/assets/keep_it_real.webp",
+        "/assets/rgc_motorsports.png,/assets/keep_it_real.webp",
     ),
     ("OVERLAY_RACE_SPONSOR", ""),
     ("SPONSOR_READ_NAME", ""),
@@ -357,7 +357,7 @@ BROADCAST_FIELD_HELP = {
     "USE_SPONSOR_READS": "Lets the AI work sponsor mentions into pre-race, caution, and race-update moments.",
     "SPONSOR_READ_CAUSE_NAME": "Short cause or awareness name shown on overlays and used by {cause}. Example: Autism Awareness.",
     "SPONSOR_READ_CAUSE_LOGO": "Logo for the cause/awareness message. It can rotate in the title and appear on sponsor popups.",
-    "SPONSOR_READ_CAUSE_READ": "Optional exact words added after sponsor reads for the cause/awareness. Leave blank for the built-in default.",
+    "SPONSOR_READ_CAUSE_READ": "Optional exact words for the configured cause. Leave the Cause / Awareness Name blank to disable awareness mentions.",
     "RACE_SPONSOR_1_NAME": "First race sponsor. Sponsor reads, caution overlays, and title rotation use sponsors in this order.",
     "RACE_SPONSOR_1_LOGO": "Logo for Sponsor 1.",
     "RACE_SPONSOR_1_READ": "Optional exact spoken read for Sponsor 1. Use {sponsor} and {cause}; leave blank for AI to write it.",
@@ -646,7 +646,7 @@ def launcher_defaults(existing=None):
         defaults["RACE_SPONSOR_3_NAME"] = existing.get("SPONSOR_READ_NAME_3", "")
     if not defaults.get("RACE_SPONSOR_1_READ"):
         defaults["RACE_SPONSOR_1_READ"] = existing.get("SPONSOR_READ_MESSAGE", "")
-    if not defaults.get("SPONSOR_READ_CAUSE_NAME"):
+    if "SPONSOR_READ_CAUSE_NAME" not in existing:
         defaults["SPONSOR_READ_CAUSE_NAME"] = existing.get("SPONSOR_READ_CAUSE", "")
     if not defaults.get("OVERLAY_RACE_SPONSOR"):
         defaults["OVERLAY_RACE_SPONSOR"] = defaults.get("RACE_SPONSOR_1_NAME", "")

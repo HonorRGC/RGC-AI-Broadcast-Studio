@@ -16,7 +16,7 @@ def test_sponsor_read_mentions_rgcmotorsports_and_autism_awareness():
     assert "acceptance" in message
 
 
-def test_sponsor_read_can_detect_autism_from_event_title():
+def test_blank_cause_does_not_infer_autism_from_event_title():
     director = SponsorReadDirector(
         sponsor_name="RGC Motorsports",
         cause="",
@@ -26,7 +26,18 @@ def test_sponsor_read_can_detect_autism_from_event_title():
     message = director.caution_read(current_lap=12)
 
     assert "RGC Motorsports" in message
-    assert "Autism Awareness" in message
+    assert "Autism Awareness" not in message
+
+
+def test_blank_cause_ignores_leftover_cause_read_in_script():
+    director = SponsorReadDirector(
+        sponsor_names=["Test Sponsor"],
+        cause=" ",
+        cause_read="Support Autism Awareness.",
+        custom_message="Presented by {sponsor}. {cause_read}",
+    )
+    assert director.opening_read() == "Presented by Test Sponsor."
+    assert director.segment_read(sponsor_name="Test Sponsor") == "This segment is presented by Test Sponsor."
 
 
 def test_sponsor_read_uses_separate_cause_name_and_spoken_read():

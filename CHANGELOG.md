@@ -1,5 +1,13 @@
 # Changelog
 
+## Version 1.0.14 - Optional Awareness Messages
+
+- Leaving Cause / Awareness Name blank disables automatic awareness mentions, including inference of Autism Awareness from an event title.
+- Leftover cause-read text is ignored when no cause name is configured.
+- An explicitly blank awareness name overrides the legacy cause setting when loading Studio settings.
+- Removed the Autism Awareness logo from default brand graphics. Existing user-selected graphics and custom scripts are preserved.
+- Configured awareness campaigns continue to work normally.
+
 ## Version 1.0.13 - Live Timing and RGC Race Reports
 
 ### Added

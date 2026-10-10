@@ -45,7 +45,7 @@ class SponsorReadDirector:
             for name, read in (sponsor_reads or RACE_SPONSOR_READS or {}).items()
             if str(name or "").strip() and str(read or "").strip()
         }
-        self.cause = (cause or self.detect_cause(event_title) or "").strip()
+        self.cause = (cause or "").strip()
         self.cause_read = (cause_read or "").strip()
         self.custom_message = (custom_message or "").strip()
         self.max_caution_reads = int(max_caution_reads)
@@ -222,6 +222,8 @@ class SponsorReadDirector:
         return f"{message} The broadcast is also proud to support {self.cause}."
 
     def default_cause_read(self):
+        if not self.cause:
+            return ""
         if self.cause_read:
             return str(self.cause_read).replace("{cause}", self.cause).strip()
         if self.is_autism_awareness(self.cause):
