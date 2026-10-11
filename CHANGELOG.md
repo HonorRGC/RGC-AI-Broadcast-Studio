@@ -1,5 +1,12 @@
 # Changelog
 
+## Version 1.0.15 - Leaderboard and Driver Card Layout Fixes
+
+- Driver cards refresh their starting position from the scoring grid during the race.
+- Flo's green/yellow history strip sits between the sponsor and series boxes, below the cycling driver rows.
+- The leader's timing cell displays TO LEADER or TO NEXT as the timing mode changes; separate timing labels are hidden.
+- Biggest Movers sits above the driver card to prevent overlap.
+
 ## Version 1.0.14 - Optional Awareness Messages
 
 - Leaving Cause / Awareness Name blank disables automatic awareness mentions, including inference of Autism Awareness from an event title.

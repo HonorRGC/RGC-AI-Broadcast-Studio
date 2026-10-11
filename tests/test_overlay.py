@@ -286,6 +286,7 @@ def test_visible_driver_card_refreshes_live_telemetry():
     driver = server.current_state_dict()["featured_driver"]
 
     assert driver["position"] == 2
+    assert driver["starting_position"] == 5
     assert driver["interval"] == "+0.438"
     assert driver["gear"] == 5
     assert driver["rpm"] == 8353.0

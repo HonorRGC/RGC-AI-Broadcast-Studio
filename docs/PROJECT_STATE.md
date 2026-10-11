@@ -1,6 +1,8 @@
 # Project State
 
-Current version: **v1.0.14 - Optional Awareness Messages**
+Current version: **v1.0.15 - Leaderboard and Driver Card Layout Fixes**
+
+Latest layout fixes restore starting position on active driver cards, move Flo's history strip between the branding boxes, place timing mode labels in the leader's timing cell, and raise Biggest Movers clear of driver cards.
 
 Cause / awareness mentions are optional: a blank cause name disables automatic awareness reads and event-title inference. New settings omit the awareness logo from default brand graphics.
 

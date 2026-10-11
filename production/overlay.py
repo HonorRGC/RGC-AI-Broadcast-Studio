@@ -1558,6 +1558,8 @@ class OverlayServer:
         )
         if current_entry is not None:
             featured.position = current_entry.position
+            if current_entry.starting_position > 0:
+                featured.starting_position = current_entry.starting_position
             featured.class_name = current_entry.class_name
             featured.class_position = current_entry.class_position
             featured.class_size = current_entry.class_size
@@ -6527,6 +6529,10 @@ OVERLAY_HTML = r"""<!doctype html>
     .rgc-movers-table .pit-table-row span:last-child { color: #5de593; font-weight: 950; }
     .rgc-movers-table .pit-table-columns { font-size: 11px; }
     .rgc-movers-table .pit-table-columns span:last-child { color: #dfe4ed; }
+    .stat-panel.rgc-movers-table { bottom: 240px; }
+    .flo-leaderboard { height: 148px; }
+    .flo-race-bar { left: 210px; right: 210px; top: auto; bottom: 0; }
+    #side-timing-label, #flo-timing-label, #brazen-timing-label { display: none; }
     .pit-table-row {
       display: grid;
       grid-template-columns: 38px minmax(0, 1fr) 94px 83px 83px 120px;
@@ -7307,7 +7313,7 @@ OVERLAY_HTML = r"""<!doctype html>
       const layer = document.getElementById("ticker-leaderboard");
       const track = document.getElementById("ticker-track");
       const active = leaderboardStyle === "ticker" && leaderboard.length;
-      setText("ticker-label", timingLabel);
+      setText("ticker-label", "Leaderboard");
       layer.classList.toggle("hidden", !active);
       if (!active) {
         track.innerHTML = "";
@@ -8252,7 +8258,7 @@ OVERLAY_HTML = r"""<!doctype html>
     }
 
     function leaderboardTimingHtml(entry) {
-      if (Number(entry.position) === 1) return "LEADER";
+      if (Number(entry.position) === 1) return `<span style="font-size:11px;font-weight:900;white-space:nowrap">${escapeHtml(timingLabel)}</span>`;
       const value = timingMode === "next" ? entry.interval_to_ahead
         : (entry.gap_to_leader || (!hasLiveTiming ? leaderboardGapText(entry) : ""));
       return `<span style="font-size:14px;font-weight:900;font-variant-numeric:tabular-nums">${escapeHtml(value || "--")}</span>`;
