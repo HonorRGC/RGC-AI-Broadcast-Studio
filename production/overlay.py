@@ -270,6 +270,8 @@ class FeaturedDriver:
     state: str = ""
     season_stats: dict[str, Any] = field(default_factory=dict)
     hide_season_stats: bool = False
+    highest_position: int = 0
+    lowest_position: int = 0
     position_history: list[dict[str, int]] = field(default_factory=list)
     expires_at: float = 0.0
 
@@ -306,6 +308,8 @@ class FeaturedDriver:
             "state": self.state,
             "season_stats": dict(self.season_stats or {}),
             "hide_season_stats": self.hide_season_stats,
+            "highest_position": self.highest_position,
+            "lowest_position": self.lowest_position,
             "position_history": list(self.position_history or []),
         }
 
@@ -579,6 +583,8 @@ class OverlayStateBuilder:
         self.number_style_by_car_idx = {}
         self.position_history_by_car_idx = {}
         self.position_history_last_lap = 0
+        self.position_extrema_by_car_idx = {}
+        self.position_history_session = None
 
     def build_from_telemetry(self, telemetry):
         results = telemetry.get_results()
@@ -607,6 +613,12 @@ class OverlayStateBuilder:
         live_intervals = self.telemetry_lookup(telemetry, "get_car_idx_f2_time")
         time_reader = getattr(telemetry, "get_session_time", None)
         session_reader = getattr(telemetry, "get_current_session_num", None)
+        history_session = (session_type, session_reader() if callable(session_reader) else None, track_info.get("track_name"))
+        if history_session != self.position_history_session:
+            self.position_history_by_car_idx = {}
+            self.position_extrema_by_car_idx = {}
+            self.position_history_last_lap = 0
+            self.position_history_session = history_session
         continuous_timing = self.live_timing.update(
             now=time_reader() if callable(time_reader) else None,
             session=(session_type, session_reader() if callable(session_reader) else None,
@@ -677,14 +689,18 @@ class OverlayStateBuilder:
         lap = self.safe_int(lap)
         if not self.is_race_session(session_type) or lap <= 0:
             return
-        if lap <= 1 and self.position_history_last_lap > 1:
+        if lap < self.position_history_last_lap:
             self.position_history_by_car_idx = {}
+            self.position_extrema_by_car_idx = {}
+            self.position_history_last_lap = 0
         self.position_history_last_lap = max(lap, self.position_history_last_lap)
         for entry in leaderboard or []:
             car_idx = self.safe_int(entry.car_idx, -1)
             position = self.safe_int(entry.position)
             if car_idx >= 0 and position > 0:
                 self.position_history_by_car_idx.setdefault(car_idx, {})[lap] = position
+                best, worst = self.position_extrema_by_car_idx.get(car_idx, (position, position))
+                self.position_extrema_by_car_idx[car_idx] = (min(best, position), max(worst, position))
 
     def position_history_for(self, car_idx, limit=36):
         values = self.position_history_by_car_idx.get(self.safe_int(car_idx, -1), {})
@@ -1583,6 +1599,7 @@ class OverlayServer:
             )
             featured.season_stats = dict(season or current_entry.league_stats or featured.season_stats or {})
         featured.position_history = self.state_builder.position_history_for(car_idx)
+        featured.highest_position, featured.lowest_position = self.state_builder.position_extrema_by_car_idx.get(car_idx, (0, 0))
 
     @staticmethod
     def normalize_leaderboard_style(value):
@@ -5943,6 +5960,8 @@ OVERLAY_HTML = r"""<!doctype html>
     }
 
     .driver-card-name { font-size: 22px; }
+    .driver-card-header-identity .driver-card-country { margin: 0; flex-shrink: 0; }
+    .driver-card-header-identity .driver-card-country-text { display: none; }
     .driver-card-season-label {
       color: rgba(255,255,255,.62);
       font-size: 10px;
@@ -7115,6 +7134,7 @@ OVERLAY_HTML = r"""<!doctype html>
       <div class="driver-card-header-identity">
         <span id="driver-card-header-number" class="driver-card-header-number">#--</span>
         <span id="driver-card-name" class="driver-card-name"></span>
+        <span id="driver-card-country" class="driver-card-country"></span>
       </div>
       <div id="driver-card-season-label" class="driver-card-season-label">SEASON STATS</div>
       <div id="driver-card-season-stats" class="driver-card-season-stats"></div>
@@ -7132,7 +7152,6 @@ OVERLAY_HTML = r"""<!doctype html>
       <div id="driver-card-team" class="driver-card-team hidden"></div>
       <div id="driver-card-location" class="driver-card-location hidden"></div>
       <div id="driver-card-story" class="driver-card-story"></div>
-      <div id="driver-card-country" class="driver-card-country"></div>
       <div class="driver-card-race-metrics">
         <div><span>To Leader</span><b id="driver-card-to-leader">--</b></div>
         <div><span>To Next</span><b id="driver-card-to-next">--</b></div>
@@ -7140,7 +7159,6 @@ OVERLAY_HTML = r"""<!doctype html>
         <div><span>Net Gain</span><b id="driver-card-net">--</b></div>
         <div><span>Best Lap</span><b id="driver-card-best-lap">--</b></div>
         <div><span>Last Pit</span><b id="driver-card-last-pit">--</b></div>
-        <div><span>Current</span><b id="driver-card-current-pos">--</b></div>
         <div><span>High</span><b id="driver-card-high-pos">--</b></div>
         <div><span>Low</span><b id="driver-card-low-pos">--</b></div>
         <div><span>Laps Led</span><b id="driver-card-laps-led">0</b></div>
@@ -7958,9 +7976,8 @@ OVERLAY_HTML = r"""<!doctype html>
       const positions = history.map(item => Number(item.position));
       if (start > 0) positions.push(start);
       if (currentPosition > 0) positions.push(currentPosition);
-      const highPosition = positions.length ? Math.min(...positions) : 0;
-      const lowPosition = positions.length ? Math.max(...positions) : 0;
-      setText("driver-card-current-pos", currentPosition > 0 ? `P${currentPosition}` : "--");
+      const highPosition = Number(driver.highest_position || 0) || (positions.length ? Math.min(...positions) : 0);
+      const lowPosition = Number(driver.lowest_position || 0) || (positions.length ? Math.max(...positions) : 0);
       setText("driver-card-high-pos", highPosition > 0 ? `P${highPosition}` : "--");
       setText("driver-card-low-pos", lowPosition > 0 ? `P${lowPosition}` : "--");
       setText("driver-card-laps-led", String(Number(driver.laps_led || 0)));

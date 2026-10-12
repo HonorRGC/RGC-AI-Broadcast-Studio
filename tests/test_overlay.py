@@ -9,6 +9,22 @@ from production.overlay import (
 import inspect
 
 
+def test_race_position_extrema_keep_early_and_same_lap_changes():
+    from types import SimpleNamespace
+    builder = OverlayStateBuilder()
+    def observe(lap, position):
+        builder.update_position_history("Race", lap, [SimpleNamespace(car_idx=3, position=position)])
+    observe(1, 18)
+    observe(1, 2)
+    observe(1, 8)
+    for lap in range(2, 60):
+        observe(lap, 6)
+    assert builder.position_extrema_by_car_idx[3] == (2, 18)
+    assert len(builder.position_history_for(3)) == 36
+    observe(1, 12)
+    assert builder.position_extrema_by_car_idx[3] == (12, 12)
+
+
 def test_lineup_panel_state_and_overlay_markup():
     server = OverlayServer(state_builder=OverlayStateBuilder())
     server.show_lineup_panel(

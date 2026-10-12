@@ -2,6 +2,9 @@
 
 ## Version 1.0.15 - Leaderboard and Driver Card Layout Fixes
 
+- Refreshed driver cards retain full-race observed High and Low positions, including changes within a lap; both values share one line without the redundant Current field.
+- Driver country flags appear after the name when country data is available.
+
 - Driver cards refresh their starting position from the scoring grid during the race.
 - Flo's green/yellow history strip sits between the sponsor and series boxes, below the cycling driver rows.
 - The leader's timing cell displays TO LEADER or TO NEXT as the timing mode changes; separate timing labels are hidden.
