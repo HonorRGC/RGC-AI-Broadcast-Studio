@@ -958,7 +958,7 @@ def test_overlay_has_top_center_under_caution_badge():
     assert 'id="caution-status" class="caution-status hidden">Under Caution</div>' in OVERLAY_HTML
     assert "body.leaderboard-ticker-mode .caution-status" in OVERLAY_HTML
     assert "body.leaderboard-flo-mode .caution-status" in OVERLAY_HTML
-    assert "top: 204px" in OVERLAY_HTML
+    assert "top: 228px" in OVERLAY_HTML
     assert 'document.getElementById("caution-status").classList.toggle("hidden", !state.caution)' in OVERLAY_HTML
 
 

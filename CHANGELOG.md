@@ -2,6 +2,9 @@
 
 ## Version 1.0.16 - Preseason Sim Racer Hub Imports
 
+- Latest refresh adds explicit running-order commentary context, separates championship ranks from running positions, excludes career last finishes from season last-race context, and encourages varied career top-five/top-ten references.
+- Flo's caution badge clears the history tracker; Race Recap uses RGC styling, and the driver card hides while podium finishers are displayed.
+
 - Refreshed installer separates season and career driver-card statistics. Both scopes cycle every eight seconds when available; career-only data is labeled Career Stats and missing season data never falls back to career totals.
 
 - Season schedules can import published dates, tracks, event names, and race lengths before results or race IDs exist. Unavailable race IDs remain blank.

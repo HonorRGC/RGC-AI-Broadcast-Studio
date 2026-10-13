@@ -225,6 +225,7 @@ class RaceIntelligence:
     def get_race_knowledge(self):
         return {
             "current_lap": self.current_lap,
+            "running_order": [{"driver_name": driver.driver_name, "car_number": driver.car_number, "position": driver.current_position} for driver in self.driver_summaries.values() if driver.current_position > 0],
             "race_state": self.race_state,
             "top_story": self.top_story(),
             "active_stories": self.get_active_stories(),

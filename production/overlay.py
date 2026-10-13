@@ -4429,7 +4429,7 @@ OVERLAY_HTML = r"""<!doctype html>
     }
 
     body.leaderboard-flo-mode .caution-status {
-      top: 204px;
+      top: 228px;
     }
 
     body.leaderboard-brazen-mode .caution-status {
@@ -6557,6 +6557,11 @@ OVERLAY_HTML = r"""<!doctype html>
     .rgc-movers-table .pit-table-columns { font-size: 11px; }
     .rgc-movers-table .pit-table-columns span:last-child { color: #dfe4ed; }
     .stat-panel.rgc-movers-table { bottom: 240px; }
+    .stat-panel.race_recap { width: 750px; left: auto; right: 34px; bottom: 240px; transform: none; border-left: 5px solid #d8172f; background: rgba(12,15,21,.97); }
+    .stat-panel.race_recap .stat-panel-header { background: linear-gradient(100deg,#c8102e,#741020 55%,#161a22); border-bottom: 2px solid #fff; }
+    .stat-panel.race_recap .stat-panel-row { grid-template-columns: minmax(0,1fr) auto; gap: 6px 18px; background: #202631; padding: 9px 14px; }
+    .stat-panel.race_recap .stat-panel-row:nth-child(odd) { background: #171c25; }
+    .stat-panel.race_recap .stat-panel-detail { grid-column: 1 / -1; }
     .flo-leaderboard { height: 148px; }
     .flo-race-bar { left: 210px; right: 210px; top: auto; bottom: 0; }
     #side-timing-label, #flo-timing-label, #brazen-timing-label { display: none; }
@@ -7297,7 +7302,7 @@ OVERLAY_HTML = r"""<!doctype html>
       renderBrazenLeaderboard(state, leaderboardStyle);
       const presentation = effectiveSpecialPresentation(state);
       renderSpecialPresentation(presentation);
-      renderDriverCard(shouldHideDriverCardForPresentation(presentation) ? null : state.featured_driver);
+      renderDriverCard(shouldHideDriverCardForPresentation(presentation) || (state.podium_panel && (state.podium_panel.entries || []).length) ? null : state.featured_driver);
       renderLineupPanel(shouldHideDriverCardForPresentation(presentation) ? null : state.lineup_panel);
       renderPodiumPanel(state.podium_panel);
       renderStatPanel(state.stat_panel, "stat-panel");

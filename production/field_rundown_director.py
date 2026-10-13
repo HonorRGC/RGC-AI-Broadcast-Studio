@@ -419,7 +419,7 @@ class FieldRundownDirector:
         if avg_finish:
             return f"Their {scope_label} average finish is {avg_finish}."
 
-        if last_finish:
+        if last_finish and scope_label == "season":
             return f"Last time out in the league, they finished {PositionFormatter.ordinal(last_finish)}."
 
         note = self.clean(stats.get("notes"))

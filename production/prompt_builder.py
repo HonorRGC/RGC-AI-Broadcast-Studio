@@ -122,6 +122,9 @@ class PromptBuilder:
         if race_knowledge:
             lines.append("RACE CONTEXT")
             lines.append("------------")
+            lines.append("Running positions are distinct from starting positions, championship rankings, and previous finishes. Never describe a championship rank as the driver's current running position. Do not infer a running position when it is unavailable.")
+            for driver in race_knowledge.get("running_order") or []:
+                lines.append(f"Current running order: #{driver.get('car_number', '')} {driver.get('driver_name', '')}: P{driver.get('position', '')}")
 
             best_battle = race_knowledge.get("best_battle")
             if best_battle:
@@ -193,6 +196,7 @@ class PromptBuilder:
         )
         league_driver_context = (race_knowledge or {}).get("league_driver_context") or []
         if league_driver_context:
+            lines.append("Only use last time out or last-race winner wording when verified season last race finish is supplied. Career wins and career last finishes do not establish a previous race in this season. Vary stat calls with career top-five and top-ten totals and career starts; do not repeatedly focus on wins.")
             lines.append(
                 "League-stat priority: when verified league profiles include track "
                 "starts, track wins, best track finish, previous race finish, "

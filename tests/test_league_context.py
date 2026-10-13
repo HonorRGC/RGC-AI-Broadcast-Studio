@@ -370,3 +370,11 @@ def test_league_context_stays_off_when_disabled(tmp_path):
         ),
         driver_lookup,
     ) == []
+
+def test_career_summary_does_not_supply_current_season_last_race():
+    from production.league_context import DriverStats
+    career = DriverStats(name="Kyle Stewart", stats_scope="career", last_finish="1", top_fives="25")
+    assert "last race finish" not in career.context_summary()
+    assert "career top fives: 25" in career.context_summary()
+    season = DriverStats(name="Kyle Stewart", stats_scope="season", last_finish="1")
+    assert "last race finish: 1st" in season.context_summary()

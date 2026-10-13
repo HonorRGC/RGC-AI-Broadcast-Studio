@@ -110,12 +110,14 @@ class DriverStats:
             if self.points_to_next:
                 point_text += f", {self.points_to_next} points to the next spot"
             details.append(point_text)
-        if self.last_finish:
+        if self.last_finish and self.scope_label() == "season":
             details.append(f"last race finish: {self.ordinal(self.last_finish)}")
         if self.wins:
             details.append(f"{self.scope_label()} wins: {self.wins}")
         if self.top_fives:
-            details.append(f"top fives: {self.top_fives}")
+            details.append(f"{self.scope_label()} top fives: {self.top_fives}")
+        if self.top_tens:
+            details.append(f"{self.scope_label()} top tens: {self.top_tens}")
         if self.avg_finish:
             details.append(f"average finish: {self.avg_finish}")
         if self.track_starts:
