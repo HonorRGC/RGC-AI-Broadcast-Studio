@@ -10,7 +10,7 @@ import subprocess
 import sys
 import csv
 import urllib.error
-from urllib.parse import quote
+from urllib.parse import quote, parse_qs, urlencode, urlparse, urlunparse
 import urllib.request
 import webbrowser
 from pathlib import Path
@@ -1555,6 +1555,14 @@ def sim_racer_hub_import_command(
         source,
         "--bulk",
     ]
+    if career_mode and source.startswith(("http://", "https://")):
+        parsed = urlparse(source)
+        query = parse_qs(parsed.query)
+        query.pop("season_id", None)
+        query.pop("schedule_id", None)
+        if series_id:
+            query["series_id"] = [str(series_id)]
+        command[2] = urlunparse(parsed._replace(path="/scoring/league_stats.php", query=urlencode(query, doseq=True)))
     if league_id:
         command.extend(["--league-id", str(league_id)])
     if series_id:
@@ -3681,6 +3689,8 @@ def build_league_tab(
 
     def run_import(dry_run, drivers_only=False, schedule_only=False, career_override=None):
         data = values()
+        if schedule_only and not data["SIMRACERHUB_SOURCE"] and data["SIMRACERHUB_SEASON_ID"]:
+            data["SIMRACERHUB_SOURCE"] = "https://simracerhub.com/scoring/season_schedule.php?" + urlencode({"season_id": data["SIMRACERHUB_SEASON_ID"]})
         if not data["SIMRACERHUB_SOURCE"]:
             messagebox.showerror("Missing URL", "Paste a Sim Racer Hub URL first.")
             return
@@ -3696,7 +3706,9 @@ def build_league_tab(
             return
 
         effective_career_mode = bool(career_override) if career_override is not None else career_mode.get()
-        if drivers_only or schedule_only:
+        if drivers_only:
+            effective_career_mode = True
+        if schedule_only:
             effective_career_mode = False
 
         stats_output = (
@@ -3766,11 +3778,11 @@ def build_league_tab(
         side="left",
         padx=4,
     )
-    button(buttons, text="Preview Driver Roster", command=lambda: run_import(True, True), color="#334b64").pack(
+    button(buttons, text="Preview Career Roster", command=lambda: run_import(True, True), color="#334b64").pack(
         side="left",
         padx=4,
     )
-    button(buttons, text="Import Driver Roster", command=lambda: run_import(False, True), color=GREEN).pack(
+    button(buttons, text="Import Career Roster", command=lambda: run_import(False, True), color=GREEN).pack(
         side="left",
         padx=4,
     )
@@ -3784,7 +3796,7 @@ def build_league_tab(
     )
     label(
         buttons,
-        text="Tip: import the schedule once per season, then import Season Stats and Career Stats separately.",
+        text="Schedule works before results exist; race IDs can be blank. Career Roster loads past participants for editing. Season and Career Stats remain separate.",
         anchor="w",
         bg=PANEL_BG,
         fg=MUTED_FG,

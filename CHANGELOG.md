@@ -1,5 +1,13 @@
 # Changelog
 
+## Version 1.0.16 - Preseason Sim Racer Hub Imports
+
+- Season schedules can import published dates, tracks, event names, and race lengths before results or race IDs exist. Unavailable race IDs remain blank.
+- Schedule import can use the Season ID when the source URL is blank, and keeps separate twin races while excluding off weeks.
+- Career Roster buttons load past participants for editable driver profiles, without restricting the import to the new season.
+- Career imports remove season and race filters from pasted URLs while retaining the selected series.
+- Season and career statistics remain separate; career statistics can match broadcast drivers without a roster profile.
+
 ## Version 1.0.15 - Leaderboard and Driver Card Layout Fixes
 
 - Refreshed driver cards retain full-race observed High and Low positions, including changes within a lap; both values share one line without the redundant Current field.

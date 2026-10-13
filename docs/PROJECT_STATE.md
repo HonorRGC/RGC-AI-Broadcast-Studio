@@ -1,6 +1,8 @@
 # Project State
 
-Current version: **v1.0.15 - Leaderboard and Driver Card Layout Fixes**
+Current version: **v1.0.16 - Preseason Sim Racer Hub Imports**
+
+Preseason schedule imports read published events without inventing race IDs. Career Roster imports load past participants for editing before a new season has results; career URLs no longer retain season filters.
 
 Latest layout fixes restore starting position on active driver cards, move Flo's history strip between the branding boxes, place timing mode labels in the leader's timing cell, and raise Biggest Movers clear of driver cards.
 

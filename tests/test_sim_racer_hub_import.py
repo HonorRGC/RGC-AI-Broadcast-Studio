@@ -1,5 +1,19 @@
 import csv
 
+
+def test_preseason_schedule_keeps_twin_races_without_inventing_ids():
+    page = """<table>
+    <tr><td>1</td><td>Oct 12, 2026</td><td>Car</td><td><b>Twin One</b><a href='config_stats.php?config_id=181'>Kansas Oval</a></td><td>Speedway</td><td>60 Laps</td></tr>
+    <tr><td>2</td><td>Oct 12, 2026</td><td>Car</td><td><b>Twin Two</b><a href='config_stats.php?config_id=181'>Kansas Oval</a></td><td>Speedway</td><td>60 Laps</td></tr>
+    <tr><td></td><td>Nov 24, 2026</td><td></td><td>Off Week</td><td></td><td></td></tr>
+    </table>"""
+    rows = summarize_race_schedule(page, season_id="30379")
+    assert len(rows) == 2
+    assert all(row["schedule_id"] == "" for row in rows)
+    assert rows[0]["track_name"] == "Kansas Oval"
+    assert "2026-10-12" in rows[0]["notes"]
+    assert "Twin Two" in rows[1]["notes"]
+
 from tools.sim_racer_hub_import import (
     clean_driver_name,
     merge_driver_roster,

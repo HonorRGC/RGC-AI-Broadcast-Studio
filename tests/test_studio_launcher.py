@@ -1017,6 +1017,16 @@ def test_launcher_career_import_command_omits_season_id():
     assert "--dry-run" in command
 
 
+def test_career_roster_strips_season_filter_from_pasted_schedule_url():
+    command = sim_racer_hub_import_command(
+        "https://simracerhub.com/scoring/season_schedule.php?season_id=30379",
+        series_id="7224", season_id="30379", career_mode=True, drivers_only=True,
+    )
+    assert command[2] == "https://simracerhub.com/scoring/league_stats.php?series_id=7224"
+    assert "--season-id" not in command
+    assert "--drivers-only" in command
+
+
 def test_launcher_builds_sim_racer_hub_driver_roster_command():
     command = sim_racer_hub_import_command(
         "https://simracerhub.com/league_stats.php?series_id=3872",

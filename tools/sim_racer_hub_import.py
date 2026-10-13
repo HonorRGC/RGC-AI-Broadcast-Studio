@@ -436,7 +436,31 @@ def summarize_race_schedule(
             add_schedule_row(rows_by_key, row)
 
     rows = list(rows_by_key.values())
+    if not rows:
+        return schedule_rows_from_table(page_html)
     rows.sort(key=schedule_sort_key)
+    return rows
+
+
+def schedule_rows_from_table(page_html):
+    """Read published preseason events without inventing result schedule IDs."""
+    def plain(value):
+        return " ".join(html.unescape(re.sub(r"<[^>]+>", " ", value)).split())
+    rows = []
+    for table_row in re.findall(r"<tr\b[^>]*>(.*?)</tr>", page_html, re.I | re.S):
+        cells = re.findall(r"<td\b[^>]*>(.*?)</td>", table_row, re.I | re.S)
+        if len(cells) < 6 or not plain(cells[0]).isdigit():
+            continue
+        race_date = parse_sim_racer_hub_date(plain(cells[1]))
+        track = re.search(r"<a\b[^>]*config_id=\d+[^>]*>(.*?)</a>", cells[3], re.I | re.S)
+        if not race_date or not track:
+            continue
+        event = re.search(r"<b\b[^>]*>(.*?)</b>", cells[3], re.I | re.S)
+        rows.append({
+            "track_name": plain(track.group(1)),
+            "schedule_id": "",
+            "notes": f"Race {plain(cells[0])} - {race_date.isoformat()} - {plain(event.group(1)) if event else plain(cells[3])} - {plain(cells[5])}",
+        })
     return rows
 
 
@@ -580,11 +604,11 @@ def schedule_fallback_group_key(record):
 
 def add_schedule_row(rows_by_key, row):
     row = {field: str((row or {}).get(field, "") or "").strip() for field in SCHEDULE_FIELDS}
-    if not row["schedule_id"]:
+    if not row["schedule_id"] and not row["notes"]:
         return
     if not row["track_name"]:
         row["track_name"] = row["notes"] or f"Race {len(rows_by_key) + 1}"
-    key = row["schedule_id"]
+    key = row["schedule_id"] or (row["track_name"], row["notes"])
     existing = rows_by_key.get(key)
     if existing:
         for field in SCHEDULE_FIELDS:
