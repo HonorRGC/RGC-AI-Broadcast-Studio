@@ -538,3 +538,26 @@ class FakeReplayController:
     def seek_replay_session_time(self, session_num, session_time):
         self.seek_calls.append((session_num, session_time))
         return True
+
+def test_recorded_sync_uses_replay_clock_not_live_session_clock(tmp_path):
+    path = tmp_path / "separate_clocks.jsonl"
+    path.write_text("".join(json.dumps({"lap": lap, "timestamp": 1000 + lap, "session_num": 2, "session_type": "Race", "session_time": 10 + lap}) + "\n" for lap in range(1, 7)), encoding="utf-8")
+    controller = FakeReplayController(2, 16.0, "Race", replay_frame=600)
+    controller.get_replay_session_num = lambda: 2
+    controller.get_replay_session_time = lambda: 12.0
+    replay = ReplayTelemetry(path).attach_controller(controller)
+    assert replay.synchronize_to_controller(force=True)
+    assert replay.current_snapshot().session_time == 12.0
+
+
+def test_unconfirmed_return_aligns_actual_replay_instead_of_wrong_target(tmp_path):
+    path = tmp_path / "seek_timeout_align.jsonl"
+    path.write_text("".join(json.dumps({"lap": lap, "timestamp": 1000 + lap, "session_num": 2, "session_type": "Race", "session_time": 10 + lap}) + "\n" for lap in range(1, 7)), encoding="utf-8")
+    now = [50.0]
+    controller = FakeReplayController(2, 12.0, "Race", replay_frame=600)
+    replay = ReplayTelemetry(path, clock=lambda: now[0]).attach_controller(controller)
+    replay.playback_ready = True
+    replay.current_index = 4
+    assert replay.return_to_live()
+    now[0] = 55.1
+    assert replay.next_snapshot().session_time == 12.0

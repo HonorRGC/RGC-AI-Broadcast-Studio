@@ -112,8 +112,8 @@ class ReplayTelemetry:
             return None
         try:
             return (
-                int(self.controller.get_current_session_num()),
-                float(self.controller.get_session_time()),
+                int(self._controller_session_num()),
+                float(self._controller_session_time()),
                 self._session_type_family(self.controller.get_session_type()),
             )
         except (AttributeError, TypeError, ValueError):
@@ -173,8 +173,8 @@ class ReplayTelemetry:
     ):
         if not self.controller or not self.snapshots:
             return False
-        session_num = self.controller.get_current_session_num()
-        session_time = self.controller.get_session_time()
+        session_num = self._controller_session_num()
+        session_time = self._controller_session_time()
         session_type = self._session_type_family(self.controller.get_session_type())
         marker = (int(session_num), float(session_time))
         current = self.current_snapshot()
@@ -249,8 +249,8 @@ class ReplayTelemetry:
         if current is None:
             return False
         try:
-            controller_session = int(self.controller.get_current_session_num())
-            controller_time = float(self.controller.get_session_time())
+            controller_session = int(self._controller_session_num())
+            controller_time = float(self._controller_session_time())
             current_session = int(current.session_num)
             current_time = float(current.session_time or 0.0)
         except (TypeError, ValueError):
@@ -268,8 +268,8 @@ class ReplayTelemetry:
         if current is None:
             return False
         try:
-            controller_session = int(self.controller.get_current_session_num())
-            controller_time = float(self.controller.get_session_time())
+            controller_session = int(self._controller_session_num())
+            controller_time = float(self._controller_session_time())
             controller_type = self._session_type_family(self.controller.get_session_type())
             current_session = int(current.session_num)
             current_time = float(current.session_time or 0.0)
@@ -563,8 +563,8 @@ class ReplayTelemetry:
             snapshot = self.current_snapshot()
             if snapshot is None:
                 return False
-            controller_session = int(self.controller.get_current_session_num())
-            controller_time = float(self.controller.get_session_time())
+            controller_session = int(self._controller_session_num())
+            controller_time = float(self._controller_session_time())
             tolerance_seconds = max(1.0, float(frame_tolerance) / 60.0)
             return (
                 controller_session == int(snapshot.session_num)
@@ -594,8 +594,8 @@ class ReplayTelemetry:
                     "session_num": int(snapshot.session_num),
                     "session_time": float(snapshot.session_time or 0.0),
                     "request_frame": self._controller_frame_number(),
-                    "request_session_num": int(self.controller.get_current_session_num()),
-                    "request_session_time": float(self.controller.get_session_time()),
+                    "request_session_num": int(self._controller_session_num()),
+                    "request_session_time": float(self._controller_session_time()),
                     "requested_at": self.clock(),
                 }
                 self.manual_review_started_at = None
@@ -603,19 +603,28 @@ class ReplayTelemetry:
             return accepted
         return False
 
-    def _controller_reached_live_target(self, frame, tolerance_seconds=1.25):
+    def _controller_session_time(self):
+        reader = getattr(self.controller, "get_replay_session_time", None)
+        return reader() if callable(reader) else self.controller.get_session_time()
+
+    def _controller_session_num(self):
+        reader = getattr(self.controller, "get_replay_session_num", None)
+        return reader() if callable(reader) else self.controller.get_current_session_num()
+
+    def _controller_reached_live_target(self, frame, tolerance_seconds=0.1):
         target = self.pending_live_target
         if not target or not self.controller:
             return True
-        # Never let an accepted-but-unconfirmed iRacing seek freeze the entire
-        # recorded broadcast. A normal seek lands quickly; after five seconds,
-        # re-anchor at the best position iRacing currently reports and continue.
+        # An accepted seek is not confirmation. On timeout, align recorded
+        # telemetry to the actual replay clock rather than pairing an old
+        # replay frame with the requested broadcast snapshot.
         requested_at = target.get("requested_at")
         if requested_at is not None and self.clock() - float(requested_at) >= 5.0:
+            self.synchronize_to_controller(force=True, preserve_pending_events=True)
             return True
         try:
-            session_num = int(self.controller.get_current_session_num())
-            session_time = float(self.controller.get_session_time())
+            session_num = int(self._controller_session_num())
+            session_time = float(self._controller_session_time())
         except (TypeError, ValueError):
             return False
         if session_num != target["session_num"]:

@@ -3650,3 +3650,9 @@ def test_caution_top_ten_queues_after_order_is_stable_and_pit_road_clear():
     assert item.participant_car_indices == tuple(range(10))
     assert item.delay_seconds == 1.5
     assert item.silent is True
+
+def test_active_final_lap_does_not_infer_checkered_without_finish_signal():
+    from broadcaster.race_director import RaceDirector, RacePhase
+    director = RaceDirector()
+    assert director.detect_phase(0, [], 60, 60, session_state=4) != RacePhase.CHECKERED
+    assert director.detect_phase(1, [], 60, 60, session_state=4) == RacePhase.CHECKERED

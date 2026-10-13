@@ -170,9 +170,6 @@ class RaceDirector:
         if self.has_flag(session_flags, self.CHECKERED_FLAG):
             return RacePhase.CHECKERED
 
-        if total_laps > 0 and current_lap >= total_laps:
-            return RacePhase.CHECKERED
-
         if self.has_flag(session_flags, self.ONE_LAP_TO_GREEN):
             return RacePhase.ONE_TO_GREEN
 

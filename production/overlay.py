@@ -6556,7 +6556,8 @@ OVERLAY_HTML = r"""<!doctype html>
     .rgc-movers-table .pit-table-row span:last-child { color: #5de593; font-weight: 950; }
     .rgc-movers-table .pit-table-columns { font-size: 11px; }
     .rgc-movers-table .pit-table-columns span:last-child { color: #dfe4ed; }
-    .stat-panel.rgc-movers-table { bottom: 240px; }
+    .stat-panel.rgc-movers-table { width: 650px; bottom: 54px; }
+    .rgc-movers-table .pit-table-row { grid-template-columns: 38px minmax(0,1fr) 70px 70px 80px; font-size: 15px; padding: 8px 12px; }
     .stat-panel.race_recap { width: 750px; left: auto; right: 34px; bottom: 240px; transform: none; border-left: 5px solid #d8172f; background: rgba(12,15,21,.97); }
     .stat-panel.race_recap .stat-panel-header { background: linear-gradient(100deg,#c8102e,#741020 55%,#161a22); border-bottom: 2px solid #fff; }
     .stat-panel.race_recap .stat-panel-row { grid-template-columns: minmax(0,1fr) auto; gap: 6px 18px; background: #202631; padding: 9px 14px; }

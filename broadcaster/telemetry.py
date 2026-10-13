@@ -71,6 +71,14 @@ class IRacingTelemetry:
         except (TypeError, ValueError):
             return None
 
+    def get_replay_session_time(self):
+        value = self.safe_read("ReplaySessionTime")
+        return float(value) if value is not None else self.get_session_time()
+
+    def get_replay_session_num(self):
+        value = self.safe_read("ReplaySessionNum")
+        return int(value) if value is not None else self.get_current_session_num()
+
     def return_to_live(self):
         try:
             seek_sent = self.ir.replay_search(irsdk.RpySrchMode.to_end)

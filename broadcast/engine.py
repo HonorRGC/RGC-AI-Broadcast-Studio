@@ -3709,6 +3709,9 @@ class BroadcastEngine:
             return default
 
     def best_race_lap(self, telemetry_lap, results):
+        completed = [self.safe_int(car.get("LapsComplete")) for car in results or [] if "LapsComplete" in car]
+        if completed:
+            return max(completed)
         laps = [self.safe_int(telemetry_lap)]
         for car in results or []:
             laps.append(self.safe_int(car.get("Lap", car.get("LapsComplete", 0))))

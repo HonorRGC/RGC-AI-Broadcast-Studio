@@ -2,6 +2,10 @@
 
 ## Version 1.0.16 - Preseason Sim Racer Hub Imports
 
+- Replay return synchronization uses the replay session clock and stricter seek confirmation; timed-out seeks align telemetry to the actual replay position.
+- Finish detection requires iRacing's finish flag or finished-session state rather than the active lap reaching the race distance. Commentary uses completed laps when available.
+- Biggest Movers is narrower and sits beside the bottom driver card.
+
 - Latest refresh adds explicit running-order commentary context, separates championship ranks from running positions, excludes career last finishes from season last-race context, and encourages varied career top-five/top-ten references.
 - Flo's caution badge clears the history tracker; Race Recap uses RGC styling, and the driver card hides while podium finishers are displayed.
 
