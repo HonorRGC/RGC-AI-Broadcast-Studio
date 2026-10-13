@@ -3806,7 +3806,8 @@ def update_overlay_focused_driver(
         team_name=str(driver.get("team_name") or ""),
         hometown=str(driver.get("hometown") or driver.get("home_town") or ""),
         state=str(driver.get("state") or ""),
-        season_stats=dict(driver.get("league_stats") or {}),
+        season_stats=dict(preferred_season_stats(driver)),
+        career_stats=next((dict(stats) for stats in driver.get("league_stats_by_scope", []) if str(stats.get("stats_scope") or "").strip().lower() == "career"), dict(driver.get("league_stats") or {}) if str((driver.get("league_stats") or {}).get("stats_scope") or "").strip().lower() == "career" else {}),
         telemetry=source,
     )
 

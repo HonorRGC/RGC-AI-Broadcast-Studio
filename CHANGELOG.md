@@ -2,6 +2,8 @@
 
 ## Version 1.0.16 - Preseason Sim Racer Hub Imports
 
+- Refreshed installer separates season and career driver-card statistics. Both scopes cycle every eight seconds when available; career-only data is labeled Career Stats and missing season data never falls back to career totals.
+
 - Season schedules can import published dates, tracks, event names, and race lengths before results or race IDs exist. Unavailable race IDs remain blank.
 - Schedule import can use the Season ID when the source URL is blank, and keeps separate twin races while excluding off weeks.
 - Career Roster buttons load past participants for editable driver profiles, without restricting the import to the new season.

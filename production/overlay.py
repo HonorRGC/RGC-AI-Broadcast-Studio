@@ -269,6 +269,7 @@ class FeaturedDriver:
     hometown: str = ""
     state: str = ""
     season_stats: dict[str, Any] = field(default_factory=dict)
+    career_stats: dict[str, Any] = field(default_factory=dict)
     hide_season_stats: bool = False
     highest_position: int = 0
     lowest_position: int = 0
@@ -307,6 +308,7 @@ class FeaturedDriver:
             "hometown": self.hometown,
             "state": self.state,
             "season_stats": dict(self.season_stats or {}),
+            "career_stats": dict(self.career_stats or {}),
             "hide_season_stats": self.hide_season_stats,
             "highest_position": self.highest_position,
             "lowest_position": self.lowest_position,
@@ -1597,7 +1599,11 @@ class OverlayServer:
                 ),
                 None,
             )
-            featured.season_stats = dict(season or current_entry.league_stats or featured.season_stats or {})
+            legacy = current_entry.league_stats or {}
+            legacy_scope = str(legacy.get("stats_scope") or "season").strip().lower()
+            featured.season_stats = dict(season or (legacy if legacy_scope == "season" else {}) or {})
+            career = next((item for item in scoped if str(item.get("stats_scope") or "").strip().lower() == "career"), None)
+            featured.career_stats = dict(career or (legacy if legacy_scope == "career" else {}) or {})
         featured.position_history = self.state_builder.position_history_for(car_idx)
         featured.highest_position, featured.lowest_position = self.state_builder.position_extrema_by_car_idx.get(car_idx, (0, 0))
 
@@ -1668,6 +1674,7 @@ class OverlayServer:
         season_stats=None,
         number_style=None,
         telemetry=None,
+        career_stats=None,
     ):
         with self.lock:
             if (
@@ -1707,6 +1714,7 @@ class OverlayServer:
                 hometown=str(hometown or ""),
                 state=str(state or ""),
                 season_stats=dict(season_stats or {}),
+                career_stats=dict(career_stats or {}),
                 expires_at=time.monotonic() + float(duration),
             )
             if telemetry is not None:
@@ -7947,16 +7955,22 @@ OVERLAY_HTML = r"""<!doctype html>
     }
 
     function renderDriverCardRaceStory(driver) {
-      const stats = driver.season_stats || {};
+      const season = driver.season_stats || {};
+      const career = driver.career_stats || {};
+      const hasSeason = Object.keys(season).length > 0;
+      const hasCareer = Object.keys(career).length > 0;
+      const careerMode = hasCareer && (!hasSeason || Math.floor(Date.now() / 8000) % 2 === 1);
+      const stats = careerMode ? career : season;
+      setText("driver-card-season-label", careerMode ? "CAREER STATS" : "SEASON STATS");
       const showSeasonStats = !driver.hide_season_stats && Object.values(stats).some(value => value !== "" && value !== null && value !== undefined);
       document.getElementById("driver-card-season-label").classList.toggle("hidden", !showSeasonStats);
       document.getElementById("driver-card-season-stats").classList.toggle("hidden", !showSeasonStats);
       const values = [
-        [stats.points_position ? ordinal(stats.points_position) : "--", "POINTS"],
-        [stats.starts || "--", "STARTS"],
-        [stats.wins || "0", "WINS"],
-        [stats.top_fives || stats.top5 || "0", "TOP 5"],
-        [stats.top_tens || stats.top10 || "0", "TOP 10"],
+        [careerMode ? (stats.avg_finish || "--") : (stats.points_position ? ordinal(stats.points_position) : "--"), careerMode ? "AVG FINISH" : "POINTS"],
+        [stats.starts ?? "--", "STARTS"],
+        [stats.wins ?? "--", "WINS"],
+        [stats.top_fives ?? stats.top5 ?? "--", "TOP 5"],
+        [stats.top_tens ?? stats.top10 ?? "--", "TOP 10"],
       ];
       document.getElementById("driver-card-season-stats").innerHTML = values.map(([value, label]) =>
         `<div class="driver-card-season-stat"><b>${escapeHtml(value)}</b><span>${escapeHtml(label)}</span></div>`

@@ -1646,3 +1646,16 @@ def test_overlay_server_can_show_caution_review_slate_with_selected_sponsor():
     server.clear_special_presentation()
 
     assert server.current_state_dict()["special_presentation"] is None
+
+def test_driver_card_career_only_clears_stale_season_stats():
+    class CareerTelemetry(LiveDriverTelemetry):
+        def get_driver_lookup(self):
+            lookup = super().get_driver_lookup()
+            lookup[3] = dict(lookup[3], league_stats={"stats_scope": "career", "starts": "50", "wins": "8"}, league_stats_by_scope=[{"stats_scope": "career", "starts": "50", "wins": "8"}])
+            return lookup
+    server = OverlayServer()
+    server.show_featured_driver(car_number="77", car_idx=3, driver_name="Austin Peterson", season_stats={"wins": "99"})
+    server.update_from_telemetry(CareerTelemetry())
+    driver = server.current_state_dict()["featured_driver"]
+    assert driver["season_stats"] == {}
+    assert driver["career_stats"]["wins"] == "8"
