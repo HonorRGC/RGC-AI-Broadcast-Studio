@@ -10,6 +10,7 @@ from config import (
     POST_RACE_INTERVIEWS_ENABLED,
     SIMRACERHUB_RACE_SCHEDULE_CSV,
     SPONSOR_READ_CAUSE,
+    RACE_PROGRESS_SPONSOR_NAME,
     USE_SPONSOR_READS,
 )
 from helpers.position_formatter import PositionFormatter
@@ -79,7 +80,7 @@ class RaceDirector:
         self.finish_confirmed_by_session_state = False
         self.progress_milestones_announced = set()
         self.progress_sponsor_cause = (
-            (SPONSOR_READ_CAUSE or "Autism Awareness").strip()
+            RACE_PROGRESS_SPONSOR_NAME.strip()
             if USE_SPONSOR_READS
             else ""
         )
@@ -752,7 +753,7 @@ class RaceDirector:
         if not self.progress_sponsor_cause:
             return message
         return (
-            f"{message} This race update is presented in support of "
+            f"{message} This race update is presented by "
             f"{self.progress_sponsor_cause}."
         )
 

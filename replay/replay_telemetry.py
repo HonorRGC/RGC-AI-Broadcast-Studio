@@ -1,5 +1,6 @@
 import json
 import time
+from bisect import bisect_right
 from pathlib import Path
 
 from broadcast.broadcast_queue import ScheduledBroadcast
@@ -13,6 +14,11 @@ class ReplayTelemetry:
         self.recorded_broadcast = True
         self.path = Path(filename)
         self.snapshots = ReplayReader(filename).load_all()
+        self.replay_clock_indices = {}
+        for index, snapshot in enumerate(self.snapshots):
+            self.replay_clock_indices.setdefault(int(snapshot.session_num), []).append((float(snapshot.session_time or 0), index))
+        for values in self.replay_clock_indices.values():
+            values.sort()
         self.current_index = 0
         self.controller = None
         self.recorded_items = self._load_recorded_items()
@@ -361,6 +367,16 @@ class ReplayTelemetry:
                 if frame is not None:
                     self.controller_frame_observed = frame
                 return self.current_snapshot()
+            if self.pending_live_target is None and callable(getattr(self.controller, "get_replay_session_time", None)):
+                values = self.replay_clock_indices.get(int(self._controller_session_num()), [])
+                if values:
+                    replay_time = float(self._controller_session_time())
+                    match = max(0, bisect_right(values, (replay_time, len(self.snapshots))) - 1)
+                    self.current_index = values[match][1]
+                    self.controller_frame_anchor = frame
+                    self.controller_frame_observed = frame
+                    self.capture_started_at = float(self.current_snapshot().timestamp or 0)
+                    return self.current_snapshot()
             # SessionTime remains available in cases where ReplayFrameNum is
             # absent, frozen, or reset at the green.  Use it as the safety clock
             # so the recorded broadcast cannot remain stuck at lap zero.
@@ -606,6 +622,15 @@ class ReplayTelemetry:
     def _controller_session_time(self):
         reader = getattr(self.controller, "get_replay_session_time", None)
         return reader() if callable(reader) else self.controller.get_session_time()
+
+    def get_replay_sync_status(self):
+        snapshot = self.current_snapshot()
+        if not self.controller or snapshot is None:
+            return {}
+        offset = float(self._controller_session_time()) - float(snapshot.session_time or 0)
+        same_session = int(self._controller_session_num()) == int(snapshot.session_num)
+        status = "Reviewing" if self.manual_review_hold else "Seeking" if self.pending_live_target else "Synced" if same_session and abs(offset) <= 0.5 else "Out of sync"
+        return {"status": status, "offset_seconds": round(offset, 3), "session_match": same_session}
 
     def _controller_session_num(self):
         reader = getattr(self.controller, "get_replay_session_num", None)

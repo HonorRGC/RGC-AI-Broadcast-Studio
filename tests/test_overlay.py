@@ -328,7 +328,7 @@ def test_visible_driver_card_refreshes_live_telemetry():
     assert "SEASON STATS" in OVERLAY_HTML
     assert "driver-card-location" in OVERLAY_HTML
     assert "Object.keys(seasonStats).length" in OVERLAY_HTML
-    assert 'const leagueTeam = isLeagueDriver ? team : ""' in OVERLAY_HTML
+    assert 'const sponsor = String(driver.profile_sponsor || "").trim()' in OVERLAY_HTML
     assert "width: 860px;" in OVERLAY_HTML
     assert "grid-template-rows: 40px 118px;" in OVERLAY_HTML
     assert "top: 2px;" in OVERLAY_HTML

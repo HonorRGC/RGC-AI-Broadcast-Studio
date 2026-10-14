@@ -1,5 +1,16 @@
 # Changelog
 
+## Version 1.0.17 - Replay Sync, Driver Profiles and Pit Strategy
+
+- Recorded playback follows the replay session clock continuously, with an indexed lookup to recover after frame-counter stalls. Producer Assist displays replay sync status and timing offset.
+- Live lap and position arrays refresh scoring without waiting for session-results updates. Formation laps remain zero and the displayed race lap is capped at the scheduled distance.
+- Championship standings paginate and fit between the leaderboard and driver card; Biggest Movers adjusts to the card's actual bounds.
+- Driver profiles have compact reserved space, keeping all race metrics, including Laps Led, visible. Team text requires a profile sponsor and suppresses driver-name duplicates.
+- Added Race Progress Sponsor for quarter, halfway and three-quarter updates. Blank means no sponsor mention; removed the hard-coded awareness fallback.
+- Added observed early/late pit-stop comparisons and caution consequences across wide stop windows without assuming fuel range or confirmed tire changes.
+
+Exact replay alignment and initial race-lap behavior still need validation with real iRacing replays. No fix for whole-PC crashes is included.
+
 ## Version 1.0.16 - Preseason Sim Racer Hub Imports
 
 - Replay return synchronization uses the replay session clock and stricter seek confirmation; timed-out seeks align telemetry to the actual replay position.

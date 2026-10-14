@@ -608,8 +608,8 @@ def test_long_race_reports_quarter_half_and_three_quarter_progress():
     assert any("60 laps remain" in message for message in messages)
     assert any("Halfway" in message and "40 laps remain" in message for message in messages)
     assert any("20 laps to go" in message for message in messages)
-    assert all("Autism Awareness" in message for message in messages)
-    assert all("This race update is presented" in message for message in messages)
+    assert all("Autism Awareness" not in message for message in messages)
+    assert all("This race update is presented" not in message for message in messages)
 
 
 def test_progress_milestone_sponsor_can_be_disabled():
@@ -981,3 +981,10 @@ def test_cool_down_session_state_is_treated_as_checkered():
     )
 
     assert phase == RacePhase.CHECKERED
+
+def test_progress_update_uses_only_selected_sponsor():
+    director = RaceDirector()
+    director.progress_sponsor_cause = "Example Racing"
+    assert director.with_progress_sponsor("Halfway.") == "Halfway. This race update is presented by Example Racing."
+    director.progress_sponsor_cause = ""
+    assert director.with_progress_sponsor("Halfway.") == "Halfway."

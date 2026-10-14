@@ -561,3 +561,18 @@ def test_unconfirmed_return_aligns_actual_replay_instead_of_wrong_target(tmp_pat
     assert replay.return_to_live()
     now[0] = 55.1
     assert replay.next_snapshot().session_time == 12.0
+
+def test_replay_clock_realigns_after_stall_with_stationary_frames(tmp_path):
+    path = tmp_path / "clock_stall.jsonl"
+    path.write_text("".join(json.dumps({"lap": lap, "timestamp": 1000 + lap, "session_num": 2, "session_type": "Race", "session_time": 10 + lap}) + "\n" for lap in range(1, 7)), encoding="utf-8")
+    position = [11.0]
+    controller = FakeReplayController(2, 99.0, "Race", replay_frame=600)
+    controller.get_replay_session_num = lambda: 2
+    controller.get_replay_session_time = lambda: position[0]
+    replay = ReplayTelemetry(path).attach_controller(controller)
+    replay.playback_ready = True
+    replay.current_index = 4
+    assert replay.next_snapshot().lap == 1
+    position[0] = 15.0
+    assert replay.next_snapshot().lap == 5
+    assert replay.get_replay_sync_status()["status"] == "Synced"

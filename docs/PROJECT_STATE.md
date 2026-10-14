@@ -1,6 +1,8 @@
 # Project State
 
-Current version: **v1.0.16 - Preseason Sim Racer Hub Imports**
+Current version: **v1.0.17 - Replay Sync, Driver Profiles and Pit Strategy**
+
+Latest changes add continuous replay-clock alignment and Producer Assist sync status, live lap scoring, card-aware graphic placement, reserved driver-card metric space, optional progress sponsorship, and observed wide-window pit-strategy comparisons. Actual replay alignment and initial-lap behavior need live validation; whole-PC crash causes remain unresolved.
 
 Preseason schedule imports read published events without inventing race IDs. Career Roster imports load past participants for editing before a new season has results; career URLs no longer retain season filters.
 

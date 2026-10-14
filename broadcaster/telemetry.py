@@ -269,6 +269,18 @@ class IRacingTelemetry:
             for car in self.get_current_session().get("ResultsPositions") or []
         ]
         incident_counts = self.get_car_idx_incident_counts()
+        live_laps = self.safe_array_read("CarIdxLapCompleted")
+        live_positions = self.safe_array_read("CarIdxPosition")
+        for car in results:
+            try:
+                idx = int(car.get("CarIdx", -1))
+            except (TypeError, ValueError):
+                continue
+            if 0 <= idx < len(live_laps) and live_laps[idx] is not None and int(live_laps[idx]) >= 0:
+                car["LapsComplete"] = int(live_laps[idx])
+                car["LiveScoring"] = True
+            if 0 <= idx < len(live_positions) and live_positions[idx] is not None and int(live_positions[idx]) > 0:
+                car["Position"] = int(live_positions[idx])
         if incident_counts:
             for car in results:
                 car_idx = car.get("CarIdx")

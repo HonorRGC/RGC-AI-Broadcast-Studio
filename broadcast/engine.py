@@ -11,6 +11,7 @@ from config import (
 )
 from production.commentary_cleaner import CommentaryCleaner
 from production.caution_pit_reporter import CautionPitReporter
+from production.split_strategy import SplitStrategyReporter
 from production.action_detector import ActionDetector
 from production.broadcast_story_producer import BroadcastStoryProducer
 from production.booth_followup_director import BoothFollowupDirector
@@ -96,6 +97,7 @@ class BroadcastEngine:
         self.fastest_lap_tracker = FastestLapTracker()
         self.opening_director = OpeningDirector()
         self.sponsor_read_director = SponsorReadDirector()
+        self.split_strategy_reporter = SplitStrategyReporter()
         self.broadcast_queue = BroadcastQueue()
         self.caution_marker_replay_count = 0
         self.caution_top_ten_reset_queued = False
@@ -1841,6 +1843,15 @@ class BroadcastEngine:
             car_idx_session_flags=car_idx_session_flags,
             penalty_reasons=penalty_reasons,
         )
+        strategy_state = self.race_intelligence.get_race_state()
+        split_message = self.split_strategy_reporter.update(
+            list(self.pit_strategy_detector.driver_states.values()),
+            current_lap,
+            int(getattr(strategy_state, "total_laps", 0) or 0),
+            under_caution,
+        )
+        if split_message:
+            self.scheduler.add(split_message, priority=9, category="pit_strategy", speaker="pit", expires_after=25, dedupe_key=f"split_strategy:{current_lap}:{under_caution}")
         if under_caution:
             self.caution_pit_reporter.update(
                 under_caution=True,

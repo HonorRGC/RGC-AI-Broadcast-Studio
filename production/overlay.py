@@ -267,6 +267,7 @@ class FeaturedDriver:
     fuel_pct: float = -1.0
     team_name: str = ""
     hometown: str = ""
+    profile_sponsor: str = ""
     state: str = ""
     season_stats: dict[str, Any] = field(default_factory=dict)
     career_stats: dict[str, Any] = field(default_factory=dict)
@@ -305,6 +306,7 @@ class FeaturedDriver:
             "brake": self.brake,
             "fuel_pct": self.fuel_pct,
             "team_name": self.team_name,
+            "profile_sponsor": self.profile_sponsor,
             "hometown": self.hometown,
             "state": self.state,
             "season_stats": dict(self.season_stats or {}),
@@ -597,6 +599,12 @@ class OverlayStateBuilder:
         session_type = session_type_reader() if session_type_reader else "Unknown"
 
         lap = self.best_race_lap(results, telemetry.get_lap())
+        if any(car.get("LiveScoring") for car in results or []) and self.is_race_session(session_type):
+            session_state = getattr(telemetry, "get_session_state", lambda: 0)()
+            if session_state in (1, 2, 3):
+                lap = 0
+            elif self.safe_int(telemetry.get_total_laps()) > 0:
+                lap = min(lap, self.safe_int(telemetry.get_total_laps()))
         raw_caution = self.is_caution(telemetry)
         caution = (
             raw_caution
@@ -721,6 +729,9 @@ class OverlayStateBuilder:
             return driver_lookup
 
     def best_race_lap(self, results, telemetry_lap=0):
+        live = [self.safe_int(car.get("LapsComplete")) for car in results or [] if car.get("LiveScoring")]
+        if live:
+            return max(live) + 1 if max(live) > 0 or telemetry_lap > 0 else 0
         laps = [self.safe_int(telemetry_lap)]
         for car in results or []:
             laps.append(self.safe_int(car.get("LapsComplete", car.get("Lap", 0))))
@@ -1460,6 +1471,8 @@ class OverlayServer:
             worker.join(timeout=2)
 
     def update_from_telemetry(self, telemetry):
+        sync_reader = getattr(telemetry, "get_replay_sync_status", None)
+        self.replay_sync = sync_reader() if callable(sync_reader) else {}
         state = self.state_builder.build_from_telemetry(telemetry)
         with self.lock:
             self.apply_runtime_overrides(state)
@@ -1589,6 +1602,7 @@ class OverlayServer:
             featured.laps_led = current_entry.laps_led
             featured.last_pit_lap = current_entry.last_pit_lap
             profile = dict(current_entry.league_profile or {})
+            featured.profile_sponsor = str(profile.get("sponsor") or "")
             featured.hometown = str(profile.get("hometown") or featured.hometown or "")
             featured.state = str(profile.get("state") or featured.state or "")
             scoped = list(current_entry.league_stats_by_scope or [])
@@ -2246,6 +2260,7 @@ class OverlayServer:
             data["control_state"] = dict(self.control_state)
             data["camera_control"] = dict(self.camera_control)
             data["producer_url"] = self.producer_url
+            data["replay_sync"] = dict(getattr(self, "replay_sync", {}) or {})
             data["producer_share_url"] = self.producer_share_url
             data["pit_road"] = [row.to_dict() for row in self.pit_road_rows]
             data["producer_notes"] = [item.to_dict() for item in self.producer_notes]
@@ -3274,6 +3289,7 @@ PRODUCER_HTML = r"""<!doctype html>
 
         <div class="panel">
           <h3>Producer Feed</h3>
+          <div id="replay-sync-status" class="small"></div>
           <div class="feed" id="producer-feed">
             <div class="small">Broadcast notes will appear here once the session starts.</div>
           </div>
@@ -4156,6 +4172,8 @@ PRODUCER_HTML = r"""<!doctype html>
     }
 
     function renderAll(state) {
+      const sync = state.replay_sync || {};
+      document.getElementById("replay-sync-status").textContent = sync.status ? `Replay: ${sync.status} · offset ${Number(sync.offset_seconds || 0).toFixed(2)}s` : "";
       if (!state) return;
       lastState = state;
       renderHeader(state);
@@ -6033,6 +6051,12 @@ OVERLAY_HTML = r"""<!doctype html>
       font-variant-numeric: tabular-nums;
       white-space: nowrap;
     }
+    .driver-card-info { display: grid; grid-template-rows: 16px 14px 14px 1fr; box-sizing: border-box; height: 118px; overflow: hidden; }
+    .driver-card-position { grid-row: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .driver-card-team, .driver-card-location { grid-row: 2; grid-column: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .driver-card-story { grid-row: 3; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .driver-card-race-metrics { grid-row: 4; grid-template-columns: repeat(3,minmax(0,1fr)); align-self: end; margin-top: 0; padding-top: 3px; gap: 2px 10px; line-height: 14px; }
+    .driver-card-race-metrics span { white-space: nowrap; letter-spacing: 0; }
 
     .driver-card-telemetry {
       min-height: 118px;
@@ -7728,6 +7752,27 @@ OVERLAY_HTML = r"""<!doctype html>
       const moversTable = active && panel.kind === "biggest_movers";
       layer.className = `stat-panel ${active ? panel.kind : "hidden"}${pitTable ? " rgc-pit-table" : moversTable ? " rgc-movers-table" : ""}`;
       if (!active) return;
+      layer.style.left = ""; layer.style.right = ""; layer.style.top = ""; layer.style.bottom = ""; layer.style.width = ""; layer.style.maxHeight = "";
+      const card = document.getElementById("driver-card");
+      const cardBox = card.getBoundingClientRect();
+      const hasCard = !card.classList.contains("hidden");
+      const pointsPanel = ["points_standings", "points_standings_pre_race"].includes(panel.kind);
+      if (panel.kind === "biggest_movers" && hasCard) {
+        const space = window.innerWidth - cardBox.right - 58;
+        if (space >= 500) {
+          layer.style.left = `${cardBox.right + 24}px`; layer.style.right = "auto";
+          layer.style.width = `${Math.min(650, space)}px`; layer.style.bottom = `${window.innerHeight - cardBox.bottom}px`;
+        } else {
+          layer.style.bottom = `${window.innerHeight - cardBox.top + 20}px`;
+        }
+      }
+      if (pointsPanel) {
+        const board = document.body.classList.contains("leaderboard-flo-mode") ? document.getElementById("flo-leaderboard") : document.body.classList.contains("leaderboard-ticker-mode") ? document.getElementById("ticker-leaderboard") : document.body.classList.contains("leaderboard-brazen-mode") ? document.getElementById("brazen-leaderboard") : null;
+        let top = board ? board.getBoundingClientRect().bottom + 24 : 176;
+        if (document.body.classList.contains("leaderboard-flo-mode")) top = Math.max(top, document.querySelector(".flo-lap-box").getBoundingClientRect().bottom + 18);
+        layer.style.top = `${top}px`; layer.style.bottom = "auto";
+        layer.style.maxHeight = `${Math.max(140, (hasCard ? cardBox.top : window.innerHeight - 70) - top - 20)}px`;
+      }
       const title = layer.querySelector(".stat-panel-title");
       const subtitle = layer.querySelector(".stat-panel-subtitle");
       const rows = layer.querySelector(".stat-panel-rows");
@@ -7756,12 +7801,13 @@ OVERLAY_HTML = r"""<!doctype html>
         return;
       }
       const maxRows =
-        ["points_standings", "points_standings_pre_race"].includes(panel.kind) ? 20 :
+        pointsPanel ? 10 :
         panel.kind === "caution_pit" ? 12 :
         panel.kind === "caution_top_ten" ? 10 :
         panel.kind === "race_end_cap" ? 9 :
         7;
-      for (const row of (panel.rows || []).slice(0, maxRows)) {
+      const pageOffset = pointsPanel ? (Math.floor(Date.now() / 8000) % Math.max(1, Math.ceil((panel.rows || []).length / maxRows))) * maxRows : 0;
+      for (const row of (panel.rows || []).slice(pageOffset, pageOffset + maxRows)) {
         const item = document.createElement("div");
         item.className = `stat-panel-row${row.highlight ? " playoff-eligible" : ""}`;
         item.innerHTML = `
@@ -7952,12 +7998,15 @@ OVERLAY_HTML = r"""<!doctype html>
       const isLeagueDriver = Boolean(
         location || Object.keys(seasonStats).length
       );
-      const leagueTeam = isLeagueDriver ? team : "";
+      const sponsor = String(driver.profile_sponsor || "").trim();
+      const leagueTeam = sponsor && team.toLowerCase() !== String(driver.driver_name || "").trim().toLowerCase() ? team : "";
       const leagueLocation = isLeagueDriver ? location : "";
-      setText("driver-card-team", leagueTeam ? `Team · ${leagueTeam}` : "");
-      setText("driver-card-location", leagueLocation);
-      document.getElementById("driver-card-team").classList.toggle("hidden", !leagueTeam);
-      document.getElementById("driver-card-location").classList.toggle("hidden", !leagueLocation);
+      const profileLine = [sponsor ? `Sponsor · ${sponsor}` : "", leagueTeam ? `Team · ${leagueTeam}` : "", leagueLocation].filter(Boolean).join(" · ");
+      setText("driver-card-team", profileLine);
+      document.getElementById("driver-card-team").title = profileLine;
+      setText("driver-card-location", "");
+      document.getElementById("driver-card-team").classList.toggle("hidden", !profileLine);
+      document.getElementById("driver-card-location").classList.add("hidden");
     }
 
     function renderDriverCardRaceStory(driver) {
