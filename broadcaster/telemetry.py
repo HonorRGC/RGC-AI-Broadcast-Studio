@@ -107,6 +107,15 @@ class IRacingTelemetry:
 
         return max(session_duration - self.get_session_time(), 0.0)
 
+    def request_replay_session_time(self, session_num, session_time_seconds):
+        """Send only the seek. Confirm it before sending another replay command."""
+        try:
+            return bool(self.ir.replay_search_session_time(
+                int(session_num), max(0, int(float(session_time_seconds) * 1000)),
+            ))
+        except Exception:
+            return False
+
     def seek_replay_session_time(self, session_num, session_time_seconds):
         try:
             seek_sent = self.ir.replay_search_session_time(
@@ -128,6 +137,12 @@ class IRacingTelemetry:
                 )
             speed_sent = self.ir.replay_set_play_speed(1)
             return bool(seek_sent and speed_sent)
+        except Exception:
+            return False
+
+    def seek_next_incident_marker(self):
+        try:
+            return bool(self.ir.replay_search(irsdk.RpySrchMode.next_incident))
         except Exception:
             return False
 

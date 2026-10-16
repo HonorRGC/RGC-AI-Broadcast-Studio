@@ -16,6 +16,8 @@ class TelemetrySnapshot:
     track_info: dict[str, Any] = field(default_factory=dict)
     results: list[dict[str, Any]] = field(default_factory=list)
     starting_grid: list[dict[str, Any]] = field(default_factory=list)
+    starting_grid_source: str = ""
+    weekend_info: dict[str, Any] = field(default_factory=dict)
     driver_lookup: dict[Any, dict[str, Any]] = field(default_factory=dict)
     pit_road_status: list[Any] = field(default_factory=list)
     track_surface: list[Any] = field(default_factory=list)
@@ -40,7 +42,10 @@ class TelemetrySnapshot:
 
     @classmethod
     def from_telemetry(cls, telemetry, timestamp=0.0):
+        weekend = getattr(telemetry, "get_weekend_info", lambda: {})() or {}
         return cls(
+            starting_grid_source=getattr(telemetry, "get_starting_grid_source", lambda: "")(),
+            weekend_info={key: weekend[key] for key in ("SubSessionID", "SessionID", "TrackID") if key in weekend},
             timestamp=timestamp,
             lap=telemetry.get_lap(),
             total_laps=telemetry.get_total_laps(),

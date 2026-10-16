@@ -1,6 +1,8 @@
 # Project State
 
-Current version: **v1.0.18 - Broadcast Recovery and Mid-Race Accuracy**
+Version 1.1.0 adds all-broadcast capture retention and Streamlabs highlights preparation/playback, with custom transitions, an editable title, full-field camera-following lineup, prepared narration, incident-marker scanning, focused clips, a podium/results recap and saved Producer caution-driver choices. Studio Help covers the workflow, API costs and troubleshooting. See [RACE_HIGHLIGHTS.md](RACE_HIGHLIGHTS.md). Real-session validation remains important.
+
+Current version: **v1.1.0 - Race Highlights and Producer Caution Review**
 
 Version 1.0.18 adds worker recovery, browser-side sponsor expiry, session-scoped tracker checkpoints, lossless delta captures and stop diagnostics, explicit capture-end notices, verified mid-race starts, varied battle calls, longer cockpit rundown shots, and Manager-backed season standings. Full live-session validation remains necessary.
 

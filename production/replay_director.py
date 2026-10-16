@@ -89,6 +89,15 @@ class ReplayDirector:
         session_num = getattr(item, "replay_session_num", None)
         car_idx = getattr(item, "camera_target_car_idx", None)
         use_incident_marker = bool(getattr(item, "replay_use_incident_marker", False))
+        plan = getattr(telemetry, "caution_assignments", None)
+        if plan and plan.applies_to_source(telemetry):
+            selected = plan.for_time(session_num if session_num is not None else telemetry.get_current_session_num(),
+                                     session_time if session_time is not None else telemetry.get_session_time())
+            if selected:
+                caution, car_idx = selected
+                session_num = plan.identity["session_num"]
+                session_time = max(0, caution["time"] - 5)
+                use_incident_marker = False
         if (
             not use_incident_marker
             and (session_time is None or session_num is None or car_idx is None)

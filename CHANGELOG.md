@@ -1,5 +1,17 @@
 # Changelog
 
+## Version 1.1.0 - Race Highlights and Producer Caution Review
+
+- Prepare narrated highlights from saved telemetry and the matching iRacing replay, then record playback in Streamlabs using the existing overlay.
+- Add an editable title, sponsor logo, custom transitions, full-field camera-following lineup, continuous looping music, and a podium/results/statistics recap.
+- Keep clips focused: earlier overtake lead-ins, at most two passes per clip, pit entries grouped per lap, and separate restarts and caution reviews.
+- Find caution review candidates using replay markers, incident changes and isolated pre-yellow slowdowns. Producer Assist can save a driver selection for each caution and reuse it in matching replay broadcasts.
+- Exclude post-race incident totals and garage returns from racing highlights, show the actual finish, and skip unavailable clips so the recap can continue.
+- Retain compatible prepared narration on retry. Preparation uses OpenAI/ElevenLabs credits; prepared playback and title/camera edits do not generate new narration calls.
+- Offer capture retention at broadcast stop, improve replay seek confirmation, and explain setup, costs, recovery and caution choices in Studio Help.
+
+The matching saved .rpy is required for race footage. Incident candidates and producer camera selections do not establish collision details or fault; missing stats are shown as unavailable.
+
 ## Version 1.0.18 - Broadcast Recovery and Mid-Race Accuracy
 
 - Recover from broadcast worker errors while retaining Producer and directors; retry interrupted live telemetry rather than ending capture immediately.

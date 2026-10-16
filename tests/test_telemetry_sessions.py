@@ -342,3 +342,12 @@ def test_player_pedals_are_mapped_only_to_local_car_when_per_car_data_is_unavail
 
     assert telemetry.get_car_idx_throttle() == [-1.0, -1.0, -1.0, 0.72]
     assert telemetry.get_car_idx_brake() == [-1.0, -1.0, -1.0, 0.18]
+
+
+def test_isolated_replay_seek_does_not_send_a_play_or_pause_command():
+    from types import SimpleNamespace
+    calls = []
+    telemetry = IRacingTelemetry.__new__(IRacingTelemetry)
+    telemetry.ir = SimpleNamespace(replay_search_session_time=lambda session, milliseconds: calls.append((session, milliseconds)) or 1)
+    assert telemetry.request_replay_session_time(2, .117)
+    assert calls == [(2, 117)]

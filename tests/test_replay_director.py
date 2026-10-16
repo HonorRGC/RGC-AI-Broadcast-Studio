@@ -65,6 +65,24 @@ class ReplayCamera:
         return SimpleNamespace(status="switched")
 
 
+def test_saved_caution_choice_overrides_recorded_incident_marker(tmp_path):
+    from production.caution_assignments import CautionAssignments
+    telemetry, camera = ReplayTelemetry(), ReplayCamera()
+    telemetry.recorded_broadcast = True
+    telemetry.caution_assignments = CautionAssignments({"track": "Test", "session_num": 2,
+        "subsession_id": 123, "source": "capture.jsonl", "cautions": [{"id": "2:caution:1", "time": 100, "lap": 4}],
+        "drivers": [{"car_idx": 7}]}, tmp_path)
+    telemetry.caution_assignments.assign("2:caution:1", 7)
+    director = ReplayDirector(mode="auto")
+    item = incident_item()
+    item.camera_target_car_idx = None
+    item.replay_use_incident_marker = True
+    result = director.handle_item(item, telemetry, camera)
+    assert result.status == "started"
+    assert camera.focuses[0][0] == 7
+    assert telemetry.seeks == [(2, 80)]
+
+
 def incident_item(multi_angle=False):
     return SimpleNamespace(
         category="incident",

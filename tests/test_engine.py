@@ -1810,6 +1810,31 @@ def test_early_caution_without_candidate_queues_iracing_incident_marker_replay()
     assert incident.replay_session_time == 35.0
 
 
+def test_saved_producer_caution_choice_uses_named_car_and_absolute_time(tmp_path):
+    from production.caution_assignments import CautionAssignments
+    drivers = {0: {"name": "Driver One", "number": "1"}}
+    snapshot = TelemetrySnapshot(lap=3, session_num=2, session_time=90,
+                                 results=[{"CarIdx": 0, "Position": 1, "LapsComplete": 2}],
+                                 driver_lookup=drivers, track_info={})
+    source = SnapshotSource(snapshot)
+    source.recorded_broadcast = True
+    source.caution_assignments = CautionAssignments({"track": "Test", "session_num": 2,
+        "subsession_id": 123, "source": "capture.jsonl", "cautions": [{"id": "2:90.000", "time": 90, "lap": 3}],
+        "drivers": [{"car_idx": 0}]}, tmp_path)
+    source.caution_assignments.assign("2:90.000", 0)
+    engine = BroadcastEngine(openai_director=SilentOpenAI())
+    engine.race_director.phase = RacePhase.CAUTION
+    engine.race_director.previous_phase = RacePhase.GREEN
+    engine.race_director.phase_changed = True
+    engine.incident_detector.analyze = lambda **kwargs: []
+    engine._collect_incidents(source, snapshot.results, drivers, [], 3)
+    incident = next(item for item in engine.broadcast_queue.items if item.category == "incident")
+    assert incident.camera_target_car_idx == 0
+    assert incident.replay_use_incident_marker is False
+    assert incident.replay_session_time == 85
+    assert "Driver One" in incident.message
+
+
 def test_caution_candidate_prefers_iracing_incident_marker_over_guessed_car():
     drivers = {0: {"name": "Driver One", "number": "1"}}
     snapshot = TelemetrySnapshot(

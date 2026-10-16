@@ -10,10 +10,10 @@ from replay.replay_reader import ReplayReader
 class ReplayTelemetry:
     """Implements the same read interface as the live iRacing adapter."""
 
-    def __init__(self, filename, clock=None):
+    def __init__(self, filename, clock=None, snapshots=None):
         self.recorded_broadcast = True
         self.path = Path(filename)
-        self.snapshots = ReplayReader(filename).load_all()
+        self.snapshots = ReplayReader(filename).load_all() if snapshots is None else snapshots
         self.replay_clock_indices = {}
         for index, snapshot in enumerate(self.snapshots):
             self.replay_clock_indices.setdefault(int(snapshot.session_num), []).append((float(snapshot.session_time or 0), index))

@@ -2318,6 +2318,9 @@ class OverlayServer:
             data["control_state"] = dict(self.control_state)
             data["camera_control"] = dict(self.camera_control)
             data["producer_url"] = self.producer_url
+            data["highlights"] = dict(getattr(self, "highlights", {}) or {})
+            caution_plan = getattr(self, "caution_assignments", None)
+            data["caution_assignments"] = caution_plan.state() if caution_plan else {}
             data["replay_sync"] = dict(getattr(self, "replay_sync", {}) or {})
             data["producer_share_url"] = self.producer_share_url
             data["pit_road"] = [row.to_dict() for row in self.pit_road_rows]
@@ -2347,6 +2350,8 @@ class OverlayServer:
                     return
 
                 if self.path == "/overlay/state":
+                    if self.headers.get("X-RGC-Surface") == "overlay":
+                        server.last_overlay_poll = time.monotonic()
                     self.send_json(server.current_state_dict())
                     return
 
@@ -3322,6 +3327,21 @@ PRODUCER_HTML = r"""<!doctype html>
       <div class="flag unknown" id="flag-pill">Waiting</div>
     </header>
 
+    <section id="highlights-controls" style="display:none;background:#172333;border:2px solid #e1b94c;padding:16px;margin:16px;border-radius:10px">
+      <strong>Race Highlights · Streamlabs recording</strong>
+      <div id="highlights-progress" style="margin:10px 0"></div>
+      <button class="control-button" onclick="sendProducerCommand('highlights_start')">Start Highlights</button>
+      <button class="control-button" onclick="sendProducerCommand('highlights_pause')">Pause</button>
+      <button class="control-button" onclick="sendProducerCommand('highlights_resume')">Resume / Retry Current Clip</button>
+      <button class="control-button danger" onclick="sendProducerCommand('highlights_cancel')">Stop Highlights</button>
+      <div class="small">Start recording in Streamlabs before Start Highlights. Keep the overlay browser source visible so transitions cover replay seeks.</div>
+    </section>
+    <section id="caution-assignments-panel" style="display:none;background:#172333;border:2px solid #e1b94c;padding:16px;margin:16px;border-radius:10px">
+      <h3>Caution Review Drivers</h3>
+      <p>Choose the car to show before each yellow. Blank uses automatic detection. These choices are saved for this race and shared with replay broadcasts.</p>
+      <p id="caution-assignments-message"></p>
+      <div id="caution-assignments-rows"></div>
+    </section>
     <section class="grid">
       <div class="card"><div class="label">Session</div><div class="value" id="session-value">--</div></div>
       <div class="card"><div class="label">Race Lap</div><div class="value" id="lap-value">--</div></div>
@@ -4229,7 +4249,36 @@ PRODUCER_HTML = r"""<!doctype html>
       }
     }
 
+    function renderCautionAssignments(plan) {
+      const cautions = plan.cautions || [];
+      const panel = document.getElementById("caution-assignments-panel");
+      panel.style.display = cautions.length ? "block" : "none";
+      document.getElementById("caution-assignments-message").textContent = plan.message || "";
+      const rows = document.getElementById("caution-assignments-rows");
+      const signature = JSON.stringify([cautions, plan.drivers, plan.assignments]);
+      if (rows.dataset.signature === signature || rows.contains(document.activeElement)) return;
+      rows.dataset.signature = signature;
+      rows.replaceChildren();
+      for (const [index, caution] of cautions.entries()) {
+        const row = document.createElement("div");
+        row.style.cssText = "display:flex;align-items:center;gap:16px;margin:10px 0";
+        const label = document.createElement("label");
+        label.textContent = `Caution ${index + 1} · Lap ${caution.lap} · ${Math.floor(caution.time / 60)}:${String(Math.floor(caution.time % 60)).padStart(2,'0')}`;
+        const select = document.createElement("select");
+        select.setAttribute("aria-label", `Review driver for caution ${index + 1}`);
+        select.append(new Option("Automatic detection", ""));
+        for (const driver of plan.drivers || []) select.append(new Option(`#${driver.car_number} ${driver.driver_name}`, String(driver.car_idx)));
+        select.value = plan.assignments && plan.assignments[caution.id] !== undefined ? String(plan.assignments[caution.id]) : "";
+        select.onchange = () => sendProducerCommand("caution_driver_assign", {caution_id:caution.id, car_idx:select.value});
+        row.append(label, select);rows.append(row);
+      }
+    }
+
     function renderAll(state) {
+      renderCautionAssignments(state.caution_assignments || {});
+      const highlights = state.highlights || {};
+      document.getElementById("highlights-controls").style.display = highlights.active ? "block" : "none";
+      document.getElementById("highlights-progress").textContent = `${highlights.stage || ""} · ${highlights.progress || ""} · ${highlights.message || ""}`;
       const sync = state.replay_sync || {};
       document.getElementById("replay-sync-status").style.cssText = sync.capture_ended ? "color:#ffce54;font-size:18px;font-weight:bold;padding:12px;border:2px solid #ffce54" : "";
       document.getElementById("replay-sync-status").textContent = sync.status ? `Replay: ${sync.status} · offset ${Number(sync.offset_seconds || 0).toFixed(2)}s · ${sync.commentary_mode || "Recorded capture"}` : "";
@@ -7121,6 +7170,50 @@ OVERLAY_HTML = r"""<!doctype html>
         filter: brightness(1.2);
       }
     }
+
+    body.highlights-mode #top-banner, body.highlights-mode #leaderboard,
+    body.highlights-mode #ticker-leaderboard, body.highlights-mode #flo-leaderboard,
+    body.highlights-mode #brazen-leaderboard, body.highlights-mode #caution-status,
+    body.highlights-mode #driver-card, body.highlights-mode #stat-panel,
+    body.highlights-mode #stat-panel-secondary { display:none !important; }
+    body.highlights-mode #lineup-panel { top:180px !important; }
+    body.highlights-mode .studio-stamp { left:28px !important; bottom:24px !important; width:220px; z-index:112; }
+    #highlight-sponsor { position:fixed; right:32px; top:28px; width:220px; max-height:120px; object-fit:contain; z-index:111; filter:drop-shadow(0 3px 8px #000); }
+    #highlight-programme-title { position:fixed; left:16%; right:16%; top:26px; z-index:113; color:white; text-align:center; background:linear-gradient(90deg,#101b29e8,#233c58f5,#101b29e8); border-bottom:3px solid #dfb84c; padding:12px 20px; font:900 30px Arial; box-sizing:border-box; line-height:1.2; overflow-wrap:anywhere; }
+    body.highlights-recap #highlight-recap h1 { position:absolute; top:110px; left:30%; width:40%; margin:0; font-size:28px; }
+    #highlight-caption { position:fixed; bottom:32px; left:50%; transform:translateX(-50%); color:white; background:#101b2ee8; border-left:5px solid #e4bc4e; padding:12px 24px; font:bold 22px Arial; z-index:85; }
+    #highlight-transition { position:fixed; inset:0; z-index:100; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:24px; color:white; background:radial-gradient(ellipse at 20% 20%,#233c58,#0a101c 70%); opacity:0; visibility:hidden; transition:opacity .35s,visibility .35s; }
+    #highlight-transition.covered { opacity:1; visibility:visible; }
+    #highlight-recap { display:none; position:fixed; inset:0; z-index:101; color:#fff; pointer-events:none; }
+    body.highlights-recap #highlight-recap { display:block; }
+    body.highlights-recap #highlight-transition-graphic,
+    body.highlights-recap #highlight-transition-title,
+    body.highlights-recap #highlight-transition-subtitle { display:none; }
+    #highlight-recap h1 { text-align:center; margin:48px 0; font:900 44px Arial; text-transform:uppercase; letter-spacing:3px; }
+    .highlight-recap-box { position:absolute; top:150px; width:26%; box-sizing:border-box; background:linear-gradient(135deg,#1c324b,#080f1b); border:2px solid #ddb64b; border-radius:9px; overflow:hidden; box-shadow:0 15px 35px #0008; }
+    .highlight-recap-box h2 { margin:0; padding:14px; background:linear-gradient(90deg,#901326,#ca1634); border-bottom:2px solid #ddb64b; font:900 23px Arial; text-align:center; text-transform:uppercase; }
+    #highlight-recap-results { left:2%; }
+    #highlight-recap-stats { right:2%; }
+    .highlight-result-row { display:grid; grid-template-columns:36px 50px 1fr; gap:8px; align-items:center; height:34px; padding:0 12px; font:700 18px Arial; border-bottom:1px solid #ffffff18; }
+    .highlight-result-row:nth-child(even) { background:#ffffff08; }
+    .highlight-result-row b { color:#edc458; }
+    .highlight-result-row span:last-child { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .highlight-recap-stat { padding:20px 18px; border-bottom:1px solid #ffffff25; }
+    .highlight-recap-stat label { display:block; color:#eac253; font:900 19px Arial; text-transform:uppercase; }
+    .highlight-recap-stat strong { display:block; margin:8px 0; font:900 28px Arial; }
+    .highlight-recap-stat span { font:700 21px Arial; }
+    body.highlights-recap #podium-panel { left:30%; top:340px; bottom:auto; width:40%; z-index:102; border-color:#ddb64b; }
+    body.highlights-recap #podium-panel .podium-panel-header { background:linear-gradient(90deg,#901326,#ca1634); }
+    #highlight-transition::before { content:''; position:absolute; inset:18px; border:2px solid #dfb84c; pointer-events:none; }
+    #highlight-transition img { max-width:65vw; max-height:45vh; object-fit:contain; filter:drop-shadow(0 6px 16px #0008); }
+    #highlight-transition h1 { font:800 48px Arial; margin:0; letter-spacing:2px; text-transform:uppercase; }
+    #highlight-transition p { font:22px Arial; margin:0; color:#d9e3f0; }
+    #highlight-transition.arrive-fade { animation:highlight-fade .7s ease both; }
+    #highlight-transition.arrive-slide { animation:highlight-slide .7s ease both; }
+    #highlight-transition.arrive-wipe { animation:highlight-wipe .7s ease both; }
+    @keyframes highlight-fade { from { opacity:0; } to { opacity:1; } }
+    @keyframes highlight-slide { from { transform:translateX(-100%); } to { transform:translateX(0); } }
+    @keyframes highlight-wipe { from { clip-path:polygon(0 0,0 0,0 100%,0 100%); } to { clip-path:polygon(0 0,100% 0,100% 100%,0 100%); } }
   </style>
 </head>
 <body>
@@ -7329,10 +7422,23 @@ OVERLAY_HTML = r"""<!doctype html>
     <div class="crank-speaker crank-speaker-right"></div>
   </section>
 
+  <img id="highlight-sponsor" class="hidden" alt="Highlight sponsor" />
+  <div id="highlight-programme-title" class="hidden"></div>
+  <div id="highlight-caption" class="hidden"></div>
+  <section id="highlight-recap">
+    <h1>Race Recap</h1>
+    <div id="highlight-recap-results" class="highlight-recap-box"><h2>Race Results</h2><div id="highlight-recap-rows"></div></div>
+    <div id="highlight-recap-stats" class="highlight-recap-box"><h2>Race Highlights</h2><div id="highlight-recap-stat-rows"></div></div>
+  </section>
+  <section id="highlight-transition">
+    <img id="highlight-transition-graphic" alt="RGC race highlights" />
+    <h1 id="highlight-transition-title">Race Highlights</h1>
+    <p id="highlight-transition-subtitle"></p>
+  </section>
   <script>
     async function refreshOverlay() {
       try {
-        const response = await fetch("/overlay/state", { cache: "no-store", signal: AbortSignal.timeout(5000) });
+        const response = await fetch("/overlay/state", { cache: "no-store", signal: AbortSignal.timeout(5000), headers: { "X-RGC-Surface": "overlay" } });
         const state = await response.json();
         renderOverlay(state);
       } catch (error) {
@@ -7340,11 +7446,55 @@ OVERLAY_HTML = r"""<!doctype html>
       }
     }
 
+    let lastHighlightTransition = null;
+    let highlightRecapStarted = null;
+    function renderHighlights(h) {
+      document.body.classList.toggle("highlights-mode", !!h.active);
+      const programmeTitle = document.getElementById("highlight-programme-title");
+      programmeTitle.textContent = h.programme_title || "";
+      programmeTitle.style.fontSize = (h.programme_title || "").length > 95 ? "22px" : "30px";
+      programmeTitle.classList.toggle("hidden", !(h.active && h.programme_title));
+      const recapActive = !!(h.active && h.segment_kind === "outro" && h.recap && (h.stage === "playing" || h.stage === "complete"));
+      document.body.classList.toggle("highlights-recap", recapActive);
+      if (recapActive) {
+        if (highlightRecapStarted === null) highlightRecapStarted = performance.now();
+        const results = h.recap.results || [];
+        const tail = results.slice(15);
+        const page = Math.floor((performance.now() - highlightRecapStarted) / 8000) % Math.max(1, Math.ceil(tail.length / 5));
+        const shown = results.length > 20 ? [...results.slice(0, 15), ...tail.slice(page * 5, page * 5 + 5)] : results;
+        document.getElementById("highlight-recap-rows").innerHTML = shown.map(r => `<div class="highlight-result-row"><b>${escapeHtml(String(r.position))}</b><span>#${escapeHtml(r.car_number || "")}</span><span>${escapeHtml(r.driver_name || "")}</span></div>`).join("");
+        document.getElementById("highlight-recap-stat-rows").innerHTML = (h.recap.stats || []).map(s => `<div class="highlight-recap-stat"><label>${escapeHtml(s.label)}</label><strong>${escapeHtml(s.value)}</strong><span>${escapeHtml(s.driver || "")}</span></div>`).join("");
+      } else highlightRecapStarted = null;
+      const layer = document.getElementById("highlight-transition");
+      const covered = !!(h.active && h.cover);
+      layer.classList.toggle("covered", covered);
+      if (covered && lastHighlightTransition !== h.transition_id) {
+        layer.classList.remove("arrive-fade", "arrive-slide", "arrive-wipe");
+        void layer.offsetWidth;
+        const style = ["fade","slide","wipe"].includes(h.transition) ? h.transition : "fade";
+        layer.classList.add(`arrive-${style}`);
+        lastHighlightTransition = h.transition_id;
+      }
+      if (!covered) layer.classList.remove("arrive-fade", "arrive-slide", "arrive-wipe");
+      const graphic = document.getElementById("highlight-transition-graphic");
+      const graphicUrl = h.graphic || "/assets/rgc_ai_broadcast_stamp.png";
+      if (graphic.getAttribute("src") !== graphicUrl) graphic.src = graphicUrl;
+      document.getElementById("highlight-transition-title").textContent = h.title || "Race Highlights";
+      document.getElementById("highlight-transition-subtitle").textContent = h.stage === "countdown" ? h.message : (h.stage === "error" || h.stage === "paused" || h.stage === "complete" || h.stage === "armed") ? h.message : (h.track || "RGC AI Broadcast Studio");
+      const sponsor = document.getElementById("highlight-sponsor");
+      sponsor.classList.toggle("hidden", !(h.active && h.sponsor_logo));
+      if (h.sponsor_logo && sponsor.getAttribute("src") !== h.sponsor_logo) sponsor.src = h.sponsor_logo;
+      const caption = document.getElementById("highlight-caption");
+      caption.classList.toggle("hidden", !(h.active && h.stage === "playing" && h.segment_kind === "clip" && !h.cover));
+      caption.textContent = h.title || "";
+    }
+
     let timingMode = "leader";
     let timingLabel = "TO LEADER";
     let hasLiveTiming = false;
 
     function renderOverlay(state) {
+      renderHighlights(state.highlights || {});
       const timingEntries = state.producer_leaderboard || state.leaderboard || [];
       hasLiveTiming = timingEntries.some(entry => entry.gap_to_leader || entry.interval_to_ahead);
       timingMode = hasLiveTiming && Math.floor(Date.now() / 8000) % 2 ? "next" : "leader";

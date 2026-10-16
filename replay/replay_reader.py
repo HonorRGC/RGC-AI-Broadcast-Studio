@@ -9,10 +9,12 @@ class ReplayReader:
         self.path = Path(filename)
 
     def load_all(self):
+        return list(self.iter_snapshots())
+
+    def iter_snapshots(self):
         if not self.path.exists():
             raise FileNotFoundError(f"Replay file not found: {self.path}")
 
-        snapshots = []
         previous = None
         payload = {}
         with self.path.open("r", encoding="utf-8") as replay_file:
@@ -29,13 +31,12 @@ class ReplayReader:
                         payload = entry
                     snapshot = TelemetrySnapshot.from_dict(payload)
                     if previous is not None:
-                        for field in ("driver_lookup", "track_info", "starting_grid", "pit_road_status", "track_surface", "track_surface_material", "car_rpm", "car_gear", "car_throttle", "car_brake", "car_fuel_pct", "car_idx_session_flags", "car_idx_penalty_reasons"):
+                        for field in ("driver_lookup", "track_info", "weekend_info", "starting_grid", "pit_road_status", "track_surface", "track_surface_material", "car_rpm", "car_gear", "car_throttle", "car_brake", "car_fuel_pct", "car_idx_session_flags", "car_idx_penalty_reasons"):
                             if getattr(snapshot, field) == getattr(previous, field):
                                 setattr(snapshot, field, getattr(previous, field))
-                    snapshots.append(snapshot)
                     previous = snapshot
+                    yield snapshot
                 except (TypeError, ValueError) as error:
                     raise ValueError(
                         f"Invalid replay snapshot on line {line_number}: {error}"
                     ) from error
-        return snapshots

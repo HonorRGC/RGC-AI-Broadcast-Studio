@@ -1,4 +1,5 @@
 import subprocess
+import json
 import sys
 from pathlib import Path
 from types import SimpleNamespace
@@ -935,7 +936,12 @@ def test_launcher_finds_running_broadcast_pids(monkeypatch):
     def fake_run(command, text, capture_output, check, creationflags=0):
         assert "powershell" in command[0].lower()
         assert creationflags == broadcast_creation_flags()
-        return SimpleNamespace(returncode=0, stdout="1234\nnot-a-pid\n5678\n")
+        return SimpleNamespace(returncode=0, stdout=json.dumps([
+            {"ProcessId": 1234, "CommandLine": '"C:/Python/python.exe" "C:/RGC/app.py" --overlay'},
+            {"ProcessId": 5678, "CommandLine": '"C:/Python/pythonw.exe" "C:/RGC/app.py" --play-highlights programme.json'},
+            {"ProcessId": 9999, "CommandLine": 'powershell.exe -Command "find C:/RGC/app.py"'},
+            {"ProcessId": 8888, "CommandLine": '"C:/Python/python.exe" "C:/RGC/app.py" --prepare-highlights capture.jsonl'},
+        ]))
 
     monkeypatch.setattr("studio_launcher.subprocess.run", fake_run)
 
@@ -975,12 +981,15 @@ def test_launcher_detects_external_running_broadcast(monkeypatch):
     assert has_running_broadcast()
 
 
-def test_launcher_detects_saved_broadcast_pid(monkeypatch):
+def test_launcher_ignores_stale_saved_broadcast_pid(monkeypatch):
     monkeypatch.setattr("studio_launcher.BROADCAST_PROCESS", None)
     monkeypatch.setattr("studio_launcher.read_broadcast_pid", lambda: 4321)
     monkeypatch.setattr("studio_launcher.running_broadcast_pids", lambda: [])
+    cleared = []
+    monkeypatch.setattr("studio_launcher.clear_broadcast_pid", lambda: cleared.append(True))
 
-    assert has_running_broadcast()
+    assert not has_running_broadcast()
+    assert cleared == [True]
 
 
 def test_launcher_builds_sim_racer_hub_season_import_command():
@@ -1300,3 +1309,28 @@ def test_league_driver_stats_have_local_points_formatting_and_refresh_with_profi
     assert 'league_tab_state["refresh_driver_statistics"] = refresh_driver_statistics' in source
     assert 'refresh_league_stats = league_tab_state.get("refresh_driver_statistics")' in source
     assert 'points_text = str(int(points)) if points.is_integer()' in source
+
+
+def test_process_detector_distinguishes_real_app_workers_from_queries():
+    from studio_launcher import broadcast_worker_kind
+    root = Path("C:/RGC Studio")
+    assert broadcast_worker_kind('"C:/Python/pythonw.exe" "C:/RGC Studio/app.py" --overlay', root) == "broadcast"
+    assert broadcast_worker_kind('"C:/Python/pythonw.exe" "C:/RGC Studio/app.py" --prepare-highlights capture.jsonl', root) == "preparation"
+    assert broadcast_worker_kind('"C:/Python/pythonw.exe" "C:/RGC Studio/app.py" --play-highlights programme.json', root) == "highlights"
+    assert broadcast_worker_kind('powershell.exe -Command "find C:/RGC Studio/app.py"', root) == ""
+    assert broadcast_worker_kind('"C:/Python/python.exe" -c "print(123)" "C:/RGC Studio/app.py"', root) == ""
+    assert broadcast_worker_kind('"C:/Python/pythonw.exe" "C:/RGC Studio/studio_launcher.py"', root) == ""
+    assert broadcast_worker_kind('"C:/Python/pythonw.exe" "C:/Other/app.py"', root) == ""
+
+
+def test_stop_never_kills_an_unverified_saved_pid(monkeypatch):
+    import studio_launcher as studio
+    targets = []
+    monkeypatch.setattr(studio, "BROADCAST_PROCESS", None)
+    monkeypatch.setattr(studio, "read_broadcast_pid", lambda: 4321)
+    monkeypatch.setattr(studio, "running_broadcast_pids", lambda **kwargs: [])
+    monkeypatch.setattr(studio, "stop_broadcast_processes", lambda pids: targets.extend(pids) or 0)
+    monkeypatch.setattr(studio, "clear_broadcast_pid", lambda: None)
+    monkeypatch.setattr(studio, "close_broadcast_log", lambda: None)
+    assert studio.stop_broadcast() == 0
+    assert targets == []

@@ -242,6 +242,10 @@ CANADIAN_PROVINCES = {
 
 def parse_args():
     parser = argparse.ArgumentParser(description="RGC AI Broadcast Studio")
+    parser.add_argument("--prepare-highlights", help="Prepare narration and a highlight programme from a capture")
+    parser.add_argument("--play-highlights", help="Play a prepared highlight programme for Streamlabs recording")
+    parser.add_argument("--highlights-job", help="Highlight job JSON output")
+    parser.add_argument("--highlights-options", default="{}", help="Highlight presentation options as JSON")
     parser.add_argument("--replay", help="Path to a JSONL telemetry recording")
     parser.add_argument(
         "--driver-mode",
@@ -250,7 +254,7 @@ def parse_args():
     )
     parser.add_argument(
         "--capture-output",
-        help="Optional JSONL destination for Driver Mode telemetry",
+        help="Optional destination for the broadcast telemetry capture",
     )
     parser.add_argument("--no-voice", action="store_true", help="Disable ElevenLabs playback")
     parser.add_argument(
@@ -384,6 +388,13 @@ def run_source(
     recorded_broadcast=False,
 ):
     recorded_audio_busy_until = 0.0
+    if not getattr(source, "_caution_plan_checked", False):
+        from production.caution_assignments import attach_replay_plan
+        try:
+            attach_replay_plan(source, overlay_server)
+        except (OSError, ValueError, TypeError) as error:
+            print(f"Caution review choices unavailable: {error}", flush=True)
+        source._caution_plan_checked = True
     driver_csv_path = Path(LEAGUE_DRIVERS_CSV)
     if not driver_csv_path.is_absolute():
         driver_csv_path = Path(__file__).resolve().parent / driver_csv_path
@@ -1077,6 +1088,9 @@ def handle_producer_command(
     practice_presentation_director=None,
     anthem_director=None,
 ):
+    from production.caution_assignments import handle_assignment
+    if handle_assignment(overlay_server, command, payload):
+        return
     if command == "camera_claim":
         claimer = getattr(overlay_server, "claim_camera_control", None)
         ok, message = (
@@ -4201,6 +4215,24 @@ def report_camera_decision(decision, overlay_server=None):
 def main():
     (Path(__file__).resolve().parent / ".runtime" / "broadcast_stop.request").unlink(missing_ok=True)
     args = parse_args()
+    if args.prepare_highlights:
+        import json
+        from production.highlights import prepare_highlights, save_job
+        if not args.highlights_job:
+            raise SystemExit("--highlights-job is required when preparing highlights.")
+        try:
+            prepare_highlights(args.prepare_highlights, args.highlights_job, json.loads(args.highlights_options))
+        except Exception as error:
+            path = Path(args.highlights_job)
+            job = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+            job.update(status="error", progress=str(error))
+            save_job(path, job)
+            raise
+        return
+    if args.play_highlights:
+        from production.highlights_player import run_highlights
+        run_highlights(args.play_highlights, host=args.overlay_host, port=args.overlay_port)
+        return
     if args.driver_mode and args.replay:
         raise SystemExit("--driver-mode cannot be combined with --replay.")
     if args.driver_mode:
@@ -4397,15 +4429,15 @@ def main():
         caution_presentation_director = CautionPresentationDirector()
         qualifying_camera_director = QualifyingCameraDirector()
         live_broadcast_validator = LiveBroadcastValidator()
-        capture_recorder = None
-        if args.driver_mode:
-            from production.broadcast_capture import BroadcastCaptureRecorder
+        from production.broadcast_capture import BroadcastCaptureRecorder
+        from config import OVERLAY_EVENT_TITLE, OVERLAY_SERIES_NAME
 
-            capture_recorder = BroadcastCaptureRecorder(
-                output_path=args.capture_output,
-                root=Path(__file__).resolve().parent,
-            )
-            print(f"Driver Mode recording: {capture_recorder.telemetry_path}")
+        capture_recorder = BroadcastCaptureRecorder(
+            output_path=args.capture_output,
+            root=Path(__file__).resolve().parent,
+            event_context={"title": OVERLAY_EVENT_TITLE, "series": OVERLAY_SERIES_NAME},
+        )
+        print(f"Broadcast capture recording: {capture_recorder.telemetry_path}", flush=True)
         try:
             if overlay_server:
                 overlay_server.start_live_refresh(source)
@@ -4435,7 +4467,7 @@ def main():
                 import sys
                 failure = sys.exc_info()[1]
                 capture_recorder.close(reason=capture_recorder.stop_reason or (f"error: {failure}" if failure is not None else "telemetry_disconnected"))
-                print(f"Driver Mode recording saved: {capture_recorder.telemetry_path}")
+                print(f"Broadcast capture saved: {capture_recorder.telemetry_path}", flush=True)
         cleanup_live_broadcast_session(
             source,
             replay_director,

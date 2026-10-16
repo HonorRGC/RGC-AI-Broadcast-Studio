@@ -1,4 +1,6 @@
 import json
+import os
+import uuid
 from copy import deepcopy
 import time
 from dataclasses import asdict
@@ -11,13 +13,17 @@ from replay.telemetry_snapshot import TelemetrySnapshot
 class BroadcastCaptureRecorder:
     """Persist live telemetry and approved broadcast items for later playback."""
 
-    def __init__(self, output_path=None, root=None):
+    def __init__(self, output_path=None, root=None, event_context=None):
         root = Path(root or Path.cwd())
         if output_path:
             self.telemetry_path = Path(output_path)
         else:
             stamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
             self.telemetry_path = root / "recordings" / f"broadcast_capture_{stamp}.jsonl"
+        if not output_path and self.telemetry_path.exists():
+            self.telemetry_path = self.telemetry_path.with_name(self.telemetry_path.stem + "_" + uuid.uuid4().hex[:8] + ".jsonl")
+        self.event_context = dict(event_context or {})
+        self.capture_id = uuid.uuid4().hex
         self.events_path = self.telemetry_path.with_suffix(".events.jsonl")
         self.metadata_path = self.telemetry_path.with_suffix(".capture.json")
         self.telemetry_path.parent.mkdir(parents=True, exist_ok=True)
@@ -60,6 +66,10 @@ class BroadcastCaptureRecorder:
     def write_metadata(self, status):
         payload = {
             "format": "rgc-recorded-broadcast-v2",
+            "capture_id": self.capture_id,
+            "event": self.event_context,
+            "process_id": os.getpid(),
+            "retention": "pending",
             "status": status,
             "started_at": self.started_at,
             "completed_at": time.time() if status == "complete" else None,

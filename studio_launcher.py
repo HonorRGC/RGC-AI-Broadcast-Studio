@@ -9,12 +9,15 @@ import socket
 import subprocess
 import sys
 import csv
+import time
 import urllib.error
 from urllib.parse import quote, parse_qs, urlencode, urlparse, urlunparse
 import urllib.request
 import webbrowser
 from pathlib import Path
 from tkinter import messagebox
+
+from production.capture_library import capture_bundles, set_capture_retention
 
 from production.league_manager import (
     LeagueProfile,
@@ -49,6 +52,8 @@ try:
 except ModuleNotFoundError:  # pragma: no cover - Python < 3.11 fallback
     import tomli as tomllib
 
+
+BROADCAST_STARTED_AT = 0.0
 
 ROOT = Path(__file__).resolve().parent
 ENV_PATH = ROOT / ".env"
@@ -394,7 +399,7 @@ BROADCAST_FIELD_HELP = {
     "QUALIFYING_MUSIC_PLAYLIST": "Qualifying music playlist. Multiple songs are separated with semicolons and loop during qualifying. Sponsor graphics come from Sponsor 1-5 logos.",
     "CAUTION_REPLAY_AUDIO": "Music bed used during caution replay/presentation segments.",
     "DRIVER_MODE": "Records the live session while you race. Studio voices, music, automatic cameras, and replay control remain off so they cannot interfere with driving.",
-    "RECORDED_BROADCAST_FILE": "Select a Driver Mode .jsonl recording to broadcast afterward while its matching saved iRacing replay is open.",
+    "RECORDED_BROADCAST_FILE": "Select a saved broadcast .jsonl capture to broadcast afterward while its matching saved iRacing replay is open.",
     "POST_RACE_INTERVIEWS_ENABLED": "If true, the AI finishes the race recap/top 10 and then hands off to human post-race interviews for the top three. If false, it does the normal signoff.",
     "DISCORD_RACE_REPORT_ENABLED": "Posts an automatic post-race recap to a Discord webhook after the finish order stabilizes.",
     "DISCORD_RACE_REPORT_WEBHOOK_URL": "Required when Discord Race Report is true. Create this webhook in the Discord results channel.",
@@ -1485,37 +1490,51 @@ def clear_broadcast_pid(path=BROADCAST_PID_PATH):
         pass
 
 
-def running_broadcast_pids(root=ROOT):
-    root_path = str(Path(root).resolve())
+def broadcast_worker_kind(command_line, root=ROOT):
+    """Identify an actual app.py invocation, not a query mentioning its path."""
+    tokens = [quoted or bare for quoted, bare in re.findall(r'"([^"\n]*)"|(\S+)', str(command_line or ""))]
+    if not tokens or not re.fullmatch(r"pythonw?[0-9.]*\.exe", Path(tokens[0]).name, re.I):
+        return ""
+    expected = os.path.normcase(str((Path(root) / "app.py").resolve()))
+    script_index = next((i for i, token in enumerate(tokens[1:], 1)
+                         if os.path.normcase(os.path.abspath(token)) == expected), None)
+    if script_index is None or any(token in ("-c", "-m") for token in tokens[1:script_index]):
+        return ""
+    arguments = {token.split("=", 1)[0] for token in tokens[script_index + 1:]}
+    if "--prepare-highlights" in arguments:
+        return "preparation"
+    return "highlights" if "--play-highlights" in arguments else "broadcast"
+
+
+def running_broadcast_pids(root=ROOT, include_preparation=False):
     app_path = str((Path(root) / "app.py").resolve())
-    escaped_root_path = root_path.replace("'", "''")
     escaped_app_path = app_path.replace("'", "''")
     script = (
-        "Get-CimInstance Win32_Process | "
-        "Where-Object { "
-        f"($_.CommandLine -like '*{escaped_app_path}*') -or "
-        f"(($_.CommandLine -like '*app.py*') -and ($_.CommandLine -like '*{escaped_root_path}*')) "
-        "} | "
-        "ForEach-Object { $_.ProcessId }"
+        "Get-CimInstance Win32_Process | Where-Object { "
+        "($_.Name -match '^pythonw?[0-9.]*\\.exe$') -and "
+        f"(([string]$_.CommandLine).IndexOf('{escaped_app_path}', [StringComparison]::OrdinalIgnoreCase) -ge 0) "
+        "} | Select-Object ProcessId,CommandLine | ConvertTo-Json -Compress"
     )
     try:
         result = subprocess.run(
             ["powershell", "-NoProfile", "-Command", script],
-            text=True,
-            capture_output=True,
-            check=False,
+            text=True, capture_output=True, check=False,
             creationflags=broadcast_creation_flags(),
         )
-    except Exception:
+        if result.returncode != 0 or not result.stdout.strip():
+            return []
+        rows = json.loads(result.stdout)
+        rows = rows if isinstance(rows, list) else [rows]
+        pids = set()
+        for row in rows:
+            kind = broadcast_worker_kind(row.get("CommandLine", ""), root)
+            if kind and (include_preparation or kind != "preparation"):
+                pid = int(row.get("ProcessId") or 0)
+                if pid > 0:
+                    pids.add(pid)
+        return sorted(pids)
+    except (OSError, ValueError, TypeError, AttributeError):
         return []
-    if result.returncode != 0:
-        return []
-    pids = []
-    for line in result.stdout.splitlines():
-        line = line.strip()
-        if line.isdigit():
-            pids.append(int(line))
-    return pids
 
 
 def stop_broadcast_processes(pids):
@@ -1696,7 +1715,7 @@ def run_velocity_league_import(
 
 
 def launch_broadcast(command=None):
-    global BROADCAST_PROCESS, BROADCAST_LOG_FILE
+    global BROADCAST_PROCESS, BROADCAST_LOG_FILE, BROADCAST_STARTED_AT
     if is_process_running(BROADCAST_PROCESS):
         return BROADCAST_PROCESS
 
@@ -1705,6 +1724,7 @@ def launch_broadcast(command=None):
     close_broadcast_log()
     command = command or broadcast_command()
     BROADCAST_LOG_FILE = open_broadcast_log(command=command)
+    BROADCAST_STARTED_AT = time.time()
     BROADCAST_PROCESS = subprocess.Popen(
         command,
         cwd=ROOT,
@@ -1724,10 +1744,10 @@ def stop_broadcast():
         pids_to_stop.append(BROADCAST_PROCESS.pid)
 
     saved_pid = read_broadcast_pid()
-    if saved_pid:
+    external_pids = running_broadcast_pids(include_preparation=True)
+    if saved_pid in external_pids:
         pids_to_stop.append(saved_pid)
 
-    external_pids = running_broadcast_pids()
     for pid in external_pids:
         pids_to_stop.append(pid)
     pids_to_stop = sorted(set(pid for pid in pids_to_stop if pid))
@@ -1740,7 +1760,10 @@ def stop_broadcast():
                 BROADCAST_PROCESS.wait(timeout=3)
             except subprocess.TimeoutExpired:
                 pass
+    ended_gracefully = bool(BROADCAST_PROCESS is not None and BROADCAST_PROCESS.poll() is not None and BROADCAST_PROCESS.pid in pids_to_stop)
     stopped_count = stop_broadcast_processes(pids_to_stop)
+    if ended_gracefully:
+        stopped_count = max(stopped_count, 1)
 
     clear_broadcast_pid()
     BROADCAST_PROCESS = None
@@ -1749,11 +1772,18 @@ def stop_broadcast():
 
 
 def has_running_broadcast():
-    return (
-        is_process_running(BROADCAST_PROCESS)
-        or bool(read_broadcast_pid())
-        or bool(running_broadcast_pids())
-    )
+    if is_process_running(BROADCAST_PROCESS):
+        return True
+    running = running_broadcast_pids()
+    saved = read_broadcast_pid()
+    if saved and saved not in running:
+        clear_broadcast_pid()
+    return bool(running)
+
+
+def has_running_preparation():
+    all_workers = set(running_broadcast_pids(include_preparation=True))
+    return bool(all_workers - set(running_broadcast_pids()))
 
 
 def set_windows_app_user_model_id(app_id=WINDOWS_APP_USER_MODEL_ID):
@@ -2463,7 +2493,7 @@ def run_gui():
 
     def choose_recorded_broadcast():
         selected = filedialog.askopenfilename(
-            title="Choose Driver Mode recording",
+            title="Choose broadcast capture",
             initialdir=str(ROOT / "recordings"),
             filetypes=(("RGC broadcast recording", "*.jsonl"), ("All files", "*.*")),
         )
@@ -2739,6 +2769,9 @@ def run_gui():
             )
 
     def start_broadcast():
+        if has_running_preparation():
+            messagebox.showinfo("Highlights preparing", "Finish or cancel highlight preparation before starting the normal broadcast.")
+            return
         save_settings()
         current_values = collect_values()
         if (
@@ -2761,12 +2794,12 @@ def run_gui():
             if setting_enabled(current_values, "DRIVER_MODE", "false"):
                 status.set(
                     "Driver Mode recording started. Studio audio and automatic cameras are off. "
-                    "Stop Broadcast after the race to finish and save the recording."
+                    "Stop Broadcast after the race, then choose whether to keep the capture."
                 )
             else:
                 status.set(
                     "Started broadcast with overlay, Producer Assist, cameras, and incident replay. "
-                    "Use Producer Assist to toggle OpenAI, ElevenLabs, and auto cameras."
+                    "Race data is being captured; Stop Broadcast will offer to keep or discard it."
                 )
             root.after(1500, open_producer_assist_after_start)
         refresh_health()
@@ -2778,13 +2811,13 @@ def run_gui():
         if not recording.is_file():
             messagebox.showerror(
                 "Recording not found",
-                "Choose a valid Driver Mode .jsonl recording first.",
+                "Choose a valid broadcast .jsonl capture first.",
             )
             return
         if not recording.with_suffix(".events.jsonl").is_file():
             messagebox.showerror(
                 "Broadcast events not found",
-                "This is not a complete Driver Mode recording. Keep the main .jsonl and matching .events.jsonl files together.",
+                "This capture is missing its commentary events. Keep the main .jsonl and matching .events.jsonl files together.",
             )
             return
         command = broadcast_command(current_values, replay_path=recording)
@@ -2807,7 +2840,32 @@ def run_gui():
             )
 
     def stop_running_broadcast():
+        process_ids = set(running_broadcast_pids())
+        if is_process_running(BROADCAST_PROCESS):
+            process_ids.add(BROADCAST_PROCESS.pid)
+        started_after = max(0, BROADCAST_STARTED_AT - 1)
         stopped_count = stop_broadcast()
+        bundles = [bundle for pid in process_ids
+                   for bundle in capture_bundles(ROOT / "recordings", pid, started_after)]
+        if bundles:
+            total_mb = sum(bundle["size_bytes"] for bundle in bundles) / (1024 * 1024)
+            keep = messagebox.askyesnocancel(
+                "Keep this broadcast capture?",
+                f"Keep this capture for future race highlights or to broadcast the race again later?\n\n"
+                f"{len(bundles)} recording(s), {total_mb:.1f} MB.\n\n"
+                "Yes: keep the race data and commentary.\n"
+                "No: permanently delete this broadcast's capture files to free space.\n"
+                "Cancel or close: keep the files.\n\n"
+                "For future highlights, also save the full iRacing replay (.rpy). "
+                "The capture contains data, not video.",
+                default=messagebox.YES,
+                parent=root,
+            )
+            try:
+                for bundle in bundles:
+                    set_capture_retention(bundle, keep is not False, ROOT / "recordings")
+            except (OSError, ValueError) as error:
+                messagebox.showerror("Capture files", f"Could not finish updating the capture files: {error}", parent=root)
         if stopped_count:
             status.set(f"Stopped broadcast process(es): {stopped_count}.")
         else:
@@ -2842,13 +2900,13 @@ def run_gui():
                 open_external_link(release_url)
 
     def on_close():
-        if has_running_broadcast():
+        if has_running_broadcast() or has_running_preparation():
             should_stop = messagebox.askyesno(
                 CLOSE_RUNNING_BROADCAST_TITLE,
                 CLOSE_RUNNING_BROADCAST_MESSAGE,
             )
             if should_stop:
-                stop_broadcast()
+                stop_running_broadcast()
                 root.destroy()
             return
         root.destroy()
@@ -2864,6 +2922,12 @@ def run_gui():
         command=play_recorded_broadcast,
         color="#5d3fb8",
     ).pack(side="left", padx=6, pady=8)
+    def show_race_highlights():
+        save_settings()
+        from production.highlights_studio import open_highlights_window
+        open_highlights_window(root, collect_values())
+
+    button(broadcast_bar, text="Race Highlights", command=show_race_highlights, color="#526896").pack(side="left", padx=6, pady=8)
     button(broadcast_bar, text="Stop Broadcast", command=stop_running_broadcast, color=STOP_RED).pack(
         side="left",
         padx=6,
@@ -4696,14 +4760,61 @@ def build_help_tab(
         """,
     )
     section(
-        "13. Updates",
+        "13. Race highlights: capture, prepare and record",
+        """
+        Highlights create a narrated recap from a saved broadcast telemetry capture and its matching saved iRacing replay.
+        Save the .rpy in iRacing before leaving the session. Studio's .jsonl is telemetry, not video, and cannot replace the .rpy.
+        Every normal broadcast can save a capture, including Driver Mode. When stopping, choose Keep to retain the recording for later.
+
+        1. Stop the normal broadcast and load the matching saved .rpy in iRacing. Practice or qualifying is an acceptable starting point.
+        2. Click Race Highlights. Choose the main recording .jsonl, not the .events.jsonl commentary file.
+        3. Enter an optional Highlights title, choose a sponsor and transition style, and optionally supply your own transition graphic.
+        4. Tick the matching-replay confirmation. Leave Scan saved replay incident markers on to search the race for incident candidates.
+        5. Click Prepare Highlights. Rapid replay jumps are expected during the incident scan: do not start recording yet.
+        6. Once Ready, click Open Highlights Player. Keep the normal overlay visible as a Streamlabs browser source at 1920x1080.
+        7. In Producer Assist, choose any Caution Review Drivers, start Streamlabs recording, then click Start Highlights.
+
+        Prepare Highlights uses OpenAI to write narration and ElevenLabs to create speech: API charges apply at preparation.
+        Playback and Load Prepared reuse saved audio without new narration API calls. Completed compatible segments are retained on retry.
+        You can Load Prepared, change only the title, and open the player without preparing or paying for narration again.
+        Keep the programme.json and its audio folder together under highlights/. Keep the source capture unchanged.
+
+        The full-field lineup highlights each driver and switches cameras without transitions between drivers or pages.
+        Overtakes start before the scoring change; no more than two nearby passes share a clip. Pit entries are grouped by lap.
+        Practice music loops continuously at 10 percent. The closing recap shows the podium, paged results and recorded race statistics.
+        Results keep positions 1-15 visible and cycle the last five rows when there are more than twenty drivers.
+        Missing statistics are labelled Not recorded. Observed laps led are identified as observed when official totals are unavailable.
+        """,
+    )
+    section(
+        "14. Caution Review Drivers and replay troubleshooting",
+        """
+        Producer Assist lists each captured caution with its lap and replay time. Use its dropdown to choose a driver from this race.
+        The saved choice takes the review camera to that car about twenty seconds before the yellow. Choose Automatic detection to clear it.
+        Choices persist per race in recordings/caution-plans/. Do not assign blame from a camera choice: it identifies the car to review.
+
+        A dropdown change applies to the camera without paid API calls. Existing prepared narration does not change automatically.
+        If you want commentary to name the selected review driver, stop the player and Prepare Highlights again after saving your choices.
+        Matching recorded-broadcast captures use the same saved choices. A native saved-replay broadcast can reuse an existing plan when
+        iRacing reports replay mode and the same race session ID. A replay without a matching capture or saved plan cannot list unseen cautions.
+        Live race broadcasts retain automatic detection and manual Producer camera/rewind controls.
+
+        Keep iRacing running and the Streamlabs overlay visible during playback so transitions cover replay seeks.
+        Pause holds the programme; Resume / Retry Current Clip restarts the current highlight. A failed clip seek or persistent loss of sync
+        skips that clip and continues. The recap slate does not require a replay seek. Check playback-diagnostics.jsonl in the job folder if
+        a clip is skipped repeatedly. Load the complete matching .rpy if a requested moment is unavailable.
+        Cancel Preparation preserves completed narration. Retry preparation to resume. Stop Highlights stops playback and music.
+        """,
+    )
+    section(
+        "15. Updates",
         """
         Use Check for Updates to compare this installed version against the latest GitHub Release.
         Early versions open the release/download page instead of auto-installing. This is safer while the app is still moving quickly.
         """,
     )
     section(
-        "14. Race-night checklist",
+        "16. Race-night checklist",
         """
         Open iRacing, open Streamlabs/OBS, confirm the browser overlay is visible, load your profile,
         refresh Broadcast Health, then start during practice. Run a short smoke test before league night:

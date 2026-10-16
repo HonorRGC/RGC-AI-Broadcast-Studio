@@ -3407,7 +3407,11 @@ class BroadcastEngine:
                 RacePhase.ONE_TO_GREEN,
             )
         )
-        if current_lap < self.INCIDENT_DETECTION_AFTER_LAP:
+        manual_review = None
+        plan = getattr(telemetry, "caution_assignments", None)
+        if caution_just_started and plan and plan.applies_to_source(telemetry):
+            manual_review = plan.for_time(telemetry.get_current_session_num(), telemetry.get_session_time())
+        if current_lap < self.INCIDENT_DETECTION_AFTER_LAP and not manual_review:
             if caution_just_started:
                 self.queue_incident_marker_replay(
                     results,
@@ -3434,6 +3438,16 @@ class BroadcastEngine:
             suppress_soft_events=self.should_suppress_soft_incidents(),
             road_course_mode=road_course_mode,
         )
+        if manual_review:
+            from production.incident_detector import IncidentEvent
+            caution, idx = manual_review
+            info = driver_lookup.get(idx) or driver_lookup.get(str(idx)) or {}
+            name = info.get("name") or f"Car {idx}"
+            events = [IncidentEvent(event_type="INCIDENT", driver_name=name,
+                                    car_number=str(info.get("number") or ""), car_idx=idx,
+                                    message=f"Let's review {name} just before the lap {current_lap} caution.",
+                                    importance=9, lap=current_lap, trouble_type="caution candidate",
+                                    replay_session_time=max(0, caution["time"] - 5), replay_confidence="high")]
         if caution_just_started:
             events = [
                 event
@@ -3509,6 +3523,7 @@ class BroadcastEngine:
             use_incident_marker_replay = (
                 caution_just_started
                 and replay_eligible
+                and not manual_review
             )
             soft_green_incident = (
                 event.trouble_type in ("possible trouble", "loss of control")
@@ -3535,7 +3550,7 @@ class BroadcastEngine:
                     participant_car_indices=(event.car_idx,),
                     silent=True,
                 )
-            replay_message = self.incident_broadcast_message(
+            replay_message = event.message if manual_review else self.incident_broadcast_message(
                 event,
                 current_lap=current_lap,
                 total_laps=total_laps,
