@@ -1,4 +1,5 @@
 import csv
+import time
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -7,6 +8,7 @@ from config import (
     LEAGUE_DRIVERS_CSV,
     LEAGUE_SEASON_STATS_CSV,
     USE_LEAGUE_DRIVER_NOTES,
+    LEAGUE_MANAGER_ENABLED,
 )
 
 
@@ -182,6 +184,39 @@ class LeagueContext:
         self.stats_by_name = {}
         self.stats_by_number = {}
         self.load()
+        self._refresh_at = 0.0
+        self._source_signature = None
+
+    def refresh_sources(self):
+        if time.monotonic() < self._refresh_at:
+            return
+        self._refresh_at = time.monotonic() + 1.0
+        results_path = self.drivers_csv_path.parent / "results.json"
+        managed = LEAGUE_MANAGER_ENABLED and results_path.exists() and (results_path.parent / "league.json").exists()
+        paths = [self.drivers_csv_path, self.season_stats_csv_path, self.career_stats_csv_path] + ([results_path] if managed else [])
+        signature = tuple((str(path), path.stat().st_mtime_ns, path.stat().st_size) if path.exists() else (str(path), None) for path in paths)
+        if signature == self._source_signature:
+            return
+        if managed:
+            from production.league_manager import load_race_results, calculate_standings
+            try:
+                races = load_race_results(results_path)
+            except (OSError, ValueError):
+                return
+        self.load()
+        if managed:
+            for mapping in (self.stats_by_name, self.stats_by_number):
+                for scopes in mapping.values():
+                    if isinstance(scopes, dict):
+                        scopes.pop("season", None)
+            last_finishes = {entry.name.casefold().strip(): entry.position for race in sorted(races, key=lambda race: race.round_number) for entry in race.entries}
+            standings = calculate_standings(races)
+            for index, row in enumerate(standings):
+                stats = self.stats_from_row(dict(row, stats_scope="season", points_position=str(index + 1), avg_finish=row.get("average_finish", ""), last_finish=last_finishes.get(row["name"].casefold().strip(), ""), points_to_next=standings[index - 1]["points"] - row["points"] if index else ""))
+                self.add_scoped_stats(self.stats_by_name, self.normalize(stats.name), stats)
+                if stats.car_number:
+                    self.add_scoped_stats(self.stats_by_number, self.normalize_number(stats.car_number), stats)
+        self._source_signature = signature
 
     def is_configured(self):
         return self.enabled and bool(
@@ -286,6 +321,8 @@ class LeagueContext:
         )
 
     def enrich_driver_lookup(self, driver_lookup):
+        if self.enabled:
+            self.refresh_sources()
         if not self.enabled:
             return dict(driver_lookup or {})
 
@@ -432,6 +469,8 @@ class LeagueContext:
         roster.  That keeps absent drivers in the top 20 and prevents combined
         career totals from being mistaken for the active series standings.
         """
+        if self.enabled:
+            self.refresh_sources()
         standings = []
         seen = set()
         for scoped in self.stats_by_name.values():

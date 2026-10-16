@@ -576,3 +576,70 @@ def test_replay_clock_realigns_after_stall_with_stationary_frames(tmp_path):
     position[0] = 15.0
     assert replay.next_snapshot().lap == 5
     assert replay.get_replay_sync_status()["status"] == "Synced"
+
+def test_capture_shares_unchanged_driver_metadata(tmp_path):
+    import json
+    from replay.replay_reader import ReplayReader
+    path = tmp_path / 'shared.jsonl'
+    path.write_text('\n'.join(json.dumps({'lap':i,'driver_lookup':{'3':{'name':'Driver','number':'77'}},'track_info':{'track_name':'Track'}}) for i in range(2)), encoding='utf-8')
+    snapshots = ReplayReader(path).load_all()
+    assert snapshots[0].driver_lookup is snapshots[1].driver_lookup
+    assert snapshots[0].track_info is snapshots[1].track_info
+    assert snapshots[0].lap != snapshots[1].lap
+
+def test_replay_reports_capture_end_without_generated_continuation(tmp_path):
+    from tests.test_overlay import LiveDriverTelemetry
+    path = tmp_path / 'capture_end.jsonl'
+    path.write_text(json.dumps({'lap':77,'session_num':2,'session_type':'Race','session_time':100,'track_info':{'track_name':'Nashville Superspeedway'}})+'\n', encoding='utf-8')
+    live = LiveDriverTelemetry()
+    class NativeController(FakeReplayController):
+        def __getattr__(self, name):
+            if name.startswith('get_car_idx_') and not hasattr(live, name):
+                return lambda: []
+            return getattr(live, name)
+        def get_car_idx_on_pit_road(self):
+            return []
+        def get_replay_session_time(self):
+            return 110.0
+        def get_replay_session_num(self):
+            return 2
+    controller = NativeController(2, 110.0, 'Race', replay_frame=6600)
+    replay = ReplayTelemetry(path).attach_controller(controller)
+    replay.playback_ready = True
+    snapshot = replay.next_snapshot()
+    assert snapshot.session_time == 100
+    assert replay.uses_recorded_commentary()
+    assert replay.get_replay_sync_status()["capture_ended"]
+    assert "CAPTURE ENDED" in replay.get_replay_sync_status()["status"]
+
+
+def test_delta_capture_round_trip_and_disconnect_diagnostics(tmp_path, monkeypatch):
+    from replay.telemetry_snapshot import TelemetrySnapshot
+    from replay.replay_reader import ReplayReader
+    snapshot = TelemetrySnapshot(lap=1, driver_lookup={0: {"name": "Driver", "bio": "x" * 5000}})
+    monkeypatch.setattr("production.broadcast_capture.TelemetrySnapshot.from_telemetry", lambda *args, **kwargs: snapshot)
+    path = tmp_path / "delta.jsonl"
+    recorder = BroadcastCaptureRecorder(output_path=path)
+    expected = []
+    for index in range(105):
+        if index % 50 == 0:
+            snapshot.driver_lookup[0]["name"] = f"Driver {index}"
+        snapshot.session_time = index / 10
+        snapshot.lap = index % 3
+        snapshot.pit_road_status = [True] if index % 2 else []
+        expected.append(json.loads(json.dumps(snapshot.to_dict())))
+        recorder.record_snapshot(object())
+    recorder.connection_lost()
+    recorder.connection_lost()
+    metadata = json.loads(recorder.metadata_path.read_text())
+    assert metadata["status"] == "waiting_for_telemetry"
+    assert len(metadata["telemetry_interruptions"]) == 1
+    recorder.connection_restored()
+    recorder.close(reason="user_stop")
+    actual = [item.to_dict() for item in ReplayReader(path).load_all()]
+    assert actual == expected
+    assert path.stat().st_size < len(json.dumps(expected).encode()) / 4
+    metadata = json.loads(recorder.metadata_path.read_text())
+    assert metadata["stop_reason"] == "user_stop"
+    assert metadata["telemetry_interruptions"][0]["resumed_at"]
+    assert metadata["last_snapshot"]["session_time"] == 10.4

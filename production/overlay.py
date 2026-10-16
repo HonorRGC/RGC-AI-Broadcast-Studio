@@ -268,6 +268,7 @@ class FeaturedDriver:
     team_name: str = ""
     hometown: str = ""
     profile_sponsor: str = ""
+    profile_only: bool = False
     state: str = ""
     season_stats: dict[str, Any] = field(default_factory=dict)
     career_stats: dict[str, Any] = field(default_factory=dict)
@@ -307,6 +308,7 @@ class FeaturedDriver:
             "fuel_pct": self.fuel_pct,
             "team_name": self.team_name,
             "profile_sponsor": self.profile_sponsor,
+            "profile_only": self.profile_only,
             "hometown": self.hometown,
             "state": self.state,
             "season_stats": dict(self.season_stats or {}),
@@ -360,6 +362,7 @@ class SpecialPresentation:
             "subtitle": self.subtitle,
             "graphics": list(self.graphics),
             "video_url": self.video_url,
+            "remaining_seconds": max(0.0, self.expires_at - time.monotonic()),
         }
 
 
@@ -592,6 +595,9 @@ class OverlayStateBuilder:
 
     def build_from_telemetry(self, telemetry):
         results = telemetry.get_results()
+        pit_reader = getattr(telemetry, "get_car_idx_on_pit_road", None)
+        pits = pit_reader() if callable(pit_reader) else []
+        results = [dict(car, OnPitRoad=bool(pits[car["CarIdx"]])) if isinstance(car.get("CarIdx"), int) and 0 <= car["CarIdx"] < len(pits or []) else car for car in results or []]
         driver_lookup = telemetry.get_driver_lookup()
         driver_lookup = self.enrich_driver_lookup(driver_lookup)
         track_info = telemetry.get_track_info()
@@ -669,7 +675,9 @@ class OverlayStateBuilder:
         recorded_history_reader = getattr(telemetry, "get_recorded_lap_history", None)
         if callable(recorded_history_reader):
             self.merge_recorded_lap_history(recorded_history_reader())
+        self.restore_lap_history(telemetry, session_type, track_info)
         self.update_lap_history(session_type, lap, caution, green)
+        self.save_lap_history()
 
         return OverlayState(
             event=self.event_config,
@@ -891,7 +899,9 @@ class OverlayStateBuilder:
 
         grid_reader = getattr(telemetry, "get_starting_grid", None)
         grid = grid_reader() if grid_reader else []
-        if grid and (self.safe_int(lap) <= 1 or not green):
+        source_reader = getattr(telemetry, "get_starting_grid_source", None)
+        source = source_reader() if callable(source_reader) else ""
+        if grid and (source == "qualifying" or self.safe_int(lap) <= 1):
             self.merge_starting_positions(
                 self.starting_position_lookup_from_results(grid, explicit_only=False),
                 overwrite=False,
@@ -1227,6 +1237,47 @@ class OverlayStateBuilder:
             return True
         return self.is_race_session(session_type) and self.safe_int(lap) > 0
 
+    def restore_lap_history(self, telemetry, session_type, track_info):
+        path = getattr(self, "history_path", None)
+        if path is None or not self.is_race_session(session_type):
+            return
+        controller = getattr(telemetry, "controller", None) or telemetry
+        reader = getattr(controller, "get_weekend_info", None)
+        weekend = reader() if callable(reader) else {}
+        weekend = weekend or {}
+        identifier = weekend.get("SubSessionID") or weekend.get("SessionID")
+        if not identifier:
+            return
+        key = f"{identifier}:{track_info.get('track_name', '')}"
+        if key == getattr(self, "history_session_key", None):
+            return
+        self.history_session_key = key
+        self.lap_status_by_lap = {}
+        try:
+            saved = json.loads(path.read_text(encoding="utf-8"))
+            if saved.get("session_key") == key:
+                self.merge_recorded_lap_history(saved.get("laps", {}))
+        except (OSError, ValueError, TypeError):
+            pass
+        self.history_saved_signature = None
+
+    def save_lap_history(self):
+        path = getattr(self, "history_path", None)
+        key = getattr(self, "history_session_key", None)
+        if path is None or key is None:
+            return
+        signature = (key, tuple(sorted(self.lap_status_by_lap.items())))
+        if signature == getattr(self, "history_saved_signature", None):
+            return
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            temporary = path.with_suffix(".tmp")
+            temporary.write_text(json.dumps({"session_key": key, "laps": self.lap_status_by_lap}), encoding="utf-8")
+            temporary.replace(path)
+            self.history_saved_signature = signature
+        except OSError:
+            pass
+
     def update_lap_history(self, session_type, lap, caution, green):
         lap = self.safe_int(lap)
         if not self.is_race_session(session_type) or lap <= 0:
@@ -1311,6 +1362,8 @@ class OverlayServer:
         self.host = host
         self.port = int(port)
         self.state_builder = state_builder or OverlayStateBuilder()
+        if state_builder is None:
+            self.state_builder.history_path = Path(__file__).resolve().parents[1] / ".runtime" / "lap_history.json"
         self.state = OverlayState(event=self.state_builder.event_config)
         self.lock = threading.Lock()
         self.featured_driver = None
@@ -1603,6 +1656,11 @@ class OverlayServer:
             featured.last_pit_lap = current_entry.last_pit_lap
             profile = dict(current_entry.league_profile or {})
             featured.profile_sponsor = str(profile.get("sponsor") or "")
+            featured.profile_only = bool(state.league_mode and not featured.hide_season_stats)
+            if featured.profile_only:
+                featured.hometown = str(profile.get("hometown") or "")
+                featured.state = str(profile.get("state") or "")
+                featured.country = str(profile.get("country") or "")
             featured.hometown = str(profile.get("hometown") or featured.hometown or "")
             featured.state = str(profile.get("state") or featured.state or "")
             scoped = list(current_entry.league_stats_by_scope or [])
@@ -4173,7 +4231,8 @@ PRODUCER_HTML = r"""<!doctype html>
 
     function renderAll(state) {
       const sync = state.replay_sync || {};
-      document.getElementById("replay-sync-status").textContent = sync.status ? `Replay: ${sync.status} · offset ${Number(sync.offset_seconds || 0).toFixed(2)}s` : "";
+      document.getElementById("replay-sync-status").style.cssText = sync.capture_ended ? "color:#ffce54;font-size:18px;font-weight:bold;padding:12px;border:2px solid #ffce54" : "";
+      document.getElementById("replay-sync-status").textContent = sync.status ? `Replay: ${sync.status} · offset ${Number(sync.offset_seconds || 0).toFixed(2)}s · ${sync.commentary_mode || "Recorded capture"}` : "";
       if (!state) return;
       lastState = state;
       renderHeader(state);
@@ -4292,7 +4351,7 @@ PRODUCER_HTML = r"""<!doctype html>
 
     async function refreshProducerAssist() {
       try {
-        const response = await fetch("/overlay/state", { cache: "no-store" });
+        const response = await fetch("/overlay/state", { cache: "no-store", signal: AbortSignal.timeout(5000) });
         renderAll(await response.json());
       } catch (error) {
         text("event-line", "Waiting for the broadcast overlay server...");
@@ -7273,7 +7332,7 @@ OVERLAY_HTML = r"""<!doctype html>
   <script>
     async function refreshOverlay() {
       try {
-        const response = await fetch("/overlay/state", { cache: "no-store" });
+        const response = await fetch("/overlay/state", { cache: "no-store", signal: AbortSignal.timeout(5000) });
         const state = await response.json();
         renderOverlay(state);
       } catch (error) {
@@ -7661,7 +7720,12 @@ OVERLAY_HTML = r"""<!doctype html>
       return presentation;
     }
 
+    let specialPresentationExpiryTimer;
     function renderSpecialPresentation(presentation) {
+      clearTimeout(specialPresentationExpiryTimer);
+      if (presentation && Number.isFinite(presentation.remaining_seconds)) {
+        specialPresentationExpiryTimer = setTimeout(() => renderSpecialPresentation(null), Math.max(0, presentation.remaining_seconds) * 1000);
+      }
       const layer = document.getElementById("special-presentation");
       const active = !!(presentation && presentation.kind);
       layer.classList.toggle("hidden", !active);
@@ -7728,6 +7792,7 @@ OVERLAY_HTML = r"""<!doctype html>
     function clearCommercialPresentationFromVideo() {
       if (commercialClearRequested) return;
       commercialClearRequested = true;
+      renderSpecialPresentation(null);
       fetch("/overlay/clear-special-presentation", { method: "POST" })
         .catch((error) => console.warn("Could not clear commercial presentation", error));
     }
@@ -7767,6 +7832,7 @@ OVERLAY_HTML = r"""<!doctype html>
         }
       }
       if (pointsPanel) {
+        layer.style.width = "550px";
         const board = document.body.classList.contains("leaderboard-flo-mode") ? document.getElementById("flo-leaderboard") : document.body.classList.contains("leaderboard-ticker-mode") ? document.getElementById("ticker-leaderboard") : document.body.classList.contains("leaderboard-brazen-mode") ? document.getElementById("brazen-leaderboard") : null;
         let top = board ? board.getBoundingClientRect().bottom + 24 : 176;
         if (document.body.classList.contains("leaderboard-flo-mode")) top = Math.max(top, document.querySelector(".flo-lap-box").getBoundingClientRect().bottom + 18);
@@ -7801,7 +7867,7 @@ OVERLAY_HTML = r"""<!doctype html>
         return;
       }
       const maxRows =
-        pointsPanel ? 10 :
+        pointsPanel ? 15 :
         panel.kind === "caution_pit" ? 12 :
         panel.kind === "caution_top_ten" ? 10 :
         panel.kind === "race_end_cap" ? 9 :
@@ -7984,7 +8050,7 @@ OVERLAY_HTML = r"""<!doctype html>
       }
       card.dataset.driverKey = driverKey;
       setText("driver-card-position", buildDriverCardPositionLine(driver));
-      setText("driver-card-story", cleanDriverCardStory(driver));
+      setText("driver-card-story", driver.profile_only ? "" : cleanDriverCardStory(driver));
       renderDriverCardProfile(driver);
       renderDriverCardTelemetry(driver);
       renderDriverCardRaceStory(driver);
@@ -8252,7 +8318,7 @@ OVERLAY_HTML = r"""<!doctype html>
       const start = Number(driver.starting_position || 0);
       const delta = Number(driver.position_delta || 0);
       const classPosition = Number(driver.class_position || 0);
-      if (classPosition > 0) {
+      if (classPosition > 0 && !driver.profile_only) {
         pieces.push(`${driver.class_name || "Class"} ${ordinal(classPosition)}${driver.class_size ? ` of ${driver.class_size}` : ""}`);
       }
       if (start > 0) pieces.push(`Started ${ordinal(start)}`);
@@ -8344,6 +8410,7 @@ OVERLAY_HTML = r"""<!doctype html>
     }
 
     function leaderboardTimingHtml(entry) {
+      if (entry.on_pit_road) return "PITS";
       if (Number(entry.position) === 1) return `<span style="font-size:11px;font-weight:900;white-space:nowrap">${escapeHtml(timingLabel)}</span>`;
       const value = timingMode === "next" ? entry.interval_to_ahead
         : (entry.gap_to_leader || (!hasLiveTiming ? leaderboardGapText(entry) : ""));

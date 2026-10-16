@@ -135,7 +135,7 @@ class FieldRundownDirector:
                     "position": current_position,
                     "starting_position": self.safe_int(
                         car.get("StartingPosition"),
-                        order_position,
+                        0,
                     ),
                     "car_idx": car_idx,
                     "name": name,
@@ -286,7 +286,7 @@ class FieldRundownDirector:
     def segment_feature_duration(self, milestone):
         if milestone == "long_green":
             return 22.0
-        return 0.0
+        return 12.0
 
     def freeze_running_order(self, results):
         valid = [dict(car) for car in results or [] if car.get("CarIdx") is not None]
@@ -330,12 +330,16 @@ class FieldRundownDirector:
         gap = self.gap_to_leader_phrase(entry)
         if gap:
             running_parts.append(gap)
-        running_parts.append(self.net_movement_phrase(net))
+        if starting_position > 0:
+            running_parts.append(self.net_movement_phrase(net))
 
         parts = [identity]
+        if starting_position > 0:
+            parts.append(f"They started {PositionFormatter.ordinal(starting_position)}.")
         if profile_parts:
             parts.append(f"{', '.join(profile_parts)}.")
-        parts.append(f"They are {' and '.join(running_parts)}.")
+        if running_parts:
+            parts.append(f"They are {' and '.join(running_parts)}.")
         return " ".join(parts)
 
     def gap_to_leader_phrase(self, entry):
@@ -390,7 +394,7 @@ class FieldRundownDirector:
         points = self.clean(stats.get("points_position"))
         points_to_next = self.clean(stats.get("points_to_next"))
         if points:
-            sentence = f"They entered this one {PositionFormatter.ordinal(points)} in points"
+            sentence = f"They are {PositionFormatter.ordinal(points)} in the season standings"
             if points_to_next:
                 sentence += f", {points_to_next} points from the next spot"
             return f"{sentence}."

@@ -281,6 +281,8 @@ class BroadcastQueue:
         now = time.time() if now is None else now
         gap_time = self.estimate_item_gap_seconds(item)
         tail_padding = self.estimate_tail_padding_seconds(item)
+        if "field_rundown" in str(getattr(item, "category", "")) and not str(getattr(item, "category", "")).startswith("opening_"):
+            playback_seconds = max(playback_seconds, float(getattr(item, "feature_duration_seconds", 0) or 0), 12.0)
         self.busy_until = now + playback_seconds + gap_time + tail_padding
 
     def reserve_busy_seconds(self, seconds, now=None):

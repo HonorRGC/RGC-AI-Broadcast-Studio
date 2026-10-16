@@ -515,6 +515,8 @@ def test_engine_uses_recovered_qualifying_grid_when_joining_mid_race():
     assert biggest_mover.starting_position == 6
     assert biggest_mover.current_position == 1
     assert biggest_mover.positions_gained == 5
+    enriched = engine.enrich_results_with_starting_positions(running_order)
+    assert enriched[0]["StartingPosition"] == 6
 
 
 def test_race_intelligence_normalizes_zero_based_live_positions_for_movers():

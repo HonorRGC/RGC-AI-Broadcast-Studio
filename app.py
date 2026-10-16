@@ -344,6 +344,25 @@ def parse_args():
     return parser.parse_args()
 
 
+def run_source_resilient(*args, **kwargs):
+    """Keep the existing producer server and directors alive after a worker error."""
+    import traceback
+    while True:
+        try:
+            return run_source(*args, **kwargs)
+        except Exception as error:
+            traceback.print_exc()
+            server = args[10] if len(args) > 10 else kwargs.get("overlay_server")
+            if server:
+                try:
+                    server.clear_special_presentation()
+                    publish_producer_event(server, "error", "Broadcast recovering", str(error))
+                except Exception:
+                    traceback.print_exc()
+            print(f"Broadcast recovering from {type(error).__name__}: {error}", flush=True)
+            time.sleep(1.0)
+
+
 def run_source(
     source,
     engine,
@@ -372,7 +391,25 @@ def run_source(
         enabled=LEAGUE_MANAGER_ENABLED and not recorded_broadcast,
         league_folder=driver_csv_path.parent,
     )
-    while source.is_connected():
+    stop_path = Path(__file__).resolve().parent / ".runtime" / "broadcast_stop.request"
+    while True:
+        if stop_path.exists():
+            if capture_recorder:
+                capture_recorder.stop_reason = "user_stop"
+            raise SystemExit(0)
+        if not source.is_connected():
+            if not capture_recorder and not isinstance(source, IRacingTelemetry):
+                break
+            if capture_recorder:
+                capture_recorder.connection_lost()
+            time.sleep(0.25)
+            try:
+                source.startup()
+            except (OSError, RuntimeError) as error:
+                print(f"Telemetry reconnect pending: {error}", flush=True)
+            continue
+        if capture_recorder:
+            capture_recorder.connection_restored()
         if capture_recorder:
             capture_recorder.record_snapshot(source)
         if overlay_server:
@@ -474,12 +511,13 @@ def run_source(
         if (
             recorded_broadcast
             and hasattr(source, "recorded_item_for_current_snapshot")
+            and getattr(source, "uses_recorded_commentary", lambda: True)()
             and not manual_camera_control
         ):
             item = None
             if time.monotonic() >= recorded_audio_busy_until:
                 item = source.recorded_item_for_current_snapshot()
-        elif recorded_broadcast:
+        elif recorded_broadcast and getattr(source, "uses_recorded_commentary", lambda: True)():
             item = None
         else:
             item = generated_item
@@ -889,9 +927,14 @@ def director_driver_story(driver, lead):
 
 def closest_battle_suggestion(leaderboard):
     candidates = []
-    for driver in leaderboard[1:]:
-        interval = parse_interval_seconds(driver.get("interval"))
-        if interval is None or interval <= 0 or interval > 1.0:
+    for index, driver in enumerate(leaderboard[1:], start=1):
+        ahead = leaderboard[index - 1]
+        if driver.get("on_pit_road") or ahead.get("on_pit_road"):
+            continue
+        if driver.get("laps_complete") != ahead.get("laps_complete"):
+            continue
+        interval = parse_interval_seconds(driver.get("interval_to_ahead"))
+        if interval is None or interval <= 0 or interval > 0.5:
             continue
         candidates.append((interval, driver))
     if not candidates:
@@ -4156,6 +4199,7 @@ def report_camera_decision(decision, overlay_server=None):
 
 
 def main():
+    (Path(__file__).resolve().parent / ".runtime" / "broadcast_stop.request").unlink(missing_ok=True)
     args = parse_args()
     if args.driver_mode and args.replay:
         raise SystemExit("--driver-mode cannot be combined with --replay.")
@@ -4290,7 +4334,9 @@ def main():
     if args.replay:
         from replay.replay_telemetry import ReplayTelemetry
 
+        print("Loading recorded broadcast; large captures can take time to load.", flush=True)
         source = ReplayTelemetry(args.replay)
+        print(f"Loaded {len(source.snapshots)} telemetry snapshots.", flush=True)
         if not source.startup():
             raise RuntimeError("Replay contains no telemetry snapshots.")
         if source.recorded_items:
@@ -4306,7 +4352,7 @@ def main():
                 source.start_timed_playback(reset_index=True)
                 print("Recorded Broadcast: telemetry playback is ready, but iRacing replay control is not connected.")
         reset_sim_racing_apps_state()
-        run_source(
+        run_source_resilient(
             source,
             engine,
             booth,
@@ -4363,7 +4409,7 @@ def main():
         try:
             if overlay_server:
                 overlay_server.start_live_refresh(source)
-            run_source(
+            run_source_resilient(
                 source,
                 engine,
                 booth,
@@ -4386,7 +4432,9 @@ def main():
             if overlay_server:
                 overlay_server.stop_live_refresh()
             if capture_recorder:
-                capture_recorder.close()
+                import sys
+                failure = sys.exc_info()[1]
+                capture_recorder.close(reason=capture_recorder.stop_reason or (f"error: {failure}" if failure is not None else "telemetry_disconnected"))
                 print(f"Driver Mode recording saved: {capture_recorder.telemetry_path}")
         cleanup_live_broadcast_session(
             source,

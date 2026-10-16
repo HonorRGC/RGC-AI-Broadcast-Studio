@@ -1,5 +1,5 @@
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from production.track_style import is_true_pack_drafting_track
 
@@ -96,6 +96,19 @@ class LiveBattleDetector:
             # The whole pack may meet the geometric definition of a battle.
             # Keep only a verified front-of-field story and do not stack calls.
             stories = [story for story in stories if story.position <= 5]
+        result_by_idx = {row.get("CarIdx"): row for row in results}
+        enriched = []
+        for story in stories:
+            row = result_by_idx.get(story.primary_car_idx, {})
+            start = self.integer(row.get("StartingPosition"), 0)
+            zero_based = any(item.get("Position") == 0 for item in results)
+            running = self.integer(row.get("Position"), -1) + int(zero_based)
+            if start > 0 and running > 0:
+                net = start - running
+                movement = f"gained {net} spots" if net > 0 else f"lost {abs(net)} spots" if net < 0 else "holding the starting position"
+                story = replace(story, summary=story.summary + f" Verified driver context: started {self.ordinal(start)}, {movement}. The stated story position describes the contest; use the supplied running order for the driver's exact current position.")
+            enriched.append(story)
+        stories = enriched
         stories.sort(key=lambda story: story.importance, reverse=True)
         return stories[:1] if pack_draft else stories[:2]
 
@@ -258,9 +271,11 @@ class LiveBattleDetector:
             challenger = by_position.get(position + 1)
             if not leader or not challenger:
                 continue
-            if self.scoring_gap_between(leader, challenger) > 0.65:
+            if self.scoring_gap_between(leader, challenger) > 0.45:
                 continue
             delta = challenger["progress"] - leader["progress"]
+            if abs(delta) > 0.015:
+                continue
             key = ("clear", challenger["car_idx"], leader["car_idx"], position)
             if delta > self.CLEAR_DELTA:
                 self.pending_clears[key] = self.pending_clears.get(key, 0) + 1

@@ -842,6 +842,7 @@ def test_director_suggestions_prioritize_leader_battle_mover_and_pits():
                 "car_number": "2",
                 "driver_name": "Close Battle",
                 "interval": "+0.42",
+                "interval_to_ahead": "+0.42",
                 "position_delta": 1,
             },
             {
@@ -2329,3 +2330,48 @@ def test_featured_driver_card_uses_engine_league_profile_context():
 
     assert overlay.featured[0]["position"] == 4
     assert overlay.featured[0]["story"] == "Richmond, Virginia"
+
+
+def test_capture_waits_for_telemetry_and_resumes_same_recorder(monkeypatch):
+    import app
+    import pytest
+    calls = []
+    class Recovered(Exception):
+        pass
+    class Source:
+        connected = False
+        def is_connected(self):
+            return self.connected
+        def startup(self):
+            calls.append("reconnect")
+            self.connected = True
+    class Capture:
+        def connection_lost(self):
+            calls.append("lost")
+        def connection_restored(self):
+            calls.append("restored")
+        def record_snapshot(self, source):
+            calls.append("recorded")
+            raise Recovered()
+    monkeypatch.setattr(app.time, "sleep", lambda seconds: None)
+    with pytest.raises(Recovered):
+        app.run_source(Source(), *([None] * 12), capture_recorder=Capture())
+    assert calls == ["lost", "reconnect", "restored", "recorded"]
+
+
+def test_worker_error_recovers_without_replacing_producer(monkeypatch):
+    import app
+    calls = []
+    server = SimpleNamespace(clear_special_presentation=lambda: calls.append("clear"))
+    def run(*args, **kwargs):
+        calls.append("run")
+        if calls.count("run") == 1:
+            raise RuntimeError("sponsor failure")
+        return "recovered"
+    monkeypatch.setattr(app, "run_source", run)
+    monkeypatch.setattr(app, "publish_producer_event", lambda *args: calls.append("notice"))
+    monkeypatch.setattr(app.time, "sleep", lambda seconds: None)
+    args = [None] * 13
+    args[10] = server
+    assert app.run_source_resilient(*args) == "recovered"
+    assert calls == ["run", "clear", "notice", "run"]

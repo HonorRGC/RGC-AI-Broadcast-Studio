@@ -1,8 +1,10 @@
 # Project State
 
-Current version: **v1.0.17 - Replay Sync, Driver Profiles and Pit Strategy**
+Current version: **v1.0.18 - Broadcast Recovery and Mid-Race Accuracy**
 
-Latest changes add continuous replay-clock alignment and Producer Assist sync status, live lap scoring, card-aware graphic placement, reserved driver-card metric space, optional progress sponsorship, and observed wide-window pit-strategy comparisons. Actual replay alignment and initial-lap behavior need live validation; whole-PC crash causes remain unresolved.
+Version 1.0.18 adds worker recovery, browser-side sponsor expiry, session-scoped tracker checkpoints, lossless delta captures and stop diagnostics, explicit capture-end notices, verified mid-race starts, varied battle calls, longer cockpit rundown shots, and Manager-backed season standings. Full live-session validation remains necessary.
+
+Previous changes add continuous replay-clock alignment and Producer Assist sync status, live lap scoring, card-aware graphic placement, reserved driver-card metric space, optional progress sponsorship, and observed wide-window pit-strategy comparisons. Actual replay alignment and initial-lap behavior need live validation; whole-PC crash causes remain unresolved.
 
 Preseason schedule imports read published events without inventing race IDs. Career Roster imports load past participants for editing before a new season has results; career URLs no longer retain season filters.
 

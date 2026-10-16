@@ -1659,3 +1659,42 @@ def test_driver_card_career_only_clears_stale_season_stats():
     driver = server.current_state_dict()["featured_driver"]
     assert driver["season_stats"] == {}
     assert driver["career_stats"]["wins"] == "8"
+
+
+def test_lap_tracker_checkpoint_restores_only_same_session(tmp_path):
+    from types import SimpleNamespace
+    from production.overlay import OverlayStateBuilder
+    path = tmp_path / "laps.json"
+    telemetry = SimpleNamespace(get_weekend_info=lambda: {"SubSessionID": 123})
+    first = OverlayStateBuilder()
+    first.history_path = path
+    first.restore_lap_history(telemetry, "Race", {"track_name": "Richmond"})
+    first.update_lap_history("Race", 1, False, True)
+    first.update_lap_history("Race", 2, True, False)
+    first.save_lap_history()
+    restored = OverlayStateBuilder()
+    restored.history_path = path
+    restored.restore_lap_history(telemetry, "Race", {"track_name": "Richmond"})
+    assert restored.lap_status_by_lap == {1: "green", 2: "caution"}
+    restored.restore_lap_history(SimpleNamespace(get_weekend_info=lambda: {"SubSessionID": 124}), "Race", {"track_name": "Richmond"})
+    assert restored.lap_status_by_lap == {}
+
+
+def test_mid_race_caution_does_not_turn_current_order_into_starting_grid():
+    from types import SimpleNamespace
+    from production.overlay import OverlayStateBuilder
+    rows = [{"CarIdx": 2, "Position": 10}]
+    telemetry = SimpleNamespace(get_starting_grid=lambda: rows, get_starting_grid_source=lambda: "current_results", get_qualifying_results=lambda: [])
+    builder = OverlayStateBuilder()
+    builder.update_starting_position_memory(telemetry, rows, "Race", lap=75, green=False)
+    assert builder.starting_position(rows[0], 2) == 0
+
+
+def test_mid_race_green_restores_verified_qualifying_start():
+    from types import SimpleNamespace
+    from production.overlay import OverlayStateBuilder
+    rows = [{"CarIdx": 2, "Position": 10}]
+    telemetry = SimpleNamespace(get_starting_grid=lambda: [{"CarIdx": 2, "Position": 15}], get_starting_grid_source=lambda: "qualifying", get_qualifying_results=lambda: [])
+    builder = OverlayStateBuilder()
+    builder.update_starting_position_memory(telemetry, rows, "Race", lap=75, green=True)
+    assert builder.starting_position(rows[0], 2) == 15

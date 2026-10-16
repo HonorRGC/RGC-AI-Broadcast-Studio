@@ -486,9 +486,9 @@ def test_silent_feature_sequence_uses_feature_duration_for_timing():
     assert telemetry.switches == [("14", 7, 0)]
 
 
-def test_spoken_feature_sequence_uses_feature_duration_for_timing():
+def test_rundown_keeps_eight_seconds_in_cockpit():
     telemetry = CameraTelemetry()
-    times = iter([100.0, 109.0, 110.0])
+    times = iter([100.0, 103.0, 104.0])
     director = CameraDirector(mode="auto", clock=lambda: next(times))
     rundown = SimpleNamespace(
         camera_target_car_idx=None,
@@ -511,6 +511,8 @@ def test_spoken_feature_sequence_uses_feature_duration_for_timing():
     assert second.status == "switched"
     assert telemetry.switches == [("14", 4, 0), ("14", 6, 0)]
 
+
+    assert director.next_sequence_at == 112.0
 
 def test_crank_fixed_does_not_fall_back_to_moving_tv_cameras():
     telemetry = CameraTelemetry()
@@ -782,3 +784,20 @@ def test_end_replay_requires_next_update_to_verify_live_edge():
     assert home.car_number == "77"
     assert live.status == "live"
     assert telemetry.return_to_live_calls == 1
+
+def test_verified_battle_uses_tv_chase_tv():
+    now = [0.0]
+    telemetry = CameraTelemetry()
+    original = telemetry.get_camera_groups
+    telemetry.get_camera_groups = lambda: original() + [{'GroupNum':8,'GroupName':'Chase'}]
+    director = CameraDirector(mode='auto', clock=lambda: now[0])
+    item = SimpleNamespace(category='live_pressure_battle', story_type='live_pressure_battle', participant_car_indices=(3,4), camera_target_car_idx=4, message='A close battle', priority=8)
+    director.follow(item, telemetry)
+    assert director.sequence_interval == 8.0
+    assert telemetry.switches[-1][1] == 4
+    now[0] = 8
+    director.update(telemetry)
+    assert telemetry.switches[-1][1] == 8
+    now[0] = 16
+    director.update(telemetry)
+    assert telemetry.switches[-1][1] == 4

@@ -20,6 +20,7 @@ class ReplayTelemetry:
         for values in self.replay_clock_indices.values():
             values.sort()
         self.current_index = 0
+        self.capture_ended = False
         self.controller = None
         self.recorded_items = self._load_recorded_items()
         self._delivered_event_indices = set()
@@ -227,6 +228,7 @@ class ReplayTelemetry:
         elif not preserve_pending_events:
             self._mark_events_before(target_index)
         self.current_index = target_index
+        self.capture_ended = False
         self.last_controller_marker = marker
         self.start_timed_playback(reset_index=False)
         frame = self._controller_frame_number()
@@ -371,6 +373,7 @@ class ReplayTelemetry:
                 values = self.replay_clock_indices.get(int(self._controller_session_num()), [])
                 if values:
                     replay_time = float(self._controller_session_time())
+                    self.capture_ended = replay_time > values[-1][0] + 0.5
                     match = max(0, bisect_right(values, (replay_time, len(self.snapshots))) - 1)
                     self.current_index = values[match][1]
                     self.controller_frame_anchor = frame
@@ -630,7 +633,12 @@ class ReplayTelemetry:
         offset = float(self._controller_session_time()) - float(snapshot.session_time or 0)
         same_session = int(self._controller_session_num()) == int(snapshot.session_num)
         status = "Reviewing" if self.manual_review_hold else "Seeking" if self.pending_live_target else "Synced" if same_session and abs(offset) <= 0.5 else "Out of sync"
-        return {"status": status, "offset_seconds": round(offset, 3), "session_match": same_session}
+        if self.capture_ended:
+            status = f"CAPTURE ENDED at lap {snapshot.lap} - no further recorded commentary"
+        return {"status": status, "offset_seconds": round(offset, 3), "session_match": same_session, "commentary_mode": "Recorded capture", "capture_ended": self.capture_ended, "last_recorded_lap": snapshot.lap}
+
+    def uses_recorded_commentary(self):
+        return True
 
     def _controller_session_num(self):
         reader = getattr(self.controller, "get_replay_session_num", None)

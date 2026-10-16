@@ -55,6 +55,7 @@ class PromptBuilder:
         lines = []
 
         lines.append("EDITORIAL ASSIGNMENT")
+        lines.append("Use present tense for current season standings: a driver is second in the season standings. Do not say came in second or finished second when describing a current points rank.")
         lines.append("--------------------")
         lines.append(f"Headline: {getattr(assignment, 'headline', '')}")
         lines.append(f"Summary: {getattr(assignment, 'summary', '')}")
@@ -75,6 +76,7 @@ class PromptBuilder:
             "live_pass_clear",
             "live_pressure_battle",
         ):
+            lines.append("Presentation: vary the introduction naturally: Let's take a ride along with [driver]; tight racing back around [position]; a good fight developing; let's check in on [driver]. Use the actual named driver and position supplied. Avoid repeating 'this battle'. Follow with verified starting position and spots gained or lost when supplied, and one relevant driver fact. Do not invent statistics or imply a cockpit camera unless it is selected.")
             lines.append(
                 "Accuracy: Use only the stated relationship. Unless the assignment "
                 "explicitly says a driver worked past another driver, describe this as a close "

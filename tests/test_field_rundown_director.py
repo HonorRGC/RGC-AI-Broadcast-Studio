@@ -305,3 +305,20 @@ def test_active_long_green_rundown_cancels_under_caution():
     assert first[0].category == "long_green_field_rundown_1"
     assert caution == []
     assert resumed == []
+
+
+def test_mid_race_missing_grid_does_not_use_running_position_as_start():
+    director = FieldRundownDirector()
+    entries = director.build_entries([{"CarIdx": 2, "Position": 10}], {2: {"name": "T.J. Lee", "number": "34"}})
+    assert entries[0]["starting_position"] == 0
+    message = director.format_entry(entries[0])
+    assert "T.J. Lee" in message
+    assert "started" not in message and "from the start" not in message
+
+
+def test_rundown_announces_verified_start_and_gain_after_mid_race_join():
+    director = FieldRundownDirector()
+    entries = director.build_entries([{"CarIdx": 2, "Position": 10, "StartingPosition": 15}], {2: {"name": "T.J. Lee", "number": "34"}})
+    message = director.format_entry(entries[0])
+    assert "started fifteenth" in message
+    assert "up 5 spots" in message

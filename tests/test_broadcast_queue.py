@@ -258,3 +258,12 @@ def test_actual_voice_duration_replaces_word_count_estimate_after_playback_start
     queue.mark_actual_playback_started(item, playback_seconds=12.0, now=105.0)
 
     assert queue.busy_until == 105.0 + 12.0 + 2.5 + 0.55
+
+
+def test_actual_voice_duration_preserves_rundown_cockpit_hold():
+    queue = BroadcastQueue()
+    queue.add("T.J. Lee is tenth.", category="quarter_field_rundown_1")
+    queue.items[0].created_at = 100.0
+    item = queue.next_item(now=100.0)
+    queue.mark_actual_playback_started(item, playback_seconds=2.0, now=101.0)
+    assert queue.busy_until >= 113.0

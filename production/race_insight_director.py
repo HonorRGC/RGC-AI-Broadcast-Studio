@@ -146,7 +146,7 @@ class RaceInsightDirector:
         )
         message = (
             "This is a good time to reset the championship picture. "
-            f"{leader_name} came in leading the standings"
+            f"{leader_name} is leading the season standings"
         )
         if contender_text:
             message += f", with {contender_text} close enough to keep the pressure on"
@@ -438,7 +438,7 @@ class RaceInsightDirector:
         points_to_next = self.safe_int((stats or {}).get("points_to_next"), 0)
         if points_position <= 0:
             return ""
-        message = f"They came in {self.ordinal(points_position)} in the championship standings"
+        message = f"They are {self.ordinal(points_position)} in the season standings"
         if points_to_next > 0:
             message += f", only {points_to_next} points from the next position"
         return message + "."

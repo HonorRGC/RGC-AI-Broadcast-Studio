@@ -74,6 +74,10 @@ class CameraDirector:
             return CameraDecision("held", "Incident replay controls the camera.", role="replay")
 
         now = self.clock()
+        if getattr(self, "battle_pair", ()) and self.sequence and not self.battle_still_close(telemetry):
+            self.clear_sequence()
+            self.return_home_at = None
+            return self.focus_home(telemetry, now, force=True)
         live_decision = self.ensure_live_edge(telemetry, now)
         if live_decision is not None:
             return live_decision
@@ -86,7 +90,7 @@ class CameraDirector:
             if self.sequence_index < len(self.sequence):
                 car_idx, group_name, camera_number = self.sequence[self.sequence_index]
                 self.sequence_index += 1
-                self.next_sequence_at = now + self.sequence_interval
+                self.next_sequence_at = now + self.shot_duration(group_name)
                 return self.focus_car(
                     car_idx,
                     group_name,
@@ -198,18 +202,28 @@ class CameraDirector:
             )
 
         sequence = self.build_sequence_steps(item)
+        participants = tuple(getattr(item, "participant_car_indices", ()) or ())
+        battle_sequence = self.is_battle_story(item) and len(set(participants)) >= 2 and not sequence
+        if battle_sequence:
+            target = getattr(item, "camera_target_car_idx", None)
+            if target is None:
+                target = participants[-1]
+            sequence = ((target, self.preferred_group, 0), (target, "Chase", 0), (target, self.preferred_group, 0))
         if sequence:
             sequence = self.resolve_special_sequence(item, sequence, telemetry)
             self.return_home_at = None
             self.sequence = sequence
+            self.battle_pair = participants[:2] if battle_sequence else ()
             self.sequence_category = str(getattr(item, "category", "") or "")
             self.sequence_return_home = bool(
                 getattr(item, "camera_return_home_after_sequence", False)
-            )
+            ) or battle_sequence
             self.sequence_index = 1
             self.sequence_interval = self.estimate_sequence_interval(item, sequence)
-            self.next_sequence_at = now + self.sequence_interval
+            if battle_sequence:
+                self.sequence_interval = 8.0
             car_idx, group_name, camera_number = sequence[0]
+            self.next_sequence_at = now + self.shot_duration(group_name)
             return self.focus_car(
                 car_idx,
                 group_name,
@@ -519,6 +533,7 @@ class CameraDirector:
         return leader.get("CarIdx")
 
     def clear_sequence(self):
+        self.battle_pair = ()
         self.sequence = ()
         self.sequence_index = 0
         self.sequence_interval = 0.0
@@ -538,6 +553,25 @@ class CameraDirector:
             (car_idx, self.preferred_group, self.lineup_camera_number)
             for car_idx in tuple(getattr(item, "camera_sequence", ()) or ())
         )
+
+    def battle_still_close(self, telemetry):
+        reader = getattr(telemetry, "get_car_idx_lap_dist_pct", None)
+        if not callable(reader):
+            return True
+        distances = reader() or []
+        laps = getattr(telemetry, "get_car_idx_lap_completed", lambda: [])() or []
+        pits = getattr(telemetry, "get_car_idx_on_pit_road", lambda: [])() or []
+        first, second = self.battle_pair
+        if not (0 <= first < len(distances) and 0 <= second < len(distances)):
+            return False
+        if any(idx < len(pits) and pits[idx] for idx in (first, second)):
+            return False
+        gap = abs(float(distances[first]) - float(distances[second]))
+        if first < len(laps) and second < len(laps):
+            gap = abs(float(laps[first]) + float(distances[first]) - float(laps[second]) - float(distances[second]))
+        else:
+            gap = min(gap, 1.0 - gap)
+        return gap <= .015
 
     def resolve_special_sequence(self, item, sequence, telemetry):
         if getattr(item, "category", "") != "crank_it_up":
@@ -612,6 +646,11 @@ class CameraDirector:
             return (car_idx, group_name, camera_number)
 
         return (step, self.preferred_group, self.lineup_camera_number)
+
+    def shot_duration(self, group_name):
+        if "field_rundown" in getattr(self, "sequence_category", "") and not self.sequence_category.startswith("opening_"):
+            return 8.0 if str(group_name).casefold() == "cockpit" else 4.0
+        return self.sequence_interval
 
     def estimate_sequence_interval(self, item, sequence):
         feature_duration = float(getattr(item, "feature_duration_seconds", 0.0) or 0.0)

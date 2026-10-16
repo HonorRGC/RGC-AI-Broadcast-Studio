@@ -1700,6 +1700,7 @@ def launch_broadcast(command=None):
     if is_process_running(BROADCAST_PROCESS):
         return BROADCAST_PROCESS
 
+    (ROOT / ".runtime" / "broadcast_stop.request").unlink(missing_ok=True)
     env = os.environ.copy()
     close_broadcast_log()
     command = command or broadcast_command()
@@ -1730,6 +1731,15 @@ def stop_broadcast():
     for pid in external_pids:
         pids_to_stop.append(pid)
     pids_to_stop = sorted(set(pid for pid in pids_to_stop if pid))
+    if pids_to_stop:
+        RUNTIME_DIR.mkdir(parents=True, exist_ok=True)
+        (RUNTIME_DIR / "broadcast_stop.request").write_text("user_stop", encoding="utf-8")
+        # Give the worker time to flush the capture and its stop reason.
+        if is_process_running(BROADCAST_PROCESS):
+            try:
+                BROADCAST_PROCESS.wait(timeout=3)
+            except subprocess.TimeoutExpired:
+                pass
     stopped_count = stop_broadcast_processes(pids_to_stop)
 
     clear_broadcast_pid()

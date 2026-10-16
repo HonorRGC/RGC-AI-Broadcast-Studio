@@ -378,3 +378,26 @@ def test_career_summary_does_not_supply_current_season_last_race():
     assert "career top fives: 25" in career.context_summary()
     season = DriverStats(name="Kyle Stewart", stats_scope="season", last_finish="1")
     assert "last race finish: 1st" in season.context_summary()
+
+def test_manager_results_override_stale_imported_season_rank(tmp_path, monkeypatch):
+    import json
+    import production.league_context as module
+    monkeypatch.setattr(module, 'LEAGUE_MANAGER_ENABLED', True)
+    drivers = tmp_path / 'drivers.csv'
+    drivers.write_text('name,car_number\nChuck Sweeting,1\nRicky,2\n', encoding='utf-8')
+    season = tmp_path / 'season.csv'
+    season.write_text('name,car_number,stats_scope,points_position,starts\nChuck Sweeting,1,season,1,3\nRicky,2,season,2,3\n', encoding='utf-8')
+    (tmp_path / 'league.json').write_text('{}', encoding='utf-8')
+    (tmp_path / 'results.json').write_text(json.dumps({'races':[{'round_number':1,'entries':[{'name':'Ricky','car_number':'2','position':1,'points':100},{'name':'Chuck Sweeting','car_number':'1','position':2,'points':100}]}]}), encoding='utf-8')
+    context = LeagueContext(drivers_csv_path=drivers, season_stats_csv_path=season, career_stats_csv_path=tmp_path/'career.csv', enabled=True)
+    standings = context.season_standings()
+    assert standings[0].name == 'Ricky'
+    assert standings[0].points_position == '1'
+    assert standings[0].starts == '1'
+    lookup = context.enrich_driver_lookup({0:{'name':'Ricky','number':'2'}})
+    assert lookup[0]['league_stats']['points_position'] == '1'
+
+
+def test_league_card_pit_label_is_explicit():
+    from production.overlay import OVERLAY_HTML
+    assert 'if (entry.on_pit_road) return "PITS"' in OVERLAY_HTML

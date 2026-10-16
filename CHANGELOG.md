@@ -1,5 +1,17 @@
 # Changelog
 
+## Version 1.0.18 - Broadcast Recovery and Mid-Race Accuracy
+
+- Recover from broadcast worker errors while retaining Producer and directors; retry interrupted live telemetry rather than ending capture immediately.
+- Sponsor presentations expire in the browser even when the server is unreachable. Studio stop allows capture cleanup before forced shutdown.
+- Persist the green/yellow lap tracker for the same iRacing session across restarts.
+- Save lossless delta captures with full checkpoints, interruption timestamps, and stop diagnostics. Existing captures remain readable; replay clearly reports the recorded capture boundary.
+- Recover verified starting positions after mid-race startup; omit starting-position and movement claims when no grid is available.
+- Vary battle introductions with verified driver context, use TV/Chase/TV coverage for close battles, and allow longer cockpit shots during race rundowns.
+- Display 15 championship drivers per page, use current League Manager results for season stats, keep league driver-card text tied to edited profiles, and show PITS for cars on pit road.
+
+Automated checks cover recovery, capture round trips, standings, starting positions, and camera timing. Full-session iRacing validation remains necessary; this release does not resolve hardware or whole-PC crashes.
+
 ## Version 1.0.17 - Replay Sync, Driver Profiles and Pit Strategy
 
 - Recorded playback follows the replay session clock continuously, with an indexed lookup to recover after frame-counter stalls. Producer Assist displays replay sync status and timing offset.

@@ -137,6 +137,7 @@ class BroadcastEngine:
         self.three_quarter_recap_queued = False
         self.race_ticks_seen = 0
         self.joined_mid_race = False
+        self.verified_starting_positions = {}
         self.mid_race_join_note_queued = False
         self.restart_launch_story_queued = False
         self.caution_started_session_num = None
@@ -203,6 +204,15 @@ class BroadcastEngine:
             current_lap,
             starting_grid_source,
         )
+        if reliable_starting_grid:
+            zero_based = any(car.get("Position") == 0 for car in starting_grid or [])
+            for car in starting_grid or []:
+                idx = car.get("CarIdx")
+                position = self.safe_int(car.get("StartingPosition"), 0)
+                if position <= 0:
+                    position = self.safe_int(car.get("Position"), -1) + int(zero_based)
+                if idx is not None and position > 0:
+                    self.verified_starting_positions[idx] = position
         self._detect_mid_race_start(
             current_lap=current_lap,
             total_laps=total_laps,
@@ -3363,16 +3373,16 @@ class BroadcastEngine:
         ]
 
     def enrich_results_with_starting_positions(self, results):
-        if self.joined_mid_race:
-            return [dict(car) for car in results or []]
-
         enriched = []
         for car in results or []:
             car_copy = dict(car)
             car_idx = car_copy.get("CarIdx")
             if car_idx is not None:
                 driver = self.race_brain.driver_manager.get_driver(car_idx)
-                if driver.starting_position:
+                verified = self.verified_starting_positions.get(car_idx, 0)
+                if verified:
+                    car_copy["StartingPosition"] = verified
+                elif not self.joined_mid_race and driver.starting_position:
                     car_copy["StartingPosition"] = driver.starting_position
             enriched.append(car_copy)
         return enriched
