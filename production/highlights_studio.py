@@ -36,6 +36,99 @@ def save_highlights_title(job_path, title, visual_options=None):
     save_job(job_path, job)
 
 
+def save_highlight_selection(job_path, included_indices):
+    from production.highlights import save_job, programme_seconds
+    job = json.loads(Path(job_path).read_text(encoding="utf-8"))
+    if job.get("status") != "ready":
+        raise ValueError("Finish preparation before editing highlights.")
+    included = set(included_indices)
+    if not included or any(type(index) is not int or index < 0 or index >= len(job["segments"]) for index in included):
+        raise ValueError("Include at least one valid highlight.")
+    for index, segment in enumerate(job["segments"]):
+        segment["excluded"] = index not in included
+    job["estimated_seconds"] = programme_seconds(job)
+    save_job(job_path, job)
+    return job
+
+
+def open_clip_editor(parent, job_path, on_saved):
+    job = json.loads(Path(job_path).read_text(encoding="utf-8"))
+    editor = tk.Toplevel(parent)
+    editor.transient(parent)
+    editor.title("Choose Highlights")
+    editor.geometry("950x650")
+    editor.minsize(760, 520)
+    frame = ttk.Frame(editor, padding=16)
+    frame.pack(fill="both", expand=True)
+    ttk.Label(frame, text="Exclude clips you do not want. Saved narration and audio are kept so you can restore them.", wraplength=850).pack(anchor="w", pady=(0, 10))
+    included = {i for i, s in enumerate(job["segments"]) if not s.get("excluded", False)}
+    list_frame = ttk.Frame(frame)
+    list_frame.pack(fill="both", expand=True)
+    tree = ttk.Treeview(list_frame, columns=("use", "kind", "title"), show="headings", selectmode="extended", height=12)
+    for name, label, width in (("use", "Include", 85), ("kind", "Type", 95), ("title", "Highlight", 620)):
+        tree.heading(name, text=label)
+        tree.column(name, width=width, stretch=name == "title")
+    scroll = ttk.Scrollbar(list_frame, orient="vertical", command=tree.yview)
+    tree.configure(yscrollcommand=scroll.set)
+    scroll.pack(side="right", fill="y")
+    tree.pack(side="left", fill="both", expand=True)
+    tree.tag_configure("excluded", foreground="#777777")
+    for index, segment in enumerate(job["segments"]):
+        detail = segment.get("title", "Highlight")
+        if segment.get("kind") == "lineup":
+            active = segment.get("active_position")
+            driver = next((e for e in segment.get("entries", []) if e.get("position") == active), {})
+            detail += " · " + str(driver.get("driver_name", ""))
+        tree.insert("", "end", iid=str(index), values=("Yes" if index in included else "No", segment.get("kind", "").title(), detail), tags=() if index in included else ("excluded",))
+    summary = tk.StringVar()
+    ttk.Label(frame, textvariable=summary).pack(anchor="w", pady=8)
+    narration = tk.Text(frame, height=5, wrap="word")
+    narration.pack(fill="x", pady=(0, 8))
+    narration.configure(state="disabled")
+    def refresh():
+        from production.highlights import programme_seconds
+        selection = dict(job, segments=[dict(s, excluded=False) for i, s in enumerate(job["segments"]) if i in included])
+        summary.set(f"{len(included)} of {len(job['segments'])} segments included · approximately {programme_seconds(selection) / 60:.1f} minutes")
+        for index in range(len(job["segments"])):
+            tree.set(str(index), "use", "Yes" if index in included else "No")
+            tree.item(str(index), tags=() if index in included else ("excluded",))
+    def show_narration(event=None):
+        selected = tree.selection()
+        if selected:
+            segment = job["segments"][int(selected[0])]
+            narration.configure(state="normal")
+            narration.delete("1.0", "end")
+            narration.insert("end", segment.get("narration") or segment.get("facts", ""))
+            narration.configure(state="disabled")
+    def change(use):
+        for item in tree.selection():
+            included.add(int(item)) if use else included.discard(int(item))
+        refresh()
+    def restore():
+        included.update(range(len(job["segments"])))
+        refresh()
+    def save():
+        try:
+            updated = save_highlight_selection(job_path, included)
+        except (OSError, ValueError) as error:
+            messagebox.showerror("Choose Highlights", str(error), parent=editor)
+            return
+        on_saved(updated)
+        editor.destroy()
+    tree.bind("<<TreeviewSelect>>", show_narration)
+    buttons = ttk.Frame(frame)
+    buttons.pack(fill="x")
+    ttk.Button(buttons, text="Exclude Selected", command=lambda: change(False)).pack(side="left")
+    ttk.Button(buttons, text="Include Selected", command=lambda: change(True)).pack(side="left", padx=6)
+    ttk.Button(buttons, text="Restore All", command=restore).pack(side="left")
+    ttk.Button(buttons, text="Save Selection", command=save).pack(side="right")
+    ttk.Button(buttons, text="Cancel", command=editor.destroy).pack(side="right", padx=6)
+    refresh()
+    editor.grab_set()
+    editor.lift()
+    return editor
+
+
 def open_highlights_window(parent, values):
     import studio_launcher as studio
     window = tk.Toplevel(parent)
@@ -106,11 +199,16 @@ def open_highlights_window(parent, values):
         ttk.Button(row, text="Choose…", command=lambda: select_file(logo_var)).pack(side="left", padx=(5, 0))
     sponsor_group(0, "Center transition sponsor", transition_sponsor, graphic)
     sponsor_group(1, "Upper-right clip sponsor", sponsor, sponsor_logo)
-    sponsor_group(2, "Left recap sponsor", recap_sponsor, recap_sponsor_logo)
+    sponsor_group(2, "Upper-left highlight sponsor", recap_sponsor, recap_sponsor_logo)
     file_row("Full-screen transition artwork (optional; 1920 × 1080 recommended)", full_screen_graphic)
     ttk.Checkbutton(frame, text="Scan saved replay incident markers (may include incidents with unknown point values)", variable=scan_incidents).pack(anchor="w", pady=(8, 0))
     ttk.Checkbutton(frame, text="I have loaded the matching saved .rpy in iRacing; I am not racing live.", variable=replay_loaded).pack(anchor="w", pady=12)
     ttk.Label(frame, textvariable=progress, wraplength=770).pack(anchor="w", pady=8)
+    review_row = ttk.Frame(frame)
+    review_row.pack(fill="x")
+    edit_button = ttk.Button(review_row, text="Choose Highlights…", command=lambda: edit_clips(), state="disabled")
+    edit_button.pack(side="left")
+    ttk.Label(review_row, text="Exclude or restore prepared clips without new narration charges.").pack(side="left", padx=8)
     preview = tk.Text(frame, height=8, wrap="word", bg="#0c1420", fg="#dce5ef")
     preview.pack(fill="both", expand=True, pady=8)
     actions = ttk.Frame(frame)
@@ -130,15 +228,30 @@ def open_highlights_window(parent, values):
         recap_sponsor.set(options.get("recap_sponsor", ""))
         recap_sponsor_logo.set(options.get("recap_sponsor_logo", ""))
         scan_incidents.set(bool(options.get("scan_incidents")))
+        refresh_preview(job)
+        edit_button.configure(state="normal" if job.get("status") == "ready" else "disabled")
+
+    def refresh_preview(job):
         preview.delete("1.0", "end")
         for warning in job.get("warnings", []):
             preview.insert("end", "Note: " + warning + "\n\n")
         from production.highlights import programme_seconds
         duration = programme_seconds(job)
         for index, segment in enumerate(job.get("segments", []), 1):
-            preview.insert("end", f"{index}. {segment['title']}\n{segment.get('narration') or segment.get('facts', '')}\n\n")
+            label = " [EXCLUDED]" if segment.get("excluded", False) else ""
+            preview.insert("end", f"{index}.{label} {segment['title']}\n{segment.get('narration') or segment.get('facts', '')}\n\n")
         if job.get("status") == "ready":
             progress.set(f"Ready · approximately {duration / 60:.1f} minutes (15–20 minute target; shorter races can be shorter). Start the player, then use Producer Assist to begin recording playback.")
+
+    def edit_clips():
+        if studio.has_running_preparation() or studio.has_running_broadcast():
+            messagebox.showinfo("Choose Highlights", "Stop playback and let preparation finish before changing the clip selection.", parent=window)
+            return
+        if state["job"]:
+            try:
+                open_clip_editor(window, state["job"], refresh_preview)
+            except (OSError, ValueError) as error:
+                messagebox.showerror("Choose Highlights", str(error), parent=window)
 
     def poll():
         process, path = state["process"], state["job"]
@@ -223,6 +336,7 @@ def open_highlights_window(parent, values):
             progress.set(str(error))
             return
         prepare_button.configure(state="disabled")
+        edit_button.configure(state="disabled")
         play_button.configure(state="disabled")
         progress.set("Reading the capture and preparing OpenAI / ElevenLabs narration. API usage applies.")
         window.after(500, poll)

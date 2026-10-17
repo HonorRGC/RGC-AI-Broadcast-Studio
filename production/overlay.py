@@ -7553,12 +7553,12 @@ OVERLAY_HTML = r"""<!doctype html>
       sponsorName.classList.toggle("hidden", !(h.active && h.sponsor));
       sponsorName.style.top = h.sponsor_logo ? "156px" : "28px";
       const recapLogo = document.getElementById("highlight-recap-sponsor");
-      recapLogo.classList.toggle("hidden", !(recapActive && h.recap_sponsor_logo));
+      recapLogo.classList.toggle("hidden", !(h.active && h.recap_sponsor_logo));
       if (h.recap_sponsor_logo && recapLogo.getAttribute("src") !== h.recap_sponsor_logo) recapLogo.src = h.recap_sponsor_logo;
       if (!h.recap_sponsor_logo) recapLogo.removeAttribute("src");
       const recapName = document.getElementById("highlight-recap-sponsor-name");
       recapName.textContent = h.recap_sponsor || "";
-      recapName.classList.toggle("hidden", !(recapActive && h.recap_sponsor));
+      recapName.classList.toggle("hidden", !(h.active && h.recap_sponsor));
       recapName.style.top = h.recap_sponsor_logo ? "156px" : "28px";
       const caption = document.getElementById("highlight-caption");
       caption.classList.toggle("hidden", !(h.active && h.stage === "playing" && h.segment_kind === "clip" && !h.cover));

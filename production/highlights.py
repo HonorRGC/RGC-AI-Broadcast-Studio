@@ -157,32 +157,26 @@ def build_recap(race, grid, finish, events):
 
 
 def restart_camera_cues(samples, at, end):
-    """Follow the closest available racing in P5–P10, without claiming a pass."""
-    cues = []
-    for offset in (0, 15, 30, 45):
-        if at + offset >= end:
-            break
-        snapshot = min(samples, key=lambda s: abs(s.session_time - at - offset))
-        rows = [row for row in ordered(snapshot) if 5 <= row["position"] <= 10 and not pit(snapshot, row["CarIdx"])
-                and (row["CarIdx"] >= len(snapshot.track_surface) or snapshot.track_surface[row["CarIdx"]] == 3)]
-        if not rows:
-            continue
-        pairs = []
-        for front, behind in zip(rows, rows[1:]):
-            a, b = front["CarIdx"], behind["CarIdx"]
-            try:
-                if snapshot.lap_completed[a] != snapshot.lap_completed[b]:
-                    continue
-                pa, pb = snapshot.lap_dist_pct[a], snapshot.lap_dist_pct[b]
-                if not 0 <= pa <= 1 or not 0 <= pb <= 1:
-                    continue
-                gap = abs(pa - pb)
-                pairs.append((min(gap, 1 - gap), b))
-            except (IndexError, TypeError):
-                continue
-        target = min(pairs)[1] if pairs else rows[min(offset // 15, len(rows) - 1)]["CarIdx"]
-        cues.append({"time": at + offset, "car_idx": target})
-    return cues
+    """Keep the start leader in focus, alternating rear chase and a wide blimp view."""
+    if not samples:
+        return []
+    snapshot = min(samples, key=lambda s: abs(s.session_time - at))
+    rows = ordered(snapshot)
+    leader = next((row for row in rows if row["position"] == 1), None)
+    if leader is None:
+        return []
+    return [{"time": at + offset, "car_idx": leader["CarIdx"],
+             "group": "Rear Chase" if index % 2 == 0 else "Blimp"}
+            for index, offset in enumerate(range(0, max(0, int(end - at)) + 1, 12))
+            if at + offset < end]
+
+
+def selected_highlights_job(job):
+    """Return the playback selection without removing saved segments or audio."""
+    selected = [segment for segment in job.get("segments", []) if not segment.get("excluded", False)]
+    if not selected:
+        raise ValueError("Include at least one highlight before opening the player.")
+    return dict(job, segments=selected)
 
 
 def programme_seconds(job):
@@ -190,6 +184,8 @@ def programme_seconds(job):
     total = 0
     previous_kind = None
     for segment in job["segments"]:
+        if segment.get("excluded", False):
+            continue
         kind = segment["kind"]
         estimated_audio = {"intro": 30, "lineup": 6, "outro": 70}.get(kind, 25)
         if kind == "clip":
@@ -721,6 +717,8 @@ def prepare_highlights(capture, job_path, options=None):
             old = cached.get(segment["facts"], {})
             if segment["kind"] == "clip" and any(old.get(key) != segment.get(key) for key in ("start", "end")):
                 continue
+            if old.get("excluded", False):
+                segment["excluded"] = True
             audio = (job_path.parent / old.get("audio", "")).resolve()
             if old.get("audio_seconds", 0) > 0 and audio.is_relative_to(job_path.parent) and audio.is_file() and old.get("narration"):
                 segment.update({key: old[key] for key in ("audio", "audio_seconds", "narration")})

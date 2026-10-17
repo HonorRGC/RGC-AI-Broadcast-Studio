@@ -547,7 +547,7 @@ def test_long_recap_budget_keeps_key_moments_and_some_rear_field_recognition():
     assert job["omitted_optional_clips"] > 0
 
 
-def test_restart_camera_tracks_fifth_to_tenth_not_the_leader(tmp_path):
+def test_restart_camera_tracks_leader_and_alternates_rear_chase_blimp(tmp_path):
     from production.highlights import restart_camera_cues
     data = snapshots()
     for s in data:
@@ -555,12 +555,58 @@ def test_restart_camera_tracks_fifth_to_tenth_not_the_leader(tmp_path):
         s.lap_completed = [0] * 12
         s.lap_dist_pct = [.8 - i * .01 for i in range(12)]
         s.pit_road_status = [False] * 12
-    cues = restart_camera_cues(data, 0, 11)
-    assert cues and all(4 <= cue["car_idx"] <= 9 for cue in cues)
+    cues = restart_camera_cues(data, 0, 50)
+    assert cues and all(cue["car_idx"] == 0 for cue in cues)
+    assert [cue["group"] for cue in cues] == ["Rear Chase", "Blimp", "Rear Chase", "Blimp", "Rear Chase"]
+    assert all(cue["time"] < 50 for cue in cues)
     player, *_ = make_player(tmp_path)
     player.segment["camera_cues"] = [{"time": 50, "car_idx": 5}, {"time": 65, "car_idx": 8}]
     assert player.camera_target(51) == 5
     assert player.camera_target(66) == 8
+
+
+def test_start_uses_leader_before_green_and_available_camera_fallbacks(tmp_path):
+    player, controller, server, clock, plays = make_player(tmp_path)
+    player.segment.update(events=[{"kind": "restart", "time": 58}], car_idx=5,
+                          camera_cues=[{"time": 58, "car_idx": 0, "group": "Rear Chase"},
+                                       {"time": 70, "car_idx": 0, "group": "Blimp"}])
+    controller.get_driver_lookup = lambda: {0: {"number": "34"}, 5: {"number": "5"}}
+    groups = [{"GroupName": "TV1", "GroupNum": 3}, {"GroupName": "Rear Chase", "GroupNum": 7},
+              {"GroupName": "Blimp", "GroupNum": 9}]
+    controller.get_camera_groups = lambda: groups
+    shots = []
+    controller.switch_camera_to_car = lambda number, group, camera: shots.append((number, group)) or True
+    assert player.camera_target(50) == 0
+    assert player.camera_group(50) == "Rear Chase"
+    assert player.camera_group(70) == "Blimp"
+    assert player.focus()
+    assert shots[-1] == ("34", 7)
+    assert player.focus(player.camera_group(70), idx=player.camera_target(70))
+    assert shots[-1] == ("34", 9)
+    player.stage, player.started_at, player.deadline = "playing", 100, 200
+    player.holding_frame, player.media_started_replay_time = False, 50
+    player.group, player.camera_idx = "Rear Chase", 0
+    controller.time, clock[0] = 70, 120
+    player.tick()
+    assert player.group == "Blimp" and shots[-1] == ("34", 9)
+    groups.pop()
+    assert player.focus("Blimp", idx=0)
+    assert shots[-1] == ("34", 3)
+
+
+def test_existing_prepared_restart_replaces_midfield_cues_without_new_audio(tmp_path):
+    player, controller, server, clock, plays = make_player(tmp_path)
+    player.segment.update(events=[{"kind": "start", "time": 58}], car_idx=5,
+                          camera_cues=[{"time": 58, "car_idx": 5}])
+    sample = TelemetrySnapshot(session_num=2, session_time=58,
+                               results=[{"CarIdx": 2, "Position": 1}, {"CarIdx": 5, "Position": 6}])
+    source = SimpleNamespace(snapshots=[sample])
+    updated = HighlightsPlayer(player.job, controller, server, player.audio, tmp_path, source=source)
+    assert updated.camera_target(50) == 2
+    assert updated.camera_group(50) == "Rear Chase"
+    assert updated.segment["audio"] == "voice.mp3"
+    assert player.segment["camera_cues"][0]["car_idx"] == 5
+    assert not plays
 
 
 def test_lineup_uses_rear_chase_with_chase_fallback(tmp_path):

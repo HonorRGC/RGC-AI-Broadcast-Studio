@@ -4782,9 +4782,12 @@ def build_help_tab(
 
         Prepare Highlights uses OpenAI to write narration and ElevenLabs to create speech: API charges apply at preparation.
         Playback and Load Prepared reuse saved audio without new narration API calls. Completed compatible segments are retained on retry.
+        Choose Highlights lets you exclude or restore prepared segments before playback. Read the saved narration, select clips and Save Selection.
+        Excluded clips and audio remain saved. Restore All includes everything again; no new narration charges apply. Stop playback before editing.
         You can Load Prepared, change only the title, and open the player without preparing or paying for narration again.
         Sponsor names/graphics and transition changes can also be saved when opening a prepared player without regenerating speech.
-        Left recap sponsor adds a separate name/logo on the closing recap. Both sponsor areas sit above the results and highlights panels.
+        Upper-left highlight sponsor adds a separate name/logo throughout the highlights, including the recap, just like the right sponsor.
+        Both sponsor areas sit above the recap results and highlights panels.
         Prepare again if you want a new spoken sponsor mention. Run SIMRacingApps and Trading Paints during the original broadcast.
         New captures save car images for the whole field, including Driver Mode, in a matching .images folder beside the JSONL.
         Keep that folder with the capture. Highlights reuse its pictures without SIMRacingApps during preparation or playback.
@@ -4795,7 +4798,8 @@ def build_help_tab(
         Lineup cameras use Rear Chase, falling back to Far Chase or Chase when needed. The finish begins forty seconds before the checkered.
         Overtakes start before the scoring change; no more than two nearby passes share a clip. Long races target roughly 15-20 minutes.
         Routine passes are ranked behind key race stories, while selected rear-field moments still give more drivers recognition.
-        Starts and restarts run longer and focus on the racing around fifth through tenth rather than staying on the leader.
+        Starts and restarts follow the leader, beginning with Rear Chase and alternating with Blimp about every twelve seconds to show the field.
+        Missing cameras fall back to Far Chase/Chase, Chopper or TV. Load Prepared applies the camera change without new narration.
         Pit windows show the first car and up to five early followers, plus the opening leader's later stop if needed.
         Key moments and narration are retained; very eventful races may exceed the target and show a warning. Quiet races can be shorter.
         Practice music loops continuously at 10 percent. The closing recap shows the podium, paged results and recorded race statistics.

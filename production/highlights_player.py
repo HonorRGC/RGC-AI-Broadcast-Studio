@@ -10,6 +10,21 @@ STYLES = ("fade", "slide", "wipe")
 
 class HighlightsPlayer:
     def __init__(self, job, controller, server, audio, job_dir, clock=None, source=None, music=None, playlist=None):
+        from production.highlights import selected_highlights_job
+        job = selected_highlights_job(job)
+        if source:
+            from production.highlights import restart_camera_cues
+            samples = [s for s in source.snapshots if s.session_num == job["session_num"]]
+            segments = []
+            for original in job["segments"]:
+                segment = dict(original)
+                start = next((e for e in segment.get("events", []) if e["kind"] in ("start", "restart")), None)
+                if start:
+                    segment["camera_cues"] = restart_camera_cues(samples, start["time"], segment["end"])
+                    if segment["camera_cues"]:
+                        segment["car_idx"] = segment["camera_cues"][0]["car_idx"]
+                segments.append(segment)
+            job = dict(job, segments=segments)
         self.job, self.controller, self.server, self.audio = job, controller, server, audio
         self.job_dir, self.clock = Path(job_dir).resolve(), clock or time.monotonic
         self.source = source
@@ -126,6 +141,9 @@ class HighlightsPlayer:
         self.publish()
 
     def camera_target(self, at):
+        if self.is_race_start() and self.segment.get("camera_cues"):
+            cues = sorted(self.segment["camera_cues"], key=lambda cue: cue["time"])
+            return next((cue["car_idx"] for cue in reversed(cues) if cue["time"] <= at), cues[0]["car_idx"])
         plan = getattr(self.server, "caution_assignments", None)
         if plan:
             for event in self.segment.get("events", []):
@@ -151,8 +169,16 @@ class HighlightsPlayer:
         active = [event for event in cues if event["time"] - 6 <= at]
         return (active[-1] if active else cues[0])["car_idx"]
 
+    def is_race_start(self):
+        return self.segment["kind"] == "clip" and any(e["kind"] in ("start", "restart") for e in self.segment.get("events", []))
+
+    def camera_group(self, at):
+        cues = sorted(self.segment.get("camera_cues", []), key=lambda cue: cue["time"])
+        current = next((cue for cue in reversed(cues) if cue["time"] <= at), cues[0] if cues else {})
+        return current.get("group", "Rear Chase")
+
     def focus(self, group=None, idx=None):
-        group = group or ("Rear Chase" if self.segment["kind"] == "lineup" else "TV1")
+        group = group or (self.camera_group(self.segment["start"]) if self.is_race_start() else "Rear Chase" if self.segment["kind"] == "lineup" else "TV1")
         if idx is None:
             idx = self.camera_target(self.segment["start"])
         if idx is None:
@@ -165,6 +191,9 @@ class HighlightsPlayer:
         if desired is None and group.lower() == "rear chase":
             desired = next((g for name in ("far chase", "chase") for g in groups
                             if str(g.get("GroupName", "")).lower() == name), None)
+        if desired is None and group.lower() == "blimp":
+            desired = next((g for name in ("blimp", "chopper") for g in groups
+                            if name in str(g.get("GroupName", "")).lower()), None)
         desired = desired or next((g for g in groups if "tv" in str(g.get("GroupName", "")).lower()), None)
         if not desired or not car_number:
             return False
@@ -357,10 +386,15 @@ class HighlightsPlayer:
                 # One alternate angle for an overtake; incident causation is not
                 # inferred from a camera change. Start and finish on TV.
                 target = self.camera_target(current)
-                if target is not None and target != getattr(self, "camera_idx", None):
+                if self.is_race_start():
+                    group = self.camera_group(current)
+                    if target is not None and (target != getattr(self, "camera_idx", None) or self.group != group):
+                        self.focus(group, idx=target)
+                        self.last_camera_change = now
+                elif target is not None and target != getattr(self, "camera_idx", None):
                     self.focus("TV1", idx=target)
                     self.last_camera_change = now
-                if target is not None and now - self.last_camera_change > 8:
+                if not self.is_race_start() and target is not None and now - self.last_camera_change > 8:
                     next_group = "Chase" if self.group == "TV1" and elapsed < 17 else "TV1"
                     self.focus(next_group, idx=target)
                     self.last_camera_change = now
@@ -397,6 +431,8 @@ def run_highlights(job_path, host="127.0.0.1", port=8765):
     from replay.replay_telemetry import ReplayTelemetry
     job_path = Path(job_path).resolve()
     job = json.loads(job_path.read_text(encoding="utf-8"))
+    from production.highlights import selected_highlights_job
+    job = selected_highlights_job(job)
     if job.get("status") != "ready" or not job.get("segments"):
         raise ValueError("Prepare the highlight programme before playing it.")
     controller = IRacingTelemetry()
