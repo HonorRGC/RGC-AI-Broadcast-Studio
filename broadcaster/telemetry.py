@@ -381,6 +381,8 @@ class IRacingTelemetry:
                 "user_id": cust_id,
                 "car_path": driver.get("CarPath", ""),
                 "car_id": driver.get("CarID", ""),
+                "car_design_str": driver.get("CarDesignStr", ""),
+                "car_number_design_str": driver.get("CarNumberDesignStr", ""),
                 "car_class_id": driver.get("CarClassID", ""),
                 "car_class_name": driver.get("CarClassName", "")
                 or driver.get("CarClass", ""),

@@ -1,5 +1,16 @@
 # Changelog
 
+## Version 1.1.1 - Highlights Camera, Finish and Car Image Fixes
+
+- Use Rear Chase for starting-grid introductions, with Far Chase/Chase fallbacks.
+- Retain clip titles, center graphics and sponsor branding over custom full-screen transition backgrounds. Clip captions retain the subject as the lap changes.
+- Simplify start/restart narration and keep caution introductions brief, naming a producer-selected review driver when assigned.
+- Start finish coverage forty seconds before the first confirmed finish, limited by the available capture.
+- Use the full broadcast image resolver for highlights lineup and podium cars. Read each replay driver's design strings for their own body, number and rim styling; retain these details in new captures.
+- Stop copying another driver's rim/color settings into fallback renders, refresh cached styling from the current replay, and reject custom-paint requests belonging to another customer even when the car number matches.
+
+Existing prepared highlights can use the image, camera and visual fixes through Load Prepared. Prepare again to rebuild narration and the longer finish clip. Accurate custom paint depends on local paint files and the matching replay; SIMRacingApps should remain active during playback.
+
 ## Version 1.1.0 - Race Highlights and Producer Caution Review
 
 - Prepare narrated highlights from saved telemetry and the matching iRacing replay, then record playback in Streamlabs using the existing overlay.

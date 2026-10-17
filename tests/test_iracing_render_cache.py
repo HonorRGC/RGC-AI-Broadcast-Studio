@@ -158,11 +158,41 @@ def test_synthesize_render_request_url_uses_local_paint_and_renderer_port(monkey
     assert "size=2" in url
     assert "carPath=stockcars2%5Cmustang2019" in url
     assert "carCustPaint=" in url
-    assert "carPat=19" in url
-    assert "numPat=48" in url
-    assert "carRimType=3" in url
+    assert "carPat=" not in url
+    assert "numPat=" not in url
+    assert "carRimType=" not in url
+    assert "carRimCol=" not in url
     assert "carCfgCustomPaintExt=tga" in url
     assert "number=34" in url
+
+
+def test_driver_styling_preserves_each_cars_rim_color_and_finish():
+    from production.iracing_render_cache import driver_render_styling
+    styles = [driver_render_styling({"car_design_str": design}) for design in
+              ("13,ffffff,000000,ff0000,fff500", "22,0072bc,111111,f5f6f6,000000",
+               "2,ffffff,000000,000000-bd10e0", "2,ffffff,000000,000000;ffffff")]
+    assert [s["carRimCol"] for s in styles] == ["fff500", "000000", "bd10e0", "ffffff"]
+    assert [s["carRimType"] for s in styles] == ["0", "0", "3", "1"]
+    assert driver_render_styling({}) == {}
+
+
+def test_same_car_number_cannot_match_another_custom_paint_owner(tmp_path):
+    request = find_render_requests_in_text("http://127.0.0.1:32034/pk_car.png?carPath=rt2000&number=34&carCustPaint=C%3A%5Cpaint%5Ccar_999999.tga", tmp_path / "cache")[0]
+    assert not render_request_matches_driver(request, {"number": "34", "cust_id": "123456", "car_path": "rt2000"})
+
+
+def test_matching_cached_request_gets_current_driver_rim_colors(monkeypatch,tmp_path):
+    from production import iracing_render_cache as cache
+    from urllib.parse import urlparse,parse_qs
+    request = find_render_requests_in_text("http://127.0.0.1:32034/pk_car.png?carPath=rt2000&number=34&carRimCol=bd10e0&carRimType=3", tmp_path / "cache")[0]
+    monkeypatch.setattr(cache, "cached_render_requests", lambda now=None: [request])
+    url = build_iracing_render_image_url({"number": "34", "car_path": "rt2000", "car_design_str": "13,ffffff,000000,ff0000,fff500"})
+    query = parse_qs(urlparse(url).query)
+    assert query["carRimCol"] == ["fff500"]
+    assert query["carRimType"] == ["0"]
+    default_url = build_iracing_render_image_url({"number": "34", "car_path": "rt2000", "car_design_str": "13,ffffff,000000,ff0000"})
+    default_query = parse_qs(urlparse(default_url).query)
+    assert "carRimCol" not in default_query and "carRimType" not in default_query
 
 
 def test_build_iracing_render_image_url_can_synthesize_when_exact_driver_was_not_cached(monkeypatch, tmp_path):

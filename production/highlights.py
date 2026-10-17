@@ -365,7 +365,7 @@ def build_plan(snapshots, source="", markers=None, caution_assignments=None):
 
     if race_lap(first) <= 1:
         start = next((s for s in race if race_lap(s) > 0 and s.session_state == 4 and not s.session_flags & CAUTION), first)
-        add("start", start, "The race gets underway. Follow the action in fifth through tenth without inventing contact or an overtake.", (ordered(start)[0]["CarIdx"] if ordered(start) else None), before=2, after=55)
+        add("start", start, "This is the start of the race. The race gets underway.", (ordered(start)[0]["CarIdx"] if ordered(start) else None), before=2, after=55)
     sampled = []
     for s in race:
         if sampled and s.session_time - sampled[-1].session_time < 0.4:
@@ -400,9 +400,9 @@ def build_plan(snapshots, source="", markers=None, caution_assignments=None):
         if previous:
             was_yellow, yellow = bool(previous.session_flags & CAUTION), bool(s.session_flags & CAUTION)
             if yellow and not was_yellow:
-                add("caution", s, f"The caution is displayed on lap {race_lap(s)}. The telemetry does not establish its cause.", rows[0]["CarIdx"], before=12, after=8)
+                add("caution", s, f"The caution came out on lap {race_lap(s)}. Let's see what could have brought out the caution.", rows[0]["CarIdx"], before=12, after=8)
             elif was_yellow and not yellow and s.session_state == 4:
-                add("restart", s, f"Green-flag racing resumes on lap {race_lap(s)}. Follow the restart action in positions five through ten; do not invent passes.", rows[0]["CarIdx"], before=8, after=50)
+                add("restart", s, f"Green-flag racing resumes on lap {race_lap(s)}.", rows[0]["CarIdx"], before=8, after=50)
             pitters = [idx for idx in by_idx if pit(s, idx) and not pit(previous, idx)]
             if pitters:
                 leaders_at_entry[s.session_time] = leader if leader is not None else rows[0]["CarIdx"]
@@ -527,7 +527,7 @@ def build_plan(snapshots, source="", markers=None, caution_assignments=None):
         if final:
             name = driver(last, final[0]["CarIdx"])["driver_name"]
             podium = "; ".join(f"position {row['position']}: {driver(last, row['CarIdx'])['driver_name']}" for row in final[:3])
-            add("finish", finish, f"The captured finish lists {name} in first place. Podium classification: {podium}. Describe the recorded finish without inventing the winning margin.", final[0]["CarIdx"], before=20, after=8)
+            add("finish", finish, f"The captured finish lists {name} in first place. Podium classification: {podium}. Describe the recorded finish without inventing the winning margin.", final[0]["CarIdx"], before=40, after=8)
     # Look back from each yellow for a captured incident candidate and follow it.
     for caution_number, caution in enumerate([event for event in events if event["kind"] == "caution"], 1):
         caution["caution_id"] = f"{first.session_num}:caution:{caution_number}"
@@ -535,9 +535,8 @@ def build_plan(snapshots, source="", markers=None, caution_assignments=None):
         if assigned is not None and any(row.get("CarIdx") == assigned for s in race for row in s.results):
             caution["car_idx"] = assigned
             caution["start"] = max(first.session_time, caution["time"] - 20)
-            caution["facts"] = (f"Caution on lap {caution['lap']}. The producer selected "
-                                  f"{driver(last, assigned)['driver_name']} for this caution review. "
-                                  "Introduce the replay of this driver before the yellow. Do not invent fault or contact.")
+            caution["facts"] = (f"The caution came out on lap {caution['lap']}. We're taking a look at "
+                                  f"{driver(last, assigned)['driver_name']} to see what could have brought out the caution.")
             # A producer selection replaces an uncertain automatic candidate in this review.
             events = [event for event in events if not (event["kind"] in ("incident", "incident_marker")
                       and 0 <= caution["time"] - event["time"] <= 25)]
@@ -569,10 +568,6 @@ def build_plan(snapshots, source="", markers=None, caution_assignments=None):
             event["camera_cues"] = restart_camera_cues(sampled, event["time"], event["end"])
             if event["camera_cues"]:
                 event["car_idx"] = event["camera_cues"][0]["car_idx"]
-                initial = min(sampled, key=lambda s: abs(s.session_time - event["time"]))
-                focus = next((r for r in ordered(initial) if r["CarIdx"] == event["car_idx"]), None)
-                if focus:
-                    event["facts"] += f" At this point {driver(initial, event['car_idx'])['driver_name']} is running in position {focus['position']}."
     lead_passes = [event for event in events if event["kind"] == "lead_change" and event.get("on_track")]
     if lead_passes:
         max(lead_passes, key=lambda event: event["time"])["decisive_lead_change"] = True
@@ -592,10 +587,14 @@ def build_plan(snapshots, source="", markers=None, caution_assignments=None):
         caution = next((e for e in clip["events"] if e["kind"] == "caution"), None)
         incident = next((e for e in clip["events"] if e["kind"] in ("incident", "incident_marker")), None)
         facts = " ".join(e["facts"] for e in clip["events"])
-        if caution and incident and 0 <= caution["time"] - incident["time"] <= 15:
-            facts += f" The incident may have contributed to the lap {caution['lap']} caution; causation is unconfirmed."
+        if caution:
+            facts = caution["facts"] + " Keep this caution introduction brief; do not list incident points or discuss confidence or uncertainty."
         camera_cues = [cue for event in clip["events"] for cue in event.get("camera_cues", [])]
-        segments.append(dict(clip, kind="clip", camera_cues=camera_cues, title=f"Lap {clip['events'][0]['lap']} · {('incident review' if clip['events'][0]['kind'] == 'incident_marker' else clip['events'][0]['kind'].replace('_', ' ')).title()}", facts=facts))
+        primary = caution or clip["events"][0]
+        labels = {"caution": "Caution Review", "start": "Race Start", "restart": "Restart", "pit_cycle": "Pit Stops",
+                  "overtake": "Overtake", "lead_change": "Lead Change", "finish": "Race Finish", "incident_marker": "Incident Review"}
+        subject = labels.get(primary["kind"], primary["kind"].replace("_", " ").title())
+        segments.append(dict(clip, kind="clip", camera_cues=camera_cues, title=f"Lap {primary['lap']} · {subject}", facts=facts))
     finish_facts = next((event["facts"] for event in events if event["kind"] == "finish"), "")
     recap = build_recap(race, grid, finish, events)
     recap_facts = " ".join(f"{stat['label']}: {stat['driver']} {stat['value']}." for stat in recap.get("stats", []) if stat["value"] != "Not recorded")
@@ -744,6 +743,8 @@ def prepare_highlights(capture, job_path, options=None):
                 words = max(words, 20 + entrants * 8)
             if segment["kind"] == "outro" and job.get("recap"):
                 words = 140
+            if any(event["kind"] == "caution" for event in segment.get("events", [])):
+                words = 30
             prompt = ("Write natural motorsports recap narration, spoken text only. Use only these facts. "
                       "This is a retrospective highlight video: introduce each recorded moment rather than pretending it is live. "
                       "Do not mention telemetry, markers, data, software, or editorial instructions to viewers. "

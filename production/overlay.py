@@ -7211,12 +7211,9 @@ OVERLAY_HTML = r"""<!doctype html>
     #highlight-transition img { max-width:65vw; max-height:45vh; object-fit:contain; filter:drop-shadow(0 6px 16px #0008); }
     #highlight-transition-fullscreen { display:none; }
     #highlight-transition.custom-art::before { display:none; }
-    #highlight-transition.custom-art > :not(#highlight-transition-fullscreen) { display:none !important; }
-    #highlight-transition.custom-art #highlight-transition-fullscreen { display:block; position:absolute; inset:0; width:100%; height:100%; max-width:none; max-height:none; object-fit:cover; filter:none; }
-    body.highlights-custom-art #highlight-programme-title,
-    body.highlights-custom-art #highlight-sponsor,
-    body.highlights-custom-art #highlight-sponsor-name,
-    body.highlights-custom-art .studio-stamp { display:none !important; }
+    #highlight-transition.custom-art > :not(#highlight-transition-fullscreen) { position:relative; z-index:1; }
+    #highlight-transition.custom-art #highlight-transition-fullscreen { display:block; position:absolute; inset:0; width:100%; height:100%; max-width:none; max-height:none; object-fit:cover; filter:none; z-index:0; }
+    #highlight-transition.custom-art h1, #highlight-transition.custom-art p { background:#080e1cc9; padding:10px 22px; border-radius:5px; text-shadow:0 2px 4px #000; }
     #highlight-transition h1 { font:800 48px Arial; margin:0; letter-spacing:2px; text-transform:uppercase; }
     #highlight-transition p { font:22px Arial; margin:0; color:#d9e3f0; }
     #highlight-transition.arrive-fade { animation:highlight-fade .7s ease both; }

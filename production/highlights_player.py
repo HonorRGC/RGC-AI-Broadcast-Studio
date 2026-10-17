@@ -147,7 +147,8 @@ class HighlightsPlayer:
         active = [event for event in cues if event["time"] - 6 <= at]
         return (active[-1] if active else cues[0])["car_idx"]
 
-    def focus(self, group="TV1", idx=None):
+    def focus(self, group=None, idx=None):
+        group = group or ("Rear Chase" if self.segment["kind"] == "lineup" else "TV1")
         if idx is None:
             idx = self.camera_target(self.segment["start"])
         if idx is None:
@@ -157,6 +158,9 @@ class HighlightsPlayer:
         car_number = str(info.get("number") or "")
         groups = self.controller.get_camera_groups() or []
         desired = next((g for g in groups if str(g.get("GroupName", "")).lower() == group.lower()), None)
+        if desired is None and group.lower() == "rear chase":
+            desired = next((g for name in ("far chase", "chase") for g in groups
+                            if str(g.get("GroupName", "")).lower() == name), None)
         desired = desired or next((g for g in groups if "tv" in str(g.get("GroupName", "")).lower()), None)
         if not desired or not car_number:
             return False
@@ -175,8 +179,7 @@ class HighlightsPlayer:
         from config import USE_IRACING_RENDERED_CAR_IMAGES
         entries = [dict(entry) for entry in (self.segment.get("entries", []) if source_entries is None else source_entries)]
         if USE_IRACING_RENDERED_CAR_IMAGES:
-            from production.sim_racing_apps import build_sim_racing_apps_car_render_info
-            from production.iracing_render_cache import build_iracing_render_image_url
+            from app import build_featured_driver_render_info
             current_lookup = getattr(self.controller, "get_driver_lookup", lambda: {})() or {}
             for entry in entries:
                 info = dict(entry.get("render_driver") or {})
@@ -192,8 +195,11 @@ class HighlightsPlayer:
                     if same_number and same_driver:
                         info.update(current, car_idx=int(idx))
                         break
-                render = build_sim_racing_apps_car_render_info(info)
-                entry["car_image_url"] = render.get("image_url") or entry.get("car_image_url") or build_iracing_render_image_url(info)
+                # Use the full broadcast's resolver rather than trusting a saved render URL.
+                info.pop("car_image_url", None)
+                info.pop("paint_image_url", None)
+                render = build_featured_driver_render_info(info)
+                entry["car_image_url"] = render.get("image_url", "")
                 entry["number_style"] = render.get("number_style", {})
         return entries
 
@@ -323,7 +329,8 @@ class HighlightsPlayer:
                     self.server.update_from_telemetry(self.source)
                     from production.highlights import race_lap
                     with self.server.lock:
-                        self.server.highlights["title"] = f"Lap {race_lap(self.source.current_snapshot())} · Race Highlights"
+                        subject = self.segment["title"].split("·", 1)[-1].strip()
+                        self.server.highlights["title"] = f"Lap {race_lap(self.source.current_snapshot())} · {subject}"
                 if current >= self.segment["end"]:
                     self.controller.pause_replay()
                     self.holding_frame = True
@@ -354,7 +361,7 @@ class HighlightsPlayer:
                 else:
                     self.index += 1
                     if continuous_lineup:
-                        if not self.focus("TV1"):
+                        if not self.focus("Rear Chase"):
                             return self.fail("Could not set the lineup driver's camera.")
                         self.seamless_lineup = True
                         self.stage, self.changed_at = "camera_wait", now

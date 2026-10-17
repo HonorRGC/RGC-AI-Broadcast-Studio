@@ -33,8 +33,9 @@ def test_planner_qualifies_incidents_and_caution_cause_without_repeating_clips()
     plan = build_plan(data)
     matches = [s for s in plan["segments"] if "incident" in [e["kind"] for e in s.get("events", [])]]
     assert len(matches) == 1
-    assert "increased by 4" in matches[0]["facts"]
-    assert "causation is unconfirmed" in matches[0]["facts"]
+    assert any("increased by 4" in e["facts"] for e in matches[0]["events"])
+    assert "Let's see what could have brought out the caution" in matches[0]["facts"]
+    assert "causation is unconfirmed" not in matches[0]["facts"]
     assert len([e for e in events(plan) if e["kind"] == "incident"]) == 1
 
 
@@ -165,6 +166,7 @@ def test_title_edits_preserve_prepared_narration(tmp_path):
 
 def test_lineup_refreshes_stored_image_using_matched_current_replay_driver(tmp_path, monkeypatch):
     import config
+    import app
     import production.sim_racing_apps as sra
     import production.iracing_render_cache as cache
     player, controller, server, clock, plays = make_player(tmp_path)
@@ -177,7 +179,7 @@ def test_lineup_refreshes_stored_image_using_matched_current_replay_driver(tmp_p
     def render(info):
         seen.append(info)
         return {"image_url": "current-paint.png"}
-    monkeypatch.setattr(sra, "build_sim_racing_apps_car_render_info", render)
+    monkeypatch.setattr(app, "build_featured_driver_render_info", render)
     monkeypatch.setattr(cache, "build_iracing_render_image_url", lambda info: "fallback.png")
     entries = player.lineup_entries()
     assert entries[0]["car_image_url"] == "current-paint.png"
@@ -521,6 +523,49 @@ def test_restart_camera_tracks_fifth_to_tenth_not_the_leader(tmp_path):
     player.segment["camera_cues"] = [{"time": 50, "car_idx": 5}, {"time": 65, "car_idx": 8}]
     assert player.camera_target(51) == 5
     assert player.camera_target(66) == 8
+
+
+def test_lineup_uses_rear_chase_with_chase_fallback(tmp_path):
+    player, controller, server, clock, plays = make_player(tmp_path)
+    player.segment.update(kind="lineup", active_position=1, entries=[{"position": 1, "car_idx": 0}])
+    controller.get_driver_lookup = lambda: {0: {"number": "34", "name": "T.J. Lee"}}
+    groups = [{"GroupName": "TV1", "GroupNum": 3}, {"GroupName": "Rear Chase", "GroupNum": 7}]
+    controller.get_camera_groups = lambda: groups
+    shots = []
+    controller.switch_camera_to_car = lambda number, group, camera: shots.append((number, group)) or True
+    assert player.focus()
+    assert shots[-1] == ("34", 7)
+    groups[1] = {"GroupName": "Chase", "GroupNum": 8}
+    assert player.focus()
+    assert shots[-1] == ("34", 8)
+
+
+def test_clip_caption_keeps_its_subject_when_lap_updates(tmp_path):
+    player, controller, server, clock, plays = make_player(tmp_path)
+    player.segment["title"] = "Lap 26 · Pit Stops"
+    player.source = SimpleNamespace(current_snapshot=lambda: TelemetrySnapshot(lap=27, total_laps=150))
+    server.update_from_telemetry = lambda source: None
+    player.begin_segment()
+    controller.time = 50
+    player.start_media()
+    clock[0] += 1
+    controller.time = 51
+    player.tick()
+    assert server.highlights["title"] == "Lap 27 · Pit Stops"
+
+
+def test_finish_covers_last_forty_seconds_and_start_omits_camera_instructions():
+    data = snapshots()
+    for s in data:
+        s.session_time *= 10
+        s.total_laps = 150
+    data[-1].session_flags = 1
+    plan = build_plan(data)
+    finish, = [e for e in events(plan) if e["kind"] == "finish"]
+    assert finish["time"] - finish["start"] == 40
+    start, = [e for e in events(plan) if e["kind"] == "start"]
+    assert "fifth" not in start["facts"] and "Focus" not in start["facts"]
+    assert "start of the race" in start["facts"]
 
 
 def test_pit_window_includes_first_car_and_later_leader_stop():

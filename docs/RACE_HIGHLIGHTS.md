@@ -24,11 +24,13 @@ Automated and browser tests cover selection, narration caching, replay scanning,
 
 ## Title, music and costs
 
-**Full-screen transition artwork** accepts a league image for the complete between-clip slate. A 1920x1080 image fills the frame without cropping; other aspect ratios fill the frame by cropping the edges. This replaces the default border, center logo and slate labels while covered, and uses the selected entry/exit transition. Results recap and error screens retain their regular layout. Leave blank to restore the RGC slate. This visual setting can be changed through Load Prepared without regenerating narration.
+**Full-screen transition artwork** accepts a league image for the complete between-clip slate. A 1920x1080 image fills the frame without cropping; other aspect ratios fill the frame by cropping the edges. This replaces the slate background and default border while retaining the clip title, center graphic and sponsor branding, and uses the selected entry/exit transition. Results recap and error screens retain their regular layout. Leave blank to restore the RGC slate. This visual setting can be changed through Load Prepared without regenerating narration.
 
 Center transitions and the upper-right clip sponsor have independent editable sponsor names and graphic choices. Type a custom name or select a profile sponsor. Load Prepared and Open Highlights Player save these visual edits without regenerating speech; prepare again to change spoken sponsor mentions. Transition styles animate both onto the slate and off it when revealing the clip.
 
-Keep SIMRacingApps active with the matching saved replay during playback for current car renders. It is not needed for narration preparation. JSONL captures driver/car metadata rather than paint-image files; the player prefers the current identity-matched SIMRacingApps render before a saved image URL or local-render fallback.
+Keep SIMRacingApps active with the matching saved replay during playback for current car renders. It is not needed for narration preparation. JSONL captures driver/car metadata rather than paint-image files; the player uses the full broadcast's current identity-matched SIMRacingApps render and local-render fallback rather than trusting a saved image URL.
+
+Highlights lineup and podium images now use the full broadcast's render resolver. Live replay driver design strings provide per-driver body/number styling and wheel finish/color; new captures retain those design strings too. Local fallback renders do not copy rim or number styling from another driver's cached request. Existing captures can obtain these fields from the loaded matching replay without rebuilding narration. Accurate custom paint still depends on the matching paint files being available locally.
 
 Enter an optional title in Race Highlights. It stays across the top during playback. Load Prepared can update only the title before opening the player, without regenerating narration. Practice music plays continuously at ten percent and loops back to the first song; it stops at programme completion or Stop Highlights.
 
@@ -66,3 +68,5 @@ Incident counts are not guaranteed for every driver. A replay marker is not proo
 Partial captures are explicitly marked and cannot supply an unrecorded finish or missing lead changes. Captures combining different tracks/race session IDs are rejected. If no verified grid exists, lineup pages are omitted. Damage retirements require an explicit recorded reason; stopped or disconnected cars are not assumed damaged.
 
 Streamlabs should capture iRacing, the overlay browser source, game audio and Studio's audio output as in a normal broadcast. Keep the overlay visible during transitions. Preparation may take several minutes and uses online service credits; gameplay footage is still rendered by iRacing during playback.
+
+Grid introductions use Rear Chase with Far Chase/Chase fallbacks. Start/restart narration describes the race rather than explaining camera position choices. Caution narration briefly introduces the yellow and the producer-selected review driver, or a general review when Automatic is selected. Clip captions retain their subject (for example, Lap 27 · Pit Stops) as the lap updates. Finish coverage starts forty seconds before the first confirmed finish, limited by the available capture.

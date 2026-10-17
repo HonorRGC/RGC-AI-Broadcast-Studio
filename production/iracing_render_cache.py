@@ -56,7 +56,20 @@ def build_iracing_render_image_url(driver_info, *, now=None):
     if not matches:
         return synthesize_render_request_url(driver_info, driver, cached_render_requests(now=now))
 
-    return best_render_request(matches, driver).url
+    request = best_render_request(matches, driver)
+    styling = driver_render_styling(driver_info)
+    if not styling:
+        return request.url
+    query = render_template_query(request)
+    # Replace case-insensitive variants so an older numcol cannot override numCol.
+    replaced = {k.lower() for k in styling}
+    if styling.get("carPat") is not None:
+        # A four-field SDK design has default rims, not the cached rim choice.
+        replaced.update(("carrimtype", "carrimcol"))
+    query = {key: value for key, value in query.items() if key.lower() not in replaced}
+    query.update(styling)
+    parsed = urlparse(request.url)
+    return f"{parsed.scheme}://{parsed.netloc}{parsed.path}?{encode_render_query(query)}"
 
 
 def cached_render_requests(*, now=None):
@@ -200,8 +213,8 @@ def render_request_matches_driver(request: RenderRequest, driver):
         if request_car_path not in driver_car_path and driver_car_path not in request_car_path:
             return False
 
-    if request.cust_id and driver["cust_id"] and request.cust_id == driver["cust_id"]:
-        return True
+    if request.cust_id and driver["cust_id"]:
+        return request.cust_id == driver["cust_id"]
 
     return bool(request.number and driver["number"] and request.number == driver["number"])
 
@@ -240,7 +253,10 @@ def synthesize_render_request_url(driver_info, driver, requests):
     if not paint:
         return ""
 
-    query = render_template_query(template)
+    template_query = render_template_query(template)
+    # A template supplies the renderer/view, never another driver's paint styling.
+    query = {key: value for key, value in template_query.items() if key in ("view", "light", "noDecal", "noNum")}
+    query.update(driver_render_styling(driver_info))
     query.update(
         {
             "size": "2",
@@ -259,6 +275,30 @@ def synthesize_render_request_url(driver_info, driver, requests):
     if driver["number"]:
         query["number"] = driver["number"]
     return f"{base_url}/pk_car.png?{encode_render_query(query)}"
+
+
+def driver_render_styling(driver_info):
+    """Decode the driver's SDK design strings, including rim finish/color.
+
+    Uses the same design-string delimiter mapping as SIMRacingApps iRacingCar.
+    Missing styling is omitted so the renderer uses defaults rather than a donor car.
+    """
+    result = {}
+    design = str(driver_info.get("car_design_str") or driver_info.get("CarDesignStr") or "")
+    parts = re.split(r"[,;.\-]", design)
+    valid_colors = lambda values: all(re.fullmatch(r"[0-9a-fA-F]{6}", value) for value in values)
+    if len(parts) >= 4 and parts[0].isdigit() and valid_colors(parts[1:4]):
+        result.update(carPat=parts[0], carCol=",".join(parts[1:4]))
+        if len(parts) >= 5 and valid_colors(parts[4:5]):
+            finish = "1" if ";" in design else "2" if "." in design else "3" if "-" in design else "0"
+            result.update(carRimType=finish, carRimCol=parts[4])
+    number_design = str(driver_info.get("car_number_design_str") or driver_info.get("CarNumberDesignStr") or "")
+    parts = re.split(r"[,;.\-]", number_design)
+    if len(parts) >= 5 and parts[0].isdigit() and parts[1].isdigit() and valid_colors(parts[2:5]):
+        result.update(numPat=parts[0], numSlnt=parts[1], numCol=",".join(parts[2:5]))
+    elif len(parts) == 4 and parts[0].isdigit() and valid_colors(parts[1:4]):
+        result.update(numPat=parts[0], numSlnt="0", numCol=",".join(parts[1:4]))
+    return result
 
 
 def best_render_template(requests, driver):

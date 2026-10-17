@@ -4770,7 +4770,7 @@ def build_help_tab(
         2. Click Race Highlights. Choose the main recording .jsonl, not the .events.jsonl commentary file.
         3. Enter an optional Highlights title. Set separate center-transition and upper-right clip sponsor names and graphics.
            Type custom sponsor names or select profile sponsors. Fade, slide or wipe animates both into the slate and out to the clip.
-           Optional Full-screen transition artwork replaces the entire between-clip slate with your league image. Use 1920x1080
+           Optional Full-screen transition artwork sets the between-clip background while keeping clip titles and sponsor graphics. Use 1920x1080
            artwork to avoid cropping. Leave it blank for the default RGC slate; the results recap keeps its own layout.
         4. Tick the matching-replay confirmation. Leave Scan saved replay incident markers on to search the race for incident candidates.
         5. Click Prepare Highlights. Rapid replay jumps are expected during the incident scan: do not start recording yet.
@@ -4786,6 +4786,7 @@ def build_help_tab(
         Keep the programme.json and its audio folder together under highlights/. Keep the source capture unchanged.
 
         The full-field lineup highlights each driver and switches cameras without transitions between drivers or pages.
+        Lineup cameras use Rear Chase, falling back to Far Chase or Chase when needed. The finish begins forty seconds before the checkered.
         Overtakes start before the scoring change; no more than two nearby passes share a clip. Long races target roughly 15-20 minutes.
         Routine passes are ranked behind key race stories, while selected rear-field moments still give more drivers recognition.
         Starts and restarts run longer and focus on the racing around fifth through tenth rather than staying on the leader.
