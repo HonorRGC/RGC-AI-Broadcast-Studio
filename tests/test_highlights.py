@@ -154,6 +154,34 @@ def test_title_edits_preserve_prepared_narration(tmp_path):
     job = json.loads(path.read_text())
     assert job["options"] == {"sponsor": "RGC", "title": "Richmond Race Highlights"}
     assert job["status"] == "ready" and job["segments"][0]["audio"] == "voice.mp3"
+    save_highlights_title(path, "Richmond", {"transition_sponsor": "Center Sponsor", "transition_graphic": "/static/center.png", "full_screen_graphic": "/static/league.png",
+                                            "sponsor": "Clip Sponsor", "sponsor_logo": "/static/clip.png"})
+    job = json.loads(path.read_text())
+    assert job["options"]["transition_sponsor"] == "Center Sponsor"
+    assert job["options"]["sponsor_logo"] == "/static/clip.png"
+    assert job["options"]["full_screen_graphic"] == "/static/league.png"
+    assert job["segments"][0]["narration"] == "Saved commentary."
+
+
+def test_lineup_refreshes_stored_image_using_matched_current_replay_driver(tmp_path, monkeypatch):
+    import config
+    import production.sim_racing_apps as sra
+    import production.iracing_render_cache as cache
+    player, controller, server, clock, plays = make_player(tmp_path)
+    player.segment["entries"] = [{"car_idx": 1, "car_number": "34", "driver_name": "T.J. Lee",
+                                  "car_image_url": "old-paint.png", "render_driver": {"cust_id": 123}}]
+    controller.get_driver_lookup = lambda: {1: {"name": "Another Driver", "number": "75", "cust_id": 999},
+                                           4: {"name": "T.J. Lee", "number": "34", "cust_id": 123, "car_path": "current-car"}}
+    seen = []
+    monkeypatch.setattr(config, "USE_IRACING_RENDERED_CAR_IMAGES", True)
+    def render(info):
+        seen.append(info)
+        return {"image_url": "current-paint.png"}
+    monkeypatch.setattr(sra, "build_sim_racing_apps_car_render_info", render)
+    monkeypatch.setattr(cache, "build_iracing_render_image_url", lambda info: "fallback.png")
+    entries = player.lineup_entries()
+    assert entries[0]["car_image_url"] == "current-paint.png"
+    assert seen[0]["car_idx"] == 4 and seen[0]["car_path"] == "current-car"
 
 
 class Controller:
@@ -412,12 +440,12 @@ def test_parked_pit_car_is_not_treated_as_a_new_arrival():
         s.session_time = i * 10
         s.pit_road_status = [True, i in (2, 8)]
     stops = [e for e in events(build_plan(data)) if e["kind"] == "pit_cycle"]
-    assert len(stops) == 2
+    assert len(stops) == 1
     assert all(e["pit_entrants"] == [1] for e in stops)
     assert all("T.J. Lee" not in e["facts"] for e in stops)
 
 
-def test_pit_arrivals_are_grouped_per_lap_without_cooldown_or_four_driver_limit():
+def test_pit_arrivals_are_summarized_per_window_without_repeating_each_lap():
     data = snapshots()
     for i, s in enumerate(data):
         s.session_time = i * 5
@@ -426,12 +454,11 @@ def test_pit_arrivals_are_grouped_per_lap_without_cooldown_or_four_driver_limit(
             row["LapsComplete"] = s.lap - 1
         s.pit_road_status = [2 <= i < 4, 3 <= i < 4 or i >= 6]
     stops = [e for e in events(build_plan(data)) if e["kind"] == "pit_cycle"]
-    assert len(stops) == 2
+    assert len(stops) == 1
     assert stops[0]["pit_entrants"] == [0, 1]
-    assert stops[1]["pit_entrants"] == [1]
-    assert "T.J. Lee, Chuck Sweeting" in stops[0]["facts"]
-    assert stops[0]["end"] == 28  # Last arrival at 15s, plus the shorter 13s ending.
-    assert stops[1]["time"] - stops[0]["time"] < 45
+    assert "T.J. Lee" in stops[0]["facts"] and "Chuck Sweeting" in stops[0]["facts"]
+    assert stops[0]["end"] == 23  # Opening arrival at 10s plus 13s; no long pit montage.
+    assert "may span several laps" in stops[0]["facts"]
 
 
 def test_overtakes_include_longer_run_up_and_restarts_continue_longer():
@@ -443,7 +470,7 @@ def test_overtakes_include_longer_run_up_and_restarts_continue_longer():
             s.results[0]["Position"], s.results[1]["Position"] = 2, 1
     plan = build_plan(data)
     restart, = [e for e in events(plan) if e["kind"] == "restart"]
-    assert restart["end"] - restart["time"] == 35
+    assert restart["end"] - restart["time"] == 50
     lead, = [e for e in events(plan) if e["kind"] == "lead_change"]
     assert lead["time"] - lead["start"] == 25
     assert lead["end"] == lead["time"]
@@ -461,6 +488,50 @@ def test_grouping_limits_passes_to_two_and_keeps_other_subjects_separate():
         ["overtake", "lead_change"], ["overtake"], ["restart"], ["pit_cycle"], ["caution"]]
     chain = group_highlight_events([event("overtake", i * 10, i // 2) for i in range(30)])
     assert all(len(c["events"]) <= 2 and c["end"] - c["start"] <= 55 for c in chain)
+
+
+def test_long_recap_budget_keeps_key_moments_and_some_rear_field_recognition():
+    from production.highlights import apply_highlight_budget, programme_seconds
+    def clip(i, kind="overtake", position=6):
+        return {"kind": "clip", "start": i * 100, "end": i * 100 + 25, "car_idx": i,
+                "events": [{"kind": kind, "position": position, "time": i * 100, "lap": i, "car_idx": i}]}
+    clips = [clip(0, "start"), clip(1, "restart"), clip(2, "caution"), clip(3, "finish")]
+    clips += [clip(i, position=6 if i % 2 else 20) for i in range(4, 100)]
+    job = {"segments": clips, "warnings": []}
+    apply_highlight_budget(job)
+    selected = [e for s in job["segments"] for e in s["events"]]
+    assert programme_seconds(job) <= 1080
+    assert {"start", "restart", "caution", "finish"} <= {e["kind"] for e in selected}
+    assert sum(e.get("position") == 20 and e["kind"] == "overtake" for e in selected) >= 2
+    assert sum(e.get("position") == 6 and e["kind"] == "overtake" for e in selected) > sum(e.get("position") == 20 and e["kind"] == "overtake" for e in selected)
+    assert job["omitted_optional_clips"] > 0
+
+
+def test_restart_camera_tracks_fifth_to_tenth_not_the_leader(tmp_path):
+    from production.highlights import restart_camera_cues
+    data = snapshots()
+    for s in data:
+        s.results = [{"CarIdx": i, "Position": i + 1, "LapsComplete": 0} for i in range(12)]
+        s.lap_completed = [0] * 12
+        s.lap_dist_pct = [.8 - i * .01 for i in range(12)]
+        s.pit_road_status = [False] * 12
+    cues = restart_camera_cues(data, 0, 11)
+    assert cues and all(4 <= cue["car_idx"] <= 9 for cue in cues)
+    player, *_ = make_player(tmp_path)
+    player.segment["camera_cues"] = [{"time": 50, "car_idx": 5}, {"time": 65, "car_idx": 8}]
+    assert player.camera_target(51) == 5
+    assert player.camera_target(66) == 8
+
+
+def test_pit_window_includes_first_car_and_later_leader_stop():
+    data = snapshots()
+    for i, s in enumerate(data):
+        s.session_time = i * 10
+        s.pit_road_status = [i >= 7, 2 <= i <= 4]
+    stops = [e for e in events(build_plan(data)) if e["kind"] == "pit_cycle"]
+    assert [e["pit_role"] for e in stops] == ["opening", "leader"]
+    assert stops[0]["car_idx"] == 1 and stops[1]["car_idx"] == 0
+    assert all(e["end"] - e["start"] <= 21 for e in stops)
 
 
 def test_short_clip_waits_for_narration_to_finish(tmp_path):

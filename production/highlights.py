@@ -156,6 +156,101 @@ def build_recap(race, grid, finish, events):
     return {"results": results, "podium": [row for row in results if row["position"] <= 3], "stats": stats}
 
 
+def restart_camera_cues(samples, at, end):
+    """Follow the closest available racing in P5–P10, without claiming a pass."""
+    cues = []
+    for offset in (0, 15, 30, 45):
+        if at + offset >= end:
+            break
+        snapshot = min(samples, key=lambda s: abs(s.session_time - at - offset))
+        rows = [row for row in ordered(snapshot) if 5 <= row["position"] <= 10 and not pit(snapshot, row["CarIdx"])
+                and (row["CarIdx"] >= len(snapshot.track_surface) or snapshot.track_surface[row["CarIdx"]] == 3)]
+        if not rows:
+            continue
+        pairs = []
+        for front, behind in zip(rows, rows[1:]):
+            a, b = front["CarIdx"], behind["CarIdx"]
+            try:
+                if snapshot.lap_completed[a] != snapshot.lap_completed[b]:
+                    continue
+                pa, pb = snapshot.lap_dist_pct[a], snapshot.lap_dist_pct[b]
+                if not 0 <= pa <= 1 or not 0 <= pb <= 1:
+                    continue
+                gap = abs(pa - pb)
+                pairs.append((min(gap, 1 - gap), b))
+            except (IndexError, TypeError):
+                continue
+        target = min(pairs)[1] if pairs else rows[min(offset // 15, len(rows) - 1)]["CarIdx"]
+        cues.append({"time": at + offset, "car_idx": target})
+    return cues
+
+
+def programme_seconds(job):
+    import math
+    total = 0
+    previous_kind = None
+    for segment in job["segments"]:
+        kind = segment["kind"]
+        estimated_audio = {"intro": 30, "lineup": 6, "outro": 70}.get(kind, 25)
+        if kind == "clip":
+            entrants = sum(len(event.get("pit_entrants", [])) for event in segment.get("events", []))
+            estimated_audio = max(estimated_audio, 12 + entrants * 3)
+        duration = max(segment.get("audio_seconds", estimated_audio) + 1, segment["end"] - segment["start"])
+        if kind == "outro" and job.get("recap"):
+            duration = max(duration, 20, math.ceil(max(0, len(job["recap"].get("results", [])) - 15) / 5) * 8 + 2)
+        total += duration + (.8 if kind == previous_kind == "lineup" else 4)
+        previous_kind = kind
+    return total
+
+
+def apply_highlight_budget(job, limit=1080):
+    """Preserve the main story, then choose varied optional moments within a time budget."""
+    original = list(job["segments"])
+    essential, optional = [], []
+    for index, segment in enumerate(original):
+        events = segment.get("events", [])
+        mandatory = segment["kind"] != "clip" or any(event["kind"] in ("start", "restart", "caution", "finish") or event.get("decisive_lead_change") or
+                    event.get("pit_role") in ("opening", "leader") for event in events)
+        if mandatory:
+            essential.append(index)
+        else:
+            score = 0
+            for event in events:
+                position = event.get("position", 99)
+                value = 95 if event["kind"] == "lead_change" and event.get("on_track", True) else 20
+                if event["kind"] == "overtake":
+                    value = (80 if position <= 10 else 30) + min(25, max(0, event.get("places_gained", 0)) * 3)
+                if event["kind"] in ("incident", "incident_marker", "retirement"):
+                    value = 60
+                score = max(score, value)
+            optional.append((index, score))
+    selected = set(essential)
+    def seconds(indices):
+        return programme_seconds(dict(job, segments=[s for i, s in enumerate(original) if i in indices]))
+    # Reserve two worthwhile rear-field stories, featuring different drivers.
+    featured = set()
+    rear = [(i, score) for i, score in optional if any(e["kind"] == "overtake" and e.get("position", 0) > 10 for e in original[i].get("events", []))]
+    for i, score in sorted(rear, key=lambda item: -item[1]):
+        idx = original[i].get("car_idx")
+        if idx not in featured and len(featured) < 2 and seconds(selected | {i}) <= limit:
+            selected.add(i)
+            featured.add(idx)
+    for i, score in sorted(optional, key=lambda item: (-item[1], item[0])):
+        if i in selected:
+            continue
+        if seconds(selected | {i}) <= limit:
+            selected.add(i)
+    job["segments"] = [segment for i, segment in enumerate(original) if i in selected]
+    job["duration_target_seconds"] = 1080
+    job["estimated_seconds"] = programme_seconds(job)
+    job["omitted_optional_clips"] = job.get("omitted_optional_clips", 0) + len(original) - len(selected)
+    if job["estimated_seconds"] > 1200:
+        warning = "The start, restarts, cautions, key pit stops, lineup and finish exceed the 20-minute target; essential coverage was retained."
+        if warning not in job["warnings"]:
+            job["warnings"].append(warning)
+    return job
+
+
 def group_highlight_events(events):
     """Keep each clip on one subject instead of chaining overlapping windows."""
     clips = []
@@ -256,6 +351,7 @@ def build_plan(snapshots, source="", markers=None, caution_assignments=None):
 
     events, previous, incidents, last_called, recent_pits = [], None, {}, {}, {}
     pit_groups = {}
+    leaders_at_entry = {}
     leader, proposed, proposed_at = None, None, 0
     saw_incidents = False
 
@@ -269,7 +365,7 @@ def build_plan(snapshots, source="", markers=None, caution_assignments=None):
 
     if race_lap(first) <= 1:
         start = next((s for s in race if race_lap(s) > 0 and s.session_state == 4 and not s.session_flags & CAUTION), first)
-        add("start", start, "The race gets underway. Describe the start without inventing contact or an overtake.", (ordered(start)[0]["CarIdx"] if ordered(start) else None), before=2, after=18)
+        add("start", start, "The race gets underway. Follow the action in fifth through tenth without inventing contact or an overtake.", (ordered(start)[0]["CarIdx"] if ordered(start) else None), before=2, after=55)
     sampled = []
     for s in race:
         if sampled and s.session_time - sampled[-1].session_time < 0.4:
@@ -306,9 +402,10 @@ def build_plan(snapshots, source="", markers=None, caution_assignments=None):
             if yellow and not was_yellow:
                 add("caution", s, f"The caution is displayed on lap {race_lap(s)}. The telemetry does not establish its cause.", rows[0]["CarIdx"], before=12, after=8)
             elif was_yellow and not yellow and s.session_state == 4:
-                add("restart", s, f"Green-flag racing resumes on lap {race_lap(s)}.", rows[0]["CarIdx"], before=8, after=35)
+                add("restart", s, f"Green-flag racing resumes on lap {race_lap(s)}. Follow the restart action in positions five through ten; do not invent passes.", rows[0]["CarIdx"], before=8, after=50)
             pitters = [idx for idx in by_idx if pit(s, idx) and not pit(previous, idx)]
             if pitters:
+                leaders_at_entry[s.session_time] = leader if leader is not None else rows[0]["CarIdx"]
                 phase = "caution" if yellow else "green-flag"
                 group = pit_groups.setdefault((race_lap(s), phase), [])
                 known = {arrival[1] for arrival in group}
@@ -324,7 +421,8 @@ def build_plan(snapshots, source="", markers=None, caution_assignments=None):
                 on_track = green and all(s.session_time - recent_pits.get(idx, -100) > 45 for idx in (leader, current_leader))
                 ahead = driver(s, current_leader)["driver_name"]
                 behind = driver(s, leader)["driver_name"]
-                add("lead_change", s, f"Lap {race_lap(s)}: {ahead} takes over the recorded race lead from {behind}. " + ("Both cars are outside the recent pit-stop window; describe the observed lead change without inventing a lane or contact." if on_track else "This may be a pit-cycle or caution-order change; do not call it an on-track pass."), current_leader, before=25, after=0)
+                event = add("lead_change", s, f"Lap {race_lap(s)}: {ahead} takes over the recorded race lead from {behind}. " + ("Both cars are outside the recent pit-stop window; describe the observed lead change without inventing a lane or contact." if on_track else "This may be a pit-cycle or caution-order change; do not call it an on-track pass."), current_leader, before=25, after=0)
+                event["on_track"] = on_track
                 leader, proposed = current_leader, None
         else:
             proposed = None
@@ -357,16 +455,43 @@ def build_plan(snapshots, source="", markers=None, caution_assignments=None):
                     context = f" Started {start}; currently position {row['position']}." if start else ""
                     event = add("overtake", s, f"Lap {race_lap(s)}: {name} moves ahead of {rival_name} in the recorded order for position {row['position']}, after running close together on the same lap.{context} Do not invent the passing lane or contact.", idx, before=25, after=0)
                     event["rival_idx"] = other
+                    event["position"] = row["position"]
+                    event["places_gained"] = start - row["position"] if start else 0
         previous = s
-    for (lap, phase), arrivals in pit_groups.items():
-        first_stop, first_idx = arrivals[0]
-        names = ", ".join(driver(snapshot, idx)["driver_name"] for snapshot, idx in arrivals)
+    pit_cycles = []
+    arrivals = sorted([(s, idx, phase) for (_, phase), group in pit_groups.items() for s, idx in group], key=lambda item: item[0].session_time)
+    for arrival in arrivals:
+        s, idx, phase = arrival
+        if (not pit_cycles or pit_cycles[-1][-1][2] != phase or
+                s.session_time - pit_cycles[-1][-1][0].session_time > 90 or
+                s.session_time - pit_cycles[-1][0][0].session_time > 240):
+            pit_cycles.append([])
+        pit_cycles[-1].append(arrival)
+    for cycle in pit_cycles:
+        first_stop, first_idx, phase = cycle[0]
+        unique = []
+        seen = set()
+        for arrival in cycle:
+            if arrival[1] not in seen:
+                unique.append(arrival)
+                seen.add(arrival[1])
+        opening = unique[:6]
+        names = ", ".join(driver(s, idx)["driver_name"] for s, idx, _ in opening[1:])
+        followers = f"Other early stops in this window include {names}. " if names else ""
         event = add("pit_cycle", first_stop,
-                    f"Lap {lap}: {phase} pit stops, with {names} entering pit road on this lap. "
-                    "Mention each listed driver once in this grouped pit report. Do not guess tire service or fuel quantities.",
-                    first_idx, before=8, after=13)
-        event["pit_entrants"] = [idx for _, idx in arrivals]
-        event["end"] = min(last.session_time, arrivals[-1][0].session_time + 13)
+                    f"Lap {race_lap(first_stop)}: {driver(first_stop, first_idx)['driver_name']} is the first recorded car into pit road in this {phase} pit window. "
+                    f"{followers}These stops may span several laps; do not say everyone stopped on the opening lap. "
+                    "Do not guess tire service or fuel quantities.", first_idx, before=8, after=13)
+        event.update(pit_entrants=[idx for _, idx, _ in opening], pit_role="opening")
+        cycle_leader = leaders_at_entry.get(first_stop.session_time)
+        leader_stop = next(((s, idx) for s, idx, _ in cycle if idx == cycle_leader), None)
+        if leader_stop and leader_stop[0].session_time > event["end"]:
+            s, idx = leader_stop
+            leader_event = add("pit_cycle", s, f"Lap {race_lap(s)}: {driver(s, idx)['driver_name']}, who led when this pit window opened, makes their stop. "
+                               "Explain the timing decision without inventing fuel, tire service or an outcome.", idx, before=8, after=13)
+            leader_event.update(pit_entrants=[idx], pit_role="leader")
+        elif leader_stop:
+            event["facts"] += f" The leader at the opening of this window, {driver(leader_stop[0], cycle_leader)['driver_name']}, stops during this opening sequence."
     confirmed = []
     for event in events:
         if event["kind"] == "overtake":
@@ -435,6 +560,22 @@ def build_plan(snapshots, source="", markers=None, caution_assignments=None):
             candidate = min(candidates, key=lambda event: abs(caution["time"] - event["time"]))
             caution["car_idx"] = candidate["car_idx"]
             caution["start"] = min(caution["start"], candidate["start"])
+    for event in events:
+        if event["kind"] in ("start", "restart"):
+            next_yellow = next((c["time"] for c in sorted(events, key=lambda e: e["time"])
+                                if c["kind"] == "caution" and event["time"] < c["time"] < event["end"]), None)
+            if next_yellow is not None:
+                event["end"] = next_yellow
+            event["camera_cues"] = restart_camera_cues(sampled, event["time"], event["end"])
+            if event["camera_cues"]:
+                event["car_idx"] = event["camera_cues"][0]["car_idx"]
+                initial = min(sampled, key=lambda s: abs(s.session_time - event["time"]))
+                focus = next((r for r in ordered(initial) if r["CarIdx"] == event["car_idx"]), None)
+                if focus:
+                    event["facts"] += f" At this point {driver(initial, event['car_idx'])['driver_name']} is running in position {focus['position']}."
+    lead_passes = [event for event in events if event["kind"] == "lead_change" and event.get("on_track")]
+    if lead_passes:
+        max(lead_passes, key=lambda event: event["time"])["decisive_lead_change"] = True
     clips = group_highlight_events(events)
     segments = [{"kind": "intro", "title": "Race Highlights", "start": first.session_time, "end": first.session_time,
                  "facts": f"Race highlights from {first.track_info.get('track_name') or 'this race'}. Scheduled distance {first.total_laps} laps. " + ("This is a partial capture." if partial else "Introduce the recap briefly.")}]
@@ -453,7 +594,8 @@ def build_plan(snapshots, source="", markers=None, caution_assignments=None):
         facts = " ".join(e["facts"] for e in clip["events"])
         if caution and incident and 0 <= caution["time"] - incident["time"] <= 15:
             facts += f" The incident may have contributed to the lap {caution['lap']} caution; causation is unconfirmed."
-        segments.append(dict(clip, kind="clip", title=f"Lap {clip['events'][0]['lap']} · {('incident review' if clip['events'][0]['kind'] == 'incident_marker' else clip['events'][0]['kind'].replace('_', ' ')).title()}", facts=facts))
+        camera_cues = [cue for event in clip["events"] for cue in event.get("camera_cues", [])]
+        segments.append(dict(clip, kind="clip", camera_cues=camera_cues, title=f"Lap {clip['events'][0]['lap']} · {('incident review' if clip['events'][0]['kind'] == 'incident_marker' else clip['events'][0]['kind'].replace('_', ' ')).title()}", facts=facts))
     finish_facts = next((event["facts"] for event in events if event["kind"] == "finish"), "")
     recap = build_recap(race, grid, finish, events)
     recap_facts = " ".join(f"{stat['label']}: {stat['driver']} {stat['value']}." for stat in recap.get("stats", []) if stat["value"] != "Not recorded")
@@ -467,9 +609,9 @@ def build_plan(snapshots, source="", markers=None, caution_assignments=None):
                 drivers[row["CarIdx"]] = driver(snapshot, row["CarIdx"])
     cautions = [{"id": event["caution_id"], "lap": event["lap"], "time": event["time"]}
                 for event in events if event["kind"] == "caution"]
-    return {"schema_version": 1, "source": str(Path(source).resolve()) if source else "", "session_num": first.session_num,
+    return apply_highlight_budget({"schema_version": 1, "source": str(Path(source).resolve()) if source else "", "session_num": first.session_num,
             "track": first.track_info.get("track_name", ""), "subsession_id": first.weekend_info.get("SubSessionID"), "partial": partial, "warnings": warnings,
-            "segments": segments, "recap": recap, "status": "planned", "drivers": list(drivers.values()), "cautions": cautions}
+            "segments": segments, "recap": recap, "status": "planned", "drivers": list(drivers.values()), "cautions": cautions})
 
 
 def save_job(path, job):
@@ -567,6 +709,9 @@ def prepare_highlights(capture, job_path, options=None):
         pass
     if job["options"].get("sponsor"):
         job["segments"][0]["facts"] += " This recap is presented by " + job["options"]["sponsor"] + "."
+    center_sponsor = job["options"].get("transition_sponsor")
+    if center_sponsor and center_sponsor != job["options"].get("sponsor"):
+        job["segments"][0]["facts"] += " Transition presentations are sponsored by " + center_sponsor + "."
 
     job["voice_id"] = LEAD_VOICE_ID
     job["narration_revision"] = 2
@@ -626,6 +771,8 @@ def prepare_highlights(capture, job_path, options=None):
             save_job(job_path, job)
     finally:
         probe.stop()
+    # Check measured voice durations before declaring the programme ready.
+    apply_highlight_budget(job, limit=1200)
     job["status"], job["progress"] = "ready", "Ready: start recording in Streamlabs, then Play Highlights."
     save_job(job_path, job)
     return job

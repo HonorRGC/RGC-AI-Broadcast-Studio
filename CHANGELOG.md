@@ -3,8 +3,10 @@
 ## Version 1.1.0 - Race Highlights and Producer Caution Review
 
 - Prepare narrated highlights from saved telemetry and the matching iRacing replay, then record playback in Streamlabs using the existing overlay.
-- Add an editable title, sponsor logo, custom transitions, full-field camera-following lineup, continuous looping music, and a podium/results/statistics recap.
-- Keep clips focused: earlier overtake lead-ins, at most two passes per clip, pit entries grouped per lap, and separate restarts and caution reviews.
+- Add an editable title, independent custom center/clip sponsors, full-screen league transition artwork, animated entry/exit transitions, full-field camera-following lineup, continuous looping music, and a podium/results/statistics recap.
+- Keep clips focused: earlier overtake lead-ins, at most two passes per clip, compact pit-window summaries with the leader's stop, and separate restarts and caution reviews.
+- Aim near eighteen minutes for long races, recheck measured narration against twenty minutes, retain key race stories and selected rear-field recognition, and focus longer starts/restarts on P5-P10. Quiet races may be shorter; essential coverage may exceed the target with a warning.
+- Prefer current identity-matched SIMRacingApps car images during replay playback rather than keeping a stale saved image URL. Update visual branding without regenerating prepared speech.
 - Find caution review candidates using replay markers, incident changes and isolated pre-yellow slowdowns. Producer Assist can save a driver selection for each caution and reuse it in matching replay broadcasts.
 - Exclude post-race incident totals and garage returns from racing highlights, show the actual finish, and skip unavailable clips so the recap can continue.
 - Retain compatible prepared narration on retry. Preparation uses OpenAI/ElevenLabs credits; prepared playback and title/camera edits do not generate new narration calls.

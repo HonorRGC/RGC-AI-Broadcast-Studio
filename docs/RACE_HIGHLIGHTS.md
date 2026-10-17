@@ -24,11 +24,21 @@ Automated and browser tests cover selection, narration caching, replay scanning,
 
 ## Title, music and costs
 
+**Full-screen transition artwork** accepts a league image for the complete between-clip slate. A 1920x1080 image fills the frame without cropping; other aspect ratios fill the frame by cropping the edges. This replaces the default border, center logo and slate labels while covered, and uses the selected entry/exit transition. Results recap and error screens retain their regular layout. Leave blank to restore the RGC slate. This visual setting can be changed through Load Prepared without regenerating narration.
+
+Center transitions and the upper-right clip sponsor have independent editable sponsor names and graphic choices. Type a custom name or select a profile sponsor. Load Prepared and Open Highlights Player save these visual edits without regenerating speech; prepare again to change spoken sponsor mentions. Transition styles animate both onto the slate and off it when revealing the clip.
+
+Keep SIMRacingApps active with the matching saved replay during playback for current car renders. It is not needed for narration preparation. JSONL captures driver/car metadata rather than paint-image files; the player prefers the current identity-matched SIMRacingApps render before a saved image URL or local-render fallback.
+
 Enter an optional title in Race Highlights. It stays across the top during playback. Load Prepared can update only the title before opening the player, without regenerating narration. Practice music plays continuously at ten percent and loops back to the first song; it stops at programme completion or Stop Highlights.
 
 Preparation uses OpenAI and ElevenLabs credits. Prepared playback and title/camera edits do not generate new narration calls. Changing clip facts or timing requires preparation again for the affected audio; compatible completed segments are reused.
 
 ## Editorial requirements
+
+Long-race programmes aim near eighteen minutes, with a measured-audio check against twenty minutes. Starts/restarts are longer and use camera cues for the closest available on-track racing in P5-P10; they end early if another yellow interrupts. Front-running overtakes rank higher, with a small allowance for rear-field recognition. The last recorded on-track lead change, start, restarts, cautions, key pit stops and finish are protected. Quiet races are not padded to fifteen minutes; unusually large essential coverage may exceed twenty minutes and displays a warning.
+
+Pit coverage summarizes each observed window with its first car and up to five early followers. The driver leading when the window opened gets a separate short stop clip if their arrival is later. This replaces repeated reports for every pit-entry lap and excludes cars already parked on pit road. New windows are separated by an arrival gap or a maximum four-minute grouping span, rather than assuming a fuel range.
 
 - Post-race production from the full saved .rpy plus matching telemetry capture, including leagues and officials.
 - A concise race introduction and existing RGC starting-lineup graphic, ten drivers per page, based on verified race grid data. Do not replace missing starting positions with current running order.

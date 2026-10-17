@@ -7179,6 +7179,9 @@ OVERLAY_HTML = r"""<!doctype html>
     body.highlights-mode #lineup-panel { top:180px !important; }
     body.highlights-mode .studio-stamp { left:28px !important; bottom:24px !important; width:220px; z-index:112; }
     #highlight-sponsor { position:fixed; right:32px; top:28px; width:220px; max-height:120px; object-fit:contain; z-index:111; filter:drop-shadow(0 3px 8px #000); }
+    #highlight-sponsor-name { position:fixed; right:32px; top:156px; width:220px; box-sizing:border-box; padding:8px; background:#101b2ee8; border-bottom:2px solid #dfb84c; color:white; text-align:center; font:700 18px Arial; overflow-wrap:anywhere; z-index:111; }
+    #highlight-transition-sponsor { color:#edc458 !important; font-weight:bold !important; max-width:65vw; text-align:center; }
+    body.highlights-recap #highlight-transition-sponsor { display:none; }
     #highlight-programme-title { position:fixed; left:16%; right:16%; top:26px; z-index:113; color:white; text-align:center; background:linear-gradient(90deg,#101b29e8,#233c58f5,#101b29e8); border-bottom:3px solid #dfb84c; padding:12px 20px; font:900 30px Arial; box-sizing:border-box; line-height:1.2; overflow-wrap:anywhere; }
     body.highlights-recap #highlight-recap h1 { position:absolute; top:110px; left:30%; width:40%; margin:0; font-size:28px; }
     #highlight-caption { position:fixed; bottom:32px; left:50%; transform:translateX(-50%); color:white; background:#101b2ee8; border-left:5px solid #e4bc4e; padding:12px 24px; font:bold 22px Arial; z-index:85; }
@@ -7206,11 +7209,25 @@ OVERLAY_HTML = r"""<!doctype html>
     body.highlights-recap #podium-panel .podium-panel-header { background:linear-gradient(90deg,#901326,#ca1634); }
     #highlight-transition::before { content:''; position:absolute; inset:18px; border:2px solid #dfb84c; pointer-events:none; }
     #highlight-transition img { max-width:65vw; max-height:45vh; object-fit:contain; filter:drop-shadow(0 6px 16px #0008); }
+    #highlight-transition-fullscreen { display:none; }
+    #highlight-transition.custom-art::before { display:none; }
+    #highlight-transition.custom-art > :not(#highlight-transition-fullscreen) { display:none !important; }
+    #highlight-transition.custom-art #highlight-transition-fullscreen { display:block; position:absolute; inset:0; width:100%; height:100%; max-width:none; max-height:none; object-fit:cover; filter:none; }
+    body.highlights-custom-art #highlight-programme-title,
+    body.highlights-custom-art #highlight-sponsor,
+    body.highlights-custom-art #highlight-sponsor-name,
+    body.highlights-custom-art .studio-stamp { display:none !important; }
     #highlight-transition h1 { font:800 48px Arial; margin:0; letter-spacing:2px; text-transform:uppercase; }
     #highlight-transition p { font:22px Arial; margin:0; color:#d9e3f0; }
     #highlight-transition.arrive-fade { animation:highlight-fade .7s ease both; }
     #highlight-transition.arrive-slide { animation:highlight-slide .7s ease both; }
     #highlight-transition.arrive-wipe { animation:highlight-wipe .7s ease both; }
+    #highlight-transition.depart-fade { animation:highlight-depart-fade .7s ease both; }
+    #highlight-transition.depart-slide { animation:highlight-depart-slide .7s ease both; }
+    #highlight-transition.depart-wipe { animation:highlight-depart-wipe .7s ease both; }
+    @keyframes highlight-depart-fade { 0% { opacity:1; visibility:visible; } 99% { visibility:visible; } 100% { opacity:0; visibility:hidden; } }
+    @keyframes highlight-depart-slide { 0% { opacity:1; visibility:visible; transform:translateX(0); } 99% { visibility:visible; } 100% { opacity:0; visibility:hidden; transform:translateX(100%); } }
+    @keyframes highlight-depart-wipe { 0% { opacity:1; visibility:visible; clip-path:polygon(0 0,100% 0,100% 100%,0 100%); } 99% { visibility:visible; } 100% { opacity:0; visibility:hidden; clip-path:polygon(100% 0,100% 0,100% 100%,100% 100%); } }
     @keyframes highlight-fade { from { opacity:0; } to { opacity:1; } }
     @keyframes highlight-slide { from { transform:translateX(-100%); } to { transform:translateX(0); } }
     @keyframes highlight-wipe { from { clip-path:polygon(0 0,0 0,0 100%,0 100%); } to { clip-path:polygon(0 0,100% 0,100% 100%,0 100%); } }
@@ -7423,6 +7440,7 @@ OVERLAY_HTML = r"""<!doctype html>
   </section>
 
   <img id="highlight-sponsor" class="hidden" alt="Highlight sponsor" />
+  <div id="highlight-sponsor-name" class="hidden"></div>
   <div id="highlight-programme-title" class="hidden"></div>
   <div id="highlight-caption" class="hidden"></div>
   <section id="highlight-recap">
@@ -7431,7 +7449,9 @@ OVERLAY_HTML = r"""<!doctype html>
     <div id="highlight-recap-stats" class="highlight-recap-box"><h2>Race Highlights</h2><div id="highlight-recap-stat-rows"></div></div>
   </section>
   <section id="highlight-transition">
+    <img id="highlight-transition-fullscreen" alt="League transition artwork" />
     <img id="highlight-transition-graphic" alt="RGC race highlights" />
+    <p id="highlight-transition-sponsor"></p>
     <h1 id="highlight-transition-title">Race Highlights</h1>
     <p id="highlight-transition-subtitle"></p>
   </section>
@@ -7466,24 +7486,41 @@ OVERLAY_HTML = r"""<!doctype html>
         document.getElementById("highlight-recap-stat-rows").innerHTML = (h.recap.stats || []).map(s => `<div class="highlight-recap-stat"><label>${escapeHtml(s.label)}</label><strong>${escapeHtml(s.value)}</strong><span>${escapeHtml(s.driver || "")}</span></div>`).join("");
       } else highlightRecapStarted = null;
       const layer = document.getElementById("highlight-transition");
+      const wasCovered = layer.classList.contains("covered");
       const covered = !!(h.active && h.cover);
+      const customArt = !!(covered && h.full_screen_graphic && h.segment_kind !== "outro" && !["error","paused","armed","complete"].includes(h.stage));
+      document.body.classList.toggle("highlights-custom-art", customArt);
+      if (customArt || covered || !h.active) layer.classList.toggle("custom-art", customArt);
+      const fullscreenGraphic = document.getElementById("highlight-transition-fullscreen");
+      if (h.full_screen_graphic && fullscreenGraphic.getAttribute("src") !== h.full_screen_graphic) fullscreenGraphic.src = h.full_screen_graphic;
       layer.classList.toggle("covered", covered);
       if (covered && lastHighlightTransition !== h.transition_id) {
+        layer.classList.remove("depart-fade", "depart-slide", "depart-wipe");
         layer.classList.remove("arrive-fade", "arrive-slide", "arrive-wipe");
         void layer.offsetWidth;
         const style = ["fade","slide","wipe"].includes(h.transition) ? h.transition : "fade";
         layer.classList.add(`arrive-${style}`);
         lastHighlightTransition = h.transition_id;
       }
-      if (!covered) layer.classList.remove("arrive-fade", "arrive-slide", "arrive-wipe");
+      if (!covered) {
+        layer.classList.remove("arrive-fade", "arrive-slide", "arrive-wipe");
+        if (wasCovered && h.active) layer.classList.add(`depart-${["fade","slide","wipe"].includes(h.transition) ? h.transition : "fade"}`);
+      }
       const graphic = document.getElementById("highlight-transition-graphic");
       const graphicUrl = h.graphic || "/assets/rgc_ai_broadcast_stamp.png";
       if (graphic.getAttribute("src") !== graphicUrl) graphic.src = graphicUrl;
+      const centerSponsor = document.getElementById("highlight-transition-sponsor");
+      centerSponsor.textContent = h.transition_sponsor ? `Presented by ${h.transition_sponsor}` : "";
+      centerSponsor.classList.toggle("hidden", !h.transition_sponsor);
       document.getElementById("highlight-transition-title").textContent = h.title || "Race Highlights";
       document.getElementById("highlight-transition-subtitle").textContent = h.stage === "countdown" ? h.message : (h.stage === "error" || h.stage === "paused" || h.stage === "complete" || h.stage === "armed") ? h.message : (h.track || "RGC AI Broadcast Studio");
       const sponsor = document.getElementById("highlight-sponsor");
       sponsor.classList.toggle("hidden", !(h.active && h.sponsor_logo));
       if (h.sponsor_logo && sponsor.getAttribute("src") !== h.sponsor_logo) sponsor.src = h.sponsor_logo;
+      const sponsorName = document.getElementById("highlight-sponsor-name");
+      sponsorName.textContent = h.sponsor || "";
+      sponsorName.classList.toggle("hidden", !(h.active && h.sponsor && !recapActive));
+      sponsorName.style.top = h.sponsor_logo ? "156px" : "28px";
       const caption = document.getElementById("highlight-caption");
       caption.classList.toggle("hidden", !(h.active && h.stage === "playing" && h.segment_kind === "clip" && !h.cover));
       caption.textContent = h.title || "";

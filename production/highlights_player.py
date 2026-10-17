@@ -52,6 +52,8 @@ class HighlightsPlayer:
                 "message": self.message, "progress": f"{self.index + 1} / {len(self.job['segments'])}",
                 "transition": self.style(), "transition_id": self.transition_id,
                 "graphic": options.get("transition_graphic", ""),
+                "full_screen_graphic": options.get("full_screen_graphic", ""),
+                "transition_sponsor": options.get("transition_sponsor", ""),
                 "sponsor_logo": options.get("sponsor_logo", ""), "sponsor": options.get("sponsor", ""),
                 "track": self.job.get("track", ""), "partial": self.job.get("partial", False)}
         data["programme_title"] = str(options.get("title") or "").strip()[:160]
@@ -133,6 +135,9 @@ class HighlightsPlayer:
             active = self.segment.get("active_position")
             entry = next((entry for entry in entries if entry.get("position") == active), entries[0] if entries else {})
             return entry.get("car_idx")
+        race_cues = [cue for cue in self.segment.get("camera_cues", []) if cue["time"] <= at]
+        if race_cues:
+            return max(race_cues, key=lambda cue: cue["time"])["car_idx"]
         events = sorted(self.segment.get("events", []), key=lambda event: event["time"])
         incidents = [event for event in events if event["kind"] in ("incident", "incident_marker")]
         cues = [event for event in events if event.get("car_idx") is not None and not (
@@ -172,12 +177,23 @@ class HighlightsPlayer:
         if USE_IRACING_RENDERED_CAR_IMAGES:
             from production.sim_racing_apps import build_sim_racing_apps_car_render_info
             from production.iracing_render_cache import build_iracing_render_image_url
+            current_lookup = getattr(self.controller, "get_driver_lookup", lambda: {})() or {}
             for entry in entries:
-                if entry.get("car_image_url"):
-                    continue
-                info = entry.get("render_driver") or {}
+                info = dict(entry.get("render_driver") or {})
+                info.setdefault("name", entry.get("driver_name", ""))
+                info.setdefault("number", entry.get("car_number", ""))
+                info.setdefault("car_idx", entry.get("car_idx"))
+                for idx, current in current_lookup.items():
+                    same_number = str(current.get("number", "")) == str(info.get("number", ""))
+                    recorded_id = info.get("cust_id") or info.get("user_id")
+                    current_id = current.get("cust_id") or current.get("user_id")
+                    same_driver = (str(recorded_id) == str(current_id) if recorded_id and current_id else
+                                   str(current.get("name", "")).casefold() == str(info.get("name", "")).casefold())
+                    if same_number and same_driver:
+                        info.update(current, car_idx=int(idx))
+                        break
                 render = build_sim_racing_apps_car_render_info(info)
-                entry["car_image_url"] = render.get("image_url") or build_iracing_render_image_url(info)
+                entry["car_image_url"] = render.get("image_url") or entry.get("car_image_url") or build_iracing_render_image_url(info)
                 entry["number_style"] = render.get("number_style", {})
         return entries
 
@@ -358,6 +374,8 @@ def run_highlights(job_path, host="127.0.0.1", port=8765):
     if job.get("status") != "ready" or not job.get("segments"):
         raise ValueError("Prepare the highlight programme before playing it.")
     controller = IRacingTelemetry()
+    from production.sim_racing_apps import reset_sim_racing_apps_state
+    reset_sim_racing_apps_state()
     if not controller.startup() or controller.get_replay_frame_number() is None:
         raise RuntimeError("Open the matching saved iRacing replay before playing highlights.")
     actual = str(controller.get_track_info().get("track_name", "")).strip().casefold()

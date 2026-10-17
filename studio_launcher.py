@@ -4768,7 +4768,10 @@ def build_help_tab(
 
         1. Stop the normal broadcast and load the matching saved .rpy in iRacing. Practice or qualifying is an acceptable starting point.
         2. Click Race Highlights. Choose the main recording .jsonl, not the .events.jsonl commentary file.
-        3. Enter an optional Highlights title, choose a sponsor and transition style, and optionally supply your own transition graphic.
+        3. Enter an optional Highlights title. Set separate center-transition and upper-right clip sponsor names and graphics.
+           Type custom sponsor names or select profile sponsors. Fade, slide or wipe animates both into the slate and out to the clip.
+           Optional Full-screen transition artwork replaces the entire between-clip slate with your league image. Use 1920x1080
+           artwork to avoid cropping. Leave it blank for the default RGC slate; the results recap keeps its own layout.
         4. Tick the matching-replay confirmation. Leave Scan saved replay incident markers on to search the race for incident candidates.
         5. Click Prepare Highlights. Rapid replay jumps are expected during the incident scan: do not start recording yet.
         6. Once Ready, click Open Highlights Player. Keep the normal overlay visible as a Streamlabs browser source at 1920x1080.
@@ -4777,10 +4780,17 @@ def build_help_tab(
         Prepare Highlights uses OpenAI to write narration and ElevenLabs to create speech: API charges apply at preparation.
         Playback and Load Prepared reuse saved audio without new narration API calls. Completed compatible segments are retained on retry.
         You can Load Prepared, change only the title, and open the player without preparing or paying for narration again.
+        Sponsor names/graphics and transition changes can also be saved when opening a prepared player without regenerating speech.
+        Prepare again if you want a new spoken sponsor mention. Keep SIMRacingApps running with the matching replay during playback
+        for current car renders; narration preparation does not need it. JSONL stores driver/car details, not archived paint images.
         Keep the programme.json and its audio folder together under highlights/. Keep the source capture unchanged.
 
         The full-field lineup highlights each driver and switches cameras without transitions between drivers or pages.
-        Overtakes start before the scoring change; no more than two nearby passes share a clip. Pit entries are grouped by lap.
+        Overtakes start before the scoring change; no more than two nearby passes share a clip. Long races target roughly 15-20 minutes.
+        Routine passes are ranked behind key race stories, while selected rear-field moments still give more drivers recognition.
+        Starts and restarts run longer and focus on the racing around fifth through tenth rather than staying on the leader.
+        Pit windows show the first car and up to five early followers, plus the opening leader's later stop if needed.
+        Key moments and narration are retained; very eventful races may exceed the target and show a warning. Quiet races can be shorter.
         Practice music loops continuously at 10 percent. The closing recap shows the podium, paged results and recorded race statistics.
         Results keep positions 1-15 visible and cycle the last five rows when there are more than twenty drivers.
         Missing statistics are labelled Not recorded. Observed laps led are identified as observed when official totals are unavailable.
