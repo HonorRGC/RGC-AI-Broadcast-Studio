@@ -1,0 +1,43 @@
+.rgclm {
+  --rgc-purple: #7138d4;
+  --rgc-blue: #11a8ff;
+  position: relative !important;
+  left: 50% !important;
+  width: min(1600px, calc(100vw - 32px)) !important;
+  max-width: none !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  transform: translateX(-50%) !important;
+  box-sizing: border-box !important;
+  color: #f5f8ff;
+  background: linear-gradient(135deg, #07111c, #15102a);
+  border: 1px solid #35465c;
+  border-radius: 14px;
+  overflow: hidden;
+  font-family: Inter, system-ui, sans-serif;
+}
+.rgclm-hero { padding: 24px 28px; background: radial-gradient(circle at 80% 0, rgba(113,56,212,.5), transparent 45%), linear-gradient(90deg,#0a1725,#161127); }
+.rgclm-hero p { color: #62c9ff; font-size: 11px; letter-spacing: .18em; margin: 0 0 5px; }
+.rgclm-hero h2 { color: #fff; font-size: clamp(25px,4vw,42px); margin: 0; }
+.rgclm-hero span { color: #b9c7d8; }
+.rgclm-tabs { display: flex; gap: 8px; padding: 12px 18px; background: #060d15; border-block: 1px solid #27374a; flex-wrap: wrap; }
+.rgclm-tabs button { border: 1px solid #3a4a60; border-radius: 7px; background: #142234; color: #dbe7f5; padding: 9px 16px; font-weight: 700; cursor: pointer; }
+.rgclm-tabs button.active, .rgclm-tabs button:hover { background: linear-gradient(135deg,var(--rgc-purple),#3b70d9); color: #fff; border-color: #9d7ce2; }
+.rgclm-panel { padding: 18px; }
+.rgclm-panel h3 { color: #fff; margin: 22px 0 8px; }
+.rgclm-panel h3:first-child { margin-top: 0; }
+.rgclm-table-wrap { width: 100%; overflow: visible; border: 1px solid #2a3c51; border-radius: 9px; }
+.rgclm-table { width: 100%; border-collapse: collapse; table-layout: auto; background: rgba(8,19,31,.92); font-size: clamp(12px,.88vw,15px); }
+.rgclm-table th { background: #162538; color: #75cfff; text-align: left; text-transform: uppercase; font-size: .78em; letter-spacing: .04em; }
+.rgclm-table th, .rgclm-table td { padding: 10px clamp(5px,.75vw,13px); border-bottom: 1px solid #24364b; white-space: normal; overflow-wrap: normal; word-break: normal; }
+.rgclm-table tbody tr:hover { background: rgba(113,56,212,.16); }
+.rgclm-table td:first-child { font-weight: 800; color: #fff; }
+.rgclm-empty { padding: 16px; border-left: 4px solid #7138d4; background: #101e2d; color: #fff; }
+@media (max-width: 760px) {
+  .rgclm { width: calc(100vw - 12px) !important; }
+  .rgclm-panel { padding: 6px; }
+  .rgclm-hero { padding: 18px; }
+  .rgclm-tabs { padding: 10px; }
+  .rgclm-table { font-size: 10px; }
+  .rgclm-table th, .rgclm-table td { padding: 7px 3px; letter-spacing: 0; }
+}

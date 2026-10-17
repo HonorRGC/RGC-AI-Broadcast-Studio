@@ -56,6 +56,10 @@ class EditorialTimeline:
 
             age = now - story.created_time
 
+            if age >= story.expire_after:
+                story.status = TimelineStatus.EXPIRED
+                continue
+
             if story.status == TimelineStatus.NEW:
 
                 if age >= story.delay_seconds:
@@ -69,12 +73,10 @@ class EditorialTimeline:
                 ):
                     story.status = TimelineStatus.FOLLOW_UP
 
-                if age >= story.expire_after:
-                    story.status = TimelineStatus.EXPIRED
-
     def next_story(self):
 
         self.update()
+        self.cleanup()
 
         candidates = []
 

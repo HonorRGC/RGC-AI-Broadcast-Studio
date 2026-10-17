@@ -1,5 +1,377 @@
 # Changelog
 
+## Version 1.1.2 - Recap Sponsors and Highlights Layout
+
+- Add an independent left recap sponsor name and logo, with a profile sponsor choice or custom name and image.
+- Retain the upper-right sponsor name on the recap and lower the results and highlights panels to leave both sponsor areas clear. Fit twenty results rows above the RGC stamp and contain long sponsor names.
+- Save these visual choices through Load Prepared and Open Highlights Player without regenerating narration. The left sponsor appears only on the recap and stays hidden when blank.
+
+Also includes the refreshed 1.1.1 installer fixes: archive original broadcast car images for highlights, show capture image counts, keep image archives with capture retention, respect blank center graphics, and place between-clip text near the bottom of custom artwork.
+
+## Version 1.1.1 - Highlights Camera, Finish and Car Image Fixes
+
+- Use Rear Chase for starting-grid introductions, with Far Chase/Chase fallbacks.
+- Retain clip titles, center graphics and sponsor branding over custom full-screen transition backgrounds. Clip captions retain the subject as the lap changes.
+- Simplify start/restart narration and keep caution introductions brief, naming a producer-selected review driver when assigned.
+- Start finish coverage forty seconds before the first confirmed finish, limited by the available capture.
+- Use the full broadcast image resolver for highlights lineup and podium cars. Read each replay driver's design strings for their own body, number and rim styling; retain these details in new captures.
+- Stop copying another driver's rim/color settings into fallback renders, refresh cached styling from the current replay, and reject custom-paint requests belonging to another customer even when the car number matches.
+
+Existing prepared highlights can use the image, camera and visual fixes through Load Prepared. Prepare again to rebuild narration and the longer finish clip. Accurate custom paint depends on local paint files and the matching replay; SIMRacingApps should remain active during playback.
+
+## Version 1.1.0 - Race Highlights and Producer Caution Review
+
+- Prepare narrated highlights from saved telemetry and the matching iRacing replay, then record playback in Streamlabs using the existing overlay.
+- Add an editable title, independent custom center/clip sponsors, full-screen league transition artwork, animated entry/exit transitions, full-field camera-following lineup, continuous looping music, and a podium/results/statistics recap.
+- Keep clips focused: earlier overtake lead-ins, at most two passes per clip, compact pit-window summaries with the leader's stop, and separate restarts and caution reviews.
+- Aim near eighteen minutes for long races, recheck measured narration against twenty minutes, retain key race stories and selected rear-field recognition, and focus longer starts/restarts on P5-P10. Quiet races may be shorter; essential coverage may exceed the target with a warning.
+- Prefer current identity-matched SIMRacingApps car images during replay playback rather than keeping a stale saved image URL. Update visual branding without regenerating prepared speech.
+- Find caution review candidates using replay markers, incident changes and isolated pre-yellow slowdowns. Producer Assist can save a driver selection for each caution and reuse it in matching replay broadcasts.
+- Exclude post-race incident totals and garage returns from racing highlights, show the actual finish, and skip unavailable clips so the recap can continue.
+- Retain compatible prepared narration on retry. Preparation uses OpenAI/ElevenLabs credits; prepared playback and title/camera edits do not generate new narration calls.
+- Offer capture retention at broadcast stop, improve replay seek confirmation, and explain setup, costs, recovery and caution choices in Studio Help.
+
+The matching saved .rpy is required for race footage. Incident candidates and producer camera selections do not establish collision details or fault; missing stats are shown as unavailable.
+
+## Version 1.0.18 - Broadcast Recovery and Mid-Race Accuracy
+
+- Recover from broadcast worker errors while retaining Producer and directors; retry interrupted live telemetry rather than ending capture immediately.
+- Sponsor presentations expire in the browser even when the server is unreachable. Studio stop allows capture cleanup before forced shutdown.
+- Persist the green/yellow lap tracker for the same iRacing session across restarts.
+- Save lossless delta captures with full checkpoints, interruption timestamps, and stop diagnostics. Existing captures remain readable; replay clearly reports the recorded capture boundary.
+- Recover verified starting positions after mid-race startup; omit starting-position and movement claims when no grid is available.
+- Vary battle introductions with verified driver context, use TV/Chase/TV coverage for close battles, and allow longer cockpit shots during race rundowns.
+- Display 15 championship drivers per page, use current League Manager results for season stats, keep league driver-card text tied to edited profiles, and show PITS for cars on pit road.
+
+Automated checks cover recovery, capture round trips, standings, starting positions, and camera timing. Full-session iRacing validation remains necessary; this release does not resolve hardware or whole-PC crashes.
+
+## Version 1.0.17 - Replay Sync, Driver Profiles and Pit Strategy
+
+- Recorded playback follows the replay session clock continuously, with an indexed lookup to recover after frame-counter stalls. Producer Assist displays replay sync status and timing offset.
+- Live lap and position arrays refresh scoring without waiting for session-results updates. Formation laps remain zero and the displayed race lap is capped at the scheduled distance.
+- Championship standings paginate and fit between the leaderboard and driver card; Biggest Movers adjusts to the card's actual bounds.
+- Driver profiles have compact reserved space, keeping all race metrics, including Laps Led, visible. Team text requires a profile sponsor and suppresses driver-name duplicates.
+- Added Race Progress Sponsor for quarter, halfway and three-quarter updates. Blank means no sponsor mention; removed the hard-coded awareness fallback.
+- Added observed early/late pit-stop comparisons and caution consequences across wide stop windows without assuming fuel range or confirmed tire changes.
+
+Exact replay alignment and initial race-lap behavior still need validation with real iRacing replays. No fix for whole-PC crashes is included.
+
+## Version 1.0.16 - Preseason Sim Racer Hub Imports
+
+- Replay return synchronization uses the replay session clock and stricter seek confirmation; timed-out seeks align telemetry to the actual replay position.
+- Finish detection requires iRacing's finish flag or finished-session state rather than the active lap reaching the race distance. Commentary uses completed laps when available.
+- Biggest Movers is narrower and sits beside the bottom driver card.
+
+- Latest refresh adds explicit running-order commentary context, separates championship ranks from running positions, excludes career last finishes from season last-race context, and encourages varied career top-five/top-ten references.
+- Flo's caution badge clears the history tracker; Race Recap uses RGC styling, and the driver card hides while podium finishers are displayed.
+
+- Refreshed installer separates season and career driver-card statistics. Both scopes cycle every eight seconds when available; career-only data is labeled Career Stats and missing season data never falls back to career totals.
+
+- Season schedules can import published dates, tracks, event names, and race lengths before results or race IDs exist. Unavailable race IDs remain blank.
+- Schedule import can use the Season ID when the source URL is blank, and keeps separate twin races while excluding off weeks.
+- Career Roster buttons load past participants for editable driver profiles, without restricting the import to the new season.
+- Career imports remove season and race filters from pasted URLs while retaining the selected series.
+- Season and career statistics remain separate; career statistics can match broadcast drivers without a roster profile.
+
+## Version 1.0.15 - Leaderboard and Driver Card Layout Fixes
+
+- Refreshed driver cards retain full-race observed High and Low positions, including changes within a lap; both values share one line without the redundant Current field.
+- Driver country flags appear after the name when country data is available.
+
+- Driver cards refresh their starting position from the scoring grid during the race.
+- Flo's green/yellow history strip sits between the sponsor and series boxes, below the cycling driver rows.
+- The leader's timing cell displays TO LEADER or TO NEXT as the timing mode changes; separate timing labels are hidden.
+- Biggest Movers sits above the driver card to prevent overlap.
+
+## Version 1.0.14 - Optional Awareness Messages
+
+- Leaving Cause / Awareness Name blank disables automatic awareness mentions, including inference of Autism Awareness from an event title.
+- Leftover cause-read text is ignored when no cause name is configured.
+- An explicitly blank awareness name overrides the legacy cause setting when loading Studio settings.
+- Removed the Autism Awareness logo from default brand graphics. Existing user-selected graphics and custom scripts are preserved.
+- Configured awareness campaigns continue to work normally.
+
+## Version 1.0.13 - Live Timing and RGC Race Reports
+
+### Added
+- Continuously refreshed gaps to the leader and intervals to the next car, using live track-position timing history with projected timing fallback.
+- Leaderboard timing cycles between clearly labeled TO LEADER and TO NEXT views.
+- RGC pit report tables with laps since pit, pit lane time, stationary stop time, and estimated service during pit commentary.
+- Matching RGC Biggest Movers tables with starting position, running position, and places gained.
+
+### Fixed
+- Driver cards retain both timing values without cycling, and initialize live RPM and gear when featured.
+- Driver cards clear the side leaderboard and hide season statistics in official sessions or when statistics are empty.
+- Recorded telemetry preserves completed laps and official-session metadata for newly captured sessions.
+
+Live timing estimates still need validation across tracks and session types; see docs/LIVE_TIMING.md.
+
+## Version 1.0.12 - Repeated Velocity Imports
+
+- Repeated Velocity imports append newly completed races while preserving existing results and manual schedule edits.
+- League Manager standings and driver statistics rebuild from merged results without duplicate rounds.
+
+## Version 1.0.11 - Caution Review Control
+
+### Changed
+- Caution incident review now selects the closer Chase camera instead of Far Chase for a clearer view down the track.
+- Simplified the driver card by removing the position timeline while retaining season statistics and useful live race metrics.
+- Increased driver-card text and telemetry sizes, raised the RPM arc clear of the readouts, and limited team/location profile lines to league drivers while retaining country flags for official races.
+- Restyled the caution restart Top 10 and pit-road panels with the standard RGC presentation.
+- Made battle selection more selective with verified same-lap intervals, multi-tick confirmation, restart settling, battle-call spacing, and longer repeat cooldowns.
+- Added grounded quiet-race OpenAI features that rotate through championship context, driver profiles, movers, leader pace, season statistics, and track history without inventing on-track action.
+
+### Fixed
+- Manual replay controls now immediately suspend automatic camera movement, allowing the producer to reverse, pause, or change angles without the studio jumping to another car.
+- Automatic camera control remains suspended until Return Live is selected.
+- Moved the Flo green/yellow history strip fully below the cycling driver rows and above the lap counter.
+- Removed the duplicate interval shown above the RPM arc while preserving the interval in the driver-information line.
+
+## Version 1.0.10 - Driver and Lineup Graphics
+
+### Added
+- Added a professional ten-driver starting-lineup panel that follows the opening rundown, highlights the driver being introduced, and automatically advances from positions 1–10 to 11–20 and later groups.
+- Expanded the driver card with season statistics, team and hometown information, country flags, race-position progression, live gear, speed, RPM, throttle, brake, and supported fuel-percentage telemetry.
+- Added live green throttle and red brake traces plus an E-to-F fuel bar; unavailable opponent fuel remains clearly unavailable instead of being estimated.
+- Added live interval deltas to all leaderboard layouts.
+- Added an RGC-styled top-three podium presentation beside the final race recap.
+
+### Changed
+- Renamed the Brazen leaderboard option to Top Scroll while keeping existing saved Brazen profiles compatible.
+- Restyled Top Scroll with the standard RGC black, charcoal, white, and red presentation used by the other leaderboard choices.
+- Moved the driver card left to leave more room for right-side race graphics while preserving space for the RGC broadcast stamp.
+- Lowered the starting-lineup panel beneath the Flo leaderboard.
+- Enlarged the ten-driver lineup panel and updated it to the RGC red, charcoal, black, and silver style.
+- Increased live overlay and leaderboard timing refreshes from once per second to five times per second.
+- Limited pedal traces to genuine available telemetry: local-player throttle and brake are shown live while unavailable opponent inputs display clearly as unavailable.
+- Increased live overlay and leaderboard timing to ten updates per second for smoother interval changes.
+- Reworked the driver card with a complete live RPM arc, a dedicated season-stat header, a larger position timeline, and live start, net gain/loss, best lap, last pit lap, current/high/low position, and laps-led fields.
+
+### Fixed
+- Prevented starting-lineup car images from flickering by preserving the image elements between unchanged overlay refreshes.
+- Preloaded and retained the ten starting-lineup car images while the active-driver highlight advances.
+- Moved the Flo starting-lineup panel below the complete leaderboard and lap-counter package.
+- Anchored the Flo green/yellow history strip outside the cycling driver row so it cannot overlap driver entries.
+- Fixed live leaderboard deltas being hidden by class-position labels.
+- Fixed Broadcast Health incorrectly reporting Trading Paints as unavailable when Windows blocks the primary process-list command.
+
+## Version 1.0.9 - Green Flag Pit Strategy
+
+### Added
+- Added a live green-flag pit-cycle graphic showing total pit-road time, service time, tire age, stop lap, current position, and the driver's position on the lap before pitting.
+- Added a completed-cycle Top 15 comparison ranked by quickest total trip through pit road.
+- Added a majority-complete strategy stage that identifies cars still on track after at least 70 percent of the active field has stopped.
+- Added Sarah commentary for drivers extending the fuel window, waiting for a possible caution, or attempting to eliminate a later stop.
+- Added total, green-flag, and caution pit-stop counts to Producer Assist.
+
+### Changed
+- Pit-entry position now comes from the previous completed lap so cars are not credited with positions lost while slowing for pit road.
+- Completed-cycle commentary highlights the quickest pit-lane trip and the largest unofficial position gain through the cycle.
+- Running positions for cars that still owe a stop are explicitly described as strategy positions rather than the settled race order.
+
+### Fixed
+- Corrected false one- and two-lap deficit displays caused by cars being on opposite sides of the scoring line during green-flag pit sequences.
+
+## Version 1.0.8 - League Results and Pit-Cycle Intelligence
+
+### Added
+- Added a full League Manager results system with automatic post-race result capture, customizable scoring, championship standings, driver statistics, schedule completion, and manual points review before publishing.
+- Added WordPress League Manager publishing with shared secure connection settings, league-specific public pages, and standings, schedule, results, and driver views.
+- Added richer Velocity League imports for selected-series schedules, standings, career records, individual race results, laps led, lap times, incidents, penalties, and driver identity matching.
+- Added up to 40 visible drivers in League Manager result, standings, and statistics tables.
+- Added total, green-flag, and caution pit-stop tracking with stop counts visible in Producer Assist.
+
+### Changed
+- League Manager pages now size themselves to their content instead of leaving large empty areas above Broadcast Health.
+- Green-flag pit-cycle commentary now identifies leaders who have not stopped and explains when the apparent lead is caused by cars still owing service.
+- WordPress league pages use a wider responsive layout with denser tables for easier schedule and statistics browsing.
+
+### Fixed
+- Automatic saved results now use the normalized iRacing driver name and car number instead of creating entries such as `Car 7`.
+- Restored track names in automatic result saves when telemetry uses normalized field names.
+- Fixed League Driver Statistics refresh failures caused by a hidden points-formatting error.
+- Fixed false two-laps-down labels by calculating lap deficits from completed laps plus each car's track position.
+- Prevented rejected lap-down calculations from returning as incorrect fallback labels during green-flag pit cycles and scoring-line transitions.
+- Corrected Velocity series isolation so Tuesday and Wednesday statistics are not mixed together.
+
+## Version 1.0.7 - Broadcast and League Manager Foundation
+
+### Changed
+- Refocused the Studio and Producer Assist on broadcasting and league management by removing the race-admin panel, remote-producer workflow, Discord interview queue, race-event log, race-control audit, and selected-driver notes.
+- Kept the local Producer Assist control room centered on director suggestions, driver and league statistics, pit strategy, broadcast notes, cameras, replay, sponsors, audio, and overlay controls.
+- Simplified the caution restart Top 10 graphic to position, car number, and driver name.
+- Increased pit-summary text size and adjusted both caution graphics to remain clear of the Flo leaderboard.
+- Moved the Flo green/yellow lap-history strip fully below the cycling driver row.
+
+### Fixed
+- Added a silent Windows launcher and hid background health-check/helper processes so the BAT and desktop shortcut no longer create repeated flashing PowerShell windows.
+- Desktop shortcuts now launch the Studio through the silent Windows script while preserving a readable setup warning when the virtual environment is missing.
+
+## Version 1.0.6 - Recorded Broadcast and Pre-Race Polish
+
+- Rebuilt the Velocity League importer around the site's structured driver records so statistics are no longer mistaken for names, names and car numbers match by customer ID, signed drivers are included, and season standings, combined career stats, and the full selected-series schedule import from one league URL.
+- Expanded the in-app Help / Setup Guide with Driver Mode playback, current Producer Assist controls, manual camera ownership, sponsor tools, caution-review presentation, and the protected pre-race lineup flow.
+- Refined the pre-race show so Mike introduces the crew and retains the useful track, weather, temperature, and league-package setup before brief racing and pit-road reports from Jeff and Sarah.
+- Opening crew handoffs now use a near-immediate broadcast transition, and Sarah is guaranteed to speak before the starting-lineup sponsor and full grid.
+- The complete starting lineup is now protected through the final driver when the initial green arrives; the green-flag call waits its turn and uses more varied wording.
+- The optional pre-green hype line now airs only when time remains, and the extra opening sponsor read no longer delays the lineup.
+- Added Driver Mode to record live telemetry and approved broadcast calls silently while the user races.
+- Added recorded-broadcast playback with the original commentary, overlays, camera targets, and iRacing replay controls.
+- Added Studio controls to choose and play a Driver Mode recording after opening its matching iRacing replay.
+- Recorded broadcasts now follow the capture's original elapsed-time clock and hold the next call until the current voice clip has fully finished.
+- Recorded broadcasts can start from the current practice, qualifying, grid, or race replay position and automatically skip earlier captured calls when the producer jumps forward to another session.
+- Recorded broadcasts no longer run the live-race camera safeguard that sends iRacing to the live edge, which is the end of a saved replay.
+- Recorded playback now forwards caution/event seeks to iRacing and re-anchors at one-to-green and green-flag calls to reduce restart timing drift.
+- Recorded Broadcast now waits for iRacing replay frames to move and uses the replay frame counter as its master clock, keeping calls, driver cards, cameras, pauses, and session playback aligned even when the Studio starts first.
+- Return Live now waits until iRacing has actually completed its asynchronous replay seek before re-anchoring the recorded-broadcast clock, preventing caution-review camera work from shifting the commentary out of sync.
+- Restarting or joining a recorded broadcast midway through the race now reconstructs the complete green/yellow lap-history bar from all earlier captured telemetry.
+- Velocity League imports now default to the active profile's driver, season, career, and schedule CSV files instead of silently writing to shared league files that the selected profile does not read.
+- Broadcast Health now warns when league season or career CSV files exist but contain no driver statistics.
+- Green-flag top-ten rundowns now consistently report each driver's gap to the leader and positions gained or lost; league profiles add the manually entered sponsor first and hometown/location second, while official races stay concise.
+- Pit-stop reporting now uses visible per-car black flags and penalty reasons: confirmed pit-speeding is called as speeding, confirmed restart violations are identified, and an unrevealed reason is described only as a black-flag penalty instead of being mistaken for damage repair.
+- Loading an older Velocity League profile now migrates shared `league/*.csv` defaults to that profile's unique league folder, updates the visible import paths, creates any missing CSV shells, and saves the corrected profile paths.
+
+## Version 1.0.5 - Model and Battle Call Refresh
+
+### Added
+- Added `gpt-6-astra` to the Studio OpenAI model selector for testing the newest higher-cost OpenAI broadcast model when the user's API account has access
+
+### Changed
+- Repeated live battle calls for the same position now come back as follow-up/continuation calls instead of sounding like the same brand-new battle again
+
+## Version 1.0.4 - Producer Control and Brazen Polish
+
+### Added
+- Manual Producer Assist driver focus now brings up that driver's overlay card for human broadcaster callouts
+- Human producer camera control now holds AI broadcast calls until Return Live gives control back
+
+### Changed
+- Brazen leaderboard styling now keeps its purple effects inside the leaderboard boxes only
+- Brazen caution counter now updates as soon as the yellow comes out instead of waiting for lap-history tracking
+
+### Fixed
+- Removed the full-screen overlay background that could place purple/blue stripes over the main race camera view
+- Return Live and Auto Camera now clear the manual driver card before handing the broadcast back to automation
+
+## Version 1.0.3 - OpenAI Model Selector
+
+### Added
+- Studio settings now include an editable OpenAI model dropdown for choosing the broadcast commentary model
+- Model choices include gpt-5.6-terra, gpt-5.6-luna, gpt-5.6-sol, gpt-5.5, gpt-5.1, gpt-5-mini, and gpt-4.1
+
+### Changed
+- Fresh installs now default OpenAI commentary to gpt-5.6-terra as the balanced quality/cost option
+- OpenAI model help text now explains when to choose Luna, Terra, or Sol
+
+## Version 1.0.2 - Brazen Leaderboard and Sponsor Update
+
+### Added
+- Brazen leaderboard option with a larger top bar, bigger race status/title area, rotating sponsor logo area, locked series logo, leader focus, fastest lap, laps led, and scrolling field row
+- Cause/awareness logo now rotates with the race sponsor logos on supported leaderboard sponsor areas
+- Separate Sim Racer Hub buttons for season stats and career stats so admins do not accidentally import the wrong scope
+
+### Changed
+- Sponsor popup graphics now use a consistent middle-right position during race, caution, practice, and qualifying presentation
+- Brazen leaderboard spacing, sponsor placement, lap tracker position, and border shape have been polished for a more broadcast-style look
+
+### Fixed
+- Caution music now starts again when a caution begins and still stops at one-to-green
+- Season stats imports always use the Season ID, while career stats imports always pull all seasons for the selected series
+
+## Version 1.0.1 - Early Access Build Refresh
+
+### Added
+- Flo-style leaderboard track label and improved green/yellow race-state presentation
+- Road-course and multiclass readiness hooks for v1.0 testing
+- More league context in race storytelling, including standings and track-history prompts when imported data is available
+
+### Changed
+- Tightened green-flag pit-cycle detection so one early retirement or isolated stop does not put the broadcast into pit-cycle mode
+- Improved live battle wording so uncertain side-by-side or three-wide moments are described more carefully
+- Reduced repetitive draft-track and long-green-run phrasing
+- Refreshed overlay sponsor placement, driver-card details, and Producer Assist polish for early access testers
+
+### Fixed
+- Corrected several position-normalization issues that could affect driver cards, biggest movers, and mid-race rundown overlays
+- Avoided stale pass prompts leaking internal guidance into spoken commentary
+- Rebuilt the Windows installer as a v1.0.1 early-access refresh
+
+## Version 1.0.0 - First Public Release Candidate
+
+### Added
+- v1.0 readiness checklist for final release smoke testing and packaging
+- Release documentation now points testers toward the Windows Setup.exe path first
+- Cleaner race-control debug probe output with short duplicate-event cooldowns
+- Studio launcher, Producer Assist, overlay graphics, camera controls, replay controls, sponsor reads, music beds, Sim Racer Hub imports, race recaps, and Windows installer packaging
+
+### Changed
+- Refreshed project-state notes to match the current Studio, overlay, camera, replay, music, Producer Assist, race-control, and league-profile features
+- Clarified the role of the tester ZIP versus the Windows installer for outside admins
+- Versioned the app as 1.0.0 for the first release candidate build
+
+## Version 0.18.2 - Producer Assist Release Candidate
+
+### Added
+- First-time setup checklist in the Studio help tab for release/admin readiness
+- Prompt guidance for more natural Mike, Jeff, and Sarah booth handoffs
+- Long-green booth conversations for more natural race storytelling
+- Driver overlay card position, starting position, and position-change display
+- Producer Assist pit road / strategy panel with last stop, pit lane time, stop time, tire age, position gain, and service guess
+- Producer Assist manual camera handoff that disables auto-camera when moving to a driver or back to the leader
+
+### Fixed
+- Prevented AI commentary from calling out broadcaster names or using script-style booth labels
+- Voice timing now uses actual generated ElevenLabs MP3 duration when available, reducing cut-off broadcaster calls
+- Soft incident calls are more conservative to reduce false trouble reports
+
+## Version 0.18.1 - Tester Installer Refresh
+
+### Added
+- Windows Setup.exe build for tester/admin installs
+- Multiple RGC Anthem audio files during qualifying
+- Clear MP3/WAV guidance for hidden Windows audio playback
+
+### Fixed
+- Top-ten reset gap wording now uses the gap to the car directly ahead
+- Unsupported OGA/OGG anthem files are reported instead of failing silently
+- Selected black flag and meatball flag calls can be detected without calling every black flag
+
+### Added
+- Progressive pre-race welcome, track, weather, and complete starting-field segments
+- Support for grid positions reported as either zero- or one-based values
+- Regression coverage based on the first live iRacing test
+- Practice, Qualifying, Warmup, and Race session detection
+- Safe startup voice diagnostics and a standalone `--voice-test`
+
+### Fixed
+- Initial green flag being described as a restart
+- Opening package being skipped when connecting at one-to-green
+- Zero-second gaps being announced as active battles
+- Closing-stage calls firing immediately in short races
+- Commentary starting before the Race session at multi-session league events
+- Session data being read from the wrong iRacing session index
+
+## Version 0.18 - Platform Foundation
+
+### Added
+- One orchestration engine shared by live and replay telemetry
+- JSONL replay reader and telemetry adapter
+- Automated race-control, scheduler, incident, replay, and session tests
+- Dependency metadata and environment template
+- Architecture and development documentation
+
+### Changed
+- Routed pass, pit, and intelligence stories through one editorial path
+- Allowed OpenAI rendering for every assigned booth role
+- Added queue expiration, deduplication, and race-control preemption
+- Reset all production state between sessions
+- Corrected one-to-green flag priority and lap-based green-run counting
+
+### Removed
+- Generated audio and compiled bytecode
+- Duplicate race director, prompt, story, commentary, profile, and queue implementations
+- Empty placeholders and unused legacy modules
+
 ## Version 0.7 - Voice Integration
 
 ### Added

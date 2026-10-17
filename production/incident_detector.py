@@ -15,6 +15,8 @@ class IncidentEvent:
     incident_delta: int = 0
     total_incidents: int = 0
     trouble_type: str = ""
+    replay_session_time: float | None = None
+    replay_confidence: str = ""
 
 
 @dataclass
@@ -33,6 +35,19 @@ class IncidentDriverState:
     initialized: bool = False
 
 
+@dataclass
+class CautionCandidate:
+    driver_name: str
+    car_number: str
+    car_idx: int
+    score: float
+    lap: int
+    observed_at: float
+    session_time: float | None = None
+    signal_count: int = 0
+    reasons: tuple[str, ...] = ()
+
+
 class IncidentDetector:
     """
     Detects race trouble, not just official incident points.
@@ -49,11 +64,14 @@ class IncidentDetector:
         self.driver_states: Dict[int, IncidentDriverState] = {}
 
         self.report_cooldown_seconds = 25
+        self.pack_report_cooldown_seconds = 45
+        self.last_pack_reported_at = 0.0
         self.debug = False
 
         self.position_loss_threshold = 4
         self.lap_distance_loss_threshold = 0.025
         self.est_time_loss_threshold = 4.0
+        self.recent_caution_candidates: List[CautionCandidate] = []
 
     def analyze(
         self,
@@ -65,8 +83,12 @@ class IncidentDetector:
         lap_dist_pct_status=None,
         est_time_status=None,
         pit_road_status=None,
+        session_time=None,
+        suppress_soft_events=False,
+        road_course_mode=False,
     ) -> List[IncidentEvent]:
         events = []
+        pack_candidates = []
 
         if not results:
             return events
@@ -134,6 +156,17 @@ class IncidentDetector:
                 )
                 continue
 
+            if state.last_on_pit_road:
+                self.update_state(
+                    state,
+                    incident_count,
+                    position,
+                    lap_dist_pct,
+                    est_time,
+                    on_pit_road,
+                )
+                continue
+
             event = self.detect_trouble(
                 state=state,
                 incident_count=incident_count,
@@ -143,6 +176,31 @@ class IncidentDetector:
                 track_surface=track_surface,
                 track_surface_material=track_surface_material,
                 current_lap=current_lap,
+                suppress_soft_events=suppress_soft_events,
+                road_course_mode=road_course_mode,
+            )
+            pack_candidate = self.build_pack_trouble_candidate(
+                state=state,
+                incident_count=incident_count,
+                position=position,
+                lap_dist_pct=lap_dist_pct,
+                est_time=est_time,
+                track_surface=track_surface,
+                current_lap=current_lap,
+                session_time=session_time,
+            )
+            if pack_candidate:
+                pack_candidates.append(pack_candidate)
+
+            self.remember_caution_candidate(
+                state=state,
+                incident_count=incident_count,
+                position=position,
+                lap_dist_pct=lap_dist_pct,
+                est_time=est_time,
+                track_surface=track_surface,
+                current_lap=current_lap,
+                session_time=session_time,
             )
 
             if event and self.can_report(state):
@@ -158,7 +216,254 @@ class IncidentDetector:
                 on_pit_road,
             )
 
+        pack_event = self.build_pack_wreck_event(pack_candidates, current_lap)
+        if pack_event:
+            return [pack_event]
+
         return events
+
+    def build_caution_fallback(self, current_lap, max_age_seconds=8.0):
+        now = time.time()
+        candidates = [
+            candidate
+            for candidate in self.recent_caution_candidates
+            if now - candidate.observed_at <= max_age_seconds
+            and abs(current_lap - candidate.lap) <= 1
+        ]
+        self.recent_caution_candidates = candidates
+        if not candidates:
+            return None
+
+        candidate = max(candidates, key=lambda item: item.score)
+        if candidate.score < 3.0:
+            return None
+
+        high_confidence = (
+            candidate.session_time is not None
+            and candidate.score >= 8.0
+            and candidate.signal_count >= 2
+        )
+
+        self.recent_caution_candidates = []
+        return IncidentEvent(
+            event_type="INCIDENT",
+            driver_name=candidate.driver_name,
+            car_number=candidate.car_number,
+            car_idx=candidate.car_idx,
+            message=(
+                "We may have found the reason for the caution. "
+                f"{candidate.driver_name} in the number {candidate.car_number} "
+                "showed the clearest sign of trouble as the yellow came out."
+            ),
+            importance=9,
+            lap=current_lap,
+            trouble_type="caution candidate",
+            replay_session_time=candidate.session_time if high_confidence else None,
+            replay_confidence="high" if high_confidence else "low",
+        )
+
+    def build_big_wreck_fallback(
+        self,
+        current_lap,
+        max_age_seconds=8.0,
+        minimum_cars=4,
+    ):
+        now = time.time()
+        candidates = [
+            candidate
+            for candidate in self.recent_caution_candidates
+            if now - candidate.observed_at <= max_age_seconds
+            and abs(current_lap - candidate.lap) <= 1
+            and candidate.score >= 3.0
+        ]
+        if len(candidates) < minimum_cars:
+            return None
+
+        candidates.sort(key=lambda item: item.score, reverse=True)
+        return self.build_pack_wreck_event(
+            candidates[:8],
+            current_lap=current_lap,
+            force=True,
+        )
+
+    def remember_caution_candidate(
+        self,
+        state,
+        incident_count,
+        position,
+        lap_dist_pct,
+        est_time,
+        track_surface,
+        current_lap,
+        session_time=None,
+    ):
+        incident_delta = max(0, incident_count - state.last_incident_count)
+        position_loss = max(0, position - state.last_position)
+        lap_distance_loss = self.calculate_lap_distance_loss(
+            state.last_lap_dist_pct,
+            lap_dist_pct,
+        )
+        est_time_loss = max(0.0, est_time - state.last_est_time)
+        abnormal_surface = self.is_abnormal_surface(track_surface)
+        reasons = []
+        if incident_delta > 0:
+            reasons.append("incident counter changed")
+        if position_loss >= 2:
+            reasons.append("lost positions")
+        if lap_distance_loss >= 0.01:
+            reasons.append("lost track position quickly")
+        if est_time_loss >= 2.0:
+            reasons.append("lost estimated time")
+        if abnormal_surface:
+            reasons.append("abnormal track surface")
+
+        score = (
+            incident_delta * 3.0
+            + position_loss
+            + lap_distance_loss * 100.0
+            + est_time_loss
+            + (4.0 if abnormal_surface else 0.0)
+        )
+        if score < 1.0:
+            return
+
+        self.recent_caution_candidates.append(
+            CautionCandidate(
+                driver_name=state.driver_name,
+                car_number=state.car_number,
+                car_idx=state.car_idx,
+                score=score,
+                lap=current_lap,
+                observed_at=time.time(),
+                session_time=self.safe_optional_float(session_time),
+                signal_count=len(reasons),
+                reasons=tuple(reasons),
+            )
+        )
+        self.recent_caution_candidates = self.recent_caution_candidates[-30:]
+
+    def build_pack_trouble_candidate(
+        self,
+        state,
+        incident_count,
+        position,
+        lap_dist_pct,
+        est_time,
+        track_surface,
+        current_lap,
+        session_time=None,
+    ):
+        incident_delta = max(0, incident_count - state.last_incident_count)
+        position_loss = max(0, position - state.last_position)
+        lap_distance_loss = self.calculate_lap_distance_loss(
+            state.last_lap_dist_pct,
+            lap_dist_pct,
+        )
+        est_time_loss = max(0.0, est_time - state.last_est_time)
+        abnormal_surface = self.is_abnormal_surface(track_surface)
+
+        reasons = []
+        if incident_delta > 0:
+            reasons.append("incident counter changed")
+        if position_loss >= 2:
+            reasons.append("lost positions")
+        if lap_distance_loss >= 0.006:
+            reasons.append("lost track position quickly")
+        if est_time_loss >= 1.5:
+            reasons.append("lost estimated time")
+        if abnormal_surface:
+            reasons.append("abnormal track surface")
+
+        score = (
+            incident_delta * 3.0
+            + position_loss
+            + lap_distance_loss * 100.0
+            + est_time_loss
+            + (2.5 if abnormal_surface else 0.0)
+        )
+        strong_surface_moment = (
+            abnormal_surface
+            and (
+                position_loss >= 1
+                or lap_distance_loss >= 0.004
+                or est_time_loss >= 0.8
+            )
+        )
+        if incident_delta >= 2:
+            enough_signal = True
+        elif strong_surface_moment:
+            enough_signal = True
+        else:
+            enough_signal = score >= 3.0 and len(reasons) >= 2
+        if not enough_signal:
+            return None
+
+        return CautionCandidate(
+            driver_name=state.driver_name,
+            car_number=state.car_number,
+            car_idx=state.car_idx,
+            score=score,
+            lap=current_lap,
+            observed_at=time.time(),
+            session_time=self.safe_optional_float(session_time),
+            signal_count=len(reasons),
+            reasons=tuple(reasons),
+        )
+
+    def build_pack_wreck_event(self, candidates, current_lap, force=False):
+        unique = []
+        seen = set()
+        for candidate in sorted(candidates or [], key=lambda item: item.score, reverse=True):
+            if candidate.car_idx in seen:
+                continue
+            seen.add(candidate.car_idx)
+            unique.append(candidate)
+
+        if len(unique) < 4:
+            return None
+
+        now = time.time()
+        if not force and now - self.last_pack_reported_at < self.pack_report_cooldown_seconds:
+            return None
+
+        self.last_pack_reported_at = now
+        featured = unique[:3]
+        if len(featured) >= 2:
+            names = ", ".join(
+                f"the {candidate.car_number} of {candidate.driver_name}"
+                for candidate in featured[:-1]
+            )
+            names = f"{names}, and the {featured[-1].car_number} of {featured[-1].driver_name}"
+        else:
+            names = f"the {featured[0].car_number} of {featured[0].driver_name}"
+
+        replay_time = next(
+            (
+                candidate.session_time
+                for candidate in unique
+                if candidate.session_time is not None
+            ),
+            None,
+        )
+
+        return IncidentEvent(
+            event_type="INCIDENT",
+            driver_name=featured[0].driver_name,
+            car_number=featured[0].car_number,
+            car_idx=featured[0].car_idx,
+            message=(
+                "Big trouble in the pack. Several cars are suddenly showing "
+                f"trouble, including {names}. That may be the moment that "
+                "brought out the caution."
+            ),
+            importance=10,
+            lap=current_lap,
+            incident_delta=max(candidate.score for candidate in unique),
+            total_incidents=len(unique),
+            trouble_type="pack wreck",
+            replay_session_time=replay_time,
+            replay_confidence="high" if replay_time is not None else "low",
+        )
 
     def detect_trouble(
         self,
@@ -170,10 +475,15 @@ class IncidentDetector:
         track_surface,
         track_surface_material,
         current_lap,
+        suppress_soft_events=False,
+        road_course_mode=False,
     ):
         incident_delta = incident_count - state.last_incident_count
         position_loss = position - state.last_position
-        lap_distance_loss = state.last_lap_dist_pct - lap_dist_pct
+        lap_distance_loss = self.calculate_lap_distance_loss(
+            state.last_lap_dist_pct,
+            lap_dist_pct,
+        )
         est_time_loss = est_time - state.last_est_time
 
         if incident_delta >= 4:
@@ -196,6 +506,18 @@ class IncidentDetector:
                 current_lap,
                 incident_delta,
                 incident_count,
+            )
+
+        if suppress_soft_events or road_course_mode:
+            return self.detect_serious_soft_trouble(
+                state=state,
+                position_loss=position_loss,
+                lap_distance_loss=lap_distance_loss,
+                est_time_loss=est_time_loss,
+                track_surface=track_surface,
+                current_lap=current_lap,
+                incident_count=incident_count,
+                road_course_mode=road_course_mode,
             )
 
         if position_loss >= self.position_loss_threshold:
@@ -243,6 +565,104 @@ class IncidentDetector:
             )
 
         return None
+
+    def detect_serious_soft_trouble(
+        self,
+        state,
+        position_loss,
+        lap_distance_loss,
+        est_time_loss,
+        track_surface,
+        current_lap,
+        incident_count,
+        road_course_mode=False,
+    ):
+        abnormal_surface = self.is_abnormal_surface(track_surface)
+        reasons = []
+        time_loss_threshold = 1.0 if road_course_mode else 1.2
+        lap_loss_threshold = 0.008 if road_course_mode else 0.009
+        combined_lap_loss_threshold = 0.018 if road_course_mode else 0.02
+        combined_time_loss_threshold = 2.0 if road_course_mode else 2.5
+        score_threshold = 6.0 if road_course_mode else 5.0
+
+        if abnormal_surface and est_time_loss >= time_loss_threshold:
+            reasons.append("left the racing surface and lost time")
+        if abnormal_surface and lap_distance_loss >= lap_loss_threshold:
+            reasons.append("left the racing surface and lost ground")
+        if (
+            lap_distance_loss >= combined_lap_loss_threshold
+            and est_time_loss >= combined_time_loss_threshold
+        ):
+            reasons.append("lost control-level track position and time")
+
+        if not reasons:
+            return None
+
+        score = (
+            + lap_distance_loss * 100.0
+            + max(0.0, est_time_loss)
+            + (3.0 if abnormal_surface else 0.0)
+        )
+        if score < score_threshold:
+            return None
+
+        loss_of_control = (
+            (
+                abnormal_surface
+                and lap_distance_loss >= lap_loss_threshold
+                and est_time_loss >= time_loss_threshold
+            )
+            or (
+                lap_distance_loss >= combined_lap_loss_threshold
+                and est_time_loss >= combined_time_loss_threshold
+            )
+        )
+
+        if road_course_mode:
+            if loss_of_control:
+                message = (
+                    f"Trouble for {state.driver_name} in the number {state.car_number}. "
+                    "They lost time and got away from the racing line, so that "
+                    "looks like a spin, contact, or a serious off-track moment."
+                )
+            else:
+                message = (
+                    f"{state.driver_name} in the number {state.car_number} may have "
+                    "had a road-course moment. They lost time after getting away "
+                    "from the racing line, and that could be an off-track, a spin, "
+                    "or damage without a full-course yellow."
+                )
+        else:
+            if loss_of_control:
+                message = (
+                    f"Trouble for {state.driver_name} in the number {state.car_number}. "
+                    "That looks like a real loss of control after they lost time "
+                    "and slipped away from the racing line."
+                )
+            else:
+                message = (
+                    f"{state.driver_name} in the number {state.car_number} may have "
+                    "had a moment a bit ago. They lost time after getting away from "
+                    "the ideal racing line, and now the question is whether that hurt "
+                    "the car or just overheated the tires."
+                )
+
+        return self.build_event(
+            state,
+            "loss of control" if loss_of_control else "possible trouble",
+            message,
+            7 if loss_of_control else 5,
+            current_lap,
+            0,
+            incident_count,
+        )
+
+    def calculate_lap_distance_loss(self, previous, current):
+        """Return backward movement while ignoring the normal 1.0 -> 0.0 lap wrap."""
+        loss = previous - current
+        if loss > 0.5:
+            return 0.0
+        return max(loss, 0.0)
 
     def build_event(
         self,
@@ -339,3 +759,11 @@ class IncidentDetector:
             return float(value)
         except Exception:
             return 0.0
+
+    def safe_optional_float(self, value):
+        try:
+            if value is None:
+                return None
+            return float(value)
+        except Exception:
+            return None
