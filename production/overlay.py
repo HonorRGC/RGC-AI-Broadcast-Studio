@@ -7504,8 +7504,10 @@ OVERLAY_HTML = r"""<!doctype html>
         if (wasCovered && h.active) layer.classList.add(`depart-${["fade","slide","wipe"].includes(h.transition) ? h.transition : "fade"}`);
       }
       const graphic = document.getElementById("highlight-transition-graphic");
-      const graphicUrl = h.graphic || "/assets/rgc_ai_broadcast_stamp.png";
-      if (graphic.getAttribute("src") !== graphicUrl) graphic.src = graphicUrl;
+      const graphicUrl = h.graphic || "";
+      graphic.classList.toggle("hidden", !graphicUrl);
+      if (graphicUrl && graphic.getAttribute("src") !== graphicUrl) graphic.src = graphicUrl;
+      if (!graphicUrl) graphic.removeAttribute("src");
       const centerSponsor = document.getElementById("highlight-transition-sponsor");
       centerSponsor.textContent = h.transition_sponsor ? `Presented by ${h.transition_sponsor}` : "";
       centerSponsor.classList.toggle("hidden", !h.transition_sponsor);
