@@ -7199,6 +7199,12 @@ OVERLAY_HTML = r"""<!doctype html>
     body.highlights-mode .studio-stamp { left:28px !important; bottom:24px !important; width:220px; z-index:112; }
     #highlight-sponsor { position:fixed; right:32px; top:28px; width:220px; max-height:120px; object-fit:contain; z-index:111; filter:drop-shadow(0 3px 8px #000); }
     #highlight-sponsor-name { position:fixed; right:32px; top:156px; width:220px; box-sizing:border-box; padding:8px; background:#101b2ee8; border-bottom:2px solid #dfb84c; color:white; text-align:center; font:700 18px Arial; overflow-wrap:anywhere; z-index:111; }
+    #highlight-recap-sponsor { position:fixed; left:32px; top:28px; width:220px; height:120px; object-fit:contain; z-index:111; filter:drop-shadow(0 3px 8px #000); }
+    #highlight-recap-sponsor-name { position:fixed; left:32px; top:156px; width:220px; box-sizing:border-box; padding:8px; background:#101b2ee8; border-bottom:2px solid #dfb84c; color:white; text-align:center; font:700 18px Arial; overflow-wrap:anywhere; z-index:111; }
+    body.highlights-recap #highlight-sponsor-name,
+    #highlight-recap-sponsor-name { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; line-height:21px; max-height:60px; }
+    #highlight-recap-sponsor-name.hidden,
+    body.highlights-recap #highlight-sponsor-name.hidden { display:none; }
     #highlight-transition-sponsor { color:#edc458 !important; font-weight:bold !important; max-width:65vw; text-align:center; }
     body.highlights-recap #highlight-transition-sponsor { display:none; }
     #highlight-programme-title { position:fixed; left:16%; right:16%; top:26px; z-index:113; color:white; text-align:center; background:linear-gradient(90deg,#101b29e8,#233c58f5,#101b29e8); border-bottom:3px solid #dfb84c; padding:12px 20px; font:900 30px Arial; box-sizing:border-box; line-height:1.2; overflow-wrap:anywhere; }
@@ -7212,11 +7218,11 @@ OVERLAY_HTML = r"""<!doctype html>
     body.highlights-recap #highlight-transition-title,
     body.highlights-recap #highlight-transition-subtitle { display:none; }
     #highlight-recap h1 { text-align:center; margin:48px 0; font:900 44px Arial; text-transform:uppercase; letter-spacing:3px; }
-    .highlight-recap-box { position:absolute; top:150px; width:26%; box-sizing:border-box; background:linear-gradient(135deg,#1c324b,#080f1b); border:2px solid #ddb64b; border-radius:9px; overflow:hidden; box-shadow:0 15px 35px #0008; }
+    .highlight-recap-box { position:absolute; top:230px; width:26%; box-sizing:border-box; background:linear-gradient(135deg,#1c324b,#080f1b); border:2px solid #ddb64b; border-radius:9px; overflow:hidden; box-shadow:0 15px 35px #0008; }
     .highlight-recap-box h2 { margin:0; padding:14px; background:linear-gradient(90deg,#901326,#ca1634); border-bottom:2px solid #ddb64b; font:900 23px Arial; text-align:center; text-transform:uppercase; }
     #highlight-recap-results { left:2%; }
     #highlight-recap-stats { right:2%; }
-    .highlight-result-row { display:grid; grid-template-columns:36px 50px 1fr; gap:8px; align-items:center; height:34px; padding:0 12px; font:700 18px Arial; border-bottom:1px solid #ffffff18; }
+    .highlight-result-row { display:grid; grid-template-columns:36px 50px 1fr; gap:8px; align-items:center; height:31px; padding:0 12px; font:700 18px Arial; border-bottom:1px solid #ffffff18; }
     .highlight-result-row:nth-child(even) { background:#ffffff08; }
     .highlight-result-row b { color:#edc458; }
     .highlight-result-row span:last-child { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -7460,6 +7466,8 @@ OVERLAY_HTML = r"""<!doctype html>
 
   <img id="highlight-sponsor" class="hidden" alt="Highlight sponsor" />
   <div id="highlight-sponsor-name" class="hidden"></div>
+  <img id="highlight-recap-sponsor" class="hidden" alt="Race recap sponsor" />
+  <div id="highlight-recap-sponsor-name" class="hidden"></div>
   <div id="highlight-programme-title" class="hidden"></div>
   <div id="highlight-caption" class="hidden"></div>
   <section id="highlight-recap">
@@ -7542,8 +7550,16 @@ OVERLAY_HTML = r"""<!doctype html>
       if (h.sponsor_logo && sponsor.getAttribute("src") !== h.sponsor_logo) sponsor.src = h.sponsor_logo;
       const sponsorName = document.getElementById("highlight-sponsor-name");
       sponsorName.textContent = h.sponsor || "";
-      sponsorName.classList.toggle("hidden", !(h.active && h.sponsor && !recapActive));
+      sponsorName.classList.toggle("hidden", !(h.active && h.sponsor));
       sponsorName.style.top = h.sponsor_logo ? "156px" : "28px";
+      const recapLogo = document.getElementById("highlight-recap-sponsor");
+      recapLogo.classList.toggle("hidden", !(recapActive && h.recap_sponsor_logo));
+      if (h.recap_sponsor_logo && recapLogo.getAttribute("src") !== h.recap_sponsor_logo) recapLogo.src = h.recap_sponsor_logo;
+      if (!h.recap_sponsor_logo) recapLogo.removeAttribute("src");
+      const recapName = document.getElementById("highlight-recap-sponsor-name");
+      recapName.textContent = h.recap_sponsor || "";
+      recapName.classList.toggle("hidden", !(recapActive && h.recap_sponsor));
+      recapName.style.top = h.recap_sponsor_logo ? "156px" : "28px";
       const caption = document.getElementById("highlight-caption");
       caption.classList.toggle("hidden", !(h.active && h.stage === "playing" && h.segment_kind === "clip" && !h.cover));
       caption.textContent = h.title || "";

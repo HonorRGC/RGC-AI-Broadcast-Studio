@@ -156,12 +156,24 @@ def test_title_edits_preserve_prepared_narration(tmp_path):
     assert job["options"] == {"sponsor": "RGC", "title": "Richmond Race Highlights"}
     assert job["status"] == "ready" and job["segments"][0]["audio"] == "voice.mp3"
     save_highlights_title(path, "Richmond", {"transition_sponsor": "Center Sponsor", "transition_graphic": "/static/center.png", "full_screen_graphic": "/static/league.png",
-                                            "sponsor": "Clip Sponsor", "sponsor_logo": "/static/clip.png"})
+                                            "sponsor": "Clip Sponsor", "sponsor_logo": "/static/clip.png",
+                                            "recap_sponsor": "Recap Sponsor", "recap_sponsor_logo": "/static/recap.png"})
     job = json.loads(path.read_text())
     assert job["options"]["transition_sponsor"] == "Center Sponsor"
     assert job["options"]["sponsor_logo"] == "/static/clip.png"
     assert job["options"]["full_screen_graphic"] == "/static/league.png"
+    assert job["options"]["recap_sponsor"] == "Recap Sponsor"
+    assert job["options"]["recap_sponsor_logo"] == "/static/recap.png"
     assert job["segments"][0]["narration"] == "Saved commentary."
+
+
+def test_recap_sponsor_options_reach_overlay_without_changing_narration(tmp_path):
+    player, controller, server, clock, plays = make_player(tmp_path)
+    player.job["options"].update(recap_sponsor="League Partner", recap_sponsor_logo="/static/partner.png")
+    player.publish()
+    assert server.highlights["recap_sponsor"] == "League Partner"
+    assert server.highlights["recap_sponsor_logo"] == "/static/partner.png"
+    assert not plays
 
 
 def test_lineup_refreshes_stored_image_using_matched_current_replay_driver(tmp_path, monkeypatch):

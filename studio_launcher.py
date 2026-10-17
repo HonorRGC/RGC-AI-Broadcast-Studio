@@ -4784,6 +4784,7 @@ def build_help_tab(
         Playback and Load Prepared reuse saved audio without new narration API calls. Completed compatible segments are retained on retry.
         You can Load Prepared, change only the title, and open the player without preparing or paying for narration again.
         Sponsor names/graphics and transition changes can also be saved when opening a prepared player without regenerating speech.
+        Left recap sponsor adds a separate name/logo on the closing recap. Both sponsor areas sit above the results and highlights panels.
         Prepare again if you want a new spoken sponsor mention. Run SIMRacingApps and Trading Paints during the original broadcast.
         New captures save car images for the whole field, including Driver Mode, in a matching .images folder beside the JSONL.
         Keep that folder with the capture. Highlights reuse its pictures without SIMRacingApps during preparation or playback.

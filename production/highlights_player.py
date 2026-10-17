@@ -58,6 +58,7 @@ class HighlightsPlayer:
                 "full_screen_graphic": options.get("full_screen_graphic", ""),
                 "transition_sponsor": options.get("transition_sponsor", ""),
                 "sponsor_logo": options.get("sponsor_logo", ""), "sponsor": options.get("sponsor", ""),
+                "recap_sponsor": options.get("recap_sponsor", ""), "recap_sponsor_logo": options.get("recap_sponsor_logo", ""),
                 "track": self.job.get("track", ""), "partial": self.job.get("partial", False)}
         data["programme_title"] = str(options.get("title") or "").strip()[:160]
         if segment["kind"] == "outro":

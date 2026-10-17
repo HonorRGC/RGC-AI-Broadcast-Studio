@@ -1,5 +1,13 @@
 # Changelog
 
+## Version 1.1.2 - Recap Sponsors and Highlights Layout
+
+- Add an independent left recap sponsor name and logo, with a profile sponsor choice or custom name and image.
+- Retain the upper-right sponsor name on the recap and lower the results and highlights panels to leave both sponsor areas clear. Fit twenty results rows above the RGC stamp and contain long sponsor names.
+- Save these visual choices through Load Prepared and Open Highlights Player without regenerating narration. The left sponsor appears only on the recap and stays hidden when blank.
+
+Also includes the refreshed 1.1.1 installer fixes: archive original broadcast car images for highlights, show capture image counts, keep image archives with capture retention, respect blank center graphics, and place between-clip text near the bottom of custom artwork.
+
 ## Version 1.1.1 - Highlights Camera, Finish and Car Image Fixes
 
 - Use Rear Chase for starting-grid introductions, with Far Chase/Chase fallbacks.

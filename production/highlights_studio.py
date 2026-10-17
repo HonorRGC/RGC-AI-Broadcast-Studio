@@ -30,7 +30,7 @@ def save_highlights_title(job_path, title, visual_options=None):
     job = json.loads(Path(job_path).read_text(encoding="utf-8"))
     job.setdefault("options", {})["title"] = str(title or "").strip()[:160]
     if visual_options:
-        for key in ("transition", "transition_graphic", "full_screen_graphic", "transition_sponsor", "sponsor", "sponsor_logo"):
+        for key in ("transition", "transition_graphic", "full_screen_graphic", "transition_sponsor", "sponsor", "sponsor_logo", "recap_sponsor", "recap_sponsor_logo"):
             if key in visual_options:
                 job["options"][key] = visual_options[key]
     save_job(job_path, job)
@@ -58,6 +58,7 @@ def open_highlights_window(parent, values):
     transition = tk.StringVar(value="Cycle: fade, slide, wipe")
     graphic, sponsor_logo, sponsor = tk.StringVar(), tk.StringVar(), tk.StringVar(value="None")
     transition_sponsor = tk.StringVar()
+    recap_sponsor, recap_sponsor_logo = tk.StringVar(), tk.StringVar()
     full_screen_graphic = tk.StringVar()
     progress = tk.StringVar(value="Choose the telemetry capture for the saved iRacing replay.")
     replay_loaded = tk.BooleanVar(value=False)
@@ -90,21 +91,22 @@ def open_highlights_window(parent, values):
             names[name] = values.get(f"RACE_SPONSOR_{index}_LOGO", "")
     sponsor_groups = ttk.Frame(frame)
     sponsor_groups.pack(fill="x", pady=10)
-    sponsor_groups.columnconfigure((0, 1), weight=1)
+    sponsor_groups.columnconfigure((0, 1, 2), weight=1, uniform="sponsors")
     def sponsor_group(column, heading, name_var, logo_var):
         group = ttk.LabelFrame(sponsor_groups, text=heading, padding=8)
         group.grid(row=0, column=column, sticky="nsew", padx=(0, 8) if column == 0 else (0, 0))
-        ttk.Label(group, text="Sponsor name — type your own or select").pack(anchor="w")
-        combo = ttk.Combobox(group, textvariable=name_var, values=tuple(names))
+        ttk.Label(group, text="Sponsor name — type your own or select", wraplength=220).pack(anchor="w")
+        combo = ttk.Combobox(group, textvariable=name_var, values=tuple(names), width=18)
         combo.pack(fill="x", pady=(3, 8))
         combo.bind("<<ComboboxSelected>>", lambda event: logo_var.set(names.get(name_var.get(), "")))
         ttk.Label(group, text="Graphic (optional)").pack(anchor="w")
         row = ttk.Frame(group)
         row.pack(fill="x", pady=3)
-        ttk.Entry(row, textvariable=logo_var, width=26).pack(side="left", fill="x", expand=True)
+        ttk.Entry(row, textvariable=logo_var, width=16).pack(side="left", fill="x", expand=True)
         ttk.Button(row, text="Choose…", command=lambda: select_file(logo_var)).pack(side="left", padx=(5, 0))
     sponsor_group(0, "Center transition sponsor", transition_sponsor, graphic)
     sponsor_group(1, "Upper-right clip sponsor", sponsor, sponsor_logo)
+    sponsor_group(2, "Left recap sponsor", recap_sponsor, recap_sponsor_logo)
     file_row("Full-screen transition artwork (optional; 1920 × 1080 recommended)", full_screen_graphic)
     ttk.Checkbutton(frame, text="Scan saved replay incident markers (may include incidents with unknown point values)", variable=scan_incidents).pack(anchor="w", pady=(8, 0))
     ttk.Checkbutton(frame, text="I have loaded the matching saved .rpy in iRacing; I am not racing live.", variable=replay_loaded).pack(anchor="w", pady=12)
@@ -125,6 +127,8 @@ def open_highlights_window(parent, values):
         transition_sponsor.set(options.get("transition_sponsor", ""))
         sponsor.set(options.get("sponsor") or "None")
         sponsor_logo.set(options.get("sponsor_logo", ""))
+        recap_sponsor.set(options.get("recap_sponsor", ""))
+        recap_sponsor_logo.set(options.get("recap_sponsor_logo", ""))
         scan_incidents.set(bool(options.get("scan_incidents")))
         preview.delete("1.0", "end")
         for warning in job.get("warnings", []):
@@ -189,7 +193,9 @@ def open_highlights_window(parent, values):
                        "transition_graphic": import_graphic(graphic.get(), studio.ROOT),
                        "full_screen_graphic": import_graphic(full_screen_graphic.get(), studio.ROOT),
                        "sponsor": "" if sponsor.get().strip() == "None" else sponsor.get().strip()[:160],
-                       "sponsor_logo": import_graphic(sponsor_logo.get(), studio.ROOT)}
+                       "sponsor_logo": import_graphic(sponsor_logo.get(), studio.ROOT),
+                       "recap_sponsor": "" if recap_sponsor.get().strip() == "None" else recap_sponsor.get().strip()[:160],
+                       "recap_sponsor_logo": import_graphic(recap_sponsor_logo.get(), studio.ROOT)}
         except (OSError, ValueError) as error:
             messagebox.showerror("Highlight graphic", str(error), parent=window)
             return
@@ -256,7 +262,9 @@ def open_highlights_window(parent, values):
                               "transition_graphic": import_graphic(graphic.get(), studio.ROOT),
                               "full_screen_graphic": import_graphic(full_screen_graphic.get(), studio.ROOT),
                               "sponsor": "" if sponsor.get().strip() == "None" else sponsor.get().strip()[:160],
-                              "sponsor_logo": import_graphic(sponsor_logo.get(), studio.ROOT)}
+                              "sponsor_logo": import_graphic(sponsor_logo.get(), studio.ROOT),
+                              "recap_sponsor": "" if recap_sponsor.get().strip() == "None" else recap_sponsor.get().strip()[:160],
+                              "recap_sponsor_logo": import_graphic(recap_sponsor_logo.get(), studio.ROOT)}
             save_highlights_title(state["job"], title.get(), visual_options)
         except (OSError, ValueError, TypeError) as error:
             messagebox.showerror("Highlights title", str(error), parent=window)
