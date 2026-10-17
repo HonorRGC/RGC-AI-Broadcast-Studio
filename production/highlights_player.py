@@ -13,6 +13,9 @@ class HighlightsPlayer:
         self.job, self.controller, self.server, self.audio = job, controller, server, audio
         self.job_dir, self.clock = Path(job_dir).resolve(), clock or time.monotonic
         self.source = source
+        from production.capture_images import archived_entries
+        self.image_root, self.saved_images = archived_entries(job.get("source") or self.job_dir / "missing.jsonl")
+        self.server.capture_image_dir = self.image_root
         self.music, self.playlist = music, list(playlist or [])
         self.seamless_lineup = False
         self.drift_since = None
@@ -178,10 +181,25 @@ class HighlightsPlayer:
     def lineup_entries(self, source_entries=None):
         from config import USE_IRACING_RENDERED_CAR_IMAGES
         entries = [dict(entry) for entry in (self.segment.get("entries", []) if source_entries is None else source_entries)]
-        if USE_IRACING_RENDERED_CAR_IMAGES:
+        from production.capture_images import driver_key
+        missing = []
+        for entry in entries:
+            info = dict(entry.get("render_driver") or {})
+            info.setdefault("name", entry.get("driver_name", ""))
+            info.setdefault("number", entry.get("car_number", ""))
+            saved = self.saved_images.get(driver_key(info), {})
+            name = str(saved.get("file", "")) if isinstance(saved, dict) else ""
+            path = (self.image_root / name).resolve()
+            if (len(name) == 68 and name.endswith(".png") and all(c in "0123456789abcdef" for c in name[:64])
+                    and path.parent == self.image_root and path.is_file()):
+                entry["car_image_url"] = "/capture-images/" + name
+                entry["number_style"] = saved.get("number_style", {})
+            else:
+                missing.append(entry)
+        if USE_IRACING_RENDERED_CAR_IMAGES and missing:
             from app import build_featured_driver_render_info
             current_lookup = getattr(self.controller, "get_driver_lookup", lambda: {})() or {}
-            for entry in entries:
+            for entry in missing:
                 info = dict(entry.get("render_driver") or {})
                 info.setdefault("name", entry.get("driver_name", ""))
                 info.setdefault("number", entry.get("car_number", ""))

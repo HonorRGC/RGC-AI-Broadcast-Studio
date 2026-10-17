@@ -2360,6 +2360,25 @@ class OverlayServer:
                     return
 
                 asset_path = self.path.split("?", 1)[0]
+                if asset_path.startswith("/capture-images/"):
+                    name = asset_path.removeprefix("/capture-images/")
+                    root = getattr(server, "capture_image_dir", None)
+                    if root is None or len(name) != 68 or not name.endswith(".png") or any(c not in "0123456789abcdef" for c in name[:64]):
+                        self.send_error(404)
+                        return
+                    root = Path(root).resolve()
+                    path = (root / name).resolve()
+                    if path.parent != root or not path.is_file():
+                        self.send_error(404)
+                        return
+                    body = path.read_bytes()
+                    self.send_response(200)
+                    self.send_header("Content-Type", "image/png")
+                    self.send_header("Content-Length", str(len(body)))
+                    self.send_header("Cache-Control", "public, max-age=3600")
+                    self.end_headers()
+                    self.wfile.write(body)
+                    return
                 if asset_path.startswith("/assets/"):
                     self.send_asset(asset_path.removeprefix("/assets/"))
                     return
@@ -7214,6 +7233,9 @@ OVERLAY_HTML = r"""<!doctype html>
     #highlight-transition.custom-art > :not(#highlight-transition-fullscreen) { position:relative; z-index:1; }
     #highlight-transition.custom-art #highlight-transition-fullscreen { display:block; position:absolute; inset:0; width:100%; height:100%; max-width:none; max-height:none; object-fit:cover; filter:none; z-index:0; }
     #highlight-transition.custom-art h1, #highlight-transition.custom-art p { background:#080e1cc9; padding:10px 22px; border-radius:5px; text-shadow:0 2px 4px #000; }
+    #highlight-transition #highlight-transition-copy,
+    #highlight-transition.custom-art #highlight-transition-copy { position:absolute; left:16%; right:16%; bottom:64px; display:flex; flex-direction:column; align-items:center; gap:14px; text-align:center; }
+    #highlight-transition-copy h1, #highlight-transition-copy p { max-width:100%; box-sizing:border-box; overflow-wrap:anywhere; }
     #highlight-transition h1 { font:800 48px Arial; margin:0; letter-spacing:2px; text-transform:uppercase; }
     #highlight-transition p { font:22px Arial; margin:0; color:#d9e3f0; }
     #highlight-transition.arrive-fade { animation:highlight-fade .7s ease both; }
@@ -7448,9 +7470,11 @@ OVERLAY_HTML = r"""<!doctype html>
   <section id="highlight-transition">
     <img id="highlight-transition-fullscreen" alt="League transition artwork" />
     <img id="highlight-transition-graphic" alt="RGC race highlights" />
+    <div id="highlight-transition-copy">
     <p id="highlight-transition-sponsor"></p>
     <h1 id="highlight-transition-title">Race Highlights</h1>
     <p id="highlight-transition-subtitle"></p>
+    </div>
   </section>
   <script>
     async function refreshOverlay() {

@@ -2849,11 +2849,14 @@ def run_gui():
                    for bundle in capture_bundles(ROOT / "recordings", pid, started_after)]
         if bundles:
             total_mb = sum(bundle["size_bytes"] for bundle in bundles) / (1024 * 1024)
+            saved_cars = sum(bundle["metadata"].get("car_images", {}).get("saved", 0) for bundle in bundles)
+            total_cars = sum(bundle["metadata"].get("car_images", {}).get("drivers", 0) for bundle in bundles)
             keep = messagebox.askyesnocancel(
                 "Keep this broadcast capture?",
                 f"Keep this capture for future race highlights or to broadcast the race again later?\n\n"
                 f"{len(bundles)} recording(s), {total_mb:.1f} MB.\n\n"
-                "Yes: keep the race data and commentary.\n"
+                f"Car images saved: {saved_cars}/{total_cars}.\n\n"
+                "Yes: keep the race data, commentary and saved car images.\n"
                 "No: permanently delete this broadcast's capture files to free space.\n"
                 "Cancel or close: keep the files.\n\n"
                 "For future highlights, also save the full iRacing replay (.rpy). "
@@ -4781,8 +4784,10 @@ def build_help_tab(
         Playback and Load Prepared reuse saved audio without new narration API calls. Completed compatible segments are retained on retry.
         You can Load Prepared, change only the title, and open the player without preparing or paying for narration again.
         Sponsor names/graphics and transition changes can also be saved when opening a prepared player without regenerating speech.
-        Prepare again if you want a new spoken sponsor mention. Keep SIMRacingApps running with the matching replay during playback
-        for current car renders; narration preparation does not need it. JSONL stores driver/car details, not archived paint images.
+        Prepare again if you want a new spoken sponsor mention. Run SIMRacingApps and Trading Paints during the original broadcast.
+        New captures save car images for the whole field, including Driver Mode, in a matching .images folder beside the JSONL.
+        Keep that folder with the capture. Highlights reuse its pictures without SIMRacingApps during preparation or playback.
+        Older captures or missing images still need matching replay renders from SIMRacingApps. Stop Broadcast shows the saved image count.
         Keep the programme.json and its audio folder together under highlights/. Keep the source capture unchanged.
 
         The full-field lineup highlights each driver and switches cameras without transitions between drivers or pages.

@@ -34,6 +34,8 @@ class BroadcastCaptureRecorder:
         self.last_checkpoint = 0.0
         self.interruptions = []
         self.stop_reason = None
+        from production.capture_images import CaptureImages
+        self.car_images = CaptureImages(self.telemetry_path)
         self._telemetry_file = self.telemetry_path.open("w", encoding="utf-8", buffering=1)
         self._events_file = self.events_path.open("w", encoding="utf-8", buffering=1)
         self.write_metadata(status="recording")
@@ -41,6 +43,7 @@ class BroadcastCaptureRecorder:
     def record_snapshot(self, telemetry):
         snapshot = TelemetrySnapshot.from_telemetry(telemetry, timestamp=time.time())
         payload = snapshot.to_dict()
+        self.car_images.submit(payload.get("driver_lookup", {}))
         next_index = self.snapshot_index + 1
         entry = payload
         if self.previous_payload is not None and next_index % 100:
@@ -80,6 +83,7 @@ class BroadcastCaptureRecorder:
             "telemetry_interruptions": self.interruptions,
             "updated_at": time.time(),
             "snapshot_count": max(0, self.snapshot_index + 1),
+            "car_images": self.car_images.status(),
         }
         temporary = self.metadata_path.with_suffix(".tmp")
         temporary.write_text(json.dumps(payload, indent=2), encoding="utf-8")
@@ -100,6 +104,11 @@ class BroadcastCaptureRecorder:
 
     def close(self, reason="stopped"):
         self.stop_reason = reason
+        self.car_images.close()
+        images = self.car_images.status()
+        if images["drivers"]:
+            print(f"Capture car images saved: {images['saved']}/{images['drivers']}. "
+                  "Keep the .images folder with this recording for highlights.", flush=True)
         if getattr(self, "_telemetry_file", None):
             self._telemetry_file.close()
             self._telemetry_file = None

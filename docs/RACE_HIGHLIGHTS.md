@@ -4,7 +4,7 @@
 
 Every normal live or native iRacing replay broadcast records telemetry and commentary, including broadcasts without Driver Mode. Playing a previously recorded JSONL uses that existing capture rather than duplicating it. Capture begins when iRacing connects. Studio writes to disk during the session so an unexpected exit retains the material written so far.
 
-Stop Broadcast offers Keep or Discard for the just-stopped worker's captures, including a size estimate. Cancel and closing the dialog keep the files. Discard removes only matching telemetry, commentary events and capture metadata inside this installation's recordings folder. Studio close uses the same flow when stopping its broadcast. Existing recordings, league data and iRacing .rpy files are not removed. Unexpected termination preserves pending captures. Terminal-only runs retain their files.
+Stop Broadcast offers Keep or Discard for the just-stopped worker's captures, including a size estimate. Cancel and closing the dialog keep the files. Discard removes matching telemetry, commentary events, capture metadata and saved car images inside this installation's recordings folder. Studio close uses the same flow when stopping its broadcast. Existing recordings, league data and iRacing .rpy files are not removed. Unexpected termination preserves pending captures. Terminal-only runs retain their files.
 
 ## Streamlabs highlights player
 
@@ -28,7 +28,9 @@ Automated and browser tests cover selection, narration caching, replay scanning,
 
 Center transitions and the upper-right clip sponsor have independent editable sponsor names and graphic choices. Type a custom name or select a profile sponsor. Load Prepared and Open Highlights Player save these visual edits without regenerating speech; prepare again to change spoken sponsor mentions. Transition styles animate both onto the slate and off it when revealing the clip.
 
-Keep SIMRacingApps active with the matching saved replay during playback for current car renders. It is not needed for narration preparation. JSONL captures driver/car metadata rather than paint-image files; the player uses the full broadcast's current identity-matched SIMRacingApps render and local-render fallback rather than trusting a saved image URL.
+For new captures, run SIMRacingApps and Trading Paints with iRacing before starting the original broadcast, with Use SIMRacingApps Car Graphics enabled. Studio saves the actual PNG car renders for the whole field in the background, including Driver Mode while you race. It retries unavailable images during the broadcast without blocking telemetry polling. The saved images live in a folder beside the capture, for example `broadcast_capture_2026-10-17_19-00-00.images/`. Keep this folder with the JSONL and other capture files if moving the recording. Capture metadata and the stop log show the saved image count.
+
+Highlights use these saved pictures and number styles for the lineup and podium without contacting SIMRacingApps or rebuilding the images. SIMRacingApps is not needed during preparation or playback for drivers with archived images. Older captures and missing images still use the current matching replay's render resolver, so leave SIMRacingApps and the matching paint files available for those. An older JSONL cannot recover the exact original image pixels if they were never saved.
 
 Highlights lineup and podium images now use the full broadcast's render resolver. Live replay driver design strings provide per-driver body/number styling and wheel finish/color; new captures retain those design strings too. Local fallback renders do not copy rim or number styling from another driver's cached request. Existing captures can obtain these fields from the loaded matching replay without rebuilding narration. Accurate custom paint still depends on the matching paint files being available locally.
 

@@ -227,6 +227,32 @@ def make_player(tmp_path):
     return player, controller, server, clock, plays
 
 
+def test_lineup_and_podium_use_archived_pixels_without_live_renderer(tmp_path, monkeypatch):
+    import hashlib
+    import json
+    from production.capture_images import driver_key, image_directory
+    player, controller, server, clock, plays = make_player(tmp_path)
+    capture = tmp_path / "race.jsonl"
+    root = image_directory(capture)
+    root.mkdir()
+    body = b"saved original car image"
+    name = hashlib.sha256(body).hexdigest() + ".png"
+    (root / name).write_bytes(body)
+    driver = {"name": "Driver", "number": "34", "cust_id": 123}
+    (root / "manifest.json").write_text(json.dumps({driver_key(driver): {"file": name, "number_style": {"color": "#fff"}}}))
+    player.job["source"] = str(capture)
+    replacement = HighlightsPlayer(player.job, controller, server, player.audio, tmp_path)
+    def unavailable(*args, **kwargs):
+        raise AssertionError("Archived images must not contact the live renderer")
+    monkeypatch.setattr("app.build_featured_driver_render_info", unavailable)
+    monkeypatch.setattr(controller, "get_driver_lookup", unavailable)
+    entry = {"render_driver": driver, "driver_name": "Driver", "car_number": "34"}
+    result = replacement.lineup_entries([entry])
+    assert result[0]["car_image_url"] == "/capture-images/" + name
+    assert result[0]["number_style"] == {"color": "#fff"}
+    assert server.capture_image_dir == root.resolve()
+
+
 def test_seek_waits_for_visible_transition_and_never_guesses_after_timeout(tmp_path):
     player, controller, server, clock, plays = make_player(tmp_path)
     player.begin_segment()
